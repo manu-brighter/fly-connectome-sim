@@ -1,0 +1,17 @@
+/data/malecns-v1.0/*.feather
+/data/malecns-v1.0/*.part
+/data/malecns-v1.0/normalized/
+/data/malecns-v1.0/graph.npz
+/data/malecns-v1.0/runtime/
+/.tools/
+/.venv/
+/runs/
+/.ai/
+/.superpowers/
+/fruit-fly-*.png
+/gpt chatverlauf.md
+/src/*.egg-info/
+__pycache__/
+*.pyc
+.pytest_cache/
+/.pytest-tmp/

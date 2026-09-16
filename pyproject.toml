@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jogge-di-fly-brain"
+version = "0.1.0"
+description = "Reproducible MaleCNS experiments for a fruit-fly event planner"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "numpy==2.4.6",
+    "pandas==3.0.5",
+    "Pillow==12.3.0",
+    "pyarrow==25.0.1",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8,<10"]
+
+[project.scripts]
+jogge-fly = "jogge_fly_brain.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"jogge_fly_brain.neural" = ["*.cpp", "*.json"]
+"jogge_fly_brain.schemas" = ["*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --basetemp=.pytest-tmp"
