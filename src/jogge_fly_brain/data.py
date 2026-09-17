@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 from dataclasses import dataclass
 from hashlib import sha256
 import json
@@ -93,6 +94,40 @@ def stage_sources(
     return tuple(staged)
 
 
+def verify_runtime_sources(
+    runtime_directory: Path | str,
+    *,
+    source_urls: dict[str, str] | None = None,
+) -> dict[str, dict[str, object]]:
+    """Bind staged inputs to the packaged authoritative MaleCNS source lock."""
+
+    runtime = Path(runtime_directory).resolve()
+    lock = Path(__file__).with_name("neural") / "sources.lock.json"
+    expected = json.loads(lock.read_text(encoding="utf-8"))
+    if source_urls is not None and set(source_urls) != set(expected):
+        raise SourceIntegrityError("Configured source files differ from source lock")
+    verified = {}
+    for name, record in expected.items():
+        url = record["url"] if source_urls is None else source_urls[name]
+        if url != record["url"]:
+            raise SourceIntegrityError(f"Source URL mismatch: {name}")
+        path = runtime / name
+        if not path.is_file():
+            raise SourceIntegrityError(f"Missing source file: {name}")
+        actual_bytes = path.stat().st_size
+        if actual_bytes != record["bytes"]:
+            raise SourceIntegrityError(f"Size mismatch: {name}")
+        actual_hash = _sha256(path)
+        if actual_hash != record["sha256"]:
+            raise SourceIntegrityError(f"SHA-256 mismatch: {name}")
+        verified[name] = {
+            "url": url,
+            "bytes": actual_bytes,
+            "sha256": actual_hash,
+        }
+    return verified
+
+
 def verify_prepared_graph(runtime_directory: Path | str) -> dict[str, object]:
     """Verify the prepared graph against the audited MaleCNS array locks."""
 
@@ -100,6 +135,7 @@ def verify_prepared_graph(runtime_directory: Path | str) -> dict[str, object]:
     import pyarrow.feather as feather
 
     runtime = Path(runtime_directory).resolve()
+    verify_runtime_sources(runtime)
     package = Path(__file__).with_name("neural")
     graph_path = runtime / "graph.npz"
     expected = json.loads(
@@ -139,3 +175,37 @@ def verify_prepared_graph(runtime_directory: Path | str) -> dict[str, object]:
         "directed_edges": 25_582_938,
         "arrays_verified": True,
     }
+
+
+def main() -> None:
+    """Verify and stage local data without an ad-hoc Python invocation."""
+
+    from .neural.common import DATA
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest="command", required=True)
+    verify = commands.add_parser("verify-sources")
+    verify.add_argument("source_directory", type=Path)
+    stage = commands.add_parser("stage")
+    stage.add_argument("source_directory", type=Path)
+    stage.add_argument("--runtime-directory", type=Path, default=DATA)
+    prepared = commands.add_parser("verify-prepared")
+    prepared.add_argument("--runtime-directory", type=Path, default=DATA)
+    args = parser.parse_args()
+
+    try:
+        if args.command == "verify-sources":
+            sources = verify_sources(args.source_directory)
+            result = {"files": len(sources), "bytes": sum(s.bytes for s in sources)}
+        elif args.command == "stage":
+            staged = stage_sources(args.source_directory, args.runtime_directory)
+            result = {"staged": [str(path) for path in staged]}
+        else:
+            result = verify_prepared_graph(args.runtime_directory)
+    except (SourceIntegrityError, FileNotFoundError) as error:
+        parser.exit(1, f"{error}\n")
+    print(json.dumps(result, indent=2))
+
+
+if __name__ == "__main__":
+    main()

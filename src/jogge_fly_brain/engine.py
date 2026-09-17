@@ -60,8 +60,11 @@ class FlyEngine:
 
     @classmethod
     def from_prepared_graph(cls) -> "FlyEngine":
+        from .data import verify_prepared_graph
+        from .neural.common import DATA
         from .neural.visual import VisualMemoryBrain
 
+        verify_prepared_graph(DATA)
         brain = VisualMemoryBrain()
         return cls(brain=brain, groups=NeuralGroups.from_brain(brain))
 

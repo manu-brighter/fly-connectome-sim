@@ -1,15 +1,9 @@
-from pathlib import Path
-
 from jogge_fly_brain.data import verify_prepared_graph
-
-
-PROJECT_ROOT = Path(__file__).parents[1]
+from jogge_fly_brain.neural.common import DATA
 
 
 def test_prepared_graph_matches_audited_malecns_array_locks():
-    result = verify_prepared_graph(
-        PROJECT_ROOT / "data" / "malecns-v1.0" / "runtime"
-    )
+    result = verify_prepared_graph(DATA)
 
     assert result == {
         "release": "MaleCNS v1.0",

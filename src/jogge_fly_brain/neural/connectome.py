@@ -5,13 +5,13 @@ neurotransmitter receptors, muscle mappings, or behavior from a wiring graph.
 """
 
 import argparse
-import hashlib
 import json
 from pathlib import Path
 
 import numpy as np
 
 from .common import DATA
+from ..data import verify_runtime_sources
 
 REGISTRY = Path(__file__).with_name("datasets.json")
 
@@ -58,14 +58,6 @@ def index_edges(ids: np.ndarray, pre, post, counts):
         counts[keep].astype(np.uint32),
         keep,
     )
-
-
-def file_digest(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        while chunk := handle.read(8 * 1024 * 1024):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def normalize_nodes(dataset_id: str, frame, nt_frame=None):
@@ -127,27 +119,11 @@ def import_graph(dataset_id: str = "malecns_v1") -> dict:
 
     config = json.loads(REGISTRY.read_text())["datasets"][dataset_id]
     source_dir = DATA
+    hashes = verify_runtime_sources(source_dir, source_urls=config["files"])
     output = source_dir / "normalized"
     output.mkdir(parents=True, exist_ok=True)
     lock_path = source_dir / "source.lock.json"
-    hashes = {
-        name: {
-            "url": url,
-            "bytes": (source_dir / name).stat().st_size,
-            "sha256": file_digest(source_dir / name),
-        }
-        for name, url in config["files"].items()
-    }
-    if lock_path.exists():
-        locked = json.loads(lock_path.read_text())
-        if any(
-            locked[name]["sha256"] != info["sha256"] for name, info in hashes.items()
-        ):
-            raise ValueError(
-                "Source files changed since the lock was created; use a new versioned dataset directory."
-            )
-    else:
-        lock_path.write_text(json.dumps(hashes, indent=2) + "\n")
+    lock_path.write_text(json.dumps(hashes, indent=2) + "\n", encoding="utf-8")
     frame = feather.read_table(source_dir / "annotations.feather").to_pandas()
     nt_frame = feather.read_table(source_dir / "neurotransmitters.feather").to_pandas()
     catalog, nodes = normalize_nodes(dataset_id, frame, nt_frame)

@@ -7,14 +7,7 @@ from jogge_fly_brain.neural.native import build_native, library_filename
 PROJECT_ROOT = Path(__file__).parents[1]
 
 
-def test_zig_build_produces_loadable_kernel_with_exported_entrypoint(tmp_path):
-    compiler = (
-        PROJECT_ROOT
-        / ".tools"
-        / "zig"
-        / "zig-x86_64-windows-0.16.0"
-        / "zig.exe"
-    )
+def test_platform_compiler_produces_loadable_kernel_with_exported_entrypoint(tmp_path):
     source = (
         PROJECT_ROOT
         / "src"
@@ -23,7 +16,7 @@ def test_zig_build_produces_loadable_kernel_with_exported_entrypoint(tmp_path):
         / "kernel.cpp"
     )
 
-    build = build_native(source=source, output_directory=tmp_path, compiler=compiler)
+    build = build_native(source=source, output_directory=tmp_path)
 
     library = tmp_path / library_filename()
     assert build["library"] == library.name
