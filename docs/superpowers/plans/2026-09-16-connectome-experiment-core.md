@@ -75,7 +75,7 @@ of the numerical path.
 - [x] Write failing unit tests for input validation and telemetry shape using a small test double at the neural boundary.
 - [x] Implement the engine without automatic per-frame reward.
 - [x] Add explicit PAM11/PPL101 stimulation parameters and separate MBON07/MBON11 rates.
-- [ ] Write and run an opt-in full-graph determinism test from a restored checkpoint.
+- [x] Write and run an opt-in full-graph determinism test from a restored checkpoint.
 
 ### Task 4: A/B protocol and leakage-resistant adapter
 
@@ -89,10 +89,10 @@ of the numerical path.
 **Interfaces:**
 - Produces: `ProtocolSchedule`, `PreferenceAdapter`, deterministic A/B stimulus frames.
 
-- [ ] Write a failing adapter test showing that only neural telemetry affects the signed preference score and action.
-- [ ] Implement a versioned adapter using declared MBON and lateral motor fields.
-- [ ] Write failing schedule tests for baseline, pairing, reward-free test, reversal and controls.
-- [ ] Implement schedules with explicit simulated timestamps and seed.
+- [x] Write a failing adapter test showing that only neural telemetry affects the signed preference score and action.
+- [x] Implement a versioned adapter using declared MBON and lateral motor fields.
+- [x] Write failing schedule tests for baseline, pairing, reward-free test, reversal and controls.
+- [x] Implement schedules with explicit simulated timestamps and seed.
 
 ### Task 5: Append-only run artifact and replay contract
 
