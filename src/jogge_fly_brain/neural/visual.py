@@ -109,6 +109,7 @@ class VisualMemoryBrain(MemoryBrain):
         }
 
     def rgb_step(self, frame, duration_ms, **kwargs):
+        self._preflight_step(duration_ms)
         if duration_ms > 10:
             ticks = round(duration_ms / self.dt)
             total = np.zeros(self.n, dtype=np.int32)

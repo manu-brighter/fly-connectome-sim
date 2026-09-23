@@ -10,6 +10,7 @@ from pathlib import Path
 import numpy as np
 
 from .circuit import identify
+from .checkpoint import load_checkpoint, model_fingerprint
 from .common import DATA, GRAPH, OUT, digest, save_json
 from .native import build_native, library_path
 from .state import NativeBrain
@@ -177,6 +178,20 @@ class MemoryBrain(NativeBrain):
         else:
             self.memory_u[:], self.memory_w[:] = saved
 
+    def _preflight_step(self, duration_ms):
+        if not math.isfinite(duration_ms) or duration_ms <= 0:
+            raise ValueError("Invalid duration")
+        steps = round(duration_ms / self.dt)
+        if steps < 1:
+            raise ValueError("Duration too short")
+        maximum = int(np.iinfo(np.int64).max)
+        delay = self.queue.shape[0] - 1
+        if self.cursor > maximum - delay - steps:
+            raise ValueError("Neural cursor would exceed native time range")
+        if self.total_spikes > maximum - self.n * steps:
+            raise ValueError("Total spike count would exceed checkpoint range")
+        return steps
+
     def _neural_step(
         self,
         luminance,
@@ -189,12 +204,8 @@ class MemoryBrain(NativeBrain):
         light = np.asarray(luminance)
         if light.shape != (len(self.retina),) or not np.isfinite(light).all():
             raise ValueError("Invalid retinal input")
-        steps = round(duration_ms / self.dt)
-        if (
-            not math.isfinite(duration_ms)
-            or steps < 1
-            or not math.isfinite(lamina_bias)
-        ):
+        steps = self._preflight_step(duration_ms)
+        if not math.isfinite(lamina_bias):
             raise ValueError("Invalid interval/current")
         self.luminance += (1 - math.exp(-steps * self.dt / 10)) * (
             np.clip(light, 0, 1) - self.luminance
@@ -281,11 +292,7 @@ class MemoryBrain(NativeBrain):
     ):
         from .rule import advance
 
-        if not math.isfinite(duration_ms) or duration_ms <= 0:
-            raise ValueError("Invalid duration")
-        remaining = round(duration_ms / self.dt)
-        if remaining < 1:
-            raise ValueError("Duration too short")
+        remaining = self._preflight_step(duration_ms)
         total = np.zeros(self.n, dtype=np.int32)
         wall = 0.0
         while remaining:
@@ -339,6 +346,7 @@ class MemoryBrain(NativeBrain):
     def checkpoint(self, path):
         metadata = {
             "model": MODEL,
+            "model_fingerprint": model_fingerprint(),
             "build": self.build,
             "eta": self.eta,
             "parameters": PARAMETERS,
@@ -364,35 +372,27 @@ class MemoryBrain(NativeBrain):
         temporary.replace(path)
 
     def restore(self, path):
-        with np.load(path, allow_pickle=False) as a:
-            m = json.loads(str(a["metadata"]))
-            expected = {
-                "model": MODEL,
-                "build": self.build,
-                "eta": self.eta,
-                "parameters": PARAMETERS,
-                "graph_ids_sha256": digest(self.ids),
-                "graph_ptr_sha256": digest(self.ptr),
-                "graph_post_sha256": digest(self.post),
-                "plastic_edges_sha256": digest(self.circuit["edges"]),
-                "configuration_sha256": self.configuration_signature(),
-            }
-            if any(m.get(k) != v for k, v in expected.items()):
-                raise ValueError("Checkpoint provenance mismatch")
-            for k in ["weight", *self.fields]:
-                if (
-                    a[k].shape != getattr(self, k).shape
-                    or a[k].dtype != getattr(self, k).dtype
-                ):
-                    raise ValueError("Checkpoint array mismatch")
-                if a[k].dtype.kind == "f" and not np.isfinite(a[k]).all():
-                    raise ValueError("Nonfinite checkpoint state")
-            for k in ["weight", *self.fields]:
-                getattr(self, k)[:] = a[k]
-            self.cursor = int(m["cursor"])
-            self.sim_ms = self.cursor * self.dt
-            self.total_spikes = int(m["total_spikes"])
-            self.weights_frozen = bool(m["weights_frozen"])
+        expected = {
+            "model": MODEL,
+            "model_fingerprint": model_fingerprint(),
+            "build": self.build,
+            "eta": self.eta,
+            "parameters": PARAMETERS,
+            "graph_ids_sha256": digest(self.ids),
+            "graph_ptr_sha256": digest(self.ptr),
+            "graph_post_sha256": digest(self.post),
+            "plastic_edges_sha256": digest(self.circuit["edges"]),
+            "configuration_sha256": self.configuration_signature(),
+        }
+        targets = {name: getattr(self, name) for name in ["weight", *self.fields]}
+        metadata, arrays = load_checkpoint(path, expected, targets, self.n)
+        sim_ms = metadata["cursor"] * self.dt
+        for name, target in targets.items():
+            target[:] = arrays[name]
+        self.cursor = metadata["cursor"]
+        self.sim_ms = sim_ms
+        self.total_spikes = metadata["total_spikes"]
+        self.weights_frozen = metadata["weights_frozen"]
 
     def configuration_signature(self):
         # Equal cell IDs and CSR endpoints alone do not imply equal input
