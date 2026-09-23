@@ -7,9 +7,26 @@ import shutil
 import numpy as np
 import pytest
 
+from jogge_fly_brain.engine import FlyEngine, NeuralGroups
 from jogge_fly_brain.neural.brain import MemoryBrain
 from jogge_fly_brain.neural import checkpoint
 from jogge_fly_brain.neural.visual import VisualMemoryBrain
+
+
+def make_brain(graph):
+    return MemoryBrain(
+        path=graph,
+        circuit={
+            "kc": np.array([0], dtype=np.int32),
+            "dan": np.array([1], dtype=np.int32),
+            "edges": np.array([0], dtype=np.int64),
+            "pre": np.array([0], dtype=np.int32),
+            "gain": np.array([[1.0]], dtype=np.float32),
+            "kc_mask": np.array([1, 0, 0, 0], dtype=np.uint8),
+            "dan_index": np.array([-1, 0, -1, -1], dtype=np.int8),
+        },
+        modulation_mask=np.array([0, 1, 0, 0], dtype=np.uint8),
+    )
 
 
 @pytest.fixture
@@ -27,19 +44,7 @@ def brain(tmp_path):
         sugar=np.array([], dtype=np.int32),
         superclass=np.zeros(4, dtype=np.uint8),
     )
-    return MemoryBrain(
-        path=graph,
-        circuit={
-            "kc": np.array([0], dtype=np.int32),
-            "dan": np.array([1], dtype=np.int32),
-            "edges": np.array([0], dtype=np.int64),
-            "pre": np.array([0], dtype=np.int32),
-            "gain": np.array([[1.0]], dtype=np.float32),
-            "kc_mask": np.array([1, 0, 0, 0], dtype=np.uint8),
-            "dan_index": np.array([-1, 0, -1, -1], dtype=np.int8),
-        },
-        modulation_mask=np.array([0, 1, 0, 0], dtype=np.uint8),
-    )
+    return make_brain(graph)
 
 
 def state_bytes(brain):
@@ -359,6 +364,141 @@ def test_checkpoint_records_versioned_model_source_identity(brain, saved):
     assert saved[2]["build"]["binary_sha256"]
     assert saved[2]["build"]["compiler"]
     assert saved[2]["configuration_sha256"]
+
+
+def test_checkpoint_and_engine_share_complete_immutable_model_provenance(brain, saved):
+    provenance = brain.model_provenance()
+
+    assert set(provenance) == {
+        "model",
+        "model_fingerprint",
+        "build",
+        "eta",
+        "parameters",
+        "graph_ids_sha256",
+        "graph_ptr_sha256",
+        "graph_post_sha256",
+        "plastic_edges_sha256",
+        "configuration_sha256",
+    }
+    assert saved[2] == {
+        **provenance,
+        "cursor": 0,
+        "weights_frozen": False,
+        "total_spikes": 0,
+    }
+
+
+@pytest.mark.parametrize(
+    "change",
+    ["eta", "compiler", "binary", "graph_ids", "graph_ptr", "graph_post"],
+)
+def test_engine_identity_changes_with_immutable_numerical_provenance(
+    brain, tmp_path, change,
+):
+    groups = NeuralGroups(
+        pam11=np.array([0], dtype=np.int32),
+        ppl101=np.array([0], dtype=np.int32),
+        kc=np.array([0], dtype=np.int32),
+        mbon07=np.array([0], dtype=np.int32),
+        mbon11=np.array([0], dtype=np.int32),
+        motor_left=np.array([0], dtype=np.int32),
+        motor_right=np.array([0], dtype=np.int32),
+    )
+    baseline = FlyEngine(brain=brain, groups=groups).identity()
+    changed_brain = make_brain(tmp_path / "graph.npz")
+
+    if change == "eta":
+        changed_brain.eta += 0.001
+    elif change == "compiler":
+        changed_brain.build = {
+            **changed_brain.build,
+            "compiler": "different compiler",
+        }
+    elif change == "binary":
+        changed_brain.build = {
+            **changed_brain.build,
+            "binary_sha256": "0" * 64,
+        }
+    elif change == "graph_ids":
+        changed_brain.ids[0] += 1
+    elif change == "graph_ptr":
+        changed_brain.ptr[1] += 1
+    else:
+        changed_brain.post[0] += 1
+
+    changed = FlyEngine(brain=changed_brain, groups=groups).identity()
+
+    assert changed["sha256"] != baseline["sha256"]
+
+
+def test_model_provenance_excludes_evolved_mutable_state(brain):
+    before = brain.model_provenance()
+
+    brain.step(
+        np.ones(1, dtype=np.float32),
+        10.0,
+        stimulation=(np.array([1], dtype=np.int32), 30.0),
+        learning=True,
+    )
+
+    assert brain.cursor > 0
+    assert brain.total_spikes > 0
+    assert brain.model_provenance() == before
+
+
+def test_same_engine_rejects_eta_change_after_identity_snapshot(brain):
+    groups = NeuralGroups(**{
+        name: np.array([0], dtype=np.int32)
+        for name in NeuralGroups.__dataclass_fields__
+    })
+    engine = FlyEngine(brain=brain, groups=groups)
+    engine.identity()
+    brain.eta += 0.001
+
+    with pytest.raises(RuntimeError, match="provenance"):
+        engine.identity()
+
+
+def test_same_engine_rejects_native_build_change_after_identity_snapshot(brain):
+    groups = NeuralGroups(**{
+        name: np.array([0], dtype=np.int32)
+        for name in NeuralGroups.__dataclass_fields__
+    })
+    engine = FlyEngine(brain=brain, groups=groups)
+    engine.identity()
+    brain.build["compiler"] = "different compiler"
+
+    with pytest.raises(RuntimeError, match="provenance"):
+        engine.identity()
+
+
+def test_identity_snapshot_makes_large_graph_provenance_arrays_read_only(brain):
+    groups = NeuralGroups(**{
+        name: np.array([0], dtype=np.int32)
+        for name in NeuralGroups.__dataclass_fields__
+    })
+    engine = FlyEngine(brain=brain, groups=groups)
+    engine.identity()
+
+    assert not brain.ids.flags.writeable
+    assert not brain.ptr.flags.writeable
+    assert not brain.post.flags.writeable
+    with pytest.raises(ValueError, match="read-only"):
+        brain.post[0] += 1
+
+
+def test_same_engine_rejects_replaced_graph_array_after_identity_snapshot(brain):
+    groups = NeuralGroups(**{
+        name: np.array([0], dtype=np.int32)
+        for name in NeuralGroups.__dataclass_fields__
+    })
+    engine = FlyEngine(brain=brain, groups=groups)
+    engine.identity()
+    brain.ids = brain.ids.copy()
+
+    with pytest.raises(RuntimeError, match="provenance"):
+        engine.identity()
 
 
 @pytest.mark.parametrize("change", ["missing", "version", "source", "digest"])

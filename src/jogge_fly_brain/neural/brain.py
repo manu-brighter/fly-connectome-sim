@@ -343,21 +343,120 @@ class MemoryBrain(NativeBrain):
             "model": MODEL,
         }
 
-    def checkpoint(self, path):
-        metadata = {
+    def model_provenance(self):
+        """Return immutable numerical identity shared by checkpoints and engines."""
+        return {
             "model": MODEL,
             "model_fingerprint": model_fingerprint(),
             "build": self.build,
             "eta": self.eta,
             "parameters": PARAMETERS,
-            "cursor": self.cursor,
-            "weights_frozen": self.weights_frozen,
-            "total_spikes": self.total_spikes,
             "graph_ids_sha256": digest(self.ids),
             "graph_ptr_sha256": digest(self.ptr),
             "graph_post_sha256": digest(self.post),
             "plastic_edges_sha256": digest(self.circuit["edges"]),
             "configuration_sha256": self.configuration_signature(),
+        }
+
+    def lock_model_provenance(self):
+        """Snapshot provenance and freeze large immutable numerical inputs."""
+        if hasattr(self, "_locked_model_provenance_json"):
+            self.assert_model_provenance_locked()
+            return json.loads(self._locked_model_provenance_json)
+
+        provenance = self.model_provenance()
+        arrays = self._model_provenance_arrays()
+        for value in arrays.values():
+            value.flags.writeable = False
+        self._locked_model_provenance_arrays = arrays
+        self._locked_model_provenance_values = self._model_provenance_values_json()
+        self._locked_model_provenance_json = json.dumps(
+            provenance,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+        return json.loads(self._locked_model_provenance_json)
+
+    def assert_model_provenance_locked(self):
+        """Reject cheap-to-detect divergence from a locked engine identity."""
+        try:
+            current = self._model_provenance_arrays()
+            unchanged_arrays = (
+                current.keys() == self._locked_model_provenance_arrays.keys()
+                and all(
+                    current[name] is original and not original.flags.writeable
+                    for name, original in self._locked_model_provenance_arrays.items()
+                )
+            )
+            unchanged_values = (
+                self._model_provenance_values_json()
+                == self._locked_model_provenance_values
+            )
+        except (AttributeError, TypeError, ValueError):
+            unchanged_arrays = False
+            unchanged_values = False
+        if not unchanged_arrays or not unchanged_values:
+            raise RuntimeError("Model provenance changed after engine identity")
+
+    def _model_provenance_arrays(self):
+        arrays = {
+            name: getattr(self, name)
+            for name in [
+                "ids",
+                "ptr",
+                "post",
+                "retina",
+                "uv",
+                "lamina",
+                "sugar",
+                "modulation_mask",
+                "tonic",
+                "dan_baseline_hz",
+                "rest",
+                "baseline_plastic",
+            ]
+        }
+        arrays.update(
+            {
+                f"circuit.{name}": value
+                for name, value in self.circuit.items()
+                if isinstance(value, np.ndarray)
+            }
+        )
+        arrays.update(
+            {
+                name: getattr(self, name)
+                for name in ["r8", "r8_uv", "r8_channel", "corrected_edges"]
+                if hasattr(self, name)
+            }
+        )
+        return arrays
+
+    def _model_provenance_values_json(self):
+        return json.dumps(
+            {
+                "model": MODEL,
+                "build": self.build,
+                "dt": self.dt,
+                "eta": self.eta,
+                "parameters": PARAMETERS,
+                "initial_weight_sha256": self.initial_weight_sha256,
+                "rule_parameters": self.rule_parameters,
+                "adaptation_jump": self.adaptation_jump,
+                "adaptation_tau": self.adaptation_tau,
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+
+    def checkpoint(self, path):
+        metadata = {
+            **self.model_provenance(),
+            "cursor": self.cursor,
+            "weights_frozen": self.weights_frozen,
+            "total_spikes": self.total_spikes,
         }
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -372,18 +471,7 @@ class MemoryBrain(NativeBrain):
         temporary.replace(path)
 
     def restore(self, path):
-        expected = {
-            "model": MODEL,
-            "model_fingerprint": model_fingerprint(),
-            "build": self.build,
-            "eta": self.eta,
-            "parameters": PARAMETERS,
-            "graph_ids_sha256": digest(self.ids),
-            "graph_ptr_sha256": digest(self.ptr),
-            "graph_post_sha256": digest(self.post),
-            "plastic_edges_sha256": digest(self.circuit["edges"]),
-            "configuration_sha256": self.configuration_signature(),
-        }
+        expected = self.model_provenance()
         targets = {name: getattr(self, name) for name in ["weight", *self.fields]}
         metadata, arrays = load_checkpoint(path, expected, targets, self.n)
         sim_ms = metadata["cursor"] * self.dt
