@@ -108,6 +108,22 @@ class VisualMemoryBrain(MemoryBrain):
             "validated": False,
         }
 
+    def rgb_drive(self, frame) -> dict[str, np.ndarray]:
+        """Sample modeled R1-R6 luminance and R8 RGB channels without advancing state."""
+        from .sensory import retinal_samples
+
+        frame = np.asarray(frame)
+        if frame.ndim != 3 or frame.shape[2] != 3 or frame.dtype != np.uint8:
+            raise ValueError("RGB uint8 required")
+        h, w = frame.shape[:2]
+        x = np.minimum((self.r8_uv[:, 0] * (w - 1)).astype(int), w - 1)
+        y = np.minimum((self.r8_uv[:, 1] * (h - 1)).astype(int), h - 1)
+        values = frame[y, x, self.r8_channel].astype(np.float32) / 255
+        values = np.where(
+            values <= 0.04045, values / 12.92, ((values + 0.055) / 1.055) ** 2.4
+        )
+        return {"r1_r6": retinal_samples(frame, self.uv), "r8": values}
+
     def rgb_step(self, frame, duration_ms, **kwargs):
         self._preflight_step(duration_ms)
         if duration_ms > 10:
@@ -122,18 +138,8 @@ class VisualMemoryBrain(MemoryBrain):
                 ticks -= n
             self.counts[:] = total
             return total, wall
-        from .sensory import retinal_samples
-
-        frame = np.asarray(frame)
-        if frame.ndim != 3 or frame.shape[2] != 3 or frame.dtype != np.uint8:
-            raise ValueError("RGB uint8 required")
-        h, w = frame.shape[:2]
-        x = np.minimum((self.r8_uv[:, 0] * (w - 1)).astype(int), w - 1)
-        y = np.minimum((self.r8_uv[:, 1] * (h - 1)).astype(int), h - 1)
-        values = frame[y, x, self.r8_channel].astype(np.float32) / 255
-        values = np.where(
-            values <= 0.04045, values / 12.92, ((values + 0.055) / 1.055) ** 2.4
-        )
+        drive = self.rgb_drive(frame)
+        values = drive["r8"]
         self.r8_light += (
             1 - math.exp(-round(duration_ms / self.dt) * self.dt / 10)
         ) * (values - self.r8_light)
@@ -143,7 +149,7 @@ class VisualMemoryBrain(MemoryBrain):
         )
         pulses.append((self.r8, 30 * self.r8_light / (0.02 + self.r8_light)))
         return self.step(
-            retinal_samples(frame, self.uv), duration_ms, stimulation=pulses, **kwargs
+            drive["r1_r6"], duration_ms, stimulation=pulses, **kwargs
         )
 
     def configuration_signature(self):

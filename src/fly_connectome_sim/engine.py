@@ -7,7 +7,7 @@ from hashlib import sha256
 import json
 import math
 import time
-from typing import Literal, TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 import numpy as np
 
@@ -45,6 +45,7 @@ class SpikeBin(TypedDict):
     end_ms: float
     duration_ms: float
     group_spikes: NamedSpikeCounts
+    qualification_detail: NotRequired[dict[str, JsonValue]]
 
 
 class ModelFingerprint(TypedDict):
@@ -102,6 +103,8 @@ class FlyTelemetry(TypedDict):
     spike_sha256: str
     memory: dict[str, JsonValue]
     bins: list[SpikeBin]
+    pathway_detail: NotRequired[dict[str, JsonValue]]
+    qualification_detail: NotRequired[dict[str, JsonValue]]
 
 
 def _canonical_json(value: object) -> bytes:
@@ -128,6 +131,27 @@ def _rgb_input_sha256(frame: np.ndarray) -> str:
     digest = sha256(_canonical_json(header) + b"\n")
     digest.update(frame.tobytes(order="C"))
     return digest.hexdigest()
+
+
+def _array_summary(values: np.ndarray) -> dict[str, JsonValue]:
+    """Summarize an ordered numeric vector, hashing its float64 C-order bytes."""
+    data = np.asarray(values, dtype=np.float64)
+    if not np.isfinite(data).all():
+        raise ValueError("Nonfinite diagnostic value")
+    return {
+        "count": int(data.size),
+        "minimum": float(data.min()) if data.size else None,
+        "mean": float(data.mean()) if data.size else None,
+        "maximum": float(data.max()) if data.size else None,
+        "sha256": sha256(data.tobytes(order="C")).hexdigest(),
+    }
+
+
+def _finite_values(values: np.ndarray) -> list[float]:
+    data = np.asarray(values, dtype=np.float64)
+    if not np.isfinite(data).all():
+        raise ValueError("Nonfinite diagnostic value")
+    return [float(value) for value in data]
 
 
 @dataclass(frozen=True)
@@ -226,6 +250,8 @@ class FlyEngine:
         stimulation: StimulationPopulation | None = None,
         current_mv: float = 20.0,
         learning: bool = False,
+        pathway_detail: bool = False,
+        qualification_detail: bool = False,
     ) -> FlyTelemetry:
         if (
             not isinstance(frame, np.ndarray)
@@ -244,6 +270,8 @@ class FlyEngine:
             raise ValueError("Duration must be 0.1–500 ms in 0.1 ms increments")
         if not isinstance(learning, bool):
             raise ValueError("Learning must be a boolean")
+        if not isinstance(pathway_detail, bool) or not isinstance(qualification_detail, bool):
+            raise ValueError("Detail flags must be boolean")
 
         populations: dict[StimulationPopulation, np.ndarray] = {
             "pam11": self.groups.pam11,
@@ -262,6 +290,17 @@ class FlyEngine:
             pulse = (populations[stimulation], float(current_mv))
 
         brain = self.brain
+        candidate_positions = np.empty(0, dtype=np.int64)
+        candidate_edges = np.empty(0, dtype=np.int64)
+        candidate_kcs = np.empty(0, dtype=np.int32)
+        if pathway_detail or qualification_detail:
+            edges = brain.circuit["edges"]
+            candidate_positions = np.flatnonzero(
+                np.isin(brain.post[edges], self.groups.mbon11)
+            )
+            candidate_edges = edges[candidate_positions]
+            candidate_kcs = np.unique(brain.circuit["pre"][candidate_positions])
+            drive = brain.rgb_drive(frame)
         totals = np.zeros(brain.n, dtype=np.int64)
         bins: list[SpikeBin] = []
         remaining_ticks = round(duration_ms / brain.dt)
@@ -279,8 +318,7 @@ class FlyEngine:
             )
             totals += counts
             kernel_seconds += elapsed
-            bins.append(
-                {
+            spike_bin: SpikeBin = {
                     "end_ms": round(float(brain.sim_ms), 3),
                     "duration_ms": interval_ms,
                     "group_spikes": {
@@ -293,7 +331,30 @@ class FlyEngine:
                         "motor_right": int(counts[self.groups.motor_right].sum()),
                     },
                 }
-            )
+            if qualification_detail:
+                u = brain.memory_u[candidate_positions]
+                w = brain.memory_w[candidate_positions]
+                efficacy = brain.weight[candidate_edges] / brain.baseline_plastic[candidate_positions]
+                lower = brain.rule_parameters["minimum_fraction"] - 1
+                upper = brain.rule_parameters["maximum_fraction"] - 1
+                lower_mask = (u <= lower) | (w <= lower)
+                upper_mask = (u >= upper) | (w >= upper)
+                lower_hits = int(np.count_nonzero(lower_mask))
+                upper_hits = int(np.count_nonzero(upper_mask))
+                spike_bin["qualification_detail"] = {
+                    "rate_kc": _finite_values(brain.rate_kc[candidate_positions]),
+                    "rate_dan": _finite_values(brain.rate_dan),
+                    "memory_u": _array_summary(u),
+                    "memory_w": _array_summary(w),
+                    "efficacy": _array_summary(efficacy),
+                    "lower_bound_hits": lower_hits,
+                    "upper_bound_hits": upper_hits,
+                    "bound_hit_fraction": (
+                        int(np.count_nonzero(lower_mask | upper_mask)) / len(candidate_edges)
+                        if len(candidate_edges) else 0.0
+                    ),
+                }
+            bins.append(spike_bin)
             remaining_ticks -= ticks
 
         seconds = duration_ms / 1000.0
@@ -336,4 +397,34 @@ class FlyEngine:
             "memory": brain.memory(),
             "bins": bins,
         }
+        if pathway_detail or qualification_detail:
+            telemetry["pathway_detail"] = {
+                "modeled_visual_drive": {
+                    "r1_r6": _array_summary(drive["r1_r6"]),
+                    "r8": _array_summary(drive["r8"]),
+                },
+                "candidate_edge_indices": [int(edge) for edge in candidate_edges],
+                "candidate_edge_pre_source_ids": [
+                    str(brain.ids[index]) for index in brain.circuit["pre"][candidate_positions]
+                ],
+                "candidate_edge_post_source_ids": [
+                    str(brain.ids[index]) for index in brain.post[candidate_edges]
+                ],
+                "candidate_kc_indices": [int(index) for index in candidate_kcs],
+                "candidate_kc_source_ids": [str(brain.ids[index]) for index in candidate_kcs],
+                "candidate_kc_spike_counts": [int(totals[index]) for index in candidate_kcs],
+                "candidate_kc_spikes_by_source_id": {
+                    str(brain.ids[index]): int(totals[index]) for index in candidate_kcs
+                },
+            }
+        if qualification_detail:
+            telemetry["qualification_detail"] = {
+                "dan_indices": [int(index) for index in brain.circuit["dan"]],
+                "dan_source_ids": [str(brain.ids[index]) for index in brain.circuit["dan"]],
+                "rate_kc_semantics": "model_trace_state_hz",
+                "rate_dan_semantics": "model_trace_state_hz",
+                "maximum_bound_hit_fraction": max(
+                    bin["qualification_detail"]["bound_hit_fraction"] for bin in bins
+                ),
+            }
         return telemetry

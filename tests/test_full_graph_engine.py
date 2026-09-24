@@ -1,4 +1,5 @@
 from hashlib import sha256
+import json
 import os
 
 import numpy as np
@@ -88,4 +89,35 @@ def test_full_graph_replays_identically_after_checkpoint_restore(tmp_path):
         key: value for key, value in first.items() if key not in wall_clock_fields
     } == {
         key: value for key, value in second.items() if key not in wall_clock_fields
+    }
+
+    brain.restore(checkpoint)
+    before_drive = brain_state(brain)
+    drive = brain.rgb_drive(continuation_frame)
+    assert len(drive["r1_r6"]) == len(brain.retina)
+    assert len(drive["r8"]) == len(brain.r8)
+    assert brain_state(brain) == before_drive
+
+    detailed = engine.observe(continuation_frame, 25.3, qualification_detail=True)
+    assert brain_state(brain) == first_state
+    pathway = detailed.pop("pathway_detail")
+    qualification = detailed.pop("qualification_detail")
+    assert pathway["candidate_edge_indices"] == brain.circuit["edges"][
+        np.isin(brain.post[brain.circuit["edges"]], engine.groups.mbon11)
+    ].tolist()
+    assert len(pathway["candidate_kc_spikes_by_source_id"]) == len(
+        pathway["candidate_kc_indices"]
+    )
+    assert qualification["dan_indices"] == brain.circuit["dan"].tolist()
+    assert 0 <= qualification["maximum_bound_hit_fraction"] <= 1
+    for bin in detailed["bins"]:
+        details = bin.pop("qualification_detail")
+        assert len(details["rate_kc"]) == len(pathway["candidate_edge_indices"])
+        assert len(details["rate_dan"]) == len(brain.circuit["dan"])
+        assert details["memory_u"]["count"] == len(pathway["candidate_edge_indices"])
+        json.dumps(details, allow_nan=False)
+    assert {
+        key: value for key, value in first.items() if key not in wall_clock_fields
+    } == {
+        key: value for key, value in detailed.items() if key not in wall_clock_fields
     }

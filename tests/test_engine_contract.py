@@ -8,6 +8,7 @@ import pytest
 import fly_connectome_sim.engine as engine_module
 from fly_connectome_sim.engine import FlyEngine, NeuralGroups
 from fly_connectome_sim.neural.checkpoint import model_fingerprint
+from fly_connectome_sim.neural.visual import VisualMemoryBrain
 
 
 class DeterministicBrain:
@@ -316,3 +317,162 @@ def test_observe_telemetry_is_strict_json_and_carries_engine_identity():
     assert decoded["input_shape"] == [2, 3, 3]
     assert decoded["input_dtype"] == "uint8"
     assert decoded["engine_identity"] == engine.identity()
+
+
+def test_rgb_drive_samples_geometry_without_advancing_visual_state():
+    class VisualFixture:
+        rgb_drive = VisualMemoryBrain.rgb_drive
+
+        def __init__(self):
+            self.uv = np.array([[0.0, 0.0], [1.0, 1.0]], dtype=np.float32)
+            self.r8_uv = np.array([[1.0, 0.0]], dtype=np.float32)
+            self.r8_channel = np.array([1], dtype=np.int32)
+            self.sim_ms = 2.0
+            self.luminance = np.array([0.25, 0.75], dtype=np.float32)
+            self.r8_light = np.array([0.5], dtype=np.float32)
+
+    brain = VisualFixture()
+    before = (brain.sim_ms, brain.luminance.tobytes(), brain.r8_light.tobytes())
+    frame = np.zeros((2, 2, 3), dtype=np.uint8)
+    frame[0, 1, 1] = 255
+    wide = brain.rgb_drive(frame)
+    tall = brain.rgb_drive(frame.reshape(1, 4, 3))
+
+    np.testing.assert_array_equal(wide["r1_r6"], [0.0, 0.0])
+    np.testing.assert_array_equal(wide["r8"], [1.0])
+    np.testing.assert_array_equal(tall["r8"], [0.0])
+    assert (brain.sim_ms, brain.luminance.tobytes(), brain.r8_light.tobytes()) == before
+
+
+class DiagnosticBrain(DeterministicBrain):
+    def __init__(self):
+        super().__init__()
+        self.n = 11
+        self.ids = np.arange(100, 111, dtype=np.int64)
+        self.post = np.array([0, 0, 8, 0, 0, 7, 0, 8], dtype=np.int32)
+        self.circuit = {
+            "edges": np.array([7, 5, 2], dtype=np.int64),
+            "pre": np.array([5, 3, 4], dtype=np.int32),
+            "dan": np.array([2, 1], dtype=np.int32),
+        }
+        self.rate_kc = np.zeros(3, dtype=np.float64)
+        self.rate_dan = np.zeros(2, dtype=np.float64)
+        self.memory_u = np.zeros(3, dtype=np.float64)
+        self.memory_w = np.zeros(3, dtype=np.float64)
+        self.baseline_plastic = np.array([2.0, 3.0, 4.0], dtype=np.float32)
+        self.weight = np.ones(8, dtype=np.float32)
+        self.rule_parameters = {"minimum_fraction": 0.1, "maximum_fraction": 2.0}
+        self.phase = 0
+
+    def rgb_drive(self, frame):
+        return {
+            "r1_r6": np.array([0.0, 1.0], dtype=np.float32),
+            "r8": np.array([0.5], dtype=np.float32),
+        }
+
+    def rgb_step(self, frame, duration_ms, **kwargs):
+        self.phase += 1
+        self.sim_ms += duration_ms
+        self.rate_kc[:] = [self.phase, 0.0, 2 * self.phase]
+        self.rate_dan[:] = [3 * self.phase, 4 * self.phase]
+        self.memory_u[:] = [
+            -0.9 if self.phase == 1 else -0.2,
+            0,
+            1.0 if self.phase == 1 else 0.2,
+        ]
+        self.memory_w[:] = self.memory_u
+        self.weight[self.circuit["edges"]] = self.baseline_plastic * (1 + self.memory_w)
+        return np.arange(1, 12, dtype=np.int32), 0.001
+
+
+DIAGNOSTIC_GROUPS = NeuralGroups(
+    pam11=np.array([0]),
+    ppl101=np.array([1, 2]),
+    kc=np.array([3, 4, 5]),
+    mbon07=np.array([7]),
+    mbon11=np.array([8]),
+    motor_left=np.array([9]),
+    motor_right=np.array([10]),
+)
+
+
+def test_pathway_detail_excludes_mbon07_only_kc_and_keeps_default_compact():
+    frame = np.zeros((2, 2, 3), dtype=np.uint8)
+    compact = FlyEngine(brain=DiagnosticBrain(), groups=DIAGNOSTIC_GROUPS).observe(
+        frame, 20.0
+    )
+    detailed = FlyEngine(brain=DiagnosticBrain(), groups=DIAGNOSTIC_GROUPS).observe(
+        frame, 20.0, pathway_detail=True
+    )
+
+    assert "pathway_detail" not in compact
+    assert all("qualification_detail" not in bin for bin in compact["bins"])
+    assert detailed["pathway_detail"]["candidate_edge_indices"] == [7, 2]
+    assert detailed["pathway_detail"]["candidate_kc_indices"] == [4, 5]
+    assert detailed["pathway_detail"]["candidate_kc_source_ids"] == ["104", "105"]
+    assert detailed["pathway_detail"]["candidate_kc_spike_counts"] == [10, 12]
+    assert detailed["pathway_detail"]["candidate_kc_spikes_by_source_id"] == {
+        "104": 10,
+        "105": 12,
+    }
+    assert detailed["pathway_detail"]["candidate_edge_pre_source_ids"] == [
+        "105", "104",
+    ]
+    assert detailed["pathway_detail"]["candidate_edge_post_source_ids"] == [
+        "108", "108",
+    ]
+    assert detailed["pathway_detail"]["modeled_visual_drive"]["r8"]["mean"] == 0.5
+    assert detailed["total_spikes"] == compact["total_spikes"]
+    assert detailed["spike_sha256"] == compact["spike_sha256"]
+    json.dumps(detailed, allow_nan=False)
+
+
+def test_qualification_detail_captures_transient_bound_hit_per_bin():
+    frame = np.zeros((2, 2, 3), dtype=np.uint8)
+    result = FlyEngine(brain=DiagnosticBrain(), groups=DIAGNOSTIC_GROUPS).observe(
+        frame, 20.0, qualification_detail=True
+    )
+
+    first, second = [bin["qualification_detail"] for bin in result["bins"]]
+    assert first["rate_kc"] == [1.0, 2.0]
+    assert first["rate_dan"] == [3.0, 4.0]
+    assert first["lower_bound_hits"] == 1
+    assert first["upper_bound_hits"] == 1
+    assert second["lower_bound_hits"] == 0
+    assert second["upper_bound_hits"] == 0
+    assert result["qualification_detail"]["maximum_bound_hit_fraction"] == 1.0
+    assert result["qualification_detail"]["dan_indices"] == [2, 1]
+    assert result["qualification_detail"]["dan_source_ids"] == ["102", "101"]
+    assert result["qualification_detail"]["rate_kc_semantics"] == "model_trace_state_hz"
+    assert result["qualification_detail"]["rate_dan_semantics"] == "model_trace_state_hz"
+    assert first["memory_u"]["minimum"] == -0.9
+    assert first["memory_w"]["maximum"] == 1.0
+    assert first["memory_u"]["sha256"] != second["memory_u"]["sha256"]
+    assert first["efficacy"]["minimum"] == pytest.approx(0.1)
+    json.dumps(result, allow_nan=False)
+
+
+def test_bound_hit_fraction_counts_an_edge_at_opposite_bounds_once():
+    class OppositeBoundsBrain(DiagnosticBrain):
+        def rgb_step(self, frame, duration_ms, **kwargs):
+            counts, elapsed = super().rgb_step(frame, duration_ms, **kwargs)
+            if self.phase == 1:
+                self.memory_w[0] = 1.0
+                self.memory_u[2] = 0.2
+                self.memory_w[2] = 0.2
+                self.weight[self.circuit["edges"]] = self.baseline_plastic * (
+                    1 + self.memory_w
+                )
+            return counts, elapsed
+
+    result = FlyEngine(brain=OppositeBoundsBrain(), groups=DIAGNOSTIC_GROUPS).observe(
+        np.zeros((2, 2, 3), dtype=np.uint8), 20.0, qualification_detail=True
+    )
+    first, second = [bin["qualification_detail"] for bin in result["bins"]]
+
+    assert len(result["pathway_detail"]["candidate_edge_indices"]) == 2
+    assert first["lower_bound_hits"] == 1
+    assert first["upper_bound_hits"] == 1
+    assert first["bound_hit_fraction"] == 0.5
+    assert second["bound_hit_fraction"] == 0.0
+    assert result["qualification_detail"]["maximum_bound_hit_fraction"] == 0.5
