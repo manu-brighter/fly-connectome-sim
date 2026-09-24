@@ -4,7 +4,9 @@ import ctypes as C
 import hashlib
 import json
 import math
+import numbers
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -33,6 +35,19 @@ PARAMETERS = {
 
 def build():
     return {"model": MODEL, **build_native(SOURCE, LIBRARY.parent)}
+
+
+@dataclass(frozen=True)
+class CandidateMemory:
+    """One candidate edge group's model state at a neural clock."""
+
+    target_indices: np.ndarray
+    edge_indices: np.ndarray
+    memory_u: np.ndarray
+    memory_w: np.ndarray
+    weight: np.ndarray
+    cursor: int
+    sim_ms: float
 
 
 class MemoryBrain(NativeBrain):
@@ -342,6 +357,93 @@ class MemoryBrain(NativeBrain):
             "sha256": digest(w),
             "model": MODEL,
         }
+
+    def _candidate_positions(self, target_indices):
+        targets = np.asarray(target_indices)
+        if (targets.ndim != 1 or targets.size == 0
+                or not np.issubdtype(targets.dtype, np.integer)
+                or np.any(targets < 0) or np.any(targets >= self.n)
+                or len(np.unique(targets)) != len(targets)):
+            raise ValueError("Invalid candidate target indices")
+        positions = np.flatnonzero(np.isin(self.post[self.circuit["edges"]], targets))
+        if not len(positions):
+            raise ValueError("No candidate edges for target indices")
+        return positions
+
+    def candidate_memory(self, target_indices: np.ndarray) -> CandidateMemory:
+        """Copy ordered KC-to-target candidate state at the current clock."""
+        positions = self._candidate_positions(target_indices)
+
+        def frozen_copy(value):
+            copied = np.array(value, copy=True)
+            return np.frombuffer(copied.tobytes(), dtype=copied.dtype).reshape(copied.shape)
+
+        edges = self.circuit["edges"][positions]
+        return CandidateMemory(
+            target_indices=frozen_copy(target_indices),
+            edge_indices=frozen_copy(edges),
+            memory_u=frozen_copy(self.memory_u[positions]),
+            memory_w=frozen_copy(self.memory_w[positions]),
+            weight=frozen_copy(self.weight[edges]),
+            cursor=self.cursor,
+            sim_ms=self.sim_ms,
+        )
+
+    def replace_candidate_memory(self, snapshot: CandidateMemory) -> None:
+        """Validate a complete candidate state before replacing its three slices."""
+        if not isinstance(snapshot, CandidateMemory):
+            raise ValueError("Expected a candidate memory snapshot")
+        if (isinstance(snapshot.cursor, (bool, np.bool_))
+                or not isinstance(snapshot.cursor, numbers.Integral)
+                or isinstance(snapshot.sim_ms, (bool, np.bool_))
+                or not isinstance(snapshot.sim_ms, numbers.Real)
+                or not math.isfinite(snapshot.sim_ms)):
+            raise ValueError("Invalid candidate memory clock metadata")
+        if snapshot.cursor != self.cursor or snapshot.sim_ms != self.sim_ms:
+            raise ValueError("Candidate memory clocks differ")
+        names = ("target_indices", "edge_indices", "memory_u", "memory_w", "weight")
+        if any(type(getattr(snapshot, name)) is not np.ndarray for name in names):
+            raise ValueError("Candidate memory arrays must be plain ndarrays")
+        staged = {
+            name: np.array(getattr(snapshot, name), copy=True, subok=False)
+            for name in names
+        }
+        positions = self._candidate_positions(staged["target_indices"])
+        edges = self.circuit["edges"][positions]
+        expected = {
+            "edge_indices": (edges.dtype, edges.shape),
+            "memory_u": (self.memory_u.dtype, positions.shape),
+            "memory_w": (self.memory_w.dtype, positions.shape),
+            "weight": (self.weight.dtype, positions.shape),
+        }
+        for name, (dtype, shape) in expected.items():
+            value = staged[name]
+            if value.dtype != dtype or value.shape != shape:
+                raise ValueError(f"Invalid candidate {name} shape or dtype")
+            if not np.isfinite(value).all():
+                raise ValueError(f"Nonfinite candidate {name}")
+        if not np.array_equal(staged["edge_indices"], edges):
+            raise ValueError("Candidate edge identity or order differs")
+        lower = self.rule_parameters["minimum_fraction"] - 1
+        upper = self.rule_parameters["maximum_fraction"] - 1
+        for value in (staged["memory_u"], staged["memory_w"]):
+            if np.any(value < lower) or np.any(value > upper):
+                raise ValueError("Candidate memory exceeds rule bounds")
+        expected_weight = (
+            self.baseline_plastic[positions] * (1 + staged["memory_w"])
+        ).astype(self.weight.dtype)
+        if not np.allclose(
+            staged["weight"], expected_weight,
+            rtol=2 * np.finfo(self.weight.dtype).eps,
+            atol=np.finfo(self.weight.dtype).tiny,
+        ):
+            raise ValueError("Candidate weight disagrees with baseline and memory")
+        if not all(array.flags.writeable for array in
+                   (self.memory_u, self.memory_w, self.weight)):
+            raise ValueError("Candidate destination is read-only")
+        self.memory_u[positions] = staged["memory_u"]
+        self.memory_w[positions] = staged["memory_w"]
+        self.weight[edges] = staged["weight"]
 
     def model_provenance(self):
         """Return immutable numerical identity shared by checkpoints and engines."""

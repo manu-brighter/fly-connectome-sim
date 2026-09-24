@@ -1,6 +1,7 @@
 """Checkpoint trust-boundary tests using a four-neuron native graph."""
 
 import json
+from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
 import shutil
 
@@ -58,6 +59,250 @@ def state_bytes(brain):
         "total_spikes": brain.total_spikes,
         "weights_frozen": brain.weights_frozen,
     }
+
+
+@pytest.fixture
+def intervention_brains(tmp_path):
+    graph = tmp_path / "intervention-graph.npz"
+    np.savez(
+        graph,
+        ids=np.array([10, 20, 30, 40], dtype=np.int64),
+        ptr=np.array([0, 2, 3, 3, 3], dtype=np.int64),
+        post=np.array([2, 3, 2], dtype=np.int32),
+        weight=np.array([0.275, 0.3, 0.2], dtype=np.float32),
+        retina=np.array([0], dtype=np.int32),
+        uv=np.array([[0.5, 0.5]], dtype=np.float32),
+        lamina=np.array([], dtype=np.int32),
+        sugar=np.array([], dtype=np.int32),
+        superclass=np.zeros(4, dtype=np.uint8),
+    )
+
+    def new_brain():
+        return MemoryBrain(
+            path=graph,
+            circuit={
+                "kc": np.array([0], dtype=np.int32),
+                "dan": np.array([1], dtype=np.int32),
+                "edges": np.array([1, 0], dtype=np.int64),
+                "pre": np.array([0, 0], dtype=np.int32),
+                "gain": np.array([[0.0, 1.0]], dtype=np.float32),
+                "kc_mask": np.array([1, 0, 0, 0], dtype=np.uint8),
+                "dan_index": np.array([-1, 0, -1, -1], dtype=np.int8),
+            },
+            modulation_mask=np.array([0, 1, 0, 0], dtype=np.uint8),
+        )
+
+    return new_brain(), new_brain()
+
+
+def test_candidate_snapshot_is_ordered_copied_and_frozen(intervention_brains):
+    donor, _ = intervention_brains
+    targets = np.array([2], dtype=np.int32)
+    snapshot = donor.candidate_memory(targets)
+    np.testing.assert_array_equal(snapshot.edge_indices, [0])
+    assert snapshot.edge_indices.dtype == donor.circuit["edges"].dtype
+    assert snapshot.memory_u.dtype == donor.memory_u.dtype
+    assert snapshot.memory_w.dtype == donor.memory_w.dtype
+    assert snapshot.weight.dtype == donor.weight.dtype
+    assert snapshot.cursor == donor.cursor
+    assert snapshot.sim_ms == donor.sim_ms
+    np.testing.assert_array_equal(snapshot.target_indices, [2])
+    for field in ("target_indices", "edge_indices", "memory_u", "memory_w", "weight"):
+        assert not getattr(snapshot, field).flags.writeable
+        with pytest.raises(ValueError):
+            getattr(snapshot, field).flags.writeable = True
+    with pytest.raises(FrozenInstanceError):
+        snapshot.cursor = 1
+    targets[0] = 3
+    np.testing.assert_array_equal(snapshot.target_indices, [2])
+    donor.memory_u[1] = 0.2
+    assert snapshot.memory_u[0] == 0
+
+
+@pytest.mark.parametrize("branch", ["necessity", "sufficiency", "sham"])
+def test_candidate_intervention_preserves_non_candidate_state_and_passive_decay(
+    intervention_brains, branch, tmp_path,
+):
+    trained, matched = intervention_brains
+    for member in (trained, matched):
+        member.memory_u[0] = 0.25
+        member.memory_w[0] = 0.2
+        member.weight[1] = member.baseline_plastic[0] * 1.2
+    light = np.ones(1, dtype=np.float32)
+    pulse = (np.array([1], dtype=np.int32), 30.0)
+    trained.step(light, 100.0, stimulation=pulse, learning=True)
+    matched.step(light, 100.0, learning=False)
+    assert trained.cursor == matched.cursor
+    trained_checkpoint = tmp_path / "trained-before.npz"
+    matched_checkpoint = tmp_path / "matched-before.npz"
+    trained.checkpoint(trained_checkpoint)
+    matched.checkpoint(matched_checkpoint)
+    trained_memory = trained.candidate_memory(np.array([2], dtype=np.int32))
+    matched_memory = matched.candidate_memory(np.array([2], dtype=np.int32))
+    assert not np.array_equal(trained_memory.memory_w, matched_memory.memory_w)
+
+    recipient, donor_memory = {
+        "necessity": (trained, matched_memory),
+        "sufficiency": (matched, trained_memory),
+        "sham": (trained, trained_memory),
+    }[branch]
+    recipient.restore(matched_checkpoint if branch == "sufficiency" else trained_checkpoint)
+    before = state_bytes(recipient)
+    mbon07_before = recipient.candidate_memory(np.array([3], dtype=np.int32))
+    assert mbon07_before.memory_u[0] != 0
+    assert mbon07_before.memory_w[0] != 0
+    untouched = (
+        recipient.memory_u[0:1].tobytes(),
+        recipient.memory_w[0:1].tobytes(),
+        recipient.weight[1:3].tobytes(),
+    )
+    recipient.replace_candidate_memory(donor_memory)
+    after = state_bytes(recipient)
+    assert (
+        recipient.memory_u[0:1].tobytes(),
+        recipient.memory_w[0:1].tobytes(),
+        recipient.weight[1:3].tobytes(),
+    ) == untouched
+    for name in before["arrays"]:
+        if name not in {"memory_u", "memory_w", "weight"}:
+            assert after["arrays"][name] == before["arrays"][name]
+    for name in ("cursor", "sim_ms", "total_spikes", "weights_frozen"):
+        assert after[name] == before[name]
+    after_checkpoint = tmp_path / f"{branch}-after.npz"
+    recipient.checkpoint(after_checkpoint)
+    recipient.restore(matched_checkpoint if branch == "sufficiency" else trained_checkpoint)
+    assert state_bytes(recipient) == before
+    recipient.restore(after_checkpoint)
+    assert state_bytes(recipient) == after
+    selected = recipient.candidate_memory(np.array([2], dtype=np.int32))
+    for name in ("memory_u", "memory_w", "weight"):
+        np.testing.assert_array_equal(getattr(selected, name), getattr(donor_memory, name))
+        np.testing.assert_array_equal(
+            getattr(recipient.candidate_memory(np.array([3], dtype=np.int32)), name),
+            getattr(mbon07_before, name),
+        )
+
+    start = recipient.sim_ms
+    recipient.step(np.zeros(1, dtype=np.float32), 200.0, learning=False)
+    assert recipient.sim_ms - start == 200.0
+    assert recipient.weights_frozen is False
+    if branch != "necessity":
+        assert not np.array_equal(
+            recipient.candidate_memory(np.array([2], dtype=np.int32)).memory_w,
+            donor_memory.memory_w,
+        )
+
+
+def test_aliasing_candidate_payload_is_detached_before_assignment(intervention_brains):
+    recipient, _ = intervention_brains
+    snapshot = recipient.candidate_memory(np.array([2, 3], dtype=np.int32))
+    donor_u = np.array([0.2, 0.3], dtype=recipient.memory_u.dtype)
+    aliased = replace(
+        snapshot,
+        memory_u=donor_u,
+        memory_w=recipient.memory_u,
+    )
+
+    recipient.replace_candidate_memory(aliased)
+
+    np.testing.assert_array_equal(recipient.memory_u, donor_u)
+    np.testing.assert_array_equal(recipient.memory_w, [0.0, 0.0])
+    np.testing.assert_array_equal(recipient.weight[snapshot.edge_indices], snapshot.weight)
+
+
+@pytest.mark.parametrize("field", ["memory_u", "memory_w"])
+@pytest.mark.parametrize("invalid", [np.nan, -0.91])
+def test_masked_invalid_candidate_payload_cannot_mutate_state(
+    intervention_brains, field, invalid,
+):
+    recipient, _ = intervention_brains
+    snapshot = recipient.candidate_memory(np.array([2, 3], dtype=np.int32))
+    hidden = np.ma.array(getattr(snapshot, field).copy(), mask=[True, False])
+    hidden.data[0] = invalid
+    before = state_bytes(recipient)
+
+    with pytest.raises(ValueError):
+        recipient.replace_candidate_memory(replace(snapshot, **{field: hidden}))
+
+    assert state_bytes(recipient) == before
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("cursor", False),
+        ("cursor", 0.0),
+        ("sim_ms", True),
+        ("sim_ms", float("nan")),
+        ("sim_ms", float("inf")),
+        ("sim_ms", "0"),
+    ],
+)
+def test_candidate_snapshot_rejects_malformed_clock_scalars(
+    intervention_brains, field, value,
+):
+    recipient, _ = intervention_brains
+    if field == "sim_ms":
+        recipient.step(np.zeros(1, dtype=np.float32), 1.0)
+    snapshot = recipient.candidate_memory(np.array([2], dtype=np.int32))
+    before = state_bytes(recipient)
+
+    with pytest.raises(ValueError):
+        recipient.replace_candidate_memory(replace(snapshot, **{field: value}))
+
+    assert state_bytes(recipient) == before
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        "clock", "cursor", "order", "duplicate", "missing", "edge_dtype",
+        "u_dtype", "w_dtype", "weight_dtype", "u_shape", "w_shape",
+        "weight_shape", "nan_u", "nan_w", "nan_weight", "low_u",
+        "high_u", "low_w", "high_w", "inconsistent_weight",
+    ],
+)
+def test_invalid_candidate_replacement_is_atomic(intervention_brains, change):
+    recipient, _ = intervention_brains
+    target = np.array([2, 3], dtype=np.int32)
+    snapshot = recipient.candidate_memory(target)
+    values = {name: getattr(snapshot, name).copy() for name in
+              ("edge_indices", "memory_u", "memory_w", "weight")}
+    if change == "clock":
+        snapshot = replace(snapshot, sim_ms=snapshot.sim_ms + 0.1)
+    elif change == "cursor":
+        snapshot = replace(snapshot, cursor=snapshot.cursor + 1)
+    elif change == "order":
+        values["edge_indices"] = values["edge_indices"][::-1]
+    elif change == "duplicate":
+        values["edge_indices"][1] = values["edge_indices"][0]
+    elif change == "missing":
+        values["edge_indices"] = values["edge_indices"][:1]
+    elif change.endswith("_dtype"):
+        key = change.removesuffix("_dtype")
+        key = "memory_" + key if key in {"u", "w"} else (
+            "edge_indices" if key == "edge" else key
+        )
+        values[key] = values[key].astype(np.float64 if key == "weight" else np.float32)
+    elif change.endswith("_shape"):
+        key = change.removesuffix("_shape")
+        key = "memory_" + key if key in {"u", "w"} else key
+        values[key] = values[key][:1]
+    elif change.startswith("nan_"):
+        key = change.removeprefix("nan_")
+        key = "memory_" + key if key in {"u", "w"} else key
+        values[key][0] = np.nan
+    elif change.startswith(("low_", "high_")):
+        bound, key = change.split("_")
+        values["memory_" + key][0] = -0.91 if bound == "low" else 1.01
+    else:
+        values["weight"][0] += 0.01
+    if change not in {"clock", "cursor"}:
+        snapshot = replace(snapshot, **values)
+    before = state_bytes(recipient)
+    with pytest.raises(ValueError):
+        recipient.replace_candidate_memory(snapshot)
+    assert state_bytes(recipient) == before
 
 
 @pytest.fixture
