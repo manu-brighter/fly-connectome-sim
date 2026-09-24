@@ -1,4 +1,4 @@
-# Jogge di Fly Brain — Product and Experiment Specification
+# Fly Connectome Sim — Product and Experiment Specification
 
 **Status:** Approved direction, implementation in progress  
 **Date:** 2026-09-16  

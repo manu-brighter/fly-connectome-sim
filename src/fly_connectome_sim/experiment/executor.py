@@ -9,7 +9,7 @@ from typing import Callable
 
 import numpy as np
 
-from jogge_fly_brain.engine import FlyEngine
+from fly_connectome_sim.engine import FlyEngine
 
 from .protocol import ProtocolSchedule, ProtocolStep
 from .stimuli import AssayStimuli

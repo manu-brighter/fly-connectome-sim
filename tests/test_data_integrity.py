@@ -6,9 +6,9 @@ import pyarrow as pa
 import pyarrow.feather as feather
 import pytest
 
-from jogge_fly_brain import data
-from jogge_fly_brain.engine import FlyEngine, NeuralGroups
-from jogge_fly_brain.neural import common, connectome, visual
+from fly_connectome_sim import data
+from fly_connectome_sim.engine import FlyEngine, NeuralGroups
+from fly_connectome_sim.neural import common, connectome, visual
 
 
 @pytest.fixture

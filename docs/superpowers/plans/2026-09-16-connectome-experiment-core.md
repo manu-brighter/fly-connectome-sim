@@ -44,10 +44,10 @@ of the numerical path.
 ### Task 2: Attributed MaleCNS numerical core
 
 **Files:**
-- Create: `src/jogge_fly_brain/neural/*.py`
-- Create: `src/jogge_fly_brain/neural/kernel.cpp`
-- Create: `src/jogge_fly_brain/neural/*.json`
-- Create: `src/jogge_fly_brain/data.py`
+- Create: `src/fly_connectome_sim/neural/*.py`
+- Create: `src/fly_connectome_sim/neural/kernel.cpp`
+- Create: `src/fly_connectome_sim/neural/*.json`
+- Create: `src/fly_connectome_sim/data.py`
 - Create: `licenses/stonkfly-MIT.txt`
 - Create: `THIRD_PARTY.md`
 - Test: `tests/test_native_build.py`
@@ -57,7 +57,7 @@ of the numerical path.
 - Produces: `prepare()`, `verify()`, `MemoryBrain`, `VisualMemoryBrain`.
 
 - [x] Write a failing source-data test that resolves the three official files by manifest and verifies their SHA-256 hashes.
-- [x] Vendor the audited MIT-derived numerical files and provenance records, renaming the data environment variable to `JOGGE_FLY_DATA`.
+- [x] Vendor the audited MIT-derived numerical files and provenance records, renaming the data environment variable to `FLY_CONNECTOME_SIM_DATA`.
 - [x] Write a failing native-build test requiring a loadable platform library with an exported `memory_advance` symbol.
 - [x] Implement the platform build adapter: Zig C++ and `.dll` on Windows; conventional C++ and `.so`/`.dylib` elsewhere.
 - [x] Run focused tests, prepare the full graph and execute upstream array verification.
@@ -65,7 +65,7 @@ of the numerical path.
 ### Task 3: Project-owned engine telemetry
 
 **Files:**
-- Create: `src/jogge_fly_brain/engine.py`
+- Create: `src/fly_connectome_sim/engine.py`
 - Test: `tests/test_engine_contract.py`
 - Test: `tests/test_full_graph.py`
 
@@ -80,9 +80,9 @@ of the numerical path.
 ### Task 4: A/B protocol and leakage-resistant adapter
 
 **Files:**
-- Create: `src/jogge_fly_brain/experiment/protocol.py`
-- Create: `src/jogge_fly_brain/experiment/adapter.py`
-- Create: `src/jogge_fly_brain/experiment/stimuli.py`
+- Create: `src/fly_connectome_sim/experiment/protocol.py`
+- Create: `src/fly_connectome_sim/experiment/adapter.py`
+- Create: `src/fly_connectome_sim/experiment/stimuli.py`
 - Test: `tests/experiment/test_protocol.py`
 - Test: `tests/experiment/test_adapter.py`
 
@@ -97,9 +97,9 @@ of the numerical path.
 ### Task 5: Append-only run artifact and replay contract
 
 **Files:**
-- Create: `src/jogge_fly_brain/experiment/recorder.py`
-- Create: `src/jogge_fly_brain/schemas/run.schema.json`
-- Create: `src/jogge_fly_brain/cli.py`
+- Create: `src/fly_connectome_sim/experiment/recorder.py`
+- Create: `src/fly_connectome_sim/schemas/run.schema.json`
+- Create: `src/fly_connectome_sim/cli.py`
 - Test: `tests/experiment/test_recorder.py`
 - Test: `tests/test_cli.py`
 
@@ -114,7 +114,7 @@ of the numerical path.
 ### Task 6: Full learning assay and honest result report
 
 **Files:**
-- Create: `src/jogge_fly_brain/experiment/analysis.py`
+- Create: `src/fly_connectome_sim/experiment/analysis.py`
 - Create: `configs/assay.synthetic.json`
 - Test: `tests/experiment/test_analysis.py`
 - Output: `runs/synthetic-*/report.json` (ignored)

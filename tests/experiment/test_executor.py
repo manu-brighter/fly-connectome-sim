@@ -7,10 +7,10 @@ import math
 import numpy as np
 import pytest
 
-from jogge_fly_brain.engine import _rgb_input_sha256
-from jogge_fly_brain.experiment.executor import advance_neutral, execute_schedule, retention_test
-from jogge_fly_brain.experiment.protocol import ProtocolSchedule, ProtocolStep
-from jogge_fly_brain.experiment.stimuli import AssayStimuli
+from fly_connectome_sim.engine import _rgb_input_sha256
+from fly_connectome_sim.experiment.executor import advance_neutral, execute_schedule, retention_test
+from fly_connectome_sim.experiment.protocol import ProtocolSchedule, ProtocolStep
+from fly_connectome_sim.experiment.stimuli import AssayStimuli
 
 
 class RecordingBrain:

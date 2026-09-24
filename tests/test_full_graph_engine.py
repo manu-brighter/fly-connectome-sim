@@ -4,11 +4,11 @@ import os
 import numpy as np
 import pytest
 
-from jogge_fly_brain.engine import FlyEngine
+from fly_connectome_sim.engine import FlyEngine
 
 
 pytestmark = pytest.mark.skipif(
-    os.getenv("JOGGE_FLY_FULL_TEST") != "1",
+    os.getenv("FLY_CONNECTOME_SIM_FULL_TEST") != "1",
     reason="full MaleCNS integration test is opt-in",
 )
 

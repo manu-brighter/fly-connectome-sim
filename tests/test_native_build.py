@@ -1,7 +1,7 @@
 import ctypes
 from pathlib import Path
 
-from jogge_fly_brain.neural.native import build_native, library_filename
+from fly_connectome_sim.neural.native import build_native, library_filename
 
 
 PROJECT_ROOT = Path(__file__).parents[1]
@@ -11,7 +11,7 @@ def test_platform_compiler_produces_loadable_kernel_with_exported_entrypoint(tmp
     source = (
         PROJECT_ROOT
         / "src"
-        / "jogge_fly_brain"
+        / "fly_connectome_sim"
         / "neural"
         / "kernel.cpp"
     )

@@ -18,7 +18,7 @@
 - All modes begin at identical baseline state and use separately restored copies. Reward-free retention and tests have `learning=False`, no external DAN, and normal passive memory decay.
 - Every scheduled interval advances neural time. `stimulus=None` means an explicit black `uint8` RGB frame, including the unpaired DAN pulse; calls to `FlyEngine.observe` are at most 500 ms.
 - `no_external_dan` omits only the external pulse; endogenous DAN firing and resulting plasticity are measured, never assumed zero. `reciprocal_pairing` is acquisition from baseline with the opposite paired identity, not reversal learning.
-- Inspect `src/jogge_fly_brain/neural/visual.py` before labeling input drive: RGB is a modeled retinal/R8 drive, not calibrated receptor activation. Preserve source/build/graph/provenance locks and MIT attribution.
+- Inspect `src/fly_connectome_sim/neural/visual.py` before labeling input drive: RGB is a modeled retinal/R8 drive, not calibrated receptor activation. Preserve source/build/graph/provenance locks and MIT attribution.
 - Raw data, prepared arrays, checkpoints, pilot/qualification/confirmatory runs and benchmark files stay in ignored runtime locations. Never add them to Git.
 - `model_fingerprint()` hashes every packaged `.py`/`.cpp` file. Formal qualification, its checkpoints, the frozen config and confirmation therefore happen only after all source-bearing tasks in this plan are committed. Any later package-source fix invalidates those artifacts and restarts the source-freeze gate.
 - Use test-first RED/GREEN per task. After each GREEN, run `.venv/Scripts/python.exe -m pytest`; report any failures. Each commit uses the repository's English `<type> / <title> : Description` convention and explicit paths. Never push a protected branch.
@@ -28,18 +28,18 @@
 
 | File | Responsibility |
 |---|---|
-| `src/jogge_fly_brain/experiment/stimuli.py`, `tests/experiment/test_protocol.py` | New factorized assay stimuli while retaining the existing `SyntheticStimuli`/`synthetic-ab/v1` renderer byte-for-byte. |
-| `src/jogge_fly_brain/experiment/protocol.py`, `tests/experiment/test_protocol.py` | Versioned condition names, pairing identity, order, side and explicit simulated schedule including retention branches. |
-| `src/jogge_fly_brain/experiment/executor.py`, `tests/experiment/test_executor.py` (new) | Execute every step and neutral gap against `FlyEngine`, checkpoint forks and window aggregation. |
-| `src/jogge_fly_brain/engine.py`, `src/jogge_fly_brain/neural/visual.py`, `tests/test_engine_contract.py` | Exact mapped RGB drive, MBON11-input KC activity and opt-in per-bin trace/memory diagnostics; keep default telemetry compact. |
-| `src/jogge_fly_brain/neural/brain.py`, `tests/test_checkpoint.py` | Atomic candidate-edge memory snapshot/replace, with validation before mutation. |
-| `src/jogge_fly_brain/experiment/qualification.py`, `tests/experiment/test_qualification.py` (new) | Bounded exploratory grid, path/washout gate, runtime benchmark and frozen configuration output. |
-| `src/jogge_fly_brain/experiment/recorder.py`, `src/jogge_fly_brain/schemas/run.schema.json`, `src/jogge_fly_brain/cli.py`, `tests/experiment/test_recorder.py`, `tests/test_cli.py` (new) | Append-only pilot and assay artifacts, strict verifier and CLI. |
-| `src/jogge_fly_brain/experiment/analysis.py`, `tests/experiment/test_analysis.py` (new) | Pure, frozen MBON11 endpoint and classification; no exploratory parameter selection. |
+| `src/fly_connectome_sim/experiment/stimuli.py`, `tests/experiment/test_protocol.py` | New factorized assay stimuli while retaining the existing `SyntheticStimuli`/`synthetic-ab/v1` renderer byte-for-byte. |
+| `src/fly_connectome_sim/experiment/protocol.py`, `tests/experiment/test_protocol.py` | Versioned condition names, pairing identity, order, side and explicit simulated schedule including retention branches. |
+| `src/fly_connectome_sim/experiment/executor.py`, `tests/experiment/test_executor.py` (new) | Execute every step and neutral gap against `FlyEngine`, checkpoint forks and window aggregation. |
+| `src/fly_connectome_sim/engine.py`, `src/fly_connectome_sim/neural/visual.py`, `tests/test_engine_contract.py` | Exact mapped RGB drive, MBON11-input KC activity and opt-in per-bin trace/memory diagnostics; keep default telemetry compact. |
+| `src/fly_connectome_sim/neural/brain.py`, `tests/test_checkpoint.py` | Atomic candidate-edge memory snapshot/replace, with validation before mutation. |
+| `src/fly_connectome_sim/experiment/qualification.py`, `tests/experiment/test_qualification.py` (new) | Bounded exploratory grid, path/washout gate, runtime benchmark and frozen configuration output. |
+| `src/fly_connectome_sim/experiment/recorder.py`, `src/fly_connectome_sim/schemas/run.schema.json`, `src/fly_connectome_sim/cli.py`, `tests/experiment/test_recorder.py`, `tests/test_cli.py` (new) | Append-only pilot and assay artifacts, strict verifier and CLI. |
+| `src/fly_connectome_sim/experiment/analysis.py`, `tests/experiment/test_analysis.py` (new) | Pure, frozen MBON11 endpoint and classification; no exploratory parameter selection. |
 | `configs/assay.synthetic.json` (new only after source freeze), `tests/test_full_graph_engine.py` | Frozen held-out protocol and opt-in full-graph confirmation. |
-| `src/jogge_fly_brain/experiment/adapter.py`, `tests/experiment/test_adapter.py` | Keep v1 readable; new lateral-motor-only adapter with `evidence_strength`. |
+| `src/fly_connectome_sim/experiment/adapter.py`, `tests/experiment/test_adapter.py` | Keep v1 readable; new lateral-motor-only adapter with `evidence_strength`. |
 
-Do not create a second simulation core. New modules above each own one orchestration or analysis responsibility. `src/jogge_fly_brain/neural/circuit.py`, `rule.py`, and `kernel.cpp` remain unchanged unless a failing gate identifies a specific defect and the design spec is revised before confirmation.
+Do not create a second simulation core. New modules above each own one orchestration or analysis responsibility. `src/fly_connectome_sim/neural/circuit.py`, `rule.py`, and `kernel.cpp` remain unchanged unless a failing gate identifies a specific defect and the design spec is revised before confirmation.
 
 ## Review Focus
 
@@ -52,11 +52,11 @@ Do not create a second simulation core. New modules above each own one orchestra
 
 ## Gate 0: integrity before qualification
 
-- [ ] Run `.venv/Scripts/python.exe -m jogge_fly_brain.neural.prepare` to regenerate the ignored runtime manifest, then `.venv/Scripts/python.exe -m jogge_fly_brain.data verify-prepared` and `.venv/Scripts/python.exe -m pytest tests/test_checkpoint.py tests/test_native_build.py tests/test_full_graph_engine.py -q`. For the last file's actual graph run, set `$env:JOGGE_FLY_FULL_TEST='1'` and run it separately. Stop at a failed integrity gate; record the cause rather than weakening a lock.
+- [ ] Run `.venv/Scripts/python.exe -m fly_connectome_sim.neural.prepare` to regenerate the ignored runtime manifest, then `.venv/Scripts/python.exe -m fly_connectome_sim.data verify-prepared` and `.venv/Scripts/python.exe -m pytest tests/test_checkpoint.py tests/test_native_build.py tests/test_full_graph_engine.py -q`. For the last file's actual graph run, set `$env:FLY_CONNECTOME_SIM_FULL_TEST='1'` and run it separately. Stop at a failed integrity gate; record the cause rather than weakening a lock.
 
 ### Task 1: Independent stimulus and protocol factors
 
-**Files:** Modify `src/jogge_fly_brain/experiment/stimuli.py`, `src/jogge_fly_brain/experiment/protocol.py`, `tests/experiment/test_protocol.py`.
+**Files:** Modify `src/fly_connectome_sim/experiment/stimuli.py`, `src/fly_connectome_sim/experiment/protocol.py`, `tests/experiment/test_protocol.py`.
 
 **Interfaces:** Keep `SyntheticStimuli` and its `synthetic-ab/v1` bytes unchanged. Add `AssayStimuli(seed, family, width=32, height=32, version="associative-stimuli/v1").frame(identity, *, side="center", color_assignment="fixed") -> np.ndarray`; `family` is explicitly `qualification` or `confirmation`. Add `schedule_from_json()` for the actual legacy `ab-protocol/v2` structure and the new emitted `associative-protocol/v1`. `ProtocolSchedule.create(*, condition, seed, paired_identity, presentation_order, training_side="center", test_side="center", ...)` emits only the new version. Conditions are `training`, `reciprocal_pairing`, `frozen_plasticity`, `no_external_dan`, and `temporally_unpaired`; reject new use of `reversal`/`no_dan` with a migration message. A, B and unpaired C have distinct spatial patterns at the same location and identical per-channel histograms.
 
@@ -68,7 +68,7 @@ Do not create a second simulation core. New modules above each own one orchestra
 
 ### Task 2: Neutral gap executor and retention forks
 
-**Files:** Create `src/jogge_fly_brain/experiment/executor.py`, `tests/experiment/test_executor.py`; adjust `protocol.py`/its tests only for explicit gap/branch metadata.
+**Files:** Create `src/fly_connectome_sim/experiment/executor.py`, `tests/experiment/test_executor.py`; adjust `protocol.py`/its tests only for explicit gap/branch metadata.
 
 **Interfaces:** `execute_schedule(engine: FlyEngine, schedule: ProtocolSchedule, stimuli: AssayStimuli, *, branch_id: str, on_event: Callable[[dict], None]) -> None`; `advance_neutral(engine, duration_ms, shape, *, stimulation=None, learning=False, branch_id, on_event) -> None`; `retention_test(engine, training_end_checkpoint: Path, delay_ms: float, ...) -> tuple[dict, ...]`. All gap calls use `np.zeros((height,width,3), dtype=np.uint8)` and chunk `min(500.0, remaining_ms)` on the 0.1 ms grid. Restore the same training-end checkpoint separately for `T` and `T+60000` branches; each A/B/C test presentation starts from a separately restored retention-end checkpoint to prevent carryover. `T=0` is the later end of the final training presentation and final external DAN pulse, including an unpaired B presentation if it is last.
 
@@ -80,19 +80,19 @@ Do not create a second simulation core. New modules above each own one orchestra
 
 ### Task 3: Pathway observability at the actual MBON11 inputs
 
-**Files:** Modify `src/jogge_fly_brain/neural/visual.py`, `src/jogge_fly_brain/engine.py`, `tests/test_engine_contract.py`; add focused opt-in graph assertions to `tests/test_full_graph_engine.py`.
+**Files:** Modify `src/fly_connectome_sim/neural/visual.py`, `src/fly_connectome_sim/engine.py`, `tests/test_engine_contract.py`; add focused opt-in graph assertions to `tests/test_full_graph_engine.py`.
 
 **Interfaces:** Add a pure `VisualMemoryBrain.rgb_drive(frame) -> dict[str, np.ndarray]` that returns the *modeled* sampled R1–R6 luminance and R8 channel input before neural state advances, with no mutation. Add `FlyEngine.observe(..., pathway_detail=False, qualification_detail=False)`. `pathway_detail` returns drive summaries and per-neuron spike counts keyed by stable source ID for the ordered unique KCs on candidate edges whose postsynaptic target is MBON11. `qualification_detail` augments every existing ≤10 ms bin with ordered `rate_kc` values for those candidate edges, ordered `rate_dan` values for `circuit["dan"]`, candidate `memory_u`/`memory_w` summaries and hashes, efficacy summary, and lower/upper-bound hit counts. Label `rate_kc`/`rate_dan` as model trace state rather than raw spikes. Default telemetry remains byte-for-byte compact.
 
 - [ ] **RED:** Assert `rgb_drive` does not change `sim_ms`, `luminance` or `r8_light`; verify RGB geometry changes mapped drive; verify a tiny circuit's MBON11-input KC set excludes KCs connected only to MBON07 and all edge/DAN/source-ID orderings are deterministic. Force a transient bound hit that disappears by the endpoint and prove an opt-in bin still records it. Assert default telemetry has no candidate vectors or trace state.
 - [ ] Run `.venv/Scripts/python.exe -m pytest tests/test_engine_contract.py -q`; expected failure is missing observability API.
 - [ ] **GREEN:** Reuse the exact sampling expressions in `visual.py`'s `rgb_step` and `sensory.retinal_samples`; factor them into a pure helper without changing numerical equations. Snapshot diagnostics immediately after each internal neural bin, before the next advance. Aggregate KC counts from existing totals and label drive as `modeled_visual_drive`, never receptor occupancy/activity. Define saturation as any bin at a rule bound and retain the maximum bound-hit fraction as well as endpoint values.
-- [ ] Run focused and full pytest, then opt-in `JOGGE_FLY_FULL_TEST=1` test. Review identical default spike/state hashes before and after the refactor; any difference is a gate failure.
+- [ ] Run focused and full pytest, then opt-in `FLY_CONNECTOME_SIM_FULL_TEST=1` test. Review identical default spike/state hashes before and after the refactor; any difference is a gate failure.
 - [ ] Commit these files: `feat / pathway-observability : Expose modeled visual drive and MBON11-input KC activity`.
 
 ### Task 4: Atomic MBON11 candidate memory intervention
 
-**Files:** Modify `src/jogge_fly_brain/neural/brain.py`, `tests/test_checkpoint.py`; `executor.py` only to orchestrate branches.
+**Files:** Modify `src/fly_connectome_sim/neural/brain.py`, `tests/test_checkpoint.py`; `executor.py` only to orchestrate branches.
 
 **Interfaces:** `MemoryBrain.candidate_memory(target_indices: np.ndarray) -> CandidateMemory` derives the ordered KC→target candidate edges and returns copies of edge indices, `memory_u`, `memory_w`, and `weight`. `replace_candidate_memory(snapshot)` validates exact edge identity/order, shape, dtype, finite rule bounds and `weight == baseline_plastic * (1 + memory_w)` within float32 rounding, then assigns all three arrays atomically. No other neural state, trace, clock or weight changes.
 
@@ -106,7 +106,7 @@ All causal interventions occur at the common training-end clock. The donor is th
 
 ### Task 5: Implement the bounded qualification protocol
 
-**Files:** Create `src/jogge_fly_brain/experiment/qualification.py`, `tests/experiment/test_qualification.py`; use Tasks 1–4 without creating a durable full-graph result yet.
+**Files:** Create `src/fly_connectome_sim/experiment/qualification.py`, `tests/experiment/test_qualification.py`; use Tasks 1–4 without creating a durable full-graph result yet.
 
 **Interfaces:** `qualify(engine_factory, recorder, *, seeds, family) -> QualificationResult` and `benchmark(...) -> dict`. Formal qualification seeds are `(11, 23)` and confirmation seeds `(101, 113)`; never cross them. The fixed grid has CS duration 100 or 300 ms, PPL101 pulse duration exactly 100 ms, DAN onset relative to CS onset −100, 0 or +100 ms, and post-pair gap 500 or 10,000 ms (12 configurations). Each trial reserves the same epoch from −100 ms through `CS_end + 200 ms`; split at every CS/DAN boundary and use black frames outside CS. The pulse belongs to the paired trial even when its −100 ms offset is visually black. The temporally unpaired pulse is fixed at least 10,000 ms from the nearest CS boundary and is not changed by the post-pair-gap grid. All conditions match total elapsed time and visual exposure. Current 20 mV current remains fixed.
 
@@ -120,9 +120,9 @@ Predeclared response-window candidates relative to CS onset are `[0,100)`, `[0,3
 
 ### Task 6: Recorder pilot, schema and CLI after fields are known
 
-**Files:** Create `src/jogge_fly_brain/experiment/recorder.py`, `src/jogge_fly_brain/schemas/run.schema.json`, `src/jogge_fly_brain/cli.py`, `tests/experiment/test_recorder.py`, `tests/test_cli.py`; update `pyproject.toml` only if the existing script entry needs correction.
+**Files:** Create `src/fly_connectome_sim/experiment/recorder.py`, `src/fly_connectome_sim/schemas/run.schema.json`, `src/fly_connectome_sim/cli.py`, `tests/experiment/test_recorder.py`, `tests/test_cli.py`; update `pyproject.toml` only if the existing script entry needs correction.
 
-**Interfaces:** CLI `jogge-fly qualify --output-dir PATH`, `jogge-fly verify-run PATH`; Task 7 adds the final `assay` command after analysis exists. Implement `RunRecorder.append(event)` and `verify_run(path) -> VerifiedRun`. `run.json` contains immutable provenance/config and hashes. Every JSONL event has a globally increasing `sequence`, `branch_id`, branch-local `sim_ms`, and for forks a parent branch/checkpoint hash. Require simulated-time monotonicity only within each branch. Checkpoints are `brain-before.npz`, `brain-after.npz` and named branch files. Hash canonical scientific events without `compute_seconds` or `kernel_seconds`; retain those as operational telemetry. Reject duplicate run directories instead of overwriting.
+**Interfaces:** CLI `fly-connectome-sim qualify --output-dir PATH`, `fly-connectome-sim verify-run PATH`; Task 7 adds the final `assay` command after analysis exists. Implement `RunRecorder.append(event)` and `verify_run(path) -> VerifiedRun`. `run.json` contains immutable provenance/config and hashes. Every JSONL event has a globally increasing `sequence`, `branch_id`, branch-local `sim_ms`, and for forks a parent branch/checkpoint hash. Require simulated-time monotonicity only within each branch. Checkpoints are `brain-before.npz`, `brain-after.npz` and named branch files. Hash canonical scientific events without `compute_seconds` or `kernel_seconds`; retain those as operational telemetry. Reject duplicate run directories instead of overwriting.
 
 - [ ] **RED:** Test ordered append/flush/reopen, globally increasing sequence, branch-local time validation, explicit forks to earlier simulated clocks, truncated/tampered line or checkpoint rejection, mismatched config/engine identity, exact neutral chunks, separate checkpoints for T/T+60 and interventions, strict JSON, and deterministic scientific hashes despite different compute times. CLI tests show `verify-run` fails closed and output directories cannot be overwritten.
 - [ ] Run `.venv/Scripts/python.exe -m pytest tests/experiment/test_recorder.py tests/test_cli.py -q`; expected failure: missing recorder/CLI.
@@ -132,9 +132,9 @@ Predeclared response-window candidates relative to CS onset are `[0,100)`, `[0,3
 
 ### Task 7: Implement the frozen analysis contract and assay CLI
 
-**Files:** Create `src/jogge_fly_brain/experiment/analysis.py`, `tests/experiment/test_analysis.py`; modify `src/jogge_fly_brain/cli.py`, `tests/test_cli.py`. Do not create the populated frozen config until Task 9 formal qualification completes.
+**Files:** Create `src/fly_connectome_sim/experiment/analysis.py`, `tests/experiment/test_analysis.py`; modify `src/fly_connectome_sim/cli.py`, `tests/test_cli.py`. Do not create the populated frozen config until Task 9 formal qualification completes.
 
-**Interfaces:** `build_frozen_config(qualification: VerifiedRun) -> FrozenAssayConfig` and `analyze_assay(run: VerifiedRun, frozen: FrozenAssayConfig) -> AssayReport`. The builder accepts qualification-family artifacts only and carries their exact hashes, model/engine identity, protocol/stimulus versions, selected response window, mean-rate aggregation, expected sign, effect floor, timing, T, disjoint confirmation seeds/family, exclusions and analysis version. `jogge-fly assay --config PATH --output-dir PATH` runs existing orchestration without optimizing the config.
+**Interfaces:** `build_frozen_config(qualification: VerifiedRun) -> FrozenAssayConfig` and `analyze_assay(run: VerifiedRun, frozen: FrozenAssayConfig) -> AssayReport`. The builder accepts qualification-family artifacts only and carries their exact hashes, model/engine identity, protocol/stimulus versions, selected response window, mean-rate aggregation, expected sign, effect floor, timing, T, disjoint confirmation seeds/family, exclusions and analysis version. `fly-connectome-sim assay --config PATH --output-dir PATH` runs existing orchestration without optimizing the config.
 
 The endpoint for each paired identity is `delta=(post_plus-post_minus)-(pre_plus-pre_minus)`. `pre` and `post` are reward-free MBON11 rates from the same fixed window. Calculate independently at T and T+60 s from distinct training-end checkpoint copies. Require signed trained delta to exceed the frozen floor at both times and exceed corresponding frozen, `no_external_dan` and temporally unpaired deltas by that floor. Define `g=post_C/pre_C`; C must exceed the frozen one-spike response floor. Reject global gain unless signed `[(post_plus-g*pre_plus)-(post_minus-g*pre_minus)]` also exceeds the floor. Reciprocal pairing must move the raw A−B change with paired identity while paired-minus-unpaired keeps the declared sign. Necessity removes the effect to within the floor, sufficiency restores it above the floor, and sham matches untouched within replay resolution. Donor/recipient training-end clocks and passive-decay durations must match. Missing branches, identity, C response, hashes or timing are `inconclusive`.
 
@@ -145,7 +145,7 @@ The endpoint for each paired identity is `delta=(post_plus-post_minus)-(pre_plus
 
 ### Task 8: Add a motor-only adapter without a behavioral claim
 
-**Files:** Modify `src/jogge_fly_brain/experiment/adapter.py`, `src/jogge_fly_brain/experiment/recorder.py`, `src/jogge_fly_brain/schemas/run.schema.json`, `tests/experiment/test_adapter.py`, `tests/experiment/test_recorder.py`. Keep `preference-adapter/v1` readable for old artifacts.
+**Files:** Modify `src/fly_connectome_sim/experiment/adapter.py`, `src/fly_connectome_sim/experiment/recorder.py`, `src/fly_connectome_sim/schemas/run.schema.json`, `tests/experiment/test_adapter.py`, `tests/experiment/test_recorder.py`. Keep `preference-adapter/v1` readable for old artifacts.
 
 **Interfaces:** `LateralMotorAdapter(version="lateral-motor-adapter/v1", action_threshold_hz=1.0).adapt(telemetry) -> MotorDecision` uses only `motor_right - motor_left`, with `evidence_strength=abs(right-left)/(right+left)` (zero when both are zero). It never reads MBON activity, stimulus identity, condition, reward or event metadata. The 1 Hz threshold is an explicitly engineered display rule, not a calibrated behavioral threshold. This task exposes unvalidated motor telemetry only; motor qualification and held-out validation require a later dedicated design/plan.
 
@@ -160,16 +160,16 @@ The endpoint for each paired identity is `delta=(post_plus-post_minus)-(pre_plus
 
 **Source-freeze rule:** Begin from a clean commit after Tasks 1–8. Run source/runtime verification and the complete suite including full graph. Record commit SHA and engine identity. From this point, any package-source change discards all formal qualification/config/confirmation artifacts and restarts Task 9 from a new clean commit. Tests, config and result docs may change because they are outside `model_fingerprint`, but they cannot alter numerical behavior.
 
-- [ ] Run formal `jogge-fly qualify` on the full graph with qualification family/seeds `(11,23)`, all fixed grid points, both paired identities and AB/BA order. Apply matched controls and causal interventions to the selected candidate configuration, not as extra grid-selection dimensions. Record benchmark values and verify the artifact before selecting anything. If integrity, observability, state-shift, saturation, intervention or independent washout fails, stop: commit only an honest negative qualification report and do not create a confirmation config.
+- [ ] Run formal `fly-connectome-sim qualify` on the full graph with qualification family/seeds `(11,23)`, all fixed grid points, both paired identities and AB/BA order. Apply matched controls and causal interventions to the selected candidate configuration, not as extra grid-selection dimensions. Record benchmark values and verify the artifact before selecting anything. If integrity, observability, state-shift, saturation, intervention or independent washout fails, stop: commit only an honest negative qualification report and do not create a confirmation config.
 - [ ] If qualification passes, generate `configs/assay.synthetic.json` only via `build_frozen_config()`. It contains exact qualification hashes and engine identity, selected fixed-grid timing/window/sign/T, all floor terms, confirmation family/seeds `(101,113)`, conditions and intervention clocks. Independently review and commit this config before reading confirmation output: `feat / assay-preregistration : Freeze the held-out MBON11 assay`.
 - [ ] **RED:** Add an opt-in integration test that requires all condition/factor/T/T+60/intervention cells, branch-local clocks, parent checkpoint hashes and deterministic scientific hashes, without asserting a positive classification.
-- [ ] Run `$env:JOGGE_FLY_FULL_TEST='1'; .venv/Scripts/python.exe -m pytest tests/test_full_graph_engine.py -q`; expected new failure is missing held-out output/orchestration evidence, not source behavior. Clear the environment variable afterward.
-- [ ] Execute `jogge-fly assay --config configs/assay.synthetic.json --output-dir runs/confirmation-<unique-id>` once. Every condition starts from the same baseline checkpoint and matches exposure/order/side/time. Test A/B/C at T and T+60; interventions occur at the common training-end clock and then receive identical passive decay. Verify before analysis and classify without changing config or thresholds.
+- [ ] Run `$env:FLY_CONNECTOME_SIM_FULL_TEST='1'; .venv/Scripts/python.exe -m pytest tests/test_full_graph_engine.py -q`; expected new failure is missing held-out output/orchestration evidence, not source behavior. Clear the environment variable afterward.
+- [ ] Execute `fly-connectome-sim assay --config configs/assay.synthetic.json --output-dir runs/confirmation-<unique-id>` once. Every condition starts from the same baseline checkpoint and matches exposure/order/side/time. Test A/B/C at T and T+60; interventions occur at the common training-end clock and then receive identical passive decay. Verify before analysis and classify without changing config or thresholds.
 - [ ] Rerun the identical deterministic schedule into a separate directory only to compare scientific hashes; this is computational reproducibility, not another biological sample. Review reciprocal identity, global-gain residual, endogenous DAN, MBON07 state, and sham/necessity/sufficiency rows.
 - [ ] Run the full suite again without changing packaged source. Commit the integration test and concise result document with artifact hashes/classification, never raw artifacts: `feat / held-out-assay : Classify the frozen full-graph experiment`.
 
 ## Final verification and interpretation gate
 
-- [ ] Verify source/runtime locks and full pytest, plus the opt-in full-graph suite with `JOGGE_FLY_FULL_TEST=1`. Compare artifact hashes after deterministic rerun; exclude wall-clock fields only.
+- [ ] Verify source/runtime locks and full pytest, plus the opt-in full-graph suite with `FLY_CONNECTOME_SIM_FULL_TEST=1`. Compare artifact hashes after deterministic rerun; exclude wall-clock fields only.
 - [ ] Review the held-out report against the approved claim boundary. If any primary gate fails, state which one and report an unsupported or inconclusive model experiment. If all pass, use only the design spec's model-specific wording and the demonstrated T and T+60 duration. Report MBON07 state, endogenous DAN, motor results and runtime separately.
 - [ ] Do not begin viewer or LLM work until the assay result and artifact contract have their own review. Neither can upgrade a failed scientific gate.

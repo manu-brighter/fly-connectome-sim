@@ -1,6 +1,6 @@
 # Third-party sources and provenance
 
-The numerical files in `src/jogge_fly_brain/neural/` are adapted from
+The numerical files in `src/fly_connectome_sim/neural/` are adapted from
 [`nftechie/stonkfly`](https://github.com/nftechie/stonkfly) commit
 `78ef3e05ab0fa086032098558d893667068944a0`, itself derived from DOOMFLY.
 They were imported through the audited Fly/Wirehead revision
@@ -9,7 +9,7 @@ The original MIT notice is preserved at `licenses/stonkfly-MIT.txt`.
 
 Local adaptations:
 
-- renamed the data environment variable to `JOGGE_FLY_DATA`;
+- renamed the data environment variable to `FLY_CONNECTOME_SIM_DATA`;
 - added a platform-aware, provenance-recording Windows/Unix build adapter;
 - the project-owned engine and experiment protocols live outside this directory.
 

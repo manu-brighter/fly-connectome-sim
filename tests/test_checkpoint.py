@@ -7,10 +7,10 @@ import shutil
 import numpy as np
 import pytest
 
-from jogge_fly_brain.engine import FlyEngine, NeuralGroups
-from jogge_fly_brain.neural.brain import MemoryBrain
-from jogge_fly_brain.neural import checkpoint
-from jogge_fly_brain.neural.visual import VisualMemoryBrain
+from fly_connectome_sim.engine import FlyEngine, NeuralGroups
+from fly_connectome_sim.neural.brain import MemoryBrain
+from fly_connectome_sim.neural import checkpoint
+from fly_connectome_sim.neural.visual import VisualMemoryBrain
 
 
 def make_brain(graph):

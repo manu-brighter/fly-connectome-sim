@@ -5,9 +5,9 @@ import pyarrow as pa
 import pyarrow.feather as feather
 import pyarrow.ipc as ipc
 
-from jogge_fly_brain.data import verify_prepared_graph
-from jogge_fly_brain.neural.common import DATA
-import jogge_fly_brain.neural.prepare as prepare_module
+from fly_connectome_sim.data import verify_prepared_graph
+from fly_connectome_sim.neural.common import DATA
+import fly_connectome_sim.neural.prepare as prepare_module
 
 
 def test_prepared_graph_matches_audited_malecns_array_locks():

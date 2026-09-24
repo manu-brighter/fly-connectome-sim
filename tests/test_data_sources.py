@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from jogge_fly_brain.data import SourceIntegrityError, stage_sources, verify_sources
+from fly_connectome_sim.data import SourceIntegrityError, stage_sources, verify_sources
 
 
 PROJECT_ROOT = Path(__file__).parents[1]

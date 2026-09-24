@@ -28,7 +28,7 @@ def _digest(path: Path) -> str:
 
 
 def _default_compiler() -> Path | str:
-    configured = os.environ.get("JOGGE_FLY_CXX")
+    configured = os.environ.get("FLY_CONNECTOME_SIM_CXX")
     if configured:
         return Path(configured)
     if sys.platform == "win32":
@@ -45,7 +45,7 @@ def _default_compiler() -> Path | str:
         if zig:
             return zig
         raise RuntimeError(
-            "No Windows C++ compiler found; set JOGGE_FLY_CXX or install the "
+            "No Windows C++ compiler found; set FLY_CONNECTOME_SIM_CXX or install the "
             "project-local Zig toolchain"
         )
     compiler = shutil.which("c++")

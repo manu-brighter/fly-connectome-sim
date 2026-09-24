@@ -3,7 +3,7 @@ requires = ["setuptools>=80"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "jogge-di-fly-brain"
+name = "fly-connectome-sim"
 version = "0.1.0"
 description = "Reproducible MaleCNS experiments for a fruit-fly event planner"
 requires-python = ">=3.12,<3.13"
@@ -18,14 +18,14 @@ dependencies = [
 test = ["pytest>=8,<10"]
 
 [project.scripts]
-jogge-fly = "jogge_fly_brain.cli:main"
+fly-connectome-sim = "fly_connectome_sim.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-"jogge_fly_brain.neural" = ["*.cpp", "*.json"]
-"jogge_fly_brain.schemas" = ["*.json"]
+"fly_connectome_sim.neural" = ["*.cpp", "*.json"]
+"fly_connectome_sim.schemas" = ["*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

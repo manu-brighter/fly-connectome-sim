@@ -5,9 +5,9 @@ from typing import get_type_hints
 import numpy as np
 import pytest
 
-import jogge_fly_brain.engine as engine_module
-from jogge_fly_brain.engine import FlyEngine, NeuralGroups
-from jogge_fly_brain.neural.checkpoint import model_fingerprint
+import fly_connectome_sim.engine as engine_module
+from fly_connectome_sim.engine import FlyEngine, NeuralGroups
+from fly_connectome_sim.neural.checkpoint import model_fingerprint
 
 
 class DeterministicBrain:

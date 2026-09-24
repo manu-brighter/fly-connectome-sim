@@ -1,4 +1,4 @@
-# Jogge di Fly Brain
+# Fly Connectome Sim
 
 A reproducible experiment in which an LLM proposes event ideas and a simulated
 fruit-fly connectome influences which ideas survive.
@@ -58,7 +58,7 @@ On Linux/macOS, install uv and Node.js on `PATH`, plus your platform's C++17
 toolchain exposing `c++`. No Unix compiler version is pinned or locally verified
 yet; retain the exact compiler version recorded in the native build metadata for
 reproduction on that platform. The existing Unix build path uses `c++`, while
-Windows selects the project-local Zig above. `JOGGE_FLY_CXX` can override either
+Windows selects the project-local Zig above. `FLY_CONNECTOME_SIM_CXX` can override either
 with an absolute executable path.
 
 ```sh
@@ -82,11 +82,11 @@ On Windows, after the dependency sync above:
 
 ```powershell
 node scripts/download-connectome.mjs
-.venv/Scripts/python.exe -m jogge_fly_brain.data verify-sources data/malecns-v1.0
-.venv/Scripts/python.exe -m jogge_fly_brain.data stage data/malecns-v1.0
-.venv/Scripts/python.exe -m jogge_fly_brain.neural.connectome malecns_v1
-.venv/Scripts/python.exe -m jogge_fly_brain.neural.prepare
-.venv/Scripts/python.exe -m jogge_fly_brain.data verify-prepared
+.venv/Scripts/python.exe -m fly_connectome_sim.data verify-sources data/malecns-v1.0
+.venv/Scripts/python.exe -m fly_connectome_sim.data stage data/malecns-v1.0
+.venv/Scripts/python.exe -m fly_connectome_sim.neural.connectome malecns_v1
+.venv/Scripts/python.exe -m fly_connectome_sim.neural.prepare
+.venv/Scripts/python.exe -m fly_connectome_sim.data verify-prepared
 .venv/Scripts/python.exe -m pytest
 ```
 
@@ -100,9 +100,9 @@ and normalized neuron metadata. `FlyEngine.from_prepared_graph()` runs this gate
 before constructing the brain. A local `source.lock.json` is only an audit copy.
 
 The default runtime directory is `data/malecns-v1.0/runtime`. To use a different
-directory, set `JOGGE_FLY_DATA` before staging and keep it set for import,
-preparation, verification and execution. Use `$env:JOGGE_FLY_DATA='D:/fly/runtime'`
-in PowerShell or `export JOGGE_FLY_DATA=/path/to/runtime` in a POSIX shell. The
+directory, set `FLY_CONNECTOME_SIM_DATA` before staging and keep it set for import,
+preparation, verification and execution. Use `$env:FLY_CONNECTOME_SIM_DATA='D:/fly/runtime'`
+in PowerShell or `export FLY_CONNECTOME_SIM_DATA=/path/to/runtime` in a POSIX shell. The
 stage and verify-prepared commands also accept `--runtime-directory PATH`;
 the environment variable remains necessary for the numerical core. Python reads
 it when the neural modules are first imported.
@@ -111,11 +111,11 @@ The normal suite verifies the data and compiles/loads the native kernel. The
 complete graph simulation test is opt-in because it loads and advances the graph:
 
 ```powershell
-$env:JOGGE_FLY_FULL_TEST='1'
+$env:FLY_CONNECTOME_SIM_FULL_TEST='1'
 .venv/Scripts/python.exe -m pytest tests/test_full_graph_engine.py
 ```
 
-On Linux/macOS: `JOGGE_FLY_FULL_TEST=1 .venv/bin/python -m pytest tests/test_full_graph_engine.py`.
+On Linux/macOS: `FLY_CONNECTOME_SIM_FULL_TEST=1 .venv/bin/python -m pytest tests/test_full_graph_engine.py`.
 Local chat notes and visual references remain outside Git.
 
 ## Provenance

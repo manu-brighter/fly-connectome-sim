@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 DATA = Path(
-    os.environ.get("JOGGE_FLY_DATA", "data/malecns-v1.0/runtime")
+    os.environ.get("FLY_CONNECTOME_SIM_DATA", "data/malecns-v1.0/runtime")
 ).resolve()
 GRAPH = DATA / "graph.npz"
 OUT = DATA / "cache"

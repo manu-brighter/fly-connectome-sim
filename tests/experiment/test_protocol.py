@@ -6,10 +6,10 @@ import math
 import numpy as np
 import pytest
 
-from jogge_fly_brain.experiment import protocol, stimuli
-from jogge_fly_brain.experiment.protocol import ProtocolSchedule
-from jogge_fly_brain.experiment.stimuli import SyntheticStimuli
-from jogge_fly_brain.neural.rule import PARAMETERS
+from fly_connectome_sim.experiment import protocol, stimuli
+from fly_connectome_sim.experiment.protocol import ProtocolSchedule
+from fly_connectome_sim.experiment.stimuli import SyntheticStimuli
+from fly_connectome_sim.neural.rule import PARAMETERS
 
 
 # Historical asdict(ProtocolSchedule.create(condition="reversal", seed=17)) JSON.

@@ -2,7 +2,7 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from jogge_fly_brain.experiment.adapter import (
+from fly_connectome_sim.experiment.adapter import (
     DEFAULT_PREFERENCE_ADAPTER,
     PreferenceAdapter,
 )

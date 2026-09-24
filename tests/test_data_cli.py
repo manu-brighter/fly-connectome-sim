@@ -27,8 +27,8 @@ def source_directory(tmp_path):
 
 def run_data(*arguments, runtime):
     return subprocess.run(
-        [sys.executable, "-m", "jogge_fly_brain.data", *map(str, arguments)],
-        env={**os.environ, "JOGGE_FLY_DATA": str(runtime)},
+        [sys.executable, "-m", "fly_connectome_sim.data", *map(str, arguments)],
+        env={**os.environ, "FLY_CONNECTOME_SIM_DATA": str(runtime)},
         capture_output=True,
         text=True,
     )
