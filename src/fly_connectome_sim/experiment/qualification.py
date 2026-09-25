@@ -393,29 +393,53 @@ class _Run:
         self.peak_event_buffer_bytes = 0
         self.branch_id = "qualification/baseline"
         self.parent_checkpoint_sha256: str | None = None
+        self.checkpoints: dict[Path, tuple[str, str, str]] = {}
+        self.checkpoint_serial = 0
         self.phase = "baseline"
 
     def emit(self, event: dict) -> None:
+        event = {key: value for key, value in event.items()
+                 if key not in {"parent_branch_id", "parent_checkpoint_sha256"}
+                 or value is not None}
         encoded = json.dumps(event, allow_nan=False, separators=(",", ":"))
         self.event_count += 1
         self.peak_event_buffer_bytes = max(self.peak_event_buffer_bytes,
                                            len(encoded.encode("utf-8")))
         self.recorder.append(event)
 
-    def checkpoint(self, path: Path) -> None:
+    def checkpoint(self, path: Path, *, logical_name: str | None = None) -> None:
         self.engine.brain.checkpoint(path)
-        self.checkpoint_bytes += path.stat().st_size
-        digest = sha256(path.read_bytes()).hexdigest()
+        size = path.stat().st_size
+        self.checkpoint_bytes += size
+        digest_state = sha256()
+        with path.open("rb") as stream:
+            while chunk := stream.read(1024 * 1024):
+                digest_state.update(chunk)
+        digest = digest_state.hexdigest()
+        if logical_name is None:
+            if path.name == "baseline.npz" and not self.checkpoints:
+                logical_name = "brain-before.npz"
+            else:
+                self.checkpoint_serial += 1
+                logical_name = f"branch-{self.checkpoint_serial:08d}.npz"
+        ingest = getattr(self.recorder, "ingest_checkpoint", None)
+        if ingest is not None and ingest(logical_name, path, origin_branch_id=self.branch_id) != digest:
+            raise _GateFailure("checkpoint_replay")
+        self.checkpoints[path] = (logical_name, digest, self.branch_id)
         self.emit({
             "type": "qualification_checkpoint",
             "branch_id": self.branch_id,
             "parent_checkpoint_sha256": self.parent_checkpoint_sha256,
+            "checkpoint_name": logical_name,
             "checkpoint_sha256": digest,
+            "checkpoint_size": size,
             "sim_ms": float(self.engine.brain.sim_ms),
         })
 
     def restore(self, path: Path) -> None:
-        digest = sha256(path.read_bytes()).hexdigest()
+        _, digest, parent_branch_id = self.checkpoints[path]
+        if sha256(path.read_bytes()).hexdigest() != digest:
+            raise _GateFailure("checkpoint_replay")
         self.engine.brain.restore(path)
         self.engine.brain.weights_frozen = False
         if self.engine.identity() != self.identity:
@@ -424,6 +448,8 @@ class _Run:
         self.emit({
             "type": "qualification_restore",
             "branch_id": self.branch_id,
+            "parent_branch_id": parent_branch_id,
+            "parent_checkpoint_sha256": digest,
             "checkpoint_sha256": digest,
             "sim_ms": float(self.engine.brain.sim_ms),
         })
@@ -465,6 +491,7 @@ class _Run:
             "branch_id": self.branch_id,
             "parent_checkpoint_sha256": self.parent_checkpoint_sha256,
             "phase": self.phase,
+            "sim_ms": expected_tick / 10,
             "start_ms": start_tick / 10,
             "end_ms": expected_tick / 10,
             "duration_ms": duration_ms,
@@ -497,7 +524,8 @@ class _Run:
         start_tick = _ticks(float(self.engine.brain.sim_ms))
         try:
             advance_neutral(self, duration_ms, shape, branch_id=self.branch_id,
-                            on_event=lambda event: None, learning=False)
+                            on_event=self.emit, learning=False,
+                            parent_checkpoint_sha256=self.parent_checkpoint_sha256)
         except ValueError as error:
             if "nonfinite" in str(error).lower():
                 raise _GateFailure("nonfinite") from error
@@ -990,7 +1018,7 @@ def _selected_controls(run: _Run, baseline: Path, configuration: GridConfigurati
         )
     pre11 = tuple(pre[identity][0] for identity in ("A", "B", "C"))
     pre07 = tuple(pre[identity][1] for identity in ("A", "B", "C"))
-    run.branch_id = f"{prefix}/matched_reference/training"
+    run.branch_id = f"{prefix}/matched_reference/state_probe"
     run.restore(baseline)
     _training(run, configuration, paired, order, "matched_reference", frames,
               controls=True)
@@ -1162,7 +1190,12 @@ def qualify(engine_factory, recorder, *, seeds, family) -> QualificationResult:
                     point = QualificationPoint(configuration, window, retention,
                                                replicates, mean, reasons)
                     points.append(point)
-                    run.emit({"type": "qualification_point", "point": asdict(point)})
+                    run.emit({
+                        "type": "qualification_point", "branch_id": "qualification/summary",
+                        "sim_ms": 0.0, "parent_branch_id": "qualification/baseline",
+                        "parent_checkpoint_sha256": run.checkpoints[baseline][1],
+                        "point": asdict(point),
+                    })
         chosen = _select_points(points)
         controls = []
         if chosen is not None:
@@ -1176,7 +1209,13 @@ def qualify(engine_factory, recorder, *, seeds, family) -> QualificationResult:
                             seed, paired, order,
                         ))
             for item in controls:
-                run.emit({"type": "qualification_control", "control": asdict(item)})
+                run.emit({
+                    "type": "qualification_control", "branch_id": "qualification/summary",
+                    "sim_ms": 0.0, "parent_branch_id": "qualification/baseline",
+                    "parent_checkpoint_sha256": run.checkpoints[baseline][1],
+                    "control": asdict(item),
+                })
+        run.checkpoint(root / "final.npz", logical_name="brain-after.npz")
     metrics = benchmark(
         simulated_seconds=run.simulated_ms / 1000.0,
         wall_seconds=time.perf_counter() - started,
@@ -1184,10 +1223,30 @@ def qualify(engine_factory, recorder, *, seeds, family) -> QualificationResult:
         checkpoint_bytes=run.checkpoint_bytes,
         peak_event_buffer_bytes=run.peak_event_buffer_bytes,
     )
-    return QualificationResult(
+    result = QualificationResult(
         "supported" if chosen is not None else "unsupported", family, seeds,
         tuple(points), chosen[0] if chosen else None,
         chosen[1] if chosen else None, chosen[2] if chosen else None,
         chosen[3] if chosen else None, tuple(controls),
         json.dumps(identity, sort_keys=True, allow_nan=False), tuple(metrics.items()),
     )
+    run.emit({
+        "type": "qualification_result",
+        "branch_id": "qualification/summary",
+        "sim_ms": 0.0,
+        "parent_branch_id": "qualification/baseline",
+        "parent_checkpoint_sha256": run.checkpoints[baseline][1],
+        "status": result.status,
+        "family": result.family,
+        "seeds": list(result.seeds),
+        "selected_configuration": (asdict(result.selected_configuration)
+                                   if result.selected_configuration else None),
+        "selected_window": (asdict(result.selected_window)
+                            if result.selected_window else None),
+        "selected_retention_ms": result.selected_retention_ms,
+        "observed_effect_sign": result.observed_effect_sign,
+        "benchmark": {key: value for key, value in result.benchmark.items()
+                      if key != "wall_seconds"},
+        "compute_seconds": result.benchmark["wall_seconds"],
+    })
+    return result

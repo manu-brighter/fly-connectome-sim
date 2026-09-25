@@ -1,9 +1,11 @@
 """Bounded exploratory qualification contracts."""
 
 from dataclasses import asdict
+from importlib.resources import files
 import json
 import math
 from pathlib import Path
+import re
 from types import SimpleNamespace
 
 import numpy as np
@@ -363,7 +365,7 @@ class TinyEngine:
         r1_drive = 0.0 if self.fault == "r8_only" else drive
         return {
             "sim_ms": self.brain.sim_ms, "interval_ms": duration_ms,
-            "input_sha256": "tiny-frame",
+            "input_sha256": "a" * 64,
             "engine_identity": self.identity(), "bins": bins,
             "pathway_detail": {
                 "modeled_visual_drive": {
@@ -722,3 +724,150 @@ def test_training_observations_use_passive_learning_after_t0_and_in_black_gaps(
     assert all(not event["learning"] for event in recorder.observations
                if event["stimulus"] is None and event["stimulation"] is None)
     assert any(event["start_ms"] >= t0 for event in recorder.observations)
+
+
+def test_checkpoint_handoff_and_restore_ancestry(tmp_path):
+    class HandoffRecorder:
+        def __init__(self):
+            self.events = []
+            self.checkpoints = {}
+
+        def ingest_checkpoint(self, name, source, *, origin_branch_id):
+            data = Path(source).read_bytes()
+            from hashlib import sha256
+            digest = sha256(data).hexdigest()
+            self.checkpoints[name] = (data, origin_branch_id, digest)
+            return digest
+
+        def append(self, event):
+            self.events.append(event)
+
+    engine = TinyEngine()
+    recorder = HandoffRecorder()
+    run = _Run(engine, recorder, engine.identity())
+    baseline = tmp_path / "baseline.npz"
+    run.checkpoint(baseline)
+    assert recorder.checkpoints["brain-before.npz"][0] == baseline.read_bytes()
+    assert recorder.events[-1]["checkpoint_name"] == "brain-before.npz"
+    assert "parent_checkpoint_sha256" not in recorder.events[-1]
+    assert "parent_branch_id" not in recorder.events[-1]
+    run.branch_id = "qualification/pre/A"
+    run.restore(baseline)
+    restored = recorder.events[-1]
+    assert restored["parent_branch_id"] == "qualification/baseline"
+    assert restored["parent_checkpoint_sha256"] == recorder.checkpoints["brain-before.npz"][2]
+    assert restored["sim_ms"] == 0.0
+    run.observe(np.zeros((3, 3, 3), dtype=np.uint8), 100.0)
+    assert recorder.events[-1]["sim_ms"] == recorder.events[-1]["end_ms"] == 100.0
+
+
+def test_selected_controls_record_neutral_chunks_and_unique_branches(tmp_path):
+    engine = TinyEngine()
+
+    class Recorder:
+        def __init__(self):
+            self.events = []
+
+        def append(self, event):
+            self.events.append(event)
+
+    recorder = Recorder()
+    run = _Run(engine, recorder, engine.identity())
+    baseline = tmp_path / "baseline.npz"
+    run.checkpoint(baseline)
+    frames = {name: AssayStimuli(seed=11, family="qualification").frame(name)
+              for name in ("A", "B", "C")}
+    _selected_controls(run, baseline, GRID[0], RESPONSE_WINDOWS[0], 10000.0,
+                       {11: frames}, 11, "A", "AB")
+    neutral = [item for item in recorder.events if item["type"] == "neutral_gap_chunk"]
+    assert neutral
+    assert all(0 < item["duration_ms"] <= 500.0 and item["learning"] is False
+               and item["stimulation"] is None and item["input_sha256"]
+               for item in neutral)
+    restores = [item for item in recorder.events if item["type"] == "qualification_restore"]
+    assert len({item["branch_id"] for item in restores}) == len(restores)
+    assert any("matched_reference/state_probe" in item["branch_id"]
+               for item in restores)
+
+
+@pytest.mark.parametrize("fault,expected_status", [(None, "supported"),
+                                                   ("no_learning", "unsupported")])
+def test_tiny_qualification_stream_seals_with_checkpoint_ancestry(
+    tmp_path, monkeypatch, fault, expected_status,
+):
+    import fly_connectome_sim.experiment.qualification as module
+    from fly_connectome_sim.experiment.recorder import RunRecorder, verify_run
+
+    monkeypatch.setattr(module, "GRID", GRID[:1])
+    monkeypatch.setattr(module, "RESPONSE_WINDOWS", RESPONSE_WINDOWS[:1])
+    monkeypatch.setattr(module, "RETENTION_CANDIDATES_MS", RETENTION_CANDIDATES_MS[:1])
+    engine = TinyEngine(fault=fault)
+    metadata = {
+        "engine_identity": engine.identity(), "protocol_version": "qualification/v1",
+        "stimulus_version": "associative-stimuli/v1", "family": "qualification",
+        "seeds": [11, 23], "factors": {"grid": [asdict(GRID[0])]},
+        "input_sha256": ["a" * 64],
+    }
+    target = tmp_path / "qualification"
+    with RunRecorder(target, run_kind="qualification", metadata=metadata,
+                     root_branch_id="qualification/baseline") as recorder:
+        result = module.qualify(lambda: engine, recorder,
+                                seeds=(11, 23), family="qualification")
+    verified = verify_run(target)
+    assert result.status == expected_status
+    assert verified.manifest["event_count"] > 100
+    assert {"brain-before.npz", "brain-after.npz"} <= set(verified.manifest["checkpoints"])
+    events = list(verified.iter_events())
+    schema = json.loads(files("fly_connectome_sim.schemas").joinpath("run.schema.json")
+                        .read_text(encoding="utf-8"))["$defs"]["event"]
+    assert schema["dependentRequired"]["parent_branch_id"] == ["parent_checkpoint_sha256"]
+    for item in events:
+        assert set(schema["required"]) <= item.keys()
+        for field, dependencies in schema["dependentRequired"].items():
+            if field in item:
+                assert set(dependencies) <= item.keys()
+        for key, rule in schema["properties"].items():
+            if key not in item:
+                continue
+            if rule.get("type") == "string":
+                assert isinstance(item[key], str)
+                assert len(item[key]) >= rule.get("minLength", 0)
+            elif rule.get("type") == "integer":
+                assert type(item[key]) is int
+            elif rule.get("type") == "number":
+                assert type(item[key]) in (int, float) and math.isfinite(item[key])
+            if "minimum" in rule:
+                assert item[key] >= rule["minimum"]
+            if "pattern" in rule:
+                assert re.fullmatch(rule["pattern"], item[key])
+            elif "$ref" in rule:
+                assert re.fullmatch("[0-9a-f]{64}", item[key])
+    root_events = [item for item in events if item["branch_id"] == "qualification/baseline"]
+    assert all("parent_checkpoint_sha256" not in item and "parent_branch_id" not in item
+               for item in root_events)
+    first_by_branch = {}
+    for item in events:
+        first_by_branch.setdefault(item["branch_id"], item)
+    assert all("parent_branch_id" in item and "parent_checkpoint_sha256" in item
+               for branch, item in first_by_branch.items()
+               if branch != "qualification/baseline")
+    assert any(item["type"] == "qualification_point" for item in events)
+    terminal = events[-1]
+    assert terminal["type"] == "qualification_result"
+    assert sum(item["type"] == "qualification_result" for item in events) == 1
+    assert terminal["status"] == result.status
+    assert terminal["family"] == result.family
+    assert terminal["seeds"] == list(result.seeds)
+    assert terminal["selected_configuration"] == (
+        asdict(result.selected_configuration) if result.selected_configuration else None
+    )
+    assert terminal["selected_window"] == (
+        asdict(result.selected_window) if result.selected_window else None
+    )
+    assert terminal["selected_retention_ms"] == result.selected_retention_ms
+    assert terminal["observed_effect_sign"] == result.observed_effect_sign
+    assert terminal["benchmark"] == {key: value for key, value in result.benchmark.items()
+                                      if key != "wall_seconds"}
+    assert terminal["compute_seconds"] == result.benchmark["wall_seconds"]
+    assert terminal["benchmark"]["event_count"] == verified.manifest["event_count"] - 1
+    assert "points" not in terminal and "controls" not in terminal

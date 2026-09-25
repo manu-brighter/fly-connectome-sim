@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fly-connectome-sim.local/schemas/run.schema.json",
+  "title": "Fly connectome sealed run manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format_version", "schema_version", "schema_sha256", "run_kind", "root_branch_id", "metadata", "run_metadata_sha256", "event_count", "final_scientific_sha256", "events_sha256", "checkpoints"],
+  "properties": {
+    "format_version": {"const": "run-artifact/v1"},
+    "schema_version": {"const": "run-schema/v1"},
+    "schema_sha256": {"$ref": "#/$defs/digest"},
+    "run_kind": {"enum": ["pilot", "qualification", "confirmation"]},
+    "root_branch_id": {"type": "string", "minLength": 1},
+    "metadata": {
+      "type": "object",
+      "required": ["engine_identity", "protocol_version", "stimulus_version", "family", "seeds", "factors", "input_sha256"],
+      "properties": {
+        "engine_identity": {"type": "object", "minProperties": 1},
+        "protocol_version": {"type": "string", "minLength": 1},
+        "stimulus_version": {"type": "string", "minLength": 1},
+        "family": {"type": "string", "minLength": 1},
+        "seeds": {"type": "array", "items": {"type": "integer", "minimum": 0}},
+        "factors": {"type": "object"},
+        "input_sha256": {"type": "array", "items": {"$ref": "#/$defs/digest"}}
+      },
+      "additionalProperties": true
+    },
+    "run_metadata_sha256": {"$ref": "#/$defs/digest"},
+    "event_count": {"type": "integer", "minimum": 0},
+    "final_scientific_sha256": {"$ref": "#/$defs/digest"},
+    "events_sha256": {"$ref": "#/$defs/digest"},
+    "checkpoints": {
+      "type": "object",
+      "required": ["brain-before.npz", "brain-after.npz"],
+      "propertyNames": {"pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*\\.npz$"},
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sha256", "size", "origin_branch_id", "sim_ms"],
+        "properties": {
+          "sha256": {"$ref": "#/$defs/digest"},
+          "size": {"type": "integer", "minimum": 0},
+          "origin_branch_id": {"type": "string", "minLength": 1},
+          "sim_ms": {"type": "number", "minimum": 0}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "qualification_configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cs_duration_ms", "dan_onset_ms", "post_pair_gap_ms"],
+      "properties": {
+        "cs_duration_ms": {"type": "number"},
+        "dan_onset_ms": {"type": "number"},
+        "post_pair_gap_ms": {"type": "number"}
+      }
+    },
+    "qualification_window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_ms", "end_ms"],
+      "properties": {
+        "start_ms": {"type": "number"},
+        "end_ms": {"type": "number"}
+      }
+    },
+    "qualification_benchmark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["simulated_seconds", "event_count", "checkpoint_bytes", "peak_event_buffer_bytes"],
+      "properties": {
+        "simulated_seconds": {"type": "number", "minimum": 0},
+        "event_count": {"type": "integer", "minimum": 0},
+        "checkpoint_bytes": {"type": "integer", "minimum": 0},
+        "peak_event_buffer_bytes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "event": {
+      "type": "object",
+      "required": ["sequence", "type", "branch_id", "sim_ms", "run_metadata_sha256", "previous_scientific_sha256", "scientific_sha256"],
+      "dependentRequired": {"parent_branch_id": ["parent_checkpoint_sha256"]},
+      "properties": {
+        "sequence": {"type": "integer", "minimum": 0},
+        "type": {"type": "string", "minLength": 1},
+        "branch_id": {"type": "string", "minLength": 1},
+        "sim_ms": {"type": "number", "minimum": 0},
+        "run_metadata_sha256": {"$ref": "#/$defs/digest"},
+        "previous_scientific_sha256": {"$ref": "#/$defs/digest"},
+        "scientific_sha256": {"$ref": "#/$defs/digest"},
+        "parent_branch_id": {"type": "string", "minLength": 1},
+        "parent_checkpoint_sha256": {"$ref": "#/$defs/digest"},
+        "checkpoint_name": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*\\.npz$"},
+        "checkpoint_sha256": {"$ref": "#/$defs/digest"},
+        "checkpoint_size": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": true,
+      "allOf": [{
+        "if": {"properties": {"type": {"const": "qualification_result"}}, "required": ["type"]},
+        "then": {
+          "required": ["status", "family", "seeds", "selected_configuration", "selected_window", "selected_retention_ms", "observed_effect_sign", "benchmark", "compute_seconds"],
+          "properties": {
+            "status": {"enum": ["supported", "unsupported"]},
+            "family": {"type": "string", "minLength": 1},
+            "seeds": {"type": "array", "items": {"type": "integer", "minimum": 0}},
+            "selected_configuration": {"oneOf": [{"$ref": "#/$defs/qualification_configuration"}, {"type": "null"}]},
+            "selected_window": {"oneOf": [{"$ref": "#/$defs/qualification_window"}, {"type": "null"}]},
+            "selected_retention_ms": {"oneOf": [{"type": "number", "exclusiveMinimum": 0}, {"type": "null"}]},
+            "observed_effect_sign": {"enum": [-1, 1, null]},
+            "benchmark": {"$ref": "#/$defs/qualification_benchmark"},
+            "compute_seconds": {"type": "number", "minimum": 0}
+          },
+          "allOf": [
+            {
+              "if": {"properties": {"status": {"const": "supported"}}, "required": ["status"]},
+              "then": {"properties": {
+                "selected_configuration": {"$ref": "#/$defs/qualification_configuration"},
+                "selected_window": {"$ref": "#/$defs/qualification_window"},
+                "selected_retention_ms": {"type": "number", "exclusiveMinimum": 0},
+                "observed_effect_sign": {"enum": [-1, 1]}
+              }}
+            },
+            {
+              "if": {"properties": {"status": {"const": "unsupported"}}, "required": ["status"]},
+              "then": {"properties": {
+                "selected_configuration": {"type": "null"},
+                "selected_window": {"type": "null"},
+                "selected_retention_ms": {"type": "null"},
+                "observed_effect_sign": {"type": "null"}
+              }}
+            }
+          ]
+        }
+      }]
+    }
+  },
+  "description": "events.jsonl contains compact sorted-key UTF-8 LF JSON objects in append order. First previous_scientific_sha256 is 64 ASCII zeroes. Root branch events omit both parent fields. The first event of each other branch names an already recorded parent checkpoint and its origin branch; later events may omit repeated ancestry. Branch clocks are nondecreasing locally. The metadata digest binds run_kind, root_branch_id, and metadata. A qualification run ends with one complete qualification_result. Its family and seeds equal manifest metadata; numeric values are finite; compute_seconds is operational telemetry. Scientific event projection removes the event's own scientific_sha256 and recursively removes only compute_seconds and kernel_seconds. The raw events_sha256 binds exact bytes. Checkpoints live under checkpoints/ with safe .npz basenames. The verifier is authoritative."
+}
