@@ -1,7 +1,8 @@
 # Bounded Replay Anchor Contract
 
-**Status:** Approved; complete-state hashing foundation implemented. Occurrence
-anchors, black-retention recipes and replay attestation are not yet implemented.
+**Status:** Approved; complete-state hashing and pure occurrence/black-retention
+reconstruction primitives implemented. Persisted anchor indexing, fixed-prefix
+verification and formal replay attestation are not yet implemented.
 
 **Date:** 2026-10-02
 
@@ -24,6 +25,12 @@ digest and the completed source/prefix identity. It also binds the exact durable
 checkpoint occurrence: safe inventory name, NPZ file SHA256, origin branch,
 checkpoint-event sequence and integer source tick. It excludes the anchor's own
 event-chain digest and all later terminal/seal hashes to avoid circular hashing.
+
+The existing analyzer field `source_identity_sha256` retains the validated
+`fly-engine/v1` identity's own `sha256` (its complete provenance/group payload
+digest, excluding the derived hash itself). The full identity object remains
+inside the executable recipe and is bound by the recipe and envelope; do not
+replace the established field with a hash-of-identity-including-its-own-hash.
 
 IDs and operation order are deterministic. Recipe, envelope and report bindings
 use scientific projection, scientific chain digest, count and sequence
