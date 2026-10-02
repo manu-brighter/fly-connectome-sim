@@ -10,6 +10,10 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-24-associative-plasticity-pivot-design.md`; retain the broader boundaries in `docs/specs/fly-event-planner.md`.
 
+**Replay refinement:** The bounded occurrence/content, black-retention and
+verification contract is defined in
+[`2026-10-02-replay-anchor-contract.md`](../specs/2026-10-02-replay-anchor-contract.md).
+
 ## Global Constraints
 
 - The primary endpoint is MBON11 response, not preference, learned behavior, or event choice. The maximal positive claim is the model-specific statement in the design spec.
@@ -32,10 +36,11 @@
 | `src/fly_connectome_sim/experiment/protocol.py`, `tests/experiment/test_protocol.py` | Versioned condition names, pairing identity, order, side and explicit simulated schedule including retention branches. |
 | `src/fly_connectome_sim/experiment/executor.py`, `tests/experiment/test_executor.py` (new) | Execute every step and neutral gap against `FlyEngine`, checkpoint forks and window aggregation. |
 | `src/fly_connectome_sim/engine.py`, `src/fly_connectome_sim/neural/visual.py`, `tests/test_engine_contract.py` | Exact mapped RGB drive, MBON11-input KC activity and opt-in per-bin trace/memory diagnostics; keep default telemetry compact. |
-| `src/fly_connectome_sim/neural/brain.py`, `tests/test_checkpoint.py` | Atomic candidate-edge memory snapshot/replace, with validation before mutation. |
+| `src/fly_connectome_sim/neural/brain.py`, `src/fly_connectome_sim/neural/checkpoint.py`, `tests/test_checkpoint.py` | Atomic candidate-edge memory snapshot/replace and shared complete checkpoint-payload hashing, with validation before mutation. |
 | `src/fly_connectome_sim/experiment/qualification.py`, `tests/experiment/test_qualification.py` (new) | Bounded exploratory grid, path/washout gate, runtime benchmark and frozen configuration output. |
 | `src/fly_connectome_sim/experiment/recorder.py`, `src/fly_connectome_sim/schemas/run.schema.json`, `src/fly_connectome_sim/cli.py`, `tests/experiment/test_recorder.py`, `tests/test_cli.py` (new) | Append-only pilot and assay artifacts, strict verifier and CLI. |
 | `src/fly_connectome_sim/experiment/analysis.py`, `tests/experiment/test_analysis.py` (new) | Pure frozen-config builder, MBON11 evidence reducer and classification; no exploratory parameter selection. |
+| `src/fly_connectome_sim/experiment/replay.py`, `tests/experiment/test_replay.py` (new) | Bounded black-retention recipe validation/execution, validated-prefix support and verifier-produced replay attestation. |
 | `src/fly_connectome_sim/experiment/assay.py`, `tests/experiment/test_assay.py` (new) | Held-out confirmation orchestration, selected causal interventions and compact replay-anchor production. |
 | `configs/assay.synthetic.json` (new only after source freeze), `tests/test_full_graph_engine.py` | Frozen held-out protocol and opt-in full-graph confirmation. |
 | `src/fly_connectome_sim/experiment/adapter.py`, `tests/experiment/test_adapter.py` | Keep v1 readable; new lateral-motor-only adapter with `evidence_strength`. |
@@ -144,7 +149,10 @@ The endpoint for each paired identity is `delta=(post_plus-post_minus)-(pre_plus
 - [x] **GREEN 7A:** Implement strict frozen-config serialization, exact arithmetic and classifications `supported`, `unsupported`, `inconclusive`; emit all values/reasons. Derive the effect floor from qualification as `max(5 * replay_numeric_resolution_hz, 2 * max_abs_qual_control_delta_hz, 0.05 * qualified_mbon11_dynamic_range_hz)` and record each term. This floor is not reused for washout. Consume the response window/sign already selected from Task 5's fixed candidates; do not search again. Do not use held-out values in configuration or thresholds.
 - [ ] **RED/GREEN 7B:** Record and gate selected qualification controls/interventions at T and T+60, then implement held-out production for every frozen factor. Distinguish association T0 from the later schedule-complete checkpoint and preserve exact passive durations. Require matched-reference contrasts for necessity/sufficiency and freeze expected confirmation RGB/black hashes.
 - [x] **7B1:** Require one complete, metadata-bound terminal `assay_result` for confirmation artifacts. Validate canonical report hashes and exact evidence-prefix bindings through shared recorder/verifier checks and mirror the payload contract in the packaged schema. The independent analyzer remains responsible for scientific recomputation.
-- [ ] Extend the producer/artifact with strict response/intervention events, compact `state-anchor/v1` ancestry for transient forks and a formal replay verifier. Retain durable before/after and all selected ordinary training-end/intervention checkpoints; do not persist every exploratory checkpoint. Resolve the anchor occurrence-versus-content identity contract before implementation so identical paired/sham content can preserve distinct ancestry.
+- [x] Resolve the anchor occurrence/content contract: occurrence-envelope SHA binds the exact durable route and recorded recipe/prefix; a separate complete-state SHA permits identical paired/sham content without merging ancestry. Fix schema compatibility and bounded temporary-snapshot policy in the replay refinement.
+- [ ] **7B2:** Implement shared complete-state hashing, the occurrence envelope, strict `black-retention/v1` recipe, recorder/schema anchor indexing and immutable verifier-produced attestation. Demonstrate a real durable source to anchor to two sibling test forks; preserve all analyzer gates. Keep one bounded temporary retention snapshot for sibling restores outside sealed inventory.
+- [ ] Extend the producer/artifact with strict response/intervention events and shared validated-prefix replay before terminal reduction. Formally verify after sealing and independently recompute the same canonical report, including nonmaterialized-parent and verification-mode labels. Retain durable before/after and all selected ordinary training-end/intervention checkpoints.
+- [ ] Decide discarded-grid training ancestry using measured durable-storage versus separately reviewed exact training-replay cost; black-retention replay alone does not solve it. Do not introduce a generic replay interpreter or weaken freeze-input ancestry.
 - [ ] Measure or conservatively project full-graph checkpoint/event/wall-time capacity before source freeze. Keep full response/CS/DAN bins but compact passive black-gap telemetry.
 - [ ] Run focused/full pytest and a disposable CLI pilot. Commit source/tests only: `feat / frozen-assay : Implement MBON11 causal analysis`.
 
