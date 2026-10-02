@@ -16,6 +16,8 @@ from typing import Iterator
 
 FORMAT_VERSION = "run-artifact/v1"
 SCHEMA_VERSION = "run-schema/v1"
+ASSAY_RESULT_VERSION = "mbon11-assay-result/v1"
+ASSAY_ANALYSIS_VERSION = "mbon11-causal-analysis/v1"
 GENESIS = "0" * 64
 OWNED = {"sequence", "previous_scientific_sha256", "scientific_sha256", "run_metadata_sha256"}
 REQUIRED_METADATA = {"engine_identity", "protocol_version", "stimulus_version", "family", "seeds", "factors", "input_sha256"}
@@ -85,7 +87,7 @@ def _scientific_event(event: dict) -> dict:
                         if key != "scientific_sha256"})
 
 
-def _metadata(metadata: dict) -> dict:
+def _metadata(metadata: dict, run_kind: str) -> dict:
     if not isinstance(metadata, dict) or not REQUIRED_METADATA <= metadata.keys():
         raise RunArtifactError("Missing run metadata declaration")
     result = _strict_load(_canonical(metadata))
@@ -101,6 +103,13 @@ def _metadata(metadata: dict) -> dict:
             or any(not isinstance(item, str) or not DIGEST.fullmatch(item)
                    for item in result["input_sha256"])):
         raise RunArtifactError("Invalid seeds, factors or input hash set")
+    if run_kind == "confirmation":
+        digest = result.get("frozen_config_sha256")
+        contract = result.get("assay_contract")
+        if not isinstance(digest, str) or not DIGEST.fullmatch(digest) \
+                or not isinstance(contract, dict) \
+                or contract.get("analysis_version") != ASSAY_ANALYSIS_VERSION:
+            raise RunArtifactError("Invalid confirmation config or analysis binding")
     return result
 
 
@@ -194,6 +203,33 @@ def _check_qualification_result(event: dict, metadata: dict) -> None:
         raise RunArtifactError("Unsupported qualification cannot have a selection")
 
 
+def _check_assay_result(event: dict, metadata: dict) -> None:
+    required = {"result_version", "analysis_version", "frozen_config_sha256",
+                "status", "reasons", "report", "report_sha256",
+                "evidence_event_count", "evidence_final_scientific_sha256"}
+    if not required <= event.keys():
+        raise RunArtifactError("Incomplete assay result")
+    if event["result_version"] != ASSAY_RESULT_VERSION \
+            or event["analysis_version"] != metadata["assay_contract"]["analysis_version"] \
+            or event["frozen_config_sha256"] != metadata["frozen_config_sha256"]:
+        raise RunArtifactError("Assay result config or analysis binding mismatch")
+    status = event["status"]
+    reasons = event["reasons"]
+    if not isinstance(status, str) or status not in {"supported", "unsupported", "inconclusive"} \
+            or not isinstance(reasons, list) \
+            or any(not isinstance(reason, str) or not reason for reason in reasons) \
+            or reasons != sorted(set(reasons)) \
+            or (status == "supported") != (not reasons):
+        raise RunArtifactError("Invalid assay status or deterministic reasons")
+    report = event["report"]
+    if not isinstance(report, dict) or set(report) != {"status", "values", "reasons"} \
+            or not isinstance(report["values"], dict) \
+            or report["status"] != status or report["reasons"] != reasons:
+        raise RunArtifactError("Assay report shape or result mismatch")
+    if event["report_sha256"] != sha256(_canonical(report)).hexdigest():
+        raise RunArtifactError("Assay report digest mismatch")
+
+
 class _Chain:
     def __init__(self, root: str, metadata: dict, checkpoints: dict, run_kind: str):
         self.root = root
@@ -209,13 +245,15 @@ class _Chain:
 
     def check(self, event: dict) -> None:
         if self.result_seen:
-            raise RunArtifactError("Qualification result must be terminal")
+            raise RunArtifactError("Result must be terminal")
         if not isinstance(event, dict) or not isinstance(event.get("type"), str) \
                 or not event["type"] or not isinstance(event.get("branch_id"), str) \
                 or not event["branch_id"]:
             raise RunArtifactError("Event needs a nonempty type and branch_id")
         if event["type"] == "qualification_result" and self.run_kind != "qualification":
             raise RunArtifactError("Qualification result in a non-qualification run")
+        if event["type"] == "assay_result" and self.run_kind != "confirmation":
+            raise RunArtifactError("Assay result in a non-confirmation run")
         branch = event["branch_id"]
         clock = event.get("sim_ms")
         if isinstance(clock, bool) or not isinstance(clock, (int, float)) or clock < 0:
@@ -272,6 +310,12 @@ class _Chain:
             checkpoint_name = name
         if event["type"] == "qualification_result":
             _check_qualification_result(event, self.metadata)
+        elif event["type"] == "assay_result":
+            _check_assay_result(event, self.metadata)
+            if type(event["evidence_event_count"]) is not int \
+                    or event["evidence_event_count"] != self.count \
+                    or event["evidence_final_scientific_sha256"] != self.previous:
+                raise RunArtifactError("Assay result evidence prefix mismatch")
         _walk_bindings(event, self.metadata)
         scientific_digest = sha256(_canonical(_scientific_event(event))).hexdigest()
         if event.get("scientific_sha256") != scientific_digest:
@@ -282,7 +326,7 @@ class _Chain:
             self.seen_checkpoints.add(checkpoint_name)
         self.previous = scientific_digest
         self.count += 1
-        if event["type"] == "qualification_result":
+        if event["type"] in {"qualification_result", "assay_result"}:
             self.result_seen = True
 
 
@@ -295,7 +339,7 @@ class RunRecorder:
             raise RunArtifactError("Invalid run kind")
         if not isinstance(root_branch_id, str) or not root_branch_id:
             raise RunArtifactError("Invalid root branch")
-        self.metadata = _metadata(metadata)
+        self.metadata = _metadata(metadata, run_kind)
         self.path = Path(path)
         if any(parent.is_symlink() or parent.is_junction()
                for parent in self.path.absolute().parents):
@@ -414,7 +458,8 @@ class RunRecorder:
         if self._closed:
             return
         try:
-            if self._failed or (self.run_kind == "qualification" and not self._chain.result_seen) \
+            if self._failed or (self.run_kind in {"qualification", "confirmation"}
+                                and not self._chain.result_seen) \
                     or not {"brain-before.npz", "brain-after.npz"} <= self._chain.seen_checkpoints \
                     or self._chain.seen_checkpoints != self._checkpoints.keys():
                 raise RunArtifactError("Cannot seal incomplete checkpoint set")
@@ -485,7 +530,7 @@ def _read_manifest(path: Path) -> tuple[dict, bytes]:
             or item["run_kind"] not in {"pilot", "qualification", "confirmation"} \
             or not isinstance(item["root_branch_id"], str) or not item["root_branch_id"]:
         raise RunArtifactError("Manifest format or packaged schema mismatch")
-    metadata = _metadata(item["metadata"])
+    metadata = _metadata(item["metadata"], item["run_kind"])
     if item["run_metadata_sha256"] != _metadata_digest(item["run_kind"], item["root_branch_id"], metadata):
         raise RunArtifactError("Manifest metadata digest mismatch")
     if type(item["event_count"]) is not int or item["event_count"] < 0 \
@@ -542,7 +587,7 @@ def _scan(path: Path, manifest: dict) -> Iterator[dict]:
             yield event
     if chain.count != manifest["event_count"] or chain.previous != manifest["final_scientific_sha256"] \
             or raw_digest.hexdigest() != manifest["events_sha256"] \
-            or (manifest["run_kind"] == "qualification" and not chain.result_seen) \
+            or (manifest["run_kind"] in {"qualification", "confirmation"} and not chain.result_seen) \
             or chain.seen_checkpoints != manifest["checkpoints"].keys():
         raise RunArtifactError("Event stream count, chain or raw digest mismatch")
     if events_path.is_symlink() or _digest_file(events_path)[0] != manifest["events_sha256"]:

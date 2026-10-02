@@ -10,18 +10,22 @@ are explicit model choices and are tested against controls.
 
 ## Current milestone
 
-The first milestone is a controlled A/B learning assay:
+The first milestone is a controlled A/B associative-plasticity assay:
 
 1. present two synthetic visual stimuli;
-2. pair one stimulus with an explicit dopaminergic-neuron input;
-3. test both without reward;
-4. compare trained, untrained, frozen and temporally unpaired runs;
+2. pair one stimulus with explicit PPL101 stimulation;
+3. test A/B and a neutral C probe without external stimulation;
+4. compare matched controls and candidate-memory interventions at two retention
+   times using a frozen MBON11 response endpoint;
 5. store an immutable event stream for later 3D replay.
 
-Product scope and evidence rules are defined in
-[`docs/specs/fly-event-planner.md`](docs/specs/fly-event-planner.md).
+Product scope is defined in
+[`docs/specs/fly-event-planner.md`](docs/specs/fly-event-planner.md). The current
+scientific milestone and claim boundaries are defined by the
+[`associative-plasticity design`](docs/superpowers/specs/2026-09-24-associative-plasticity-pivot-design.md)
+and its [`implementation plan`](docs/superpowers/plans/2026-09-24-associative-plasticity-assay.md).
 
-### WIP status — 2026-09-16
+### WIP status — 2026-10-02
 
 - MaleCNS v1.0 sources are checksum-locked and the prepared graph verifies at
   166,700 cells and 25,582,938 directed edges.
@@ -29,9 +33,19 @@ Product scope and evidence rules are defined in
   project-local Zig toolchain.
 - `FlyEngine` exposes explicit PAM11/PPL101 stimulation and measured KC,
   MBON07, MBON11 and DNa02 telemetry.
-- A full-graph test produces identical neural output after a complete reset.
-- Next: freeze the A/B protocol and preference adapter, then run trained and
-  matched control assays. No learning result is claimed yet.
+- Checkpoint restore and full-graph reset determinism are tested. Synthetic
+  stimuli, counterbalanced protocols, pathway telemetry and atomic candidate
+  memory interventions are implemented.
+- Exploratory qualification and append-only verified artifacts are available
+  through `qualify` and `verify-run`. The pure frozen-config builder and MBON11
+  analysis contract are implemented and independently reviewed.
+- In progress: selected qualification interventions, held-out assay production,
+  compact replay ancestry and the `assay` CLI. Formal full-graph qualification
+  and confirmation have not run; no positive plasticity or behavior result is
+  claimed.
+- Still to add: a separately labelled, unvalidated motor readout. Verified
+  offline 3D replay and LLM event planning follow the scientific gate. The
+  current MBON11 endpoint does not establish a learned left/right preference.
 
 ## Fresh checkout setup
 

@@ -46,8 +46,42 @@
       }
     }
   },
+  "allOf": [{
+    "if": {"properties": {"run_kind": {"const": "confirmation"}}, "required": ["run_kind"]},
+    "then": {"properties": {"metadata": {
+      "required": ["frozen_config_sha256", "assay_contract"],
+      "properties": {
+        "frozen_config_sha256": {"$ref": "#/$defs/digest"},
+        "assay_contract": {
+          "type": "object",
+          "required": ["analysis_version"],
+          "properties": {"analysis_version": {"const": "mbon11-causal-analysis/v1"}}
+        }
+      }
+    }}}
+  }],
   "$defs": {
     "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "assay_reasons": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "assay_report": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "values", "reasons"],
+      "properties": {
+        "status": {"enum": ["supported", "unsupported", "inconclusive"]},
+        "values": {"type": "object"},
+        "reasons": {"$ref": "#/$defs/assay_reasons"}
+      },
+      "allOf": [{
+        "if": {"properties": {"status": {"const": "supported"}}, "required": ["status"]},
+        "then": {"properties": {"reasons": {"maxItems": 0}}},
+        "else": {"properties": {"reasons": {"minItems": 1}}}
+      }]
+    },
     "qualification_configuration": {
       "type": "object",
       "additionalProperties": false,
@@ -133,8 +167,29 @@
             }
           ]
         }
+      }, {
+        "if": {"properties": {"type": {"const": "assay_result"}}, "required": ["type"]},
+        "then": {
+          "required": ["result_version", "analysis_version", "frozen_config_sha256", "status", "reasons", "report", "report_sha256", "evidence_event_count", "evidence_final_scientific_sha256"],
+          "properties": {
+            "result_version": {"const": "mbon11-assay-result/v1"},
+            "analysis_version": {"const": "mbon11-causal-analysis/v1"},
+            "frozen_config_sha256": {"$ref": "#/$defs/digest"},
+            "status": {"enum": ["supported", "unsupported", "inconclusive"]},
+            "reasons": {"$ref": "#/$defs/assay_reasons"},
+            "report": {"$ref": "#/$defs/assay_report"},
+            "report_sha256": {"$ref": "#/$defs/digest"},
+            "evidence_event_count": {"type": "integer", "minimum": 0},
+            "evidence_final_scientific_sha256": {"$ref": "#/$defs/digest"}
+          },
+          "allOf": [{
+            "if": {"properties": {"status": {"const": "supported"}}, "required": ["status"]},
+            "then": {"properties": {"reasons": {"maxItems": 0}}},
+            "else": {"properties": {"reasons": {"minItems": 1}}}
+          }]
+        }
       }]
     }
   },
-  "description": "events.jsonl contains compact sorted-key UTF-8 LF JSON objects in append order. First previous_scientific_sha256 is 64 ASCII zeroes. Root branch events omit both parent fields. The first event of each other branch names an already recorded parent checkpoint and its origin branch; later events may omit repeated ancestry. Branch clocks are nondecreasing locally. The metadata digest binds run_kind, root_branch_id, and metadata. A qualification run ends with one complete qualification_result. Its family and seeds equal manifest metadata; numeric values are finite; compute_seconds is operational telemetry. Scientific event projection removes the event's own scientific_sha256 and recursively removes only compute_seconds and kernel_seconds. The raw events_sha256 binds exact bytes. Checkpoints live under checkpoints/ with safe .npz basenames. The verifier is authoritative."
+  "description": "events.jsonl contains compact sorted-key UTF-8 LF JSON objects in append order. First previous_scientific_sha256 is 64 ASCII zeroes. Root branch events omit both parent fields. The first event of each other branch names an already recorded parent checkpoint and its origin branch; later events may omit repeated ancestry. Branch clocks are nondecreasing locally. The metadata digest binds run_kind, root_branch_id, and metadata. A qualification run ends with one complete qualification_result. Its family and seeds equal manifest metadata; numeric values are finite; compute_seconds is operational telemetry. A confirmation run ends with exactly one complete assay_result; other run kinds reject assay_result. Confirmation metadata binds frozen_config_sha256 and assay_contract.analysis_version. The verifier enforces result bindings to metadata, sorted unique reasons, top-level status/reasons equality with the report, SHA256 of the canonical strict JSON report, evidence_event_count equal to terminal sequence, and evidence_final_scientific_sha256 equal to the previous scientific digest. These equality, ordering and cross-event constraints cannot be enforced by this schema. The recorder/verifier validates structure and integrity; the independent analyzer recomputes scientific evidence and classification. Scientific event projection removes the event's own scientific_sha256 and recursively removes only compute_seconds and kernel_seconds. The raw events_sha256 binds exact bytes. Checkpoints live under checkpoints/ with safe .npz basenames. The verifier is authoritative."
 }

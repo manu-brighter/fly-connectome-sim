@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from hashlib import sha256
 from importlib.resources import files
 import json
@@ -632,3 +633,335 @@ def test_qualification_result_schema_declares_required_conditional_contract():
     assert set(status_cases) == {"supported", "unsupported"}
     assert status_cases["unsupported"]["properties"]["selected_retention_ms"] == {"type": "null"}
     assert status_cases["supported"]["properties"]["observed_effect_sign"] == {"enum": [-1, 1]}
+
+
+CONFIRMATION_METADATA = {
+    **METADATA, "family": "confirmation",
+    "frozen_config_sha256": sha256(b"frozen").hexdigest(),
+    "assay_contract": {"analysis_version": "mbon11-causal-analysis/v1"},
+}
+ASSAY_FIELDS = {
+    "result_version", "analysis_version", "frozen_config_sha256", "status",
+    "reasons", "report", "report_sha256", "evidence_event_count",
+    "evidence_final_scientific_sha256",
+}
+
+
+def canonical_json(value):
+    return json.dumps(value, sort_keys=True, separators=(",", ":"),
+                      ensure_ascii=False, allow_nan=False).encode("utf-8")
+
+
+def confirmation_prefix(tmp_path):
+    recorder = RunRecorder(tmp_path / "confirmation", run_kind="confirmation",
+                           metadata=CONFIRMATION_METADATA, root_branch_id="root")
+    for name, data in (("brain-before.npz", b"before"), ("brain-after.npz", b"after")):
+        checkpoint(recorder, tmp_path, name, data=data)
+        recorder.append(event(type="checkpoint", checkpoint_name=name))
+    return recorder
+
+
+def assay_result(recorder, status="supported"):
+    prefix = [json.loads(line) for line in (recorder.path / "events.jsonl").read_bytes().splitlines()]
+    reasons = [] if status == "supported" else ["effect_floor", "missing_cell"]
+    report = {"status": status, "values": {"cells": {}, "signed_delta": -1e300,
+                                          "large_counter": 10 ** 400}, "reasons": reasons}
+    return event(
+        type="assay_result", result_version="mbon11-assay-result/v1",
+        analysis_version="mbon11-causal-analysis/v1",
+        frozen_config_sha256=CONFIRMATION_METADATA["frozen_config_sha256"],
+        status=status, reasons=reasons, report=report,
+        report_sha256=sha256(canonical_json(report)).hexdigest(),
+        evidence_event_count=len(prefix),
+        evidence_final_scientific_sha256=prefix[-1]["scientific_sha256"] if prefix else ZERO,
+    )
+
+
+def rewrite_sealed_run(target, events, manifest):
+    """Rehash attacker-controlled bytes so integrity checks alone cannot reject them."""
+    def scientific(value):
+        if isinstance(value, dict):
+            return {key: scientific(item) for key, item in value.items()
+                    if key not in {"compute_seconds", "kernel_seconds"}}
+        if isinstance(value, list):
+            return [scientific(item) for item in value]
+        return value
+
+    metadata_digest = sha256(canonical_json({
+        "run_kind": manifest["run_kind"], "root_branch_id": manifest["root_branch_id"],
+        "metadata": manifest["metadata"],
+    })).hexdigest()
+    previous = ZERO
+    for sequence, item in enumerate(events):
+        item.update(sequence=sequence, previous_scientific_sha256=previous,
+                    run_metadata_sha256=metadata_digest)
+        item.pop("scientific_sha256", None)
+        previous = sha256(canonical_json(scientific(item))).hexdigest()
+        item["scientific_sha256"] = previous
+    raw = b"".join(canonical_json(item) + b"\n" for item in events)
+    (target / "events.jsonl").write_bytes(raw)
+    manifest.update(event_count=len(events), final_scientific_sha256=previous,
+                    events_sha256=sha256(raw).hexdigest(), run_metadata_sha256=metadata_digest)
+    (target / "run.json").write_bytes(canonical_json(manifest) + b"\n")
+
+
+@pytest.mark.parametrize("status", ["supported", "unsupported", "inconclusive"])
+def test_confirmation_complete_terminal_roundtrip_is_structural(tmp_path, status):
+    recorder = confirmation_prefix(tmp_path)
+    result = assay_result(recorder, status)
+    recorder.append(result)
+    recorder.close()
+    verified = verify_run(recorder.path)
+    terminal = list(verified.iter_events())[-1]
+    assert terminal["report"] == result["report"]
+    assert terminal["evidence_event_count"] == terminal["sequence"] == 2
+    assert terminal["evidence_final_scientific_sha256"] == terminal["previous_scientific_sha256"]
+    assert verified.manifest["final_scientific_sha256"] == terminal["scientific_sha256"]
+
+
+def test_confirmation_missing_result_cannot_seal(tmp_path):
+    recorder = confirmation_prefix(tmp_path)
+    with pytest.raises(RunArtifactError):
+        recorder.close()
+    assert not (recorder.path / "run.json").exists()
+    with pytest.raises(RunArtifactError):
+        verify_run(recorder.path)
+
+
+@pytest.mark.parametrize("following", ["assay_result", "observation", "qualification_result"])
+def test_confirmation_result_is_single_and_terminal(tmp_path, following):
+    recorder = confirmation_prefix(tmp_path)
+    recorder.append(assay_result(recorder))
+    before = (recorder.path / "events.jsonl").read_bytes()
+    invalid = assay_result(recorder) if following == "assay_result" else event(type=following)
+    with pytest.raises(RunArtifactError):
+        recorder.append(invalid)
+    assert (recorder.path / "events.jsonl").read_bytes() == before
+    assert not (recorder.path / "run.json").exists()
+    recorder.close()
+    assert verify_run(recorder.path).manifest["event_count"] == 3
+
+
+@pytest.mark.parametrize("run_kind", ["pilot", "qualification"])
+def test_assay_result_rejected_in_other_run_kinds(tmp_path, run_kind):
+    recorder = RunRecorder(tmp_path / "run", run_kind=run_kind,
+                           metadata=METADATA, root_branch_id="root")
+    invalid = assay_result(recorder)
+    with pytest.raises(RunArtifactError):
+        recorder.append(invalid)
+    assert not (recorder.path / "run.json").exists()
+    for name in ("brain-before.npz", "brain-after.npz"):
+        checkpoint(recorder, tmp_path, name)
+        recorder.append(event(type="checkpoint", checkpoint_name=name))
+    if run_kind == "qualification":
+        recorder.append(result_event(branch="root"))
+    recorder.close()
+    assert verify_run(recorder.path).manifest["event_count"] == (3 if run_kind == "qualification" else 2)
+
+
+@pytest.mark.parametrize(("field", "value"), [
+    ("frozen_config_sha256", None), ("frozen_config_sha256", "bad"),
+    ("frozen_config_sha256", "A" * 64), ("frozen_config_sha256", 1),
+    ("assay_contract", None), ("assay_contract", []), ("assay_contract", {}),
+    ("assay_contract", {"analysis_version": "wrong"}),
+    ("assay_contract", {"analysis_version": []}),
+])
+def test_confirmation_metadata_bindings_rejected_before_directory(tmp_path, field, value):
+    metadata = deepcopy(CONFIRMATION_METADATA)
+    metadata[field] = value
+    target = tmp_path / "confirmation"
+    with pytest.raises(RunArtifactError):
+        RunRecorder(target, run_kind="confirmation", metadata=metadata, root_branch_id="root")
+    assert not target.exists()
+
+
+@pytest.mark.parametrize("field", ["frozen_config_sha256", "assay_contract"])
+def test_confirmation_missing_metadata_bindings_rejected_before_directory(tmp_path, field):
+    metadata = deepcopy(CONFIRMATION_METADATA)
+    metadata.pop(field)
+    target = tmp_path / "confirmation"
+    with pytest.raises(RunArtifactError):
+        RunRecorder(target, run_kind="confirmation", metadata=metadata, root_branch_id="root")
+    assert not target.exists()
+
+
+INVALID_ASSAY_CHANGES = [
+    {"result_version": "wrong"}, {"analysis_version": "wrong"},
+    {"analysis_version": []}, {"frozen_config_sha256": ZERO},
+    {"frozen_config_sha256": "bad"}, {"status": "unknown"}, {"status": []},
+    {"reasons": "reason"}, {"reasons": [""]}, {"reasons": [1]},
+    {"reasons": ["z", "a"]}, {"reasons": ["a", "a"]},
+    {"reasons": ["reason"]}, {"status": "unsupported"},
+    {"status": "inconclusive"}, {"report": None}, {"report": []},
+    {"report": {"status": "supported", "reasons": []}},
+    {"report": {"status": "supported", "values": [], "reasons": []}},
+    {"report": {"status": "supported", "values": {}, "reasons": [], "extra": 1}},
+    {"report": {"status": "unsupported", "values": {}, "reasons": []}},
+    {"report": {"status": "supported", "values": {}, "reasons": ["reason"]}},
+    {"report_sha256": ZERO}, {"report_sha256": "bad"},
+    {"evidence_event_count": True}, {"evidence_event_count": 2.0},
+    {"evidence_event_count": -1}, {"evidence_event_count": 1},
+    {"evidence_event_count": 3}, {"evidence_event_count": "2"},
+    {"evidence_final_scientific_sha256": ZERO},
+    {"evidence_final_scientific_sha256": "bad"},
+    {"type": "qualification_result"},
+]
+
+
+@pytest.mark.parametrize("changes", INVALID_ASSAY_CHANGES)
+def test_confirmation_invalid_result_append_does_not_seal_or_advance(tmp_path, changes):
+    recorder = confirmation_prefix(tmp_path)
+    invalid = {**assay_result(recorder), **changes}
+    if "report" in changes:
+        invalid["report_sha256"] = sha256(canonical_json(invalid["report"])).hexdigest()
+    before = (recorder.path / "events.jsonl").read_bytes()
+    with pytest.raises(RunArtifactError):
+        recorder.append(invalid)
+    assert (recorder.path / "events.jsonl").read_bytes() == before
+    assert not (recorder.path / "run.json").exists()
+    with pytest.raises(RunArtifactError):
+        recorder.close()
+    assert not (recorder.path / "run.json").exists()
+
+
+@pytest.mark.parametrize("missing", sorted(ASSAY_FIELDS))
+def test_confirmation_incomplete_result_rejected(tmp_path, missing):
+    recorder = confirmation_prefix(tmp_path)
+    invalid = assay_result(recorder)
+    invalid.pop(missing)
+    with pytest.raises(RunArtifactError):
+        recorder.append(invalid)
+    with pytest.raises(RunArtifactError):
+        recorder.close()
+    assert not (recorder.path / "run.json").exists()
+
+
+@pytest.mark.parametrize("changes", INVALID_ASSAY_CHANGES)
+def test_confirmation_rehashed_invalid_result_rejected_by_verifier(tmp_path, changes):
+    recorder = confirmation_prefix(tmp_path)
+    recorder.append(assay_result(recorder))
+    recorder.close()
+    manifest = json.loads((recorder.path / "run.json").read_bytes())
+    events = [json.loads(line) for line in (recorder.path / "events.jsonl").read_bytes().splitlines()]
+    events[-1].update(changes)
+    if "report" in changes:
+        events[-1]["report_sha256"] = sha256(canonical_json(events[-1]["report"])).hexdigest()
+    rewrite_sealed_run(recorder.path, events, manifest)
+    with pytest.raises(RunArtifactError):
+        verify_run(recorder.path)
+
+
+@pytest.mark.parametrize("mutation", ["missing", "duplicate", "nonterminal", "incomplete",
+                                      "pilot", "qualification", "metadata_digest", "metadata_version"])
+def test_confirmation_rehashed_terminal_structure_and_metadata_rejected(tmp_path, mutation):
+    recorder = confirmation_prefix(tmp_path)
+    recorder.append(assay_result(recorder))
+    recorder.close()
+    manifest = json.loads((recorder.path / "run.json").read_bytes())
+    events = [json.loads(line) for line in (recorder.path / "events.jsonl").read_bytes().splitlines()]
+    if mutation == "missing":
+        events.pop()
+    elif mutation == "duplicate":
+        terminal = deepcopy(events[-1])
+        terminal.update(evidence_event_count=3,
+                        evidence_final_scientific_sha256=events[-1]["scientific_sha256"])
+        events.append(terminal)
+    elif mutation == "nonterminal":
+        events.append(event())
+    elif mutation == "incomplete":
+        for name in ASSAY_FIELDS:
+            events[-1].pop(name)
+    elif mutation in {"pilot", "qualification"}:
+        manifest["run_kind"] = mutation
+    elif mutation == "metadata_digest":
+        manifest["metadata"].pop("frozen_config_sha256")
+    else:
+        manifest["metadata"]["assay_contract"]["analysis_version"] = "wrong"
+    rewrite_sealed_run(recorder.path, events, manifest)
+    with pytest.raises(RunArtifactError):
+        verify_run(recorder.path)
+
+
+@pytest.mark.parametrize("reasons", [[], [""], ["z", "a"], ["a", "a"], [1]])
+@pytest.mark.parametrize("status", ["unsupported", "inconclusive"])
+def test_confirmation_matching_report_still_requires_deterministic_reasons(tmp_path, status, reasons):
+    recorder = confirmation_prefix(tmp_path)
+    invalid = assay_result(recorder, status)
+    invalid["reasons"] = invalid["report"]["reasons"] = reasons
+    invalid["report_sha256"] = sha256(canonical_json(invalid["report"])).hexdigest()
+    with pytest.raises(RunArtifactError):
+        recorder.append(invalid)
+    with pytest.raises(RunArtifactError):
+        recorder.close()
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf"), 10 ** 5000],
+                         ids=["nan", "inf", "negative-inf", "integer-limit"])
+def test_confirmation_report_numeric_serializer_boundaries_fail_closed(tmp_path, value):
+    recorder = confirmation_prefix(tmp_path)
+    invalid = assay_result(recorder)
+    invalid["report"]["values"]["malformed"] = value
+    with pytest.raises(RunArtifactError, match="Invalid strict JSON"):
+        recorder.append(invalid)
+    with pytest.raises(RunArtifactError):
+        recorder.close()
+    assert not (recorder.path / "run.json").exists()
+
+
+def test_confirmation_supported_report_cannot_have_matching_nonempty_reasons(tmp_path):
+    recorder = confirmation_prefix(tmp_path)
+    invalid = assay_result(recorder)
+    invalid["reasons"] = invalid["report"]["reasons"] = ["reason"]
+    invalid["report_sha256"] = sha256(canonical_json(invalid["report"])).hexdigest()
+    with pytest.raises(RunArtifactError):
+        recorder.append(invalid)
+    recorder.append(assay_result(recorder))
+    recorder.close()
+    assert verify_run(recorder.path).manifest["event_count"] == 3
+
+
+@pytest.mark.parametrize("malformed", [b"NaN", b"Infinity", b"1e999", b"9" * 5000],
+                         ids=["nan", "infinity", "overflowing-float", "integer-limit"])
+def test_confirmation_rehashed_malformed_report_numbers_fail_closed(tmp_path, malformed):
+    recorder = confirmation_prefix(tmp_path)
+    recorder.append(assay_result(recorder))
+    recorder.close()
+    events_path = recorder.path / "events.jsonl"
+    raw = events_path.read_bytes().replace(
+        b'"large_counter":' + str(10 ** 400).encode(),
+        b'"large_counter":' + malformed,
+    )
+    events_path.write_bytes(raw)
+    manifest_path = recorder.path / "run.json"
+    manifest = json.loads(manifest_path.read_bytes())
+    manifest["events_sha256"] = sha256(raw).hexdigest()
+    manifest_path.write_bytes(canonical_json(manifest) + b"\n")
+    with pytest.raises(RunArtifactError, match="Invalid (strict )?JSON|Nonfinite JSON"):
+        verify_run(recorder.path)
+
+
+def test_assay_result_schema_declares_required_conditional_contract():
+    schema = json.loads(files("fly_connectome_sim.schemas").joinpath("run.schema.json").read_bytes())
+    result = next(rule["then"] for rule in schema["$defs"]["event"]["allOf"]
+                  if rule["if"]["properties"]["type"] == {"const": "assay_result"})
+    assert set(result["required"]) == ASSAY_FIELDS
+    assert result["properties"]["status"]["enum"] == ["supported", "unsupported", "inconclusive"]
+    assert result["properties"]["result_version"] == {"const": "mbon11-assay-result/v1"}
+    assert result["properties"]["analysis_version"] == {"const": "mbon11-causal-analysis/v1"}
+    assert result["properties"]["evidence_event_count"] == {"type": "integer", "minimum": 0}
+    for name in ("frozen_config_sha256", "report_sha256", "evidence_final_scientific_sha256"):
+        assert result["properties"][name] == {"$ref": "#/$defs/digest"}
+    report = schema["$defs"]["assay_report"]
+    assert report["additionalProperties"] is False
+    assert set(report["required"]) == {"status", "values", "reasons"}
+    assert report["properties"]["values"] == {"type": "object"}
+    reasons = schema["$defs"]["assay_reasons"]
+    assert reasons["uniqueItems"] is True
+    assert reasons["items"] == {"type": "string", "minLength": 1}
+    metadata = next(rule["then"]["properties"]["metadata"] for rule in schema["allOf"]
+                    if rule["if"]["properties"]["run_kind"] == {"const": "confirmation"})
+    assert set(metadata["required"]) == {"frozen_config_sha256", "assay_contract"}
+    assert metadata["properties"]["frozen_config_sha256"] == {"$ref": "#/$defs/digest"}
+    contract = metadata["properties"]["assay_contract"]
+    assert contract["required"] == ["analysis_version"]
+    assert contract["properties"]["analysis_version"] == {"const": "mbon11-causal-analysis/v1"}
