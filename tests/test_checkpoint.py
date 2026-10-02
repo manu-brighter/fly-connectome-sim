@@ -1,6 +1,8 @@
 """Checkpoint trust-boundary tests using a four-neuron native graph."""
 
 import json
+import hashlib
+import struct
 from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
 import shutil
@@ -810,3 +812,301 @@ def test_each_continuation_source_changes_fingerprint(tmp_path, source):
     changed = copied / source
     changed.write_bytes(changed.read_bytes() + b"\n")
     assert checkpoint.model_fingerprint(copied)["sha256"] != original["sha256"]
+
+
+@pytest.mark.parametrize("evolved", [False, True])
+def test_complete_state_hash_matches_validated_archives_without_writes(
+    brain, tmp_path, evolved,
+):
+    if evolved:
+        brain.step(np.ones(1, dtype=np.float32), 10.0, learning=True)
+    before = state_bytes(brain)
+    files = set(tmp_path.iterdir())
+    live = brain.checkpoint_state_sha256()
+    assert state_bytes(brain) == before
+    assert set(tmp_path.iterdir()) == files
+    metadata, arrays = brain._checkpoint_payload()
+    assert set(arrays) == {"weight", *brain.fields}
+    assert arrays["weight"] is brain.weight
+    paths = [tmp_path / "compressed.npz", tmp_path / "plain.npz"]
+    brain.checkpoint(paths[0])
+    np.savez(paths[1], **dict(reversed(list(arrays.items()))), metadata=json.dumps(
+        dict(reversed(list(metadata.items()))), indent=2, ensure_ascii=False,
+    ))
+    assert hashlib.sha256(paths[0].read_bytes()).digest() != (
+        hashlib.sha256(paths[1].read_bytes()).digest()
+    )
+    for path in paths:
+        loaded = checkpoint.load_checkpoint(path, brain.model_provenance(), arrays, brain.n)
+        assert checkpoint.checkpoint_state_sha256(*loaded) == live
+    assert state_bytes(brain) == before
+
+
+def test_complete_hash_covers_every_array_and_mutable_scalar(brain):
+    brain.r8_light = np.zeros(1, dtype=np.float32)
+    brain.fields.append("r8_light")
+    brain.initial["r8_light"] = brain.r8_light.copy()
+    metadata, arrays = brain._checkpoint_payload()
+    original = checkpoint.checkpoint_state_sha256(metadata, arrays)
+    for name, value in arrays.items():
+        changed = {**arrays, name: value.copy()}
+        changed[name].flat[-1] += 1  # Includes inactive active/queue backing slots.
+        assert checkpoint.checkpoint_state_sha256(metadata, changed) != original, name
+    for name, value in [("cursor", 1), ("total_spikes", 1), ("weights_frozen", True)]:
+        assert checkpoint.checkpoint_state_sha256({**metadata, name: value}, arrays) != original
+    first = brain.checkpoint_state_sha256()
+    brain.r8_light[0] = 0.5
+    assert brain.checkpoint_state_sha256() != first
+
+
+def test_visual_checkpoint_and_hash_share_all_borrowed_fields(brain, tmp_path):
+    brain.r8_light = np.array([0.25, 0.75], dtype=np.float32)
+    brain.fields.append("r8_light")
+    brain.initial["r8_light"] = np.zeros(2, dtype=np.float32)
+    metadata, arrays = brain._checkpoint_payload()
+    assert all(value is getattr(brain, name) for name, value in arrays.items())
+    path = tmp_path / "visual.npz"
+    before = state_bytes(brain)
+    brain.checkpoint(path)
+    loaded_metadata, loaded_arrays = checkpoint.load_checkpoint(
+        path, brain.model_provenance(), arrays, brain.n,
+    )
+    assert set(loaded_arrays) == set(arrays) == {"weight", *brain.fields}
+    assert loaded_metadata == metadata
+    np.testing.assert_array_equal(loaded_arrays["r8_light"], [0.25, 0.75])
+    assert checkpoint.checkpoint_state_sha256(loaded_metadata, loaded_arrays) == (
+        brain.checkpoint_state_sha256()
+    )
+    assert state_bytes(brain) == before
+
+
+def test_canonical_hash_binds_headers_and_preserves_bits():
+    encode = checkpoint.checkpoint_state_sha256
+    value = np.arange(12, dtype="<i4").reshape(3, 4)
+    original = encode({"unicode": "ä", "nested": {"b": 2, "a": 1}}, {"x": value})
+    equivalent = [value.astype(">i4"), np.asfortranarray(value), value[:, ::-1][:, ::-1]]
+    # A genuine strided view with the same logical values.
+    storage = np.empty((3, 8), dtype="<i4")
+    storage[:, ::2] = value
+    equivalent.append(storage[:, ::2])
+    for other in equivalent:
+        assert encode({"nested": {"a": 1, "b": 2}, "unicode": "ä"}, {"x": other}) == original
+    for arrays in [{"y": value}, {"x": value.reshape(4, 3)}, {"x": value.astype("i8")}]:
+        assert encode({"unicode": "ä", "nested": {"b": 2, "a": 1}}, arrays) != original
+    assert encode({}, {"x": np.array([0.0], dtype="f4")}) != (
+        encode({}, {"x": np.array([-0.0], dtype="f4")})
+    )
+
+
+@pytest.mark.parametrize("dtype", ["i1", "u1", "i2", "u2", "i4", "u4", "i8", "u8", "f4", "f8"])
+def test_complete_hash_supports_exact_numeric_widths_and_scalar_rank(dtype):
+    value = np.array(1, dtype=dtype)
+    scalar = checkpoint.checkpoint_state_sha256({}, {"x": value}, chunk_bytes=8)
+    assert scalar == checkpoint.checkpoint_state_sha256({}, {"x": value.astype(
+        value.dtype.newbyteorder(">"),
+    )}, chunk_bytes=8)
+    assert scalar != checkpoint.checkpoint_state_sha256({}, {"x": value.reshape(1)})
+
+
+def test_complete_hash_known_independent_encoding_vector():
+    # Normative v1 framing derived directly from the contract, not encoder helpers.
+    metadata = b'{"a":"\xc3\xa4","b":1}'
+    header = (b'{"byteorder":"little","itemsize":2,"kind":"i","name":"x",'
+              b'"nbytes":4,"rank":1,"shape":[2]}')
+    expected_bytes = (
+        b"fly-connectome-checkpoint-state/v1\0"
+        + b"M" + struct.pack("<Q", len(metadata)) + metadata
+        + struct.pack("<Q", 1)
+        + b"A" + struct.pack("<Q", len(header)) + header
+        + struct.pack("<Q", 4) + b"\x01\x00\xfe\xff"
+    )
+    assert checkpoint.checkpoint_state_sha256(
+        {"b": 1, "a": "ä"}, {"x": np.array([1, -2], dtype="i2")}, chunk_bytes=8,
+    ) == hashlib.sha256(expected_bytes).hexdigest()
+
+
+@pytest.mark.parametrize("layout", ["C", "strided", "big-endian"])
+def test_bounded_legacy_digest_preserves_existing_raw_byte_identity(layout, monkeypatch):
+    value = np.arange(6000, dtype="i4").reshape(100, 60)
+    if layout == "strided":
+        value = value[:, ::3]
+    elif layout == "big-endian":
+        value = value.astype(">i4")
+    expected = hashlib.sha256(value.tobytes()).hexdigest()
+    updates = []
+
+    class ObservedHash:
+        def __init__(self):
+            self.real = hashlib.sha256()
+
+        def update(self, data):
+            updates.append(len(data))
+            self.real.update(data)
+
+        def hexdigest(self):
+            return self.real.hexdigest()
+
+    monkeypatch.setattr(checkpoint, "sha256", ObservedHash)
+    assert checkpoint.raw_array_sha256(value, chunk_bytes=64) == expected
+    assert len(updates) > 100
+    assert max(updates) <= 64
+
+
+def test_complete_hash_record_boundaries_and_empty_arrays():
+    encode = checkpoint.checkpoint_state_sha256
+    cases = [
+        ({"a": "bc"}, {}), ({"ab": "c"}, {}), ({}, {}),
+        ({}, {"a": np.empty((0,), dtype="u1")}),
+        ({}, {"a": np.empty((0, 2), dtype="u1")}),
+        ({}, {"ab": np.array([99], dtype="u1")}),
+        ({}, {"a": np.array([98, 99], dtype="u1")}),
+        ({}, {"a": np.empty(0, dtype="u1"), "b": np.empty(0, dtype="u1")}),
+    ]
+    assert len({encode(metadata, arrays) for metadata, arrays in cases}) == len(cases)
+
+
+@pytest.mark.parametrize("dtype", ["O", "U1", "S1", "c8", "f2", "bool", "M8[ns]", [("x", "i4")]])
+def test_complete_hash_rejects_unsupported_array_encodings(dtype):
+    with pytest.raises(ValueError):
+        checkpoint.checkpoint_state_sha256({}, {"x": np.zeros(2, dtype=dtype)})
+
+
+@pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf])
+def test_complete_hash_rejects_nonfinite_arrays(value):
+    with pytest.raises(ValueError, match="Nonfinite"):
+        checkpoint.checkpoint_state_sha256({}, {"x": np.array([1.0, value])}, chunk_bytes=8)
+
+
+@pytest.mark.parametrize("metadata", [
+    {1: "key"}, {"x": {1: "key"}}, {"x": np.int64(1)}, {"x": (1, 2)},
+    {"x": np.nan}, {"x": np.inf}, {"x": "\ud800"}, [],
+])
+def test_complete_hash_requires_strict_json_without_scalar_coercion(metadata):
+    with pytest.raises(ValueError):
+        checkpoint.checkpoint_state_sha256(metadata, {})
+
+
+def test_complete_hash_rejects_cyclic_metadata_as_value_error():
+    metadata = {}
+    metadata["cycle"] = metadata
+    with pytest.raises(ValueError):
+        checkpoint.checkpoint_state_sha256(metadata, {})
+
+
+@pytest.mark.parametrize("chunk_bytes", [0, -1, 1.5, True, "64", None, 7, 2**100])
+def test_complete_hash_rejects_invalid_chunk_sizes(chunk_bytes):
+    with pytest.raises(ValueError):
+        checkpoint.checkpoint_state_sha256({}, {}, chunk_bytes=chunk_bytes)
+
+
+def test_complete_hash_emits_bounded_chunks_with_layout_and_endian_conversion(monkeypatch):
+    original_sha256 = checkpoint.sha256
+    emitted = []
+    finite_sizes = []
+    original_isfinite = checkpoint.np.isfinite
+
+    class ObservedHash:
+        def __init__(self):
+            self.real = original_sha256()
+
+        def update(self, data):
+            emitted.append(len(data))
+            self.real.update(data)
+
+        def hexdigest(self):
+            return self.real.hexdigest()
+
+    def observed_isfinite(value):
+        finite_sizes.append(value.nbytes)
+        return original_isfinite(value)
+
+    value = np.arange(6000, dtype=">f8").reshape(100, 60)[:, ::3]
+    expected = checkpoint.checkpoint_state_sha256({"x": "metadata" * 50}, {"strided": value})
+    monkeypatch.setattr(checkpoint, "sha256", ObservedHash)
+    monkeypatch.setattr(checkpoint.np, "isfinite", observed_isfinite)
+    actual = checkpoint.checkpoint_state_sha256(
+        {"x": "metadata" * 50}, {"strided": value}, chunk_bytes=64,
+    )
+    assert actual == expected
+    assert len(emitted) > 100
+    assert max(emitted) <= 64
+    assert len(finite_sizes) > 100
+    assert max(finite_sizes) <= 64
+
+
+def test_complete_hash_does_not_request_full_array_bytes_or_conversion(monkeypatch):
+    class GuardedArray(np.ndarray):
+        def tobytes(self, *args, **kwargs):
+            assert self.nbytes <= 64, "Full array bytes allocation"
+            return super().tobytes(*args, **kwargs)
+
+        def copy(self, *args, **kwargs):
+            assert self.nbytes <= 64, "Full array copy"
+            return super().copy(*args, **kwargs)
+
+        def astype(self, *args, **kwargs):
+            assert self.nbytes <= 64, "Full dtype conversion"
+            return super().astype(*args, **kwargs)
+
+        def byteswap(self, *args, **kwargs):
+            assert self.nbytes <= 64, "Full endian conversion"
+            return super().byteswap(*args, **kwargs)
+
+    original_contiguous = np.ascontiguousarray
+
+    def guarded_contiguous(value, *args, **kwargs):
+        assert value.nbytes <= 64, "Full contiguous conversion"
+        return original_contiguous(value, *args, **kwargs)
+
+    value = np.arange(6000, dtype=">f8").reshape(100, 60)[:, ::3]
+    expected = checkpoint.checkpoint_state_sha256({}, {"x": value}, chunk_bytes=64)
+    guarded = value.view(GuardedArray)
+    monkeypatch.setattr(checkpoint.np, "ascontiguousarray", guarded_contiguous)
+    assert checkpoint.checkpoint_state_sha256({}, {"x": guarded}, chunk_bytes=64) == expected
+
+
+@pytest.mark.parametrize(("field", "value"), [
+    ("cursor", True), ("cursor", -1), ("cursor", 1.5),
+    ("cursor", 2**63), ("cursor", 2**63 - 1),
+    ("sim_ms", 0.1), ("sim_ms", np.inf),
+    ("total_spikes", False), ("total_spikes", -1), ("total_spikes", 2**63),
+    ("weights_frozen", 1),
+])
+def test_live_hash_rejects_invalid_clock_and_scalars_without_mutation(brain, field, value):
+    setattr(brain, field, value)
+    before = state_bytes(brain)
+    with pytest.raises(ValueError):
+        brain.checkpoint_state_sha256()
+    assert state_bytes(brain) == before
+
+
+@pytest.mark.parametrize("change", ["queue", "active", "nan", "shape", "dtype"])
+def test_live_hash_validates_native_and_exact_array_state_without_mutation(brain, change):
+    if change == "queue":
+        brain.queue_count[-1] = 1
+    elif change == "active":
+        brain.active_flag[0] = 0
+    elif change == "nan":
+        brain.weight[0] = np.nan
+    elif change == "shape":
+        brain.v = brain.v[:1]
+    else:
+        brain.v = brain.v.astype("f8")
+    before = state_bytes(brain)
+    with pytest.raises(ValueError):
+        brain.checkpoint_state_sha256()
+    assert state_bytes(brain) == before
+
+
+@pytest.mark.parametrize("change", ["duplicate", "nested-duplicate", "nan", "overflow"])
+def test_archive_metadata_is_strict_json_before_transactional_restore(brain, saved, change):
+    path, arrays, metadata = saved
+    encoded = json.dumps(metadata)
+    if change == "duplicate":
+        encoded = encoded[:-1] + ', "cursor":0}'
+    elif change == "nested-duplicate":
+        encoded = encoded.replace('"model-source/v1"', '"model-source/v1", "version":"model-source/v1"')
+    else:
+        encoded = encoded.replace('"eta": 0.001', '"eta": ' + ("NaN" if change == "nan" else "1e999"))
+    np.savez(path, metadata=encoded, **arrays)
+    assert_rejected_without_mutation(brain, path)

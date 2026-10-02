@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from fly_connectome_sim.engine import FlyEngine
+from fly_connectome_sim.neural.checkpoint import checkpoint_state_sha256, load_checkpoint
 
 
 pytestmark = pytest.mark.skipif(
@@ -65,22 +66,35 @@ def test_full_graph_replays_identically_after_checkpoint_restore(tmp_path):
     assert np.any(brain.queue_count != 0)
 
     checkpoint_state = brain_state(brain)
+    checkpoint_digest = brain.checkpoint_state_sha256()
     checkpoint = tmp_path / "evolved-brain.npz"
     brain.checkpoint(checkpoint)
+    metadata, arrays = load_checkpoint(
+        checkpoint,
+        brain.model_provenance(),
+        {name: getattr(brain, name) for name in ["weight", *brain.fields]},
+        brain.n,
+    )
+    assert checkpoint_state_sha256(metadata, arrays) == checkpoint_digest
+    del arrays
 
     continuation_frame = np.ascontiguousarray(frame[:, ::-1])
     first = engine.observe(continuation_frame, 25.3)
     first_state = brain_state(brain)
+    first_digest = brain.checkpoint_state_sha256()
     assert first["sim_ms"] == 125.3
     assert first["total_spikes"] > 0
     assert first_state != checkpoint_state
+    assert first_digest != checkpoint_digest
 
     brain.restore(checkpoint)
     assert brain_state(brain) == checkpoint_state
+    assert brain.checkpoint_state_sha256() == checkpoint_digest
     assert brain.memory() == prelude["memory"]
 
     second = engine.observe(continuation_frame, 25.3)
     assert brain_state(brain) == first_state
+    assert brain.checkpoint_state_sha256() == first_digest
 
     # Include motor/MBON rates, turn evidence, bin timing and memory telemetry;
     # only the elapsed wall-clock measurements are nondeterministic.

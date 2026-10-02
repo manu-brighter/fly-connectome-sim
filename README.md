@@ -33,9 +33,10 @@ and its [`implementation plan`](docs/superpowers/plans/2026-09-24-associative-pl
   project-local Zig toolchain.
 - `FlyEngine` exposes explicit PAM11/PPL101 stimulation and measured KC,
   MBON07, MBON11 and DNa02 telemetry.
-- Checkpoint restore and full-graph reset determinism are tested. Synthetic
-  stimuli, counterbalanced protocols, pathway telemetry and atomic candidate
-  memory interventions are implemented.
+- Checkpoint restore, canonical complete-state hashes and full-graph reset
+  determinism are tested. Hashing uses bounded array buffers without writing
+  checkpoints. Synthetic stimuli, counterbalanced protocols, pathway telemetry
+  and atomic candidate-memory interventions are implemented.
 - Exploratory qualification and append-only verified artifacts are available
   through `qualify` and `verify-run`. The pure frozen-config builder and MBON11
   analysis contract are implemented and independently reviewed.

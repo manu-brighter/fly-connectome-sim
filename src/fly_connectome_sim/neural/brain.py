@@ -12,8 +12,15 @@ from pathlib import Path
 import numpy as np
 
 from .circuit import identify
-from .checkpoint import load_checkpoint, model_fingerprint
-from .common import DATA, GRAPH, OUT, digest, save_json
+from .checkpoint import (
+    checkpoint_state_sha256,
+    load_checkpoint,
+    model_fingerprint,
+    raw_array_sha256 as digest,
+    validate_metadata,
+    validate_native_state,
+)
+from .common import DATA, GRAPH, OUT, save_json
 from .native import build_native, library_path
 from .state import NativeBrain
 
@@ -553,13 +560,44 @@ class MemoryBrain(NativeBrain):
             allow_nan=False,
         )
 
-    def checkpoint(self, path):
+    def _checkpoint_payload(self):
+        """Borrow complete state; callers must keep this brain quiescent until done."""
         metadata = {
             **self.model_provenance(),
             "cursor": self.cursor,
             "weights_frozen": self.weights_frozen,
             "total_spikes": self.total_spikes,
         }
+        arrays = {name: getattr(self, name) for name in ["weight", *self.fields]}
+        return metadata, arrays
+
+    def checkpoint_state_sha256(self):
+        """Validate and hash complete quiescent live checkpoint state without writes."""
+        metadata, arrays = self._checkpoint_payload()
+        expected = {
+            key: value for key, value in metadata.items()
+            if key not in {"cursor", "total_spikes", "weights_frozen"}
+        }
+        validate_metadata(metadata, expected)
+        if (type(self.sim_ms) not in (int, float)
+                or not math.isfinite(self.sim_ms)
+                or self.sim_ms != self.cursor * self.dt):
+            raise ValueError("Live checkpoint clock disagrees with cursor")
+        if len(self.fields) != len(set(self.fields)) or set(self.fields) != set(self.initial):
+            raise ValueError("Live checkpoint array fields mismatch")
+        for name, value in arrays.items():
+            shape, dtype = (
+                (self.post.shape, np.dtype(np.float32)) if name == "weight"
+                else (self.initial[name].shape, self.initial[name].dtype)
+            )
+            if (not isinstance(value, np.ndarray)
+                    or value.shape != shape or value.dtype != dtype):
+                raise ValueError(f"Live checkpoint array mismatch: {name}")
+        validate_native_state(arrays, self.n, metadata["cursor"])
+        return checkpoint_state_sha256(metadata, arrays)
+
+    def checkpoint(self, path):
+        metadata, arrays = self._checkpoint_payload()
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_suffix(".partial")
@@ -567,8 +605,7 @@ class MemoryBrain(NativeBrain):
             np.savez_compressed(
                 handle,
                 metadata=json.dumps(metadata),
-                weight=self.weight,
-                **{k: getattr(self, k) for k in self.fields},
+                **arrays,
             )
         temporary.replace(path)
 

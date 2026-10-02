@@ -1,6 +1,7 @@
 # Bounded Replay Anchor Contract
 
-**Status:** Approved for the next bounded implementation; not yet implemented.
+**Status:** Approved; complete-state hashing foundation implemented. Occurrence
+anchors, black-retention recipes and replay attestation are not yet implemented.
 
 **Date:** 2026-10-02
 
