@@ -473,6 +473,14 @@ def replay_black_retention(
     bytes are rebound here. The factory must produce a fresh engine. No endpoint
     checkpoint is written, no producer wrapper is called, and no proof is issued.
     """
+    return _replay_black_retention(anchor, source_path=source_path, engine_factory=engine_factory)
+
+
+def _replay_black_retention(
+    anchor: dict, *, source_path: str | Path, engine_factory: Callable[[], FlyEngine],
+    engine: FlyEngine | None = None,
+) -> FlyEngine:
+    """Shared executor; only the artifact verifier reuses its own isolated engine."""
     data = validate_state_anchor(anchor)
     recipe = data["recipe"]
     source = recipe["source_occurrence"]
@@ -483,7 +491,8 @@ def replay_black_retention(
     expected_file = source["checkpoint_sha256"]
     if _file_sha256(path) != expected_file:
         raise ValueError("Durable source file digest mismatch")
-    engine = engine_factory()
+    if engine is None:
+        engine = engine_factory()
     if not isinstance(engine, FlyEngine):
         raise ValueError("Replay factory must return a compatible isolated FlyEngine")
     identity = _canonical_json(recipe["engine_identity"])

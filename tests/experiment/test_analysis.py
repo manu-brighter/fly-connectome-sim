@@ -26,6 +26,7 @@ from fly_connectome_sim.experiment.qualification import (
     GRID, RESPONSE_WINDOWS, RETENTION_CANDIDATES_MS, GridConfiguration,
     _training_timeline,
 )
+from replay_helpers import engine_factory
 
 
 H = {name: sha256(name.encode()).hexdigest() for name in (
@@ -1338,3 +1339,161 @@ def test_real_recorder_verified_assay_roundtrip(tmp_path):
             "evidence_final_scientific_sha256": recorder._chain.previous,
         })
     assert analyze_assay(verify_run(run_path), frozen).status == "supported"
+
+
+def test_real_retention_attestation_authorizes_only_the_target_response_routes(engine_factory, tmp_path):
+    """Retention-route integration; training descriptors are not reconstructed history."""
+    from fly_connectome_sim.experiment.recorder import verify_replay_run
+    from fly_connectome_sim.experiment.replay import (
+        OPERATION_VERSION, build_black_retention_recipe, build_state_anchor,
+    )
+
+    producer = engine_factory()
+    population = len(producer.groups.mbon11)
+    # An explicit valid frozen contract, without a manufactured qualification run.
+    data = {
+        "version": "mbon11-frozen-assay/v1", "analysis_version": "mbon11-causal-analysis/v1",
+        "qualification_version": "mbon11-qualification/v1", "aggregation": "raw-bin-mean-rate/v1",
+        "qualification_artifact": {name: H["schema"] for name in (
+            "schema_sha256", "run_metadata_sha256", "events_sha256", "final_scientific_sha256")},
+        "qualification_family": "qualification", "qualification_seeds": [11, 23],
+        "qualification_protocol_version": "qualification/v1",
+        "confirmation_family": "confirmation", "confirmation_seeds": [101, 113],
+        "confirmation_protocol_version": "associative-confirmation/v1",
+        "stimulus_version": "associative-stimuli/v1", "engine_identity": producer.identity(),
+        "qualification_input_sha256": sorted({digest for row in _input_hashes("qualification").values()
+                                               for digest in row.values()}),
+        "confirmation_input_sha256": _input_hashes("confirmation"),
+        "candidate_identity": "kc-mbon11-ppl101/v1", "mbon11_population_size": population,
+        "selected_configuration": CONFIGURATION, "response_window": WINDOW,
+        "retention_ms": 10000, "retention_times_ms": [10000, 70000], "expected_effect_sign": 1,
+        "conditions": list(CONDITIONS), "interventions": list(INTERVENTIONS), "exclusions": [],
+        "replay_resolution_hz": 0.0, "max_abs_control_delta_hz": 0.0,
+        "dynamic_range_hz": 0.0, "effect_floor_hz": 0.0,
+        "one_spike_floor_hz": 1000 / (population * 100),
+        "floor_sources": {"replay_resolution_hz": "selected_paired_T_and_T_plus_60",
+                          "max_abs_control_delta_hz": "selected_nonpaired_controls_T_and_T_plus_60",
+                          "dynamic_range_hz": "selected_paired_pre_A_minus_pre_B",
+                          "one_spike_floor_hz": "selected_response_window_and_population"},
+    }
+    data["digest"] = sha256(json.dumps(data, sort_keys=True, separators=(",", ":"),
+                                      ensure_ascii=False).encode()).hexdigest()
+    frozen = FrozenAssayConfig.from_dict(data)
+    frame = np.zeros((32, 32, 3), dtype=np.uint8)
+    black = {"generator": "black-rgb/v1", "input_shape": [32, 32, 3],
+             "input_dtype": "uint8", "input_sha256": _rgb_input_sha256(frame)}
+    metadata = {"engine_identity": producer.identity(), "protocol_version": "pilot/v1",
+                "stimulus_version": "associative-stimuli/v1", "family": "confirmation",
+                "seeds": [101, 113], "factors": {}, "black_input": black,
+                "input_sha256": sorted({digest for row in _input_hashes("confirmation").values()
+                                          for digest in row.values()})}
+    training = _training("confirmation", 101, "A", "AB", "paired")
+    root, branch, retained = "baseline", training["branch_id"], "retention"
+    recorder = RunRecorder(tmp_path / "retained-route", run_kind="pilot", metadata=metadata,
+                           root_branch_id=root)
+    snapshot = tmp_path / "durable.npz"
+
+    def advance_to(tick):
+        while producer.brain.cursor < tick:
+            producer.observe(frame, min(5000, tick - producer.brain.cursor) / 10)
+
+    def durable(name, origin):
+        producer.brain.checkpoint(snapshot)
+        digest = recorder.ingest_checkpoint(name, snapshot, origin_branch_id=origin)
+        recorder.append({"type": "checkpoint", "branch_id": origin,
+                         "sim_tick": producer.brain.cursor, "sim_ms": producer.brain.cursor / 10,
+                         "checkpoint_name": name, **(source_parent if origin == branch else {})})
+        return digest
+
+    source_parent = {}
+    durable("brain-before.npz", root)
+    advance_to(BASE_TICK)
+    baseline = durable("baseline.npz", root)
+    source_parent = {"parent_branch_id": root, "parent_checkpoint_sha256": baseline,
+                     "parent_checkpoint_name": "baseline.npz", "parent_checkpoint_sequence": 1}
+    recorder.append({"type": "branch_start", "branch_id": branch, "sim_ms": BASE_TICK / 10,
+                     **source_parent})
+    advance_to(training["training_end_tick"])
+    source = durable("training-end.npz", branch)
+    training.update(baseline_checkpoint_sha256=baseline, training_end_checkpoint_sha256=source)
+    recorder.append(training)
+    source_tick = producer.brain.cursor
+    recorder.append({"type": "fork", "branch_id": retained, "sim_tick": source_tick,
+                     "sim_ms": source_tick / 10, "operation_version": OPERATION_VERSION,
+                     "parent_branch_id": branch, "parent_checkpoint_name": "training-end.npz",
+                     "parent_checkpoint_sequence": 3, "parent_checkpoint_sha256": source})
+    target = training["retention_reference_tick"] + 100000 - 1000
+    while producer.brain.cursor < target:
+        start = producer.brain.cursor
+        ticks = min(5000, target - start)
+        producer.observe(frame, ticks / 10)
+        recorder.append({"type": "neutral_gap_chunk", "branch_id": retained, **black,
+                         "operation_version": OPERATION_VERSION, "start_tick": start,
+                         "end_tick": producer.brain.cursor, "duration_ticks": ticks,
+                         "duration_ms": ticks / 10, "sim_ms": producer.brain.cursor / 10,
+                         "stimulation": None, "learning": False, "current_mv": 20.0,
+                         "pathway_detail": False, "qualification_detail": False})
+    prefix = recorder.validate_prefix()
+    recipe = build_black_retention_recipe(prefix.iter_events(),
+        source_occurrence={"checkpoint_name": "training-end.npz", "checkpoint_sha256": source,
+                           "origin_branch_id": branch, "checkpoint_sequence": 3, "sim_tick": source_tick},
+        origin_branch_id=retained, target_tick=target, engine_identity=producer.identity(),
+        run_metadata_sha256=prefix.manifest["run_metadata_sha256"], black_input=black,
+        scientific_prefix=prefix.scientific_prefix)
+    anchor = build_state_anchor(anchor_id="paired-retained", recipe=recipe,
+                               complete_state_sha256=producer.brain.checkpoint_state_sha256())
+    recorder.append_state_anchor(anchor)
+    scratch = tmp_path / "retention-scratch.npz"
+    producer.brain.checkpoint(scratch)
+    producer_state = producer.brain.checkpoint_state_sha256()
+    siblings = []
+    templates = [event for event in _responses("confirmation")
+                 if event.get("type") == "assay_response" and (
+                     _is_cell(event, stimulus="A") or _is_cell(event, stimulus="B"))]
+    assert len(templates) == 2
+    for response in templates:
+        sibling = engine_factory()
+        sibling.brain.restore(scratch)
+        assert sibling.brain.checkpoint_state_sha256() == anchor["complete_state_sha256"]
+        assert sibling.brain.cursor == target
+        siblings.append(sibling)
+        response_branch = response["branch_id"]
+        parent = {"parent_branch_id": retained, "parent_state_anchor_sha256": anchor["state_anchor_sha256"]}
+        recorder.append({"type": "branch_start", "branch_id": response_branch,
+                         "sim_ms": target / 10, **parent})
+        sibling.observe(frame, 100.0)
+        observed = sibling.observe(AssayStimuli(101, "confirmation").frame(response["stimulus"]), 100.0)
+        bins = [{"start_tick": target + 1000 + index * 100,
+                 "end_tick": target + 1100 + index * 100,
+                 "spikes": item["group_spikes"]["mbon11"]}
+                for index, item in enumerate(observed["bins"])]
+        response.pop("parent_checkpoint_sha256")
+        response.update(**parent, bins=bins, population_size=population,
+                        rate_hz=sum(item["spikes"] for item in bins) * 1000 / (population * 100),
+                        one_spike_rate_hz=1000 / (population * 100),
+                        training_end_checkpoint_sha256=source, retention_source_checkpoint_sha256=source)
+        recorder.append(response)
+    assert siblings[0] is not siblings[1]
+    assert producer.brain.checkpoint_state_sha256() == producer_state
+    durable("brain-after.npz", root)
+    recorder.close()
+    ordinary = verify_run(recorder.path)
+    formal = verify_replay_run(recorder.path, engine_factory=engine_factory)
+    reductions = [reduce_assay_evidence(run.iter_events(), frozen,
+                   attested_state_anchors=run.replay_attested_state_anchors)
+                  for run in (ordinary, formal)]
+    rejected = {"response_ancestry:101/A/AB/10000/paired/post_A",
+                "response_ancestry:101/A/AB/10000/paired/post_B"}
+    for reduction in reductions:
+        assert training["training_id"] in reduction.trainings
+        assert anchor["state_anchor_sha256"] in reduction.anchors
+        row = reduction.rows["101/A/AB/10000"]["paired"]
+        assert all(row[name]["parent_kind"] == "anchor" for name in ("post_A", "post_B"))
+        assert reduction.status == "inconclusive"
+        assert any(reason.startswith("missing_") for reason in reduction.reasons)
+        assert not any(reason.startswith(("invalid_state_anchor:", "invalid_response:",
+                                          "response_training:", "training_ancestry:"))
+                       for reason in reduction.reasons)
+    assert rejected <= set(reductions[0].reasons)
+    assert not rejected & set(reductions[1].reasons)
+    assert set(reductions[0].reasons) - rejected == set(reductions[1].reasons)

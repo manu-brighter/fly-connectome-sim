@@ -820,7 +820,14 @@ def test_tiny_qualification_stream_seals_with_checkpoint_ancestry(
     events = list(verified.iter_events())
     schema = json.loads(files("fly_connectome_sim.schemas").joinpath("run.schema.json")
                         .read_text(encoding="utf-8"))["$defs"]["event"]
-    assert schema["dependentRequired"]["parent_branch_id"] == ["parent_checkpoint_sha256"]
+    # First-event completeness belongs to the stateful verifier; repeated fields may be partial.
+    assert "parent_branch_id" not in schema["dependentRequired"]
+    assert schema["not"]["required"] == ["parent_checkpoint_sha256", "parent_state_anchor_sha256"]
+    anchor_parent = next(rule["then"] for rule in schema["allOf"]
+                         if rule["if"].get("required") == ["parent_state_anchor_sha256"])
+    assert {tuple(rule["required"]) for rule in anchor_parent["not"]["anyOf"]} == {
+        ("parent_checkpoint_sha256",), ("parent_checkpoint_name",), ("parent_checkpoint_sequence",),
+    }
     for item in events:
         assert set(schema["required"]) <= item.keys()
         for field, dependencies in schema["dependentRequired"].items():

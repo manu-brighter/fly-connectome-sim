@@ -40,8 +40,11 @@ and its [`implementation plan`](docs/superpowers/plans/2026-09-24-associative-pl
 - Exploratory qualification and append-only verified artifacts are available
   through `qualify` and `verify-run`. The pure frozen-config builder and MBON11
   analysis contract are implemented and independently reviewed.
+- Durable-rooted black-retention anchors, immutable fixed prefixes and actual
+  isolated native replay attestations are implemented. Ordinary `verify-run`
+  remains integrity-only; producer/report/CLI replay integration is still pending.
 - In progress: selected qualification interventions, held-out assay production,
-  compact replay ancestry and the `assay` CLI. Formal full-graph qualification
+  shared prefix/terminal reports and the `assay` CLI. Formal full-graph qualification
   and confirmation have not run; no positive plasticity or behavior result is
   claimed.
 - Still to add: a separately labelled, unvalidated motor readout. Verified

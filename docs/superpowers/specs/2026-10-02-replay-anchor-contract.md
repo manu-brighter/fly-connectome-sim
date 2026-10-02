@@ -1,8 +1,9 @@
 # Bounded Replay Anchor Contract
 
-**Status:** Approved; complete-state hashing and pure occurrence/black-retention
-reconstruction primitives implemented. Persisted anchor indexing, fixed-prefix
-verification and formal replay attestation are not yet implemented.
+**Status:** Approved; complete-state hashing, durable-rooted black-retention
+reconstruction, persisted occurrence indexing, fixed-prefix verification and
+immutable native replay attestation implemented. Producer/terminal report/CLI
+integration and fullgraph capacity remain open.
 
 **Date:** 2026-10-02
 
@@ -44,6 +45,11 @@ and replay attestations use its occurrence digest. Reject duplicate IDs or
 occurrence references, late/missing/ambiguous parents, wrong clocks/origins,
 both parent kinds and cyclic routes. Every anchor in this slice has a durable
 source; recursive anchor-parent recipes are outside scope.
+
+Sealed durable inventory records must match reconstructed event records exactly,
+including optional-field presence. Initial prefix creation derives occurrence
+fields from durable event bytes before freezing them; it does not trust producer
+counters. Truly tick-less legacy checkpoint events/inventories remain readable.
 
 ## Complete checkpoint-state digest
 
@@ -100,6 +106,11 @@ prefix before pure terminal reduction. Then append the result once, seal,
 formally verify and independently analyze; canonical reports must agree.
 Nonmaterialized parents and verification mode belong inside that shared report.
 
+Prefix creation checks the entire current checkpoint directory. Later consumption
+rechecks every represented snapshot file and exactly the saved event byte boundary;
+subsequently appended bytes/files, including incomplete tails, are outside that
+proof. Sealed verification still checks the complete event stream and inventory.
+
 ## Scope, compatibility and capacity
 
 Allow one bounded temporary retention NPZ for independently restored sibling
@@ -112,6 +123,10 @@ Retain selected ordinary training ends and intervention states durably: at least
 source freeze, measure/project durable and peak scratch bytes, engine/restore/hash
 memory, event bytes, restore counts, simulated retention time and both pre-seal
 and post-seal verification costs.
+
+Current scans rebuild recipes with linear earlier-prefix rereads per anchor and
+rehash represented durable files. Measure that multiplication at the capacity gate,
+not just the bounded count of verifier-engine constructions.
 
 Discarded-grid training ancestry remains a later explicit decision: compare
 measured durable-storage cost with a separately reviewed exact training-replay

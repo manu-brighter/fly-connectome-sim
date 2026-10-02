@@ -240,6 +240,25 @@ def test_fork_starts_at_exact_parent_checkpoint_clock(tmp_path):
     assert [item["sim_ms"] for item in verified.iter_events()] == [100.0, 100.0, 100.0]
 
 
+def test_digest_identical_durable_occurrences_require_an_exact_route(tmp_path):
+    with RunRecorder(tmp_path / "run", run_kind="pilot", metadata=METADATA,
+                     root_branch_id="root") as recorder:
+        digest = checkpoint(recorder, tmp_path, "brain-before.npz")
+        recorder.append(event(type="checkpoint", checkpoint_name="brain-before.npz", sim_tick=0))
+        checkpoint(recorder, tmp_path, "same-state.npz")
+        recorder.append(event(type="checkpoint", checkpoint_name="same-state.npz", sim_tick=0))
+        parent = {"parent_branch_id": "root", "parent_checkpoint_sha256": digest}
+        with pytest.raises(RunArtifactError, match="ambiguous"):
+            recorder.append(event("ambiguous", **parent))
+        explicit = {**parent, "parent_checkpoint_name": "same-state.npz", "parent_checkpoint_sequence": 1}
+        recorder.append(event("exact", **explicit))
+        with pytest.raises(RunArtifactError):
+            recorder.append(event("exact", **{**explicit, "parent_checkpoint_sequence": 0}))
+        checkpoint(recorder, tmp_path, "brain-after.npz", origin="exact", data=b"after")
+        recorder.append(event("exact", type="checkpoint", checkpoint_name="brain-after.npz", sim_tick=0))
+    assert verify_run(recorder.path).manifest["event_count"] == 4
+
+
 def test_manifest_checkpoint_clock_must_match_its_event(tmp_path):
     target = tmp_path / "run"
     with RunRecorder(target, run_kind="pilot", metadata=METADATA, root_branch_id="root") as recorder:
@@ -605,6 +624,88 @@ def test_packaged_schema_is_bound_to_manifest(tmp_path):
     schema = json.loads(raw)
     assert {"format_version", "schema_sha256", "metadata", "run_metadata_sha256", "checkpoints"} <= set(schema["required"])
     assert verify_run(target).manifest["schema_sha256"] == sha256(raw).hexdigest()
+
+
+def test_tickless_legacy_inventory_and_events_stay_valid(tmp_path):
+    from fly_connectome_sim.experiment.recorder import verify_replay_run
+    with RunRecorder(tmp_path / "run", run_kind="pilot", metadata=METADATA,
+                     root_branch_id="root") as recorder:
+        seal(recorder, tmp_path)
+    ordinary = verify_run(recorder.path)
+    assert all("sim_tick" not in entry for entry in ordinary.manifest["checkpoints"].values())
+    assert all("sim_tick" not in item for item in ordinary.iter_events())
+    def no_anchor_factory():
+        pytest.fail("Tickless legacy artifact has no anchors to reconstruct")
+    formal = verify_replay_run(recorder.path, engine_factory=no_anchor_factory)
+    assert formal.manifest == ordinary.manifest
+    assert formal.replay_attested_state_anchors == frozenset()
+
+
+@pytest.mark.parametrize("partial", ["branch", "digest", "exact"])
+def test_schema_permits_runtime_valid_repeated_partial_ancestry(tmp_path, partial):
+    with RunRecorder(tmp_path / "run", run_kind="pilot", metadata=METADATA,
+                     root_branch_id="root") as recorder:
+        digest = checkpoint(recorder, tmp_path, "brain-before.npz")
+        recorder.append(event(type="checkpoint", checkpoint_name="brain-before.npz"))
+        # Completeness remains stateful: this same partial declaration is invalid initially.
+        fields = {"branch": {"parent_branch_id": "root"},
+                  "digest": {"parent_checkpoint_sha256": digest},
+                  "exact": {"parent_checkpoint_name": "brain-before.npz", "parent_checkpoint_sequence": 0}}[partial]
+        with pytest.raises(RunArtifactError):
+            recorder.append(event("child", **fields))
+        recorder.append(event("child", parent_branch_id="root", parent_checkpoint_sha256=digest))
+        recorder.append(event("child", **fields))
+        checkpoint(recorder, tmp_path, "brain-after.npz", data=b"after")
+        recorder.append(event(type="checkpoint", checkpoint_name="brain-after.npz"))
+    item = list(verify_run(recorder.path).iter_events())[2]
+    schema = json.loads(files("fly_connectome_sim.schemas").joinpath("run.schema.json").read_bytes())["$defs"]["event"]
+
+    def matches(rule, value):
+        """Evaluate only generic ancestry presence clauses, not a full schema validator."""
+        if not set(rule.get("required", ())) <= value.keys():
+            return False
+        for name, declaration in rule.get("properties", {}).items():
+            if name in value and "const" in declaration and value[name] != declaration["const"]:
+                return False
+        if any(name in value and not set(required) <= value.keys()
+               for name, required in rule.get("dependentRequired", {}).items()):
+            return False
+        if "not" in rule and matches(rule["not"], value):
+            return False
+        if "oneOf" in rule and sum(matches(part, value) for part in rule["oneOf"]) != 1:
+            return False
+        if "anyOf" in rule and not any(matches(part, value) for part in rule["anyOf"]):
+            return False
+        if "if" in rule and matches(rule["if"], value):
+            return matches(rule["then"], value)
+        return all(matches(part, value) for part in rule.get("allOf", ()))
+
+    ancestry = {"dependentRequired": schema["dependentRequired"], "not": schema["not"],
+                "allOf": [rule for rule in schema["allOf"]
+                          if rule["if"].get("properties", {}).get("type") == {}]}
+    assert matches(ancestry, item)
+    assert not matches(ancestry, {**item, "parent_checkpoint_sha256": digest,
+                                 "parent_state_anchor_sha256": "b" * 64})
+    assert not matches(ancestry, {**item, "parent_checkpoint_name": "brain-before.npz",
+                                 "parent_checkpoint_sequence": 0, "parent_state_anchor_sha256": "b" * 64})
+
+
+def test_anchor_schema_roundtrip_requires_strict_new_occurrences(tmp_path):
+    # The declared typed boundaries must accept the actual persisted wire shape.
+    with RunRecorder(tmp_path / "run", run_kind="pilot", metadata=METADATA,
+                     root_branch_id="root") as recorder:
+        seal(recorder, tmp_path)
+    verified = verify_run(recorder.path)
+    schema = json.loads(files("fly_connectome_sim.schemas").joinpath("run.schema.json").read_bytes())
+    assert not set(verified.manifest) - schema["properties"].keys()
+    assert "state_anchors" in schema["required"]
+    entry = schema["properties"]["checkpoints"]["additionalProperties"]
+    for data in verified.manifest["checkpoints"].values():
+        assert not set(data) - entry["properties"].keys()
+        assert set(entry["required"]) <= data.keys()
+    for name in ("state_anchor", "black_retention_recipe", "source_occurrence", "scientific_prefix",
+                 "black_input", "anchor_occurrence"):
+        assert schema["$defs"][name]["additionalProperties"] is False
 
 
 def test_qualification_result_schema_declares_required_conditional_contract():

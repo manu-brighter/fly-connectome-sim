@@ -9,9 +9,8 @@ import struct
 import numpy as np
 import pytest
 
-from fly_connectome_sim.engine import FlyEngine, NeuralGroups, _rgb_input_sha256
-from fly_connectome_sim.neural.brain import MemoryBrain
-from fly_connectome_sim.neural.visual import VisualMemoryBrain
+from fly_connectome_sim.engine import _rgb_input_sha256
+from replay_helpers import engine_factory
 
 
 def replay_module():
@@ -45,51 +44,6 @@ def seal_events(events):
         event["scientific_sha256"] = previous
     return {"event_count": len(events), "final_sequence": len(events) - 1,
             "final_scientific_sha256": previous}
-
-
-class TinyVisualBrain(VisualMemoryBrain):
-    def __init__(self, graph):
-        MemoryBrain.__init__(
-            self, path=graph,
-            circuit={"kc": np.array([0], dtype=np.int32),
-                     "dan": np.array([1], dtype=np.int32),
-                     "edges": np.array([0], dtype=np.int64),
-                     "pre": np.array([0], dtype=np.int32),
-                     "gain": np.array([[1.0]], dtype=np.float32),
-                     "kc_mask": np.array([1, 0, 0, 0], dtype=np.uint8),
-                     "dan_index": np.array([-1, 0, -1, -1], dtype=np.int8)},
-            modulation_mask=np.array([0, 1, 0, 0], dtype=np.uint8),
-        )
-        self.r8 = np.array([0], dtype=np.int32)
-        self.r8_uv = np.array([[0.5, 0.5]], dtype=np.float32)
-        self.r8_channel = np.array([2], dtype=np.int32)
-        self.corrected_edges = np.array([], dtype=np.int64)
-        self.r8_light = np.zeros(1, dtype=np.float32)
-        self.fields.append("r8_light")
-        self.initial["r8_light"] = self.r8_light.copy()
-
-
-@pytest.fixture
-def engine_factory(tmp_path):
-    graph = tmp_path / "graph.npz"
-    np.savez(graph, ids=np.array([10, 20, 30, 40], dtype=np.int64),
-             ptr=np.array([0, 1, 2, 2, 2], dtype=np.int64),
-             post=np.array([2, 2], dtype=np.int32),
-             weight=np.array([0.275, 0.275], dtype=np.float32),
-             retina=np.array([0], dtype=np.int32),
-             uv=np.array([[0.5, 0.5]], dtype=np.float32),
-             lamina=np.array([], dtype=np.int32), sugar=np.array([], dtype=np.int32),
-             superclass=np.zeros(4, dtype=np.uint8))
-
-    def factory():
-        groups = NeuralGroups(**{name: np.array([index], dtype=np.int32)
-                                 for name, index in [("pam11", 1), ("ppl101", 1),
-                                                     ("kc", 0), ("mbon07", 2),
-                                                     ("mbon11", 2), ("motor_left", 3),
-                                                     ("motor_right", 3)]})
-        return FlyEngine(brain=TinyVisualBrain(graph), groups=groups)
-
-    return factory
 
 
 def history(engine_factory, tmp_path, *, frozen=True, thaw=True, chunks=(5000, 7),
@@ -148,6 +102,541 @@ def anchor_for(api, engine, events, arguments, *, anchor_id="retained-paired"):
     return api.build_state_anchor(anchor_id=anchor_id,
                                   complete_state_sha256=engine.brain.checkpoint_state_sha256(),
                                   recipe=recipe)
+
+
+def recorded_retention(engine_factory, tmp_path, *, seconds=0.1, paired_sham=False,
+                       append_anchor=True, source_variant="valid", wrong_endpoint=False,
+                       chunks=(5000, 7), mixed_wire_clocks=False):
+    """Real retained source; only durable before/source/after enter the inventory."""
+    from fly_connectome_sim.experiment.recorder import RunRecorder
+
+    api = replay_module()
+    producer = engine_factory()
+    black = {"generator": "black-rgb/v1", "input_shape": [2, 3, 3],
+             "input_dtype": "uint8",
+             "input_sha256": _rgb_input_sha256(np.zeros((2, 3, 3), dtype=np.uint8))}
+    metadata = {"engine_identity": producer.identity(), "protocol_version": "pilot/v1",
+                "stimulus_version": "associative-stimuli/v1", "family": "pilot",
+                "seeds": [101], "factors": {}, "input_sha256": [black["input_sha256"]],
+                "black_input": black}
+    recorder = RunRecorder(tmp_path / "run", run_kind="pilot", metadata=metadata,
+                           root_branch_id="training")
+    source = tmp_path / "snapshot.npz"
+    producer.brain.checkpoint(source)
+    before_bytes = source.read_bytes()
+    recorder.ingest_checkpoint("brain-before.npz", source, origin_branch_id="training")
+    recorder.append({"type": "checkpoint", "branch_id": "training", "sim_ms": 0.0,
+                     "sim_tick": 0, "checkpoint_name": "brain-before.npz"})
+    producer.observe(np.full((2, 3, 3), 80, dtype=np.uint8), 0.3, learning=True)
+    producer.brain.weights_frozen = True
+    producer.brain.checkpoint(source)
+    if source_variant != "valid":
+        source.write_bytes(before_bytes if source_variant == "zero_cursor" else b"invalid NPZ")
+    digest = recorder.ingest_checkpoint("source.npz", source, origin_branch_id="training")
+    recorder.append({"type": "checkpoint", "branch_id": "training", "sim_tick": 3,
+                     "sim_ms": 0.3, "checkpoint_name": "source.npz"})
+    anchors = []
+    for branch in (("paired", "sham") if paired_sham else ("paired",)):
+        if source_variant == "valid":
+            producer.brain.restore(recorder.path / "checkpoints" / "source.npz")
+        recorder.append({"type": "fork", "branch_id": branch, "sim_tick": 3,
+                         "sim_ms": 3 * 0.1 if mixed_wire_clocks else 0.3,
+                         "operation_version": api.OPERATION_VERSION,
+                         "parent_branch_id": "training", "parent_checkpoint_name": "source.npz",
+                         "parent_checkpoint_sequence": 1, "parent_checkpoint_sha256": digest})
+        recorder.append({"type": "replay_thaw", "branch_id": branch, "sim_tick": 3,
+                         "sim_ms": 0.3, "operation_version": api.OPERATION_VERSION,
+                         "before_weights_frozen": True, "after_weights_frozen": False})
+        producer.brain.weights_frozen = False
+        for ticks in chunks:
+            start = producer.brain.cursor
+            telemetry = producer.observe(np.zeros((2, 3, 3), dtype=np.uint8), ticks / 10,
+                                         current_mv=19.5, qualification_detail=True)
+            telemetry = scientific(telemetry)
+            telemetry.update(compute_seconds=seconds, kernel_seconds=seconds)
+            recorder.append({"type": "neutral_gap_chunk", "branch_id": branch, **black,
+                             "operation_version": api.OPERATION_VERSION,
+                             "start_tick": start, "end_tick": producer.brain.cursor,
+                             "duration_ticks": ticks, "duration_ms": ticks / 10,
+                             "sim_ms": producer.brain.cursor * 0.1 if mixed_wire_clocks
+                                       else producer.brain.cursor / 10, "stimulation": None,
+                             "learning": False, "current_mv": 19.5, "pathway_detail": False,
+                             "qualification_detail": True, "telemetry": telemetry})
+        prefix = recorder.validate_prefix()
+        recipe = api.build_black_retention_recipe(
+            prefix.iter_events(), source_occurrence={"checkpoint_name": "source.npz",
+                "checkpoint_sha256": digest, "origin_branch_id": "training",
+                "checkpoint_sequence": 1, "sim_tick": 3}, origin_branch_id=branch,
+            target_tick=producer.brain.cursor, engine_identity=producer.identity(),
+            run_metadata_sha256=prefix.manifest["run_metadata_sha256"], black_input=black,
+            scientific_prefix=prefix.scientific_prefix,
+        )
+        anchor = api.build_state_anchor(anchor_id=f"retained-{branch}", recipe=recipe,
+            complete_state_sha256="b" * 64 if wrong_endpoint else producer.brain.checkpoint_state_sha256())
+        if append_anchor:
+            recorder.append_state_anchor(anchor)
+        anchors.append(anchor)
+    return recorder, producer, anchors
+
+
+def finish_recording(recorder, producer, tmp_path):
+    source = tmp_path / "after.npz"
+    producer.brain.checkpoint(source)
+    recorder.ingest_checkpoint("brain-after.npz", source, origin_branch_id="training")
+    recorder.append({"type": "checkpoint", "branch_id": "training", "sim_tick": producer.brain.cursor,
+                     "sim_ms": producer.brain.cursor / 10, "checkpoint_name": "brain-after.npz"})
+    recorder.close()
+
+
+def test_real_recorded_prefix_and_sealed_replay_attest_all_routes(engine_factory, tmp_path):
+    from dataclasses import FrozenInstanceError
+    from fly_connectome_sim.experiment import recorder as recording
+
+    recorder, producer, anchors = recorded_retention(engine_factory, tmp_path, paired_sham=True)
+    snapshot = producer.brain.checkpoint_state_sha256()
+    created = []
+    def isolated_factory():
+        result = engine_factory()
+        created.append(result)
+        return result
+    prefix = recorder.validate_prefix()
+    assert prefix.replay_attested_state_anchors == frozenset()
+    attested = recording.verify_replay_prefix(prefix, engine_factory=isolated_factory)
+    expected = frozenset(anchor["state_anchor_sha256"] for anchor in anchors)
+    assert attested.replay_attested_state_anchors == expected
+    assert len(created) == 1
+    assert anchors[0]["complete_state_sha256"] == anchors[1]["complete_state_sha256"]
+    assert len(expected) == 2
+    assert producer.brain.checkpoint_state_sha256() == snapshot
+    with pytest.raises(FrozenInstanceError):
+        attested.path = tmp_path
+    projected = attested.manifest
+    projected["metadata"]["seeds"].append(999)
+    assert attested.manifest["metadata"]["seeds"] == [101]
+    assert set(attested.scientific_prefix) == {"event_count", "final_sequence", "final_scientific_sha256"}
+    finish_recording(recorder, producer, tmp_path)
+    # Appended complete lines do not change the immutable fixed prefix.
+    assert len(list(attested.iter_events())) == prefix.scientific_prefix["event_count"]
+    ordinary = recording.verify_run(recorder.path)
+    assert ordinary.replay_attested_state_anchors == frozenset()
+    formal = recording.verify_replay_run(recorder.path, engine_factory=isolated_factory)
+    assert formal.replay_attested_state_anchors == expected
+    assert len(created) == 2
+    assert list(formal.iter_events()) == list(ordinary.iter_events())
+    assert set(formal.manifest["checkpoints"]) == {"brain-before.npz", "source.npz", "brain-after.npz"}
+    assert set(formal.manifest["state_anchors"]) == expected
+    assert formal.manifest["checkpoints"]["source.npz"]["checkpoint_sequence"] == 1
+
+
+def test_recorded_timing_changes_only_raw_bindings(engine_factory, tmp_path):
+    from fly_connectome_sim.experiment.recorder import verify_run
+    recordings = []
+    for index, seconds in enumerate((0.1, 0.7)):
+        directory = tmp_path / str(index)
+        directory.mkdir()
+        recorder, producer, anchors = recorded_retention(engine_factory, directory, seconds=seconds)
+        prefix = recorder.validate_prefix()
+        recordings.append((prefix, anchors[0]))
+        finish_recording(recorder, producer, directory)
+    first, second = recordings
+    assert first[0].scientific_prefix == second[0].scientific_prefix
+    assert first[1] == second[1]
+    assert first[0] != second[0]
+    assert verify_run(first[0].path).manifest["events_sha256"] != verify_run(second[0].path).manifest["events_sha256"]
+    replay_module().validate_state_anchor(first[1])
+
+
+@pytest.mark.parametrize("mutation", ["metadata", "input", "shape", "recipe", "prefix",
+                                      "endpoint", "extra", "branch", "tick", "source"])
+def test_anchor_append_checks_actual_prefix_transactionally(engine_factory, tmp_path, mutation):
+    from fly_connectome_sim.experiment.recorder import RunArtifactError
+    recorder, producer, anchors = recorded_retention(engine_factory, tmp_path, append_anchor=False)
+    api = replay_module()
+    bad = deepcopy(anchors[0])
+    if mutation == "metadata":
+        bad["run_metadata_sha256"] = "b" * 64
+    elif mutation == "extra":
+        bad["invented"] = True
+    else:
+        recipe = bad["recipe"]
+        if mutation == "input":
+            recipe["black_input"]["input_sha256"] = "b" * 64
+        elif mutation == "shape":
+            recipe["black_input"]["input_shape"] = [3, 2, 3]
+            recipe["black_input"]["input_sha256"] = _rgb_input_sha256(np.zeros((3, 2, 3), dtype=np.uint8))
+        elif mutation == "recipe":
+            recipe["operations"][-1]["current_mv"] = 20.0
+        elif mutation == "prefix":
+            recipe["scientific_prefix"]["final_scientific_sha256"] = "b" * 64
+        elif mutation == "endpoint":
+            # A zero-length fork recipe is internally coherent but omits the actual retention.
+            recipe["operations"] = recipe["operations"][:1]
+            recipe["target_tick"] = 3
+        elif mutation == "branch":
+            recipe["origin_branch_id"] = "invented"
+        elif mutation == "tick":
+            recipe["operations"][0]["sim_tick"] += 1
+        elif mutation == "source":
+            recipe["source_occurrence"]["checkpoint_sequence"] = 0
+        payload = {key: value for key, value in recipe.items() if key != "replay_recipe_sha256"}
+        recipe["replay_recipe_sha256"] = api._domain_sha256(api.RECIPE_DOMAIN, payload)
+        try:
+            bad = api.build_state_anchor(anchor_id=bad["anchor_id"], recipe=recipe,
+                                        complete_state_sha256=bad["complete_state_sha256"])
+        except ValueError:
+            # Malformed grammar still reaches the public adapter's strict validator.
+            bad["recipe"] = recipe
+    before = recorder.path.joinpath("events.jsonl").read_bytes()
+    prefix = recorder.validate_prefix()
+    with pytest.raises(RunArtifactError):
+        recorder.append_state_anchor(bad)
+    assert recorder.path.joinpath("events.jsonl").read_bytes() == before
+    assert recorder.validate_prefix().manifest == prefix.manifest
+    recorder.append_state_anchor(anchors[0])
+    finish_recording(recorder, producer, tmp_path)
+
+
+@pytest.mark.parametrize("mutation", ["both", "null", "missing", "late", "origin", "clock", "name", "sequence"])
+def test_anchor_parent_is_exact_and_rejection_does_not_append(engine_factory, tmp_path, mutation):
+    from fly_connectome_sim.experiment.recorder import RunArtifactError
+    recorder, producer, anchors = recorded_retention(engine_factory, tmp_path)
+    parent = {"type": "branch_start", "branch_id": "test-A", "sim_ms": 501.0,
+              "parent_branch_id": "paired", "parent_state_anchor_sha256": anchors[0]["state_anchor_sha256"]}
+    bad = deepcopy(parent)
+    if mutation == "both":
+        bad["parent_checkpoint_sha256"] = anchors[0]["durable_ancestor_checkpoint_sha256"]
+    elif mutation == "null":
+        bad["parent_state_anchor_sha256"] = None
+    elif mutation == "missing":
+        bad.pop("parent_state_anchor_sha256")
+    elif mutation == "late":
+        bad["parent_state_anchor_sha256"] = "b" * 64
+    elif mutation == "origin":
+        bad["parent_branch_id"] = "training"
+    elif mutation == "clock":
+        bad["sim_ms"] = 501.1
+    elif mutation == "name":
+        bad["parent_checkpoint_name"] = "source.npz"
+    elif mutation == "sequence":
+        bad["parent_checkpoint_sequence"] = 1
+    before = (recorder.path / "events.jsonl").read_bytes()
+    with pytest.raises(RunArtifactError):
+        recorder.append(bad)
+    assert (recorder.path / "events.jsonl").read_bytes() == before
+    recorder.append(parent)
+    with pytest.raises(RunArtifactError):
+        recorder.append({**parent, "parent_state_anchor_sha256": "b" * 64})
+    with pytest.raises(RunArtifactError):
+        recorder.append_state_anchor(anchors[0])
+    finish_recording(recorder, producer, tmp_path)
+
+
+@pytest.mark.parametrize("mutation", ["overwrite", "truncate", "source", "inventory", "unknown_inventory"])
+def test_fixed_prefix_rejects_mutation_and_defensively_copies_inventory(engine_factory, tmp_path, mutation):
+    from fly_connectome_sim.experiment import recorder as recording
+    recorder, producer, _ = recorded_retention(engine_factory, tmp_path)
+    prefix = recorder.validate_prefix()
+    path = recorder.path / "events.jsonl"
+    raw = path.read_bytes()
+    if mutation == "overwrite":
+        path.write_bytes(raw.replace(b'"compute_seconds":0.1', b'"compute_seconds":0.7'))
+    elif mutation == "truncate":
+        path.write_bytes(raw[:-1])
+    elif mutation == "source":
+        (recorder.path / "checkpoints" / "source.npz").write_bytes(b"invalid NPZ")
+    elif mutation == "inventory":
+        recorder._checkpoints["source.npz"]["checkpoint_sequence"] = 0
+    else:
+        recorder._checkpoints["source.npz"]["invented"] = True
+    if mutation in {"inventory", "unknown_inventory"}:
+        with pytest.raises(recording.RunArtifactError):
+            recorder.validate_prefix()
+        recorder._checkpoints["source.npz"].pop("invented", None)
+        recorder._checkpoints["source.npz"]["checkpoint_sequence"] = 1
+    else:
+        with pytest.raises(recording.RunArtifactError):
+            list(prefix.iter_events())
+        with pytest.raises(recording.RunArtifactError):
+            recording.verify_replay_prefix(prefix, engine_factory=engine_factory)
+    recorder._stream.close()
+
+
+def test_fixed_prefix_ignores_later_partial_tail_but_current_validation_rejects_it(engine_factory, tmp_path):
+    from fly_connectome_sim.experiment.recorder import RunArtifactError
+    recorder, producer, _ = recorded_retention(engine_factory, tmp_path)
+    prefix = recorder.validate_prefix()
+    with (recorder.path / "events.jsonl").open("ab") as stream:
+        stream.write(b'{"partial":')
+    assert len(list(prefix.iter_events())) == prefix.scientific_prefix["event_count"]
+    with pytest.raises(RunArtifactError):
+        recorder.validate_prefix()
+    recorder._stream.close()
+
+
+@pytest.mark.parametrize("sealed", [False, True])
+def test_stream_validation_binds_the_raw_bytes_actually_read(engine_factory, tmp_path, monkeypatch, sealed):
+    from fly_connectome_sim.experiment import recorder as recording
+    recorder, producer, _ = recorded_retention(engine_factory, tmp_path)
+    prefix = recorder.validate_prefix()
+    if sealed:
+        finish_recording(recorder, producer, tmp_path)
+        value = recording.verify_run(recorder.path)
+    else:
+        value = prefix
+    path = recorder.path / "events.jsonl"
+    saved = path.read_bytes()
+    original = recording._raw_events
+    def changing_reader(*args, **kwargs):
+        if kwargs.get("count") is not None:
+            yield from original(*args, **kwargs)
+            return
+        # Real on-disk timing substitution during scan, restored before final reread.
+        path.write_bytes(saved.replace(b'"compute_seconds":0.1', b'"compute_seconds":0.7'))
+        try:
+            yield from original(*args, **kwargs)
+        finally:
+            path.write_bytes(saved)
+    monkeypatch.setattr(recording, "_raw_events", changing_reader)
+    with pytest.raises(recording.RunArtifactError):
+        list(value.iter_events())
+    if not sealed:
+        recorder._stream.close()
+
+
+@pytest.mark.parametrize("field,value", [("sim_tick", False), ("checkpoint_sequence", False),
+                                         ("sim_ms", False), ("sim_ms", "0")])
+def test_prefix_inventory_declared_types_are_strict(engine_factory, tmp_path, field, value):
+    from fly_connectome_sim.experiment.recorder import RunArtifactError
+    recorder, _, _ = recorded_retention(engine_factory, tmp_path)
+    recorder._checkpoints["brain-before.npz"][field] = value
+    with pytest.raises(RunArtifactError):
+        recorder.validate_prefix()
+    recorder._stream.close()
+
+
+def test_fixed_prefix_is_bound_to_the_packaged_schema(engine_factory, tmp_path, monkeypatch):
+    from fly_connectome_sim.experiment import recorder as recording
+    recorder, _, _ = recorded_retention(engine_factory, tmp_path)
+    prefix = recorder.validate_prefix()
+    monkeypatch.setattr(recording, "_schema_digest", lambda: "b" * 64)
+    with pytest.raises(recording.RunArtifactError):
+        list(prefix.iter_events())
+    recorder._stream.close()
+
+
+def test_recorder_orders_authoritative_ticks_across_both_permitted_wire_forms(engine_factory, tmp_path):
+    from fly_connectome_sim.experiment import recorder as recording
+    recorder, producer, anchors = recorded_retention(engine_factory, tmp_path,
+        chunks=(3,), mixed_wire_clocks=True)
+    events = list(recorder.validate_prefix().iter_events())
+    assert events[2]["sim_ms"] == 0.30000000000000004
+    assert events[3]["sim_ms"] == 0.3
+    assert events[4]["sim_ms"] == 0.6000000000000001
+    assert events[5]["sim_ms"] == 0.6
+    finish_recording(recorder, producer, tmp_path)
+    assert recording.verify_replay_run(recorder.path,
+        engine_factory=engine_factory).replay_attested_state_anchors == frozenset({anchors[0]["state_anchor_sha256"]})
+
+
+@pytest.mark.parametrize("mutation", ["unknown", "undeclared", "shape"])
+def test_metadata_black_declaration_is_strict_before_any_anchor(engine_factory, tmp_path, mutation):
+    from fly_connectome_sim.experiment.recorder import RunArtifactError, RunRecorder
+    black = {"generator": "black-rgb/v1", "input_shape": [2, 3, 3], "input_dtype": "uint8",
+             "input_sha256": _rgb_input_sha256(np.zeros((2, 3, 3), dtype=np.uint8))}
+    metadata = {"engine_identity": engine_factory().identity(), "protocol_version": "pilot/v1",
+                "stimulus_version": "associative-stimuli/v1", "family": "pilot",
+                "seeds": [101], "factors": {}, "input_sha256": [black["input_sha256"]],
+                "black_input": black}
+    if mutation == "unknown":
+        black["invented"] = True
+    elif mutation == "undeclared":
+        metadata["input_sha256"] = []
+    else:
+        black["input_shape"] = [True, 3, 3]
+    with pytest.raises(RunArtifactError):
+        RunRecorder(tmp_path / "invalid", run_kind="pilot", metadata=metadata, root_branch_id="root")
+
+
+@pytest.mark.parametrize("mutation", ["events", "manifest", "source", "second_endpoint"])
+def test_actual_replay_partial_failure_or_interference_issues_no_attestation(engine_factory, tmp_path, mutation):
+    from fly_connectome_sim.experiment import recorder as recording
+    recorder, producer, anchors = recorded_retention(engine_factory, tmp_path, paired_sham=True)
+    finish_recording(recorder, producer, tmp_path)
+    run = recording.verify_run(recorder.path)
+    created = []
+    def factory():
+        engine = engine_factory()
+        created.append(engine)
+        original = engine.observe
+        def observe(*args, **kwargs):
+            result = original(*args, **kwargs)
+            if mutation == "events":
+                path = recorder.path / "events.jsonl"
+                path.write_bytes(path.read_bytes().replace(b'"compute_seconds":0.1', b'"compute_seconds":0.7'))
+            elif mutation == "manifest":
+                path = recorder.path / "run.json"
+                path.write_bytes(path.read_bytes() + b" ")
+            elif mutation == "source":
+                (recorder.path / "checkpoints" / "source.npz").write_bytes(b"changed")
+            elif mutation == "second_endpoint" and engine.brain.cursor == 5010:
+                # First reconstruction succeeds; the separately restored second route fails.
+                if getattr(engine, "completed_route", False):
+                    engine.brain.r8_light[0] = 0.9
+                engine.completed_route = True
+            return result
+        engine.observe = observe
+        return engine
+    with pytest.raises(recording.RunArtifactError):
+        recording.verify_replay_run(recorder.path, engine_factory=factory)
+    assert len(created) == 1
+    assert run.replay_attested_state_anchors == frozenset()
+
+
+@pytest.mark.parametrize("mutation", ["events", "manifest", "source"])
+def test_attested_value_rejects_later_mutation_in_public_consumption(engine_factory, tmp_path, mutation):
+    from fly_connectome_sim.experiment import recorder as recording
+    recorder, producer, _ = recorded_retention(engine_factory, tmp_path)
+    prefix = recording.verify_replay_prefix(recorder.validate_prefix(), engine_factory=engine_factory)
+    finish_recording(recorder, producer, tmp_path)
+    sealed = recording.verify_replay_run(recorder.path, engine_factory=engine_factory)
+    if mutation == "manifest":
+        path = recorder.path / "run.json"
+    elif mutation == "source":
+        path = recorder.path / "checkpoints" / "source.npz"
+    else:
+        path = recorder.path / "events.jsonl"
+    path.write_bytes(path.read_bytes() + b"tampered")
+    if mutation == "events":
+        # Only later bytes changed: prefix boundary remains valid; seal fails.
+        assert prefix.replay_attested_state_anchors
+    elif mutation == "source":
+        with pytest.raises(recording.RunArtifactError):
+            list(prefix.iter_events())
+    with pytest.raises(recording.RunArtifactError):
+        list(sealed.iter_events())
+    with pytest.raises(recording.RunArtifactError):
+        sealed.replay_attested_state_anchors
+
+
+@pytest.mark.parametrize("mutation", ["zero_cursor", "invalid_bytes", "endpoint", "engine_identity"])
+def test_coherent_artifact_still_requires_actual_npz_cursor_state_and_identity(engine_factory, tmp_path, mutation):
+    from fly_connectome_sim.experiment import recorder as recording
+    recorder, producer, _ = recorded_retention(engine_factory, tmp_path,
+        source_variant=mutation if mutation in {"zero_cursor", "invalid_bytes"} else "valid",
+        wrong_endpoint=mutation == "endpoint")
+    prefix = recorder.validate_prefix()
+    factory = engine_factory
+    if mutation == "engine_identity":
+        def factory():
+            other = engine_factory()
+            other.brain.eta += 0.1
+            return other
+    with pytest.raises(recording.RunArtifactError):
+        recording.verify_replay_prefix(prefix, engine_factory=factory)
+    assert prefix.replay_attested_state_anchors == frozenset()
+    finish_recording(recorder, producer, tmp_path)
+    assert list(recording.verify_run(recorder.path).iter_events())
+    with pytest.raises(recording.RunArtifactError):
+        recording.verify_replay_run(recorder.path, engine_factory=factory)
+
+
+@pytest.mark.parametrize("formal", [False, True])
+def test_sealed_inventory_cannot_omit_the_event_bound_source_tick(engine_factory, tmp_path, formal):
+    from fly_connectome_sim.experiment import recorder as recording
+    recorder, producer, _ = recorded_retention(engine_factory, tmp_path)
+    finish_recording(recorder, producer, tmp_path)
+    manifest = recording.verify_run(recorder.path).manifest
+    assert manifest["checkpoints"]["source.npz"].pop("sim_tick") == 3
+    (recorder.path / "run.json").write_bytes(canonical(manifest) + b"\n")
+    with pytest.raises(recording.RunArtifactError):
+        if formal:
+            recording.verify_replay_run(recorder.path, engine_factory=engine_factory)
+        else:
+            recording.verify_run(recorder.path)
+
+
+def test_initial_prefix_derives_checkpoint_ticks_from_event_bytes(engine_factory, tmp_path):
+    recorder, producer, _ = recorded_retention(engine_factory, tmp_path)
+    recorder._checkpoints["source.npz"].pop("sim_tick")
+    prefix = recorder.validate_prefix()
+    assert prefix.manifest["checkpoints"]["source.npz"]["sim_tick"] == 3
+    # Restore the recorder's declaration for its subsequent seal; the prefix already derived it.
+    recorder._checkpoints["source.npz"]["sim_tick"] = 3
+    finish_recording(recorder, producer, tmp_path)
+
+
+def reseal_recorded(path, events, manifest):
+    """Coherent scientific/raw framing for adversarial artifact tests."""
+    previous = "0" * 64
+    for sequence, event in enumerate(events):
+        event.update(sequence=sequence, previous_scientific_sha256=previous)
+        previous = sha256(canonical(scientific({key: value for key, value in event.items()
+                                               if key != "scientific_sha256"}))).hexdigest()
+        event["scientific_sha256"] = previous
+    raw = b"".join(canonical(event) + b"\n" for event in events)
+    (path / "events.jsonl").write_bytes(raw)
+    manifest.update(event_count=len(events), final_scientific_sha256=previous,
+                    events_sha256=sha256(raw).hexdigest())
+    for event in events:
+        if "checkpoint_name" in event:
+            manifest["checkpoints"][event["checkpoint_name"]]["checkpoint_sequence"] = event["sequence"]
+    (path / "run.json").write_bytes(canonical(manifest) + b"\n")
+
+
+@pytest.mark.parametrize("mutation", ["omitted_call", "extra_thaw", "reordered_calls", "unknown",
+                                      "implicit", "extra_anchor_field", "coherent_recipe",
+                                      "missing_anchor", "invented_anchor", "anchor_sequence",
+                                      "missing_checkpoint", "extra_checkpoint", "checkpoint_sequence"])
+def test_persisted_scan_rebuilds_recipe_and_exact_inventory(engine_factory, tmp_path, mutation):
+    from fly_connectome_sim.experiment import recorder as recording
+    recorder, producer, anchors = recorded_retention(engine_factory, tmp_path)
+    finish_recording(recorder, producer, tmp_path)
+    manifest = recording.verify_run(recorder.path).manifest
+    events = [json.loads(line) for line in (recorder.path / "events.jsonl").read_bytes().splitlines()]
+    if mutation == "omitted_call":
+        events.pop(4)
+    elif mutation == "extra_thaw":
+        events.insert(4, deepcopy(events[3]))
+    elif mutation == "reordered_calls":
+        events[4], events[5] = events[5], events[4]
+    elif mutation == "unknown":
+        events[3]["type"] = "freeze"
+    elif mutation == "implicit":
+        events[3].pop("operation_version")
+    elif mutation == "extra_anchor_field":
+        events[6]["invented"] = True
+    elif mutation == "coherent_recipe":
+        api = replay_module()
+        recipe = anchors[0]["recipe"]
+        recipe["operations"][-1]["current_mv"] = 20.0
+        recipe["replay_recipe_sha256"] = api._domain_sha256(api.RECIPE_DOMAIN,
+            {key: value for key, value in recipe.items() if key != "replay_recipe_sha256"})
+        anchor = api.build_state_anchor(anchor_id=anchors[0]["anchor_id"], recipe=recipe,
+                                        complete_state_sha256=anchors[0]["complete_state_sha256"])
+        events[6].update(anchor)
+        manifest["state_anchors"] = {anchor["state_anchor_sha256"]: {**anchor, "event_sequence": 6}}
+    elif mutation == "missing_anchor":
+        manifest["state_anchors"] = {}
+    elif mutation == "invented_anchor":
+        api = replay_module()
+        invented = api.build_state_anchor(anchor_id="invented", recipe=anchors[0]["recipe"],
+                                          complete_state_sha256=anchors[0]["complete_state_sha256"])
+        manifest["state_anchors"][invented["state_anchor_sha256"]] = {**invented, "event_sequence": 6}
+    elif mutation == "anchor_sequence":
+        manifest["state_anchors"][anchors[0]["state_anchor_sha256"]]["event_sequence"] = 5
+    elif mutation == "missing_checkpoint":
+        manifest["checkpoints"].pop("source.npz")
+    elif mutation == "extra_checkpoint":
+        manifest["checkpoints"]["invented.npz"] = deepcopy(manifest["checkpoints"]["source.npz"])
+    elif mutation == "checkpoint_sequence":
+        manifest["checkpoints"]["source.npz"]["checkpoint_sequence"] = 0
+    if mutation == "checkpoint_sequence" or mutation == "missing_checkpoint":
+        (recorder.path / "run.json").write_bytes(canonical(manifest) + b"\n")
+    else:
+        reseal_recorded(recorder.path, events, manifest)
+    with pytest.raises(recording.RunArtifactError):
+        recording.verify_run(recorder.path)
+
 
 
 def test_real_partial_call_replay_matches_live_target_and_keeps_producer(engine_factory, tmp_path):

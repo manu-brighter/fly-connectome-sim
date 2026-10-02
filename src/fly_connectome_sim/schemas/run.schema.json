@@ -4,7 +4,7 @@
   "title": "Fly connectome sealed run manifest",
   "type": "object",
   "additionalProperties": false,
-  "required": ["format_version", "schema_version", "schema_sha256", "run_kind", "root_branch_id", "metadata", "run_metadata_sha256", "event_count", "final_scientific_sha256", "events_sha256", "checkpoints"],
+  "required": ["format_version", "schema_version", "schema_sha256", "run_kind", "root_branch_id", "metadata", "run_metadata_sha256", "event_count", "final_scientific_sha256", "events_sha256", "checkpoints", "state_anchors"],
   "properties": {
     "format_version": {"const": "run-artifact/v1"},
     "schema_version": {"const": "run-schema/v1"},
@@ -21,7 +21,8 @@
         "family": {"type": "string", "minLength": 1},
         "seeds": {"type": "array", "items": {"type": "integer", "minimum": 0}},
         "factors": {"type": "object"},
-        "input_sha256": {"type": "array", "items": {"$ref": "#/$defs/digest"}}
+        "input_sha256": {"type": "array", "items": {"$ref": "#/$defs/digest"}},
+        "black_input": {"$ref": "#/$defs/black_input"}
       },
       "additionalProperties": true
     },
@@ -36,14 +37,21 @@
       "additionalProperties": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["sha256", "size", "origin_branch_id", "sim_ms"],
+        "required": ["sha256", "size", "origin_branch_id", "sim_ms", "checkpoint_sequence"],
         "properties": {
           "sha256": {"$ref": "#/$defs/digest"},
           "size": {"type": "integer", "minimum": 0},
           "origin_branch_id": {"type": "string", "minLength": 1},
-          "sim_ms": {"type": "number", "minimum": 0}
+          "sim_ms": {"type": "number", "minimum": 0},
+          "checkpoint_sequence": {"$ref": "#/$defs/tick"},
+          "sim_tick": {"$ref": "#/$defs/tick"}
         }
       }
+    },
+    "state_anchors": {
+      "type": "object",
+      "propertyNames": {"$ref": "#/$defs/digest"},
+      "additionalProperties": {"$ref": "#/$defs/anchor_occurrence"}
     }
   },
   "allOf": [{
@@ -62,6 +70,136 @@
   }],
   "$defs": {
     "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "tick": {"type": "integer", "minimum": 0, "maximum": 9223372036854775789},
+    "identifier": {"type": "string", "minLength": 1},
+    "source_occurrence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["checkpoint_name", "checkpoint_sha256", "origin_branch_id", "checkpoint_sequence", "sim_tick"],
+      "properties": {
+        "checkpoint_name": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*\\.npz$"},
+        "checkpoint_sha256": {"$ref": "#/$defs/digest"},
+        "origin_branch_id": {"$ref": "#/$defs/identifier"},
+        "checkpoint_sequence": {"$ref": "#/$defs/tick"},
+        "sim_tick": {"$ref": "#/$defs/tick"}
+      }
+    },
+    "scientific_prefix": {
+      "type": "object", "additionalProperties": false,
+      "required": ["event_count", "final_sequence", "final_scientific_sha256"],
+      "properties": {
+        "event_count": {"type": "integer", "minimum": 1},
+        "final_sequence": {"$ref": "#/$defs/tick"},
+        "final_scientific_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "black_input": {
+      "type": "object", "additionalProperties": false,
+      "required": ["generator", "input_shape", "input_dtype", "input_sha256"],
+      "properties": {
+        "generator": {"const": "black-rgb/v1"}, "input_dtype": {"const": "uint8"},
+        "input_sha256": {"$ref": "#/$defs/digest"},
+        "input_shape": {"type": "array", "minItems": 3, "maxItems": 3,
+          "prefixItems": [{"type": "integer", "minimum": 1, "maximum": 32},
+                          {"type": "integer", "minimum": 1, "maximum": 32}, {"const": 3}]}
+      }
+    },
+    "engine_identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["version", "model_provenance", "neural_groups", "sha256"],
+      "properties": {
+        "version": {"const": "fly-engine/v1"}, "sha256": {"$ref": "#/$defs/digest"},
+        "model_provenance": {
+          "type": "object", "additionalProperties": false,
+          "required": ["model", "model_fingerprint", "build", "eta", "parameters", "graph_ids_sha256", "graph_ptr_sha256", "graph_post_sha256", "plastic_edges_sha256", "configuration_sha256"],
+          "properties": {
+            "model": {"$ref": "#/$defs/identifier"}, "eta": {"type": "number"},
+            "model_fingerprint": {"type": "object", "additionalProperties": false,
+              "required": ["version", "sources_sha256", "sha256"],
+              "properties": {"version": {"$ref": "#/$defs/identifier"}, "sha256": {"$ref": "#/$defs/digest"},
+                "sources_sha256": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/digest"}}}},
+            "build": {"type": "object", "additionalProperties": false,
+              "required": ["model", "source_sha256", "compiler", "flags", "library", "binary_sha256"],
+              "properties": {"model": {"$ref": "#/$defs/identifier"}, "source_sha256": {"$ref": "#/$defs/digest"},
+                "compiler": {"$ref": "#/$defs/identifier"}, "flags": {"type": "array", "items": {"type": "string"}},
+                "library": {"$ref": "#/$defs/identifier"}, "binary_sha256": {"$ref": "#/$defs/digest"}}},
+            "parameters": {"type": "object", "required": ["neural_dt_ms"], "properties": {"neural_dt_ms": {"const": 0.1}}},
+            "configuration_sha256": {"type": "object"},
+            "graph_ids_sha256": {"$ref": "#/$defs/digest"}, "graph_ptr_sha256": {"$ref": "#/$defs/digest"},
+            "graph_post_sha256": {"$ref": "#/$defs/digest"}, "plastic_edges_sha256": {"$ref": "#/$defs/digest"}
+          }
+        },
+        "neural_groups": {"type": "object", "additionalProperties": false,
+          "required": ["pam11", "ppl101", "kc", "mbon07", "mbon11", "motor_left", "motor_right"],
+          "properties": {
+            "pam11": {"$ref": "#/$defs/neural_group"}, "ppl101": {"$ref": "#/$defs/neural_group"},
+            "kc": {"$ref": "#/$defs/neural_group"}, "mbon07": {"$ref": "#/$defs/neural_group"},
+            "mbon11": {"$ref": "#/$defs/neural_group"}, "motor_left": {"$ref": "#/$defs/neural_group"},
+            "motor_right": {"$ref": "#/$defs/neural_group"}}}
+      }
+    },
+    "neural_group": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/tick"}},
+    "fork_operation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "event_sequence", "event_scientific_sha256", "sim_tick"],
+      "properties": {"type": {"const": "fork"}, "event_sequence": {"$ref": "#/$defs/tick"},
+        "event_scientific_sha256": {"$ref": "#/$defs/digest"}, "sim_tick": {"$ref": "#/$defs/tick"}}
+    },
+    "thaw_operation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "event_sequence", "event_scientific_sha256", "sim_tick", "before_weights_frozen", "after_weights_frozen"],
+      "properties": {"type": {"const": "replay_thaw"}, "event_sequence": {"$ref": "#/$defs/tick"},
+        "event_scientific_sha256": {"$ref": "#/$defs/digest"}, "sim_tick": {"$ref": "#/$defs/tick"},
+        "before_weights_frozen": {"type": "boolean"}, "after_weights_frozen": {"const": false}}
+    },
+    "call_operation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "event_sequence", "event_scientific_sha256", "start_tick", "end_tick", "duration_ticks", "duration_ms", "sim_ms", "stimulation", "learning", "current_mv", "pathway_detail", "qualification_detail"],
+      "properties": {"type": {"const": "neutral_gap_chunk"}, "event_sequence": {"$ref": "#/$defs/tick"},
+        "event_scientific_sha256": {"$ref": "#/$defs/digest"}, "start_tick": {"$ref": "#/$defs/tick"},
+        "end_tick": {"$ref": "#/$defs/tick"}, "duration_ticks": {"type": "integer", "minimum": 1, "maximum": 5000},
+        "duration_ms": {"type": "number", "exclusiveMinimum": 0}, "sim_ms": {"type": "number", "minimum": 0},
+        "stimulation": {"type": "null"}, "learning": {"const": false}, "current_mv": {"type": "number"},
+        "pathway_detail": {"type": "boolean"}, "qualification_detail": {"type": "boolean"}}
+    },
+    "black_retention_recipe": {
+      "type": "object", "additionalProperties": false,
+      "required": ["recipe_version", "source_occurrence", "origin_branch_id", "target_tick", "engine_identity", "run_metadata_sha256", "black_input", "scientific_prefix", "operations", "replay_recipe_sha256"],
+      "properties": {
+        "recipe_version": {"const": "black-retention/v1"}, "source_occurrence": {"$ref": "#/$defs/source_occurrence"},
+        "origin_branch_id": {"$ref": "#/$defs/identifier"}, "target_tick": {"$ref": "#/$defs/tick"},
+        "engine_identity": {"$ref": "#/$defs/engine_identity"}, "run_metadata_sha256": {"$ref": "#/$defs/digest"},
+        "black_input": {"$ref": "#/$defs/black_input"}, "scientific_prefix": {"$ref": "#/$defs/scientific_prefix"},
+        "operations": {"type": "array", "minItems": 1,
+          "items": {"oneOf": [{"$ref": "#/$defs/fork_operation"}, {"$ref": "#/$defs/thaw_operation"}, {"$ref": "#/$defs/call_operation"}]}},
+        "replay_recipe_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "state_anchor": {
+      "type": "object", "additionalProperties": false,
+      "required": ["anchor_version", "anchor_id", "state_anchor_sha256", "origin_branch_id", "sim_tick", "complete_state_sha256", "durable_ancestor_checkpoint_sha256", "replay_recipe_sha256", "source_identity_sha256", "run_metadata_sha256", "source_occurrence", "scientific_prefix", "recipe"],
+      "properties": {
+        "anchor_version": {"const": "state-anchor/v1"}, "anchor_id": {"$ref": "#/$defs/identifier"},
+        "state_anchor_sha256": {"$ref": "#/$defs/digest"}, "origin_branch_id": {"$ref": "#/$defs/identifier"},
+        "sim_tick": {"$ref": "#/$defs/tick"}, "complete_state_sha256": {"$ref": "#/$defs/digest"},
+        "durable_ancestor_checkpoint_sha256": {"$ref": "#/$defs/digest"}, "replay_recipe_sha256": {"$ref": "#/$defs/digest"},
+        "source_identity_sha256": {"$ref": "#/$defs/digest"}, "run_metadata_sha256": {"$ref": "#/$defs/digest"},
+        "source_occurrence": {"$ref": "#/$defs/source_occurrence"}, "scientific_prefix": {"$ref": "#/$defs/scientific_prefix"},
+        "recipe": {"$ref": "#/$defs/black_retention_recipe"}
+      }
+    },
+    "anchor_occurrence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["anchor_version", "anchor_id", "state_anchor_sha256", "origin_branch_id", "sim_tick", "complete_state_sha256", "durable_ancestor_checkpoint_sha256", "replay_recipe_sha256", "source_identity_sha256", "run_metadata_sha256", "source_occurrence", "scientific_prefix", "recipe", "event_sequence"],
+      "properties": {
+        "anchor_version": {"$ref": "#/$defs/state_anchor/properties/anchor_version"}, "anchor_id": {"$ref": "#/$defs/identifier"},
+        "state_anchor_sha256": {"$ref": "#/$defs/digest"}, "origin_branch_id": {"$ref": "#/$defs/identifier"},
+        "sim_tick": {"$ref": "#/$defs/tick"}, "complete_state_sha256": {"$ref": "#/$defs/digest"},
+        "durable_ancestor_checkpoint_sha256": {"$ref": "#/$defs/digest"}, "replay_recipe_sha256": {"$ref": "#/$defs/digest"},
+        "source_identity_sha256": {"$ref": "#/$defs/digest"}, "run_metadata_sha256": {"$ref": "#/$defs/digest"},
+        "source_occurrence": {"$ref": "#/$defs/source_occurrence"}, "scientific_prefix": {"$ref": "#/$defs/scientific_prefix"},
+        "recipe": {"$ref": "#/$defs/black_retention_recipe"}, "event_sequence": {"$ref": "#/$defs/tick"}
+      }
+    },
     "assay_reasons": {
       "type": "array",
       "uniqueItems": true,
@@ -115,7 +253,9 @@
     "event": {
       "type": "object",
       "required": ["sequence", "type", "branch_id", "sim_ms", "run_metadata_sha256", "previous_scientific_sha256", "scientific_sha256"],
-      "dependentRequired": {"parent_branch_id": ["parent_checkpoint_sha256"]},
+      "dependentRequired": {
+        "parent_checkpoint_name": ["parent_checkpoint_sequence"],
+        "parent_checkpoint_sequence": ["parent_checkpoint_name"]},
       "properties": {
         "sequence": {"type": "integer", "minimum": 0},
         "type": {"type": "string", "minLength": 1},
@@ -126,12 +266,24 @@
         "scientific_sha256": {"$ref": "#/$defs/digest"},
         "parent_branch_id": {"type": "string", "minLength": 1},
         "parent_checkpoint_sha256": {"$ref": "#/$defs/digest"},
+        "parent_state_anchor_sha256": {"$ref": "#/$defs/digest"},
+        "parent_checkpoint_name": {"$ref": "#/$defs/source_occurrence/properties/checkpoint_name"},
+        "parent_checkpoint_sequence": {"$ref": "#/$defs/tick"},
         "checkpoint_name": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*\\.npz$"},
         "checkpoint_sha256": {"$ref": "#/$defs/digest"},
         "checkpoint_size": {"type": "integer", "minimum": 0}
       },
       "additionalProperties": true,
+      "not": {"required": ["parent_checkpoint_sha256", "parent_state_anchor_sha256"]},
       "allOf": [{
+        "if": {"properties": {"type": {}}, "required": ["parent_state_anchor_sha256"]},
+        "then": {"not": {"anyOf": [
+            {"required": ["parent_checkpoint_sha256"]}, {"required": ["parent_checkpoint_name"]},
+            {"required": ["parent_checkpoint_sequence"]}]}}
+      }, {
+        "if": {"properties": {"type": {"const": "state_anchor"}}, "required": ["type"]},
+        "then": {"$ref": "#/$defs/state_anchor_event"}
+      }, {
         "if": {"properties": {"type": {"const": "qualification_result"}}, "required": ["type"]},
         "then": {
           "required": ["status", "family", "seeds", "selected_configuration", "selected_window", "selected_retention_ms", "observed_effect_sign", "benchmark", "compute_seconds"],
@@ -189,7 +341,23 @@
           }]
         }
       }]
+    },
+    "state_anchor_event": {
+      "type": "object", "additionalProperties": false,
+      "required": ["anchor_version", "anchor_id", "state_anchor_sha256", "origin_branch_id", "sim_tick", "complete_state_sha256", "durable_ancestor_checkpoint_sha256", "replay_recipe_sha256", "source_identity_sha256", "run_metadata_sha256", "source_occurrence", "scientific_prefix", "recipe", "sequence", "type", "branch_id", "sim_ms", "previous_scientific_sha256", "scientific_sha256"],
+      "properties": {
+        "anchor_version": {"$ref": "#/$defs/state_anchor/properties/anchor_version"}, "anchor_id": {"$ref": "#/$defs/identifier"},
+        "state_anchor_sha256": {"$ref": "#/$defs/digest"}, "origin_branch_id": {"$ref": "#/$defs/identifier"},
+        "sim_tick": {"$ref": "#/$defs/tick"}, "complete_state_sha256": {"$ref": "#/$defs/digest"},
+        "durable_ancestor_checkpoint_sha256": {"$ref": "#/$defs/digest"}, "replay_recipe_sha256": {"$ref": "#/$defs/digest"},
+        "source_identity_sha256": {"$ref": "#/$defs/digest"}, "run_metadata_sha256": {"$ref": "#/$defs/digest"},
+        "source_occurrence": {"$ref": "#/$defs/source_occurrence"}, "scientific_prefix": {"$ref": "#/$defs/scientific_prefix"},
+        "recipe": {"$ref": "#/$defs/black_retention_recipe"}, "sequence": {"$ref": "#/$defs/tick"},
+        "type": {"const": "state_anchor"}, "branch_id": {"$ref": "#/$defs/identifier"},
+        "sim_ms": {"type": "number", "minimum": 0}, "previous_scientific_sha256": {"$ref": "#/$defs/digest"},
+        "scientific_sha256": {"$ref": "#/$defs/digest"}
+      }
     }
   },
-  "description": "events.jsonl contains compact sorted-key UTF-8 LF JSON objects in append order. First previous_scientific_sha256 is 64 ASCII zeroes. Root branch events omit both parent fields. The first event of each other branch names an already recorded parent checkpoint and its origin branch; later events may omit repeated ancestry. Branch clocks are nondecreasing locally. The metadata digest binds run_kind, root_branch_id, and metadata. A qualification run ends with one complete qualification_result. Its family and seeds equal manifest metadata; numeric values are finite; compute_seconds is operational telemetry. A confirmation run ends with exactly one complete assay_result; other run kinds reject assay_result. Confirmation metadata binds frozen_config_sha256 and assay_contract.analysis_version. The verifier enforces result bindings to metadata, sorted unique reasons, top-level status/reasons equality with the report, SHA256 of the canonical strict JSON report, evidence_event_count equal to terminal sequence, and evidence_final_scientific_sha256 equal to the previous scientific digest. These equality, ordering and cross-event constraints cannot be enforced by this schema. The recorder/verifier validates structure and integrity; the independent analyzer recomputes scientific evidence and classification. Scientific event projection removes the event's own scientific_sha256 and recursively removes only compute_seconds and kernel_seconds. The raw events_sha256 binds exact bytes. Checkpoints live under checkpoints/ with safe .npz basenames. The verifier is authoritative."
+  "description": "events.jsonl contains compact sorted-key UTF-8 LF JSON objects in append order. First previous_scientific_sha256 is 64 ASCII zeroes. Root events omit ancestry. Each new branch references exactly one prior durable checkpoint occurrence or state-anchor occurrence and its origin branch at the exact parent clock. Legacy checkpoint-only references must be unambiguous; replay forks also require the exact checkpoint name/sequence. Later events may omit or consistently repeat established ancestry. Checkpoint inventory records event sequence and, when required for replay, authoritative integer sim_tick. State-anchor inventory indexes the strict canonical envelope by occurrence digest and records its exact event_sequence, separately from durable NPZ inventory. Recorder and scanner rebuild each anchor recipe from the actual completed preceding scientific prefix, metadata.engine_identity and metadata.black_input. Equality, ordering, digest recomputation, integer-clock agreement and cross-event ancestry/inventory constraints are verifier-enforced. Qualification and confirmation runs retain their single terminal result and metadata/evidence-prefix bindings; the independent analyzer retains scientific classification authority. Scientific projection removes only compute_seconds and kernel_seconds recursively and the event's own scientific_sha256. Raw event/prefix/seal bytes remain integrity-only and never enter recipe/envelope identity. No persisted attested flags exist: ordinary verification provides no replay attestation; formal verification restores/replays every occurrence in an isolated compatible engine and rechecks the entire artifact or fixed prefix before issuing immutable attestation. Checkpoints live under checkpoints/ with safe .npz basenames. Exact packaged-schema digest matching is required; older artifacts are not silently migrated. The verifier is authoritative."
 }
