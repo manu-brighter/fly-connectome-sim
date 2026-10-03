@@ -95,6 +95,48 @@ def test_exclusive_directory_and_sealed_reopen(tmp_path):
             RunRecorder(link, run_kind="pilot", metadata=METADATA, root_branch_id="root")
 
 
+def test_formal_zero_anchor_mode_requires_verifier_and_rechecks_bindings(tmp_path):
+    from dataclasses import FrozenInstanceError
+    from fly_connectome_sim.experiment.recorder import (
+        ValidatedPrefix, VerifiedRun, verify_replay_prefix, verify_replay_run,
+    )
+
+    recorder = RunRecorder(tmp_path / "zero-anchor", run_kind="pilot", metadata=METADATA,
+                           root_branch_id="root")
+    checkpoint(recorder, tmp_path, "brain-before.npz")
+    recorder.append(event(type="checkpoint", checkpoint_name="brain-before.npz"))
+    checkpoint(recorder, tmp_path, "brain-after.npz", data=b"after")
+    recorder.append(event(type="checkpoint", checkpoint_name="brain-after.npz"))
+    ordinary_prefix = recorder.validate_prefix()
+
+    def unused_factory():
+        pytest.fail("Zero-anchor verification does not reconstruct an engine")
+
+    prefix = verify_replay_prefix(ordinary_prefix, engine_factory=unused_factory)
+    assert ordinary_prefix.verification_mode == "integrity-only"
+    assert prefix.verification_mode == "native-replay"
+    assert prefix.replay_attested_state_anchors == frozenset()
+    with pytest.raises(TypeError):
+        ValidatedPrefix(prefix.path, prefix._context_bytes, prefix._byte_length, prefix._raw_sha256,
+                        prefix._directory_ids, verification_mode="native-replay")
+    with pytest.raises(FrozenInstanceError):
+        prefix.verification_mode = "native-replay"
+    recorder.close()
+    ordinary = verify_run(recorder.path)
+    formal = verify_replay_run(recorder.path, engine_factory=unused_factory)
+    assert ordinary.verification_mode == "integrity-only"
+    assert formal.verification_mode == "native-replay"
+    assert formal.replay_attested_state_anchors == frozenset()
+    with pytest.raises(TypeError):
+        VerifiedRun(formal.path, formal._manifest_bytes, verification_mode="native-replay")
+    with pytest.raises(FrozenInstanceError):
+        formal.verification_mode = "native-replay"
+    (recorder.path / "checkpoints" / "brain-before.npz").write_bytes(b"changed")
+    for value in (prefix, formal):
+        with pytest.raises(RunArtifactError):
+            _ = value.verification_mode
+
+
 def test_output_rejects_junction_in_grandparent(tmp_path, monkeypatch):
     redirected = tmp_path / "redirected"
     nested = redirected / "nested"

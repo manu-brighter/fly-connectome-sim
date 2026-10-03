@@ -23,7 +23,7 @@ from .qualification import (GRID, RESPONSE_WINDOWS, RETENTION_CANDIDATES_MS,
                             PULSE_DURATION_MS, CURRENT_MV,
                             UNPAIRED_SEPARATION_MS, GridConfiguration,
                             _training_timeline)
-from .recorder import VerifiedRun
+from .recorder import ValidatedPrefix, VerifiedRun
 from .stimuli import AssayStimuli
 
 
@@ -717,7 +717,7 @@ def reduce_assay_evidence(
     relevant_count = 0
     relevant_types = {event_type, "qualification_point", "qualification_control",
                       "qualification_training", "qualification_result",
-                      "assay_training", "assay_intervention", "assay_result",
+                      "assay_training", "assay_intervention",
                       "state_anchor", "branch_start"}
     for sequence, event in enumerate(events):
         if not isinstance(event, dict):
@@ -727,6 +727,10 @@ def reduce_assay_evidence(
                     reasons.append("evidence_event_limit")
                 continue
             reasons.append("malformed_event")
+            continue
+        # Terminal framing is validated by the artifact stream, not scientific evidence.
+        # Keep enumerating it so later events retain their original sequence indices.
+        if event.get("type") == "assay_result":
             continue
         branch = event.get("branch_id")
         new_branch = isinstance(branch, str) and branch not in branches
@@ -1244,7 +1248,7 @@ def _assess(reduction: EvidenceReduction, config: dict,
 def assess_assay_evidence(events: Iterable[dict],
                           frozen: FrozenAssayConfig, *,
                           attested_state_anchors: Iterable[str] = ()) -> AssayReport:
-    """Pure pre-seal scientific assessment using the same gates as analysis."""
+    """Pure arithmetic assessment; caller digest sets do not attest an artifact."""
     if not isinstance(frozen, FrozenAssayConfig):
         raise AnalysisError("invalid_frozen_config")
     reduced = reduce_assay_evidence(events, frozen,
@@ -1252,7 +1256,7 @@ def assess_assay_evidence(events: Iterable[dict],
     return _assess(reduced, frozen.to_dict(), CONFIRMATION_SEEDS)
 
 
-def _verified_events(run: VerifiedRun) -> Iterable[dict]:
+def _verified_events(run: VerifiedRun | ValidatedPrefix) -> Iterable[dict]:
     try:
         yield from run.iter_events()
     except (OSError, ValueError) as error:
@@ -1656,10 +1660,7 @@ def build_frozen_config(qualification: VerifiedRun) -> FrozenAssayConfig:
     return frozen
 
 
-def analyze_assay(run: VerifiedRun, frozen: FrozenAssayConfig) -> AssayReport:
-    """Classify verified held-out evidence with inconclusive precedence."""
-    if not isinstance(frozen, FrozenAssayConfig):
-        raise AnalysisError("invalid_frozen_config")
+def _assay_provenance(manifest: dict, frozen: FrozenAssayConfig) -> tuple[str, ...]:
     config = frozen.to_dict()
     expected_contract = {
         "selected_configuration": config["selected_configuration"],
@@ -1672,7 +1673,6 @@ def analyze_assay(run: VerifiedRun, frozen: FrozenAssayConfig) -> AssayReport:
         "analysis_version": config["analysis_version"],
     }
     try:
-        manifest, events = _verified(run)
         metadata = manifest["metadata"]
         if (manifest["run_kind"] != "confirmation"
                 or metadata["family"] != "confirmation"
@@ -1692,49 +1692,116 @@ def analyze_assay(run: VerifiedRun, frozen: FrozenAssayConfig) -> AssayReport:
                     value for row in config["confirmation_input_sha256"].values()
                     for value in row.values()
                 })):
-            return AssayReport("inconclusive", {"cells": {}}, ("manifest_provenance",))
+            return ("manifest_provenance",)
     except (KeyError, TypeError, ValueError) as error:
-        return AssayReport("inconclusive", {"cells": {}}, (f"manifest_invalid:{error}",))
-    terminal = None
-    count = 0
-    last = None
-    ambiguous_terminal = False
-    for event in events:
-        if event.get("type") == "assay_result":
-            if terminal is not None:
-                ambiguous_terminal = True
-            else:
-                terminal = event
-        count += 1
-        last = event
-    if ambiguous_terminal or terminal is None or last is not terminal:
-        return AssayReport("inconclusive", {"cells": {}}, ("terminal_result_missing_or_ambiguous",))
-    reduction = reduce_assay_evidence(
-        _verified_events(run), frozen,
-        attested_state_anchors=getattr(run, "replay_attested_state_anchors", ()),
-    )
-    reasons = list(reduction.reasons + _inventory_reasons(manifest, reduction))
+        return (f"manifest_invalid:{error}",)
+    return ()
+
+
+def _assay_verification(value: VerifiedRun | ValidatedPrefix) -> tuple[str, frozenset[str]]:
+    # In-memory arithmetic fixtures and caller-overridden properties cannot issue trust.
+    if type(value) not in (VerifiedRun, ValidatedPrefix):
+        return "integrity-only", frozenset()
+    try:
+        return value.verification_mode, value.replay_attested_state_anchors
+    except (OSError, ValueError) as error:
+        raise AnalysisError("verified_run_changed") from error
+
+
+def _artifact_assay_report(value: VerifiedRun | ValidatedPrefix, frozen: FrozenAssayConfig,
+                           manifest: dict) -> AssayReport:
+    mode, attested = _assay_verification(value)
+    reduction = reduce_assay_evidence(_verified_events(value), frozen,
+                                      attested_state_anchors=attested)
+    reasons = reduction.reasons + _inventory_reasons(manifest, reduction) + _assay_provenance(manifest, frozen)
     if reasons:
         reduction = EvidenceReduction("inconclusive", reduction.rows,
                                       reduction.interventions, reduction.anchors,
-                                      tuple(sorted(set(reasons))))
-    report = _assess(reduction, config, CONFIRMATION_SEEDS)
-    canonical_report = _canonical(report.to_dict())
-    expected = {
+                                      tuple(sorted(set(reasons))), reduction.trainings, reduction.checkpoints)
+    report = _assess(reduction, frozen.to_dict(), CONFIRMATION_SEEDS)
+    report.values["verification_mode"] = mode
+    report.values["nonmaterialized_parents"] = [
+        {"parent_sha256": digest, "parent_kind": kind}
+        for digest, kind in sorted({(cell["parent_sha256"], cell["parent_kind"])
+                                   for rows in reduction.rows.values() for row in rows.values()
+                                   for cell in row.values() if cell["parent_kind"] == "anchor"})
+    ]
+    # Exhaust another validated scan after constructing science, also in ordinary mode.
+    terminal_seen = False
+    for event in _verified_events(value):
+        terminal_seen |= event.get("type") == "assay_result"
+    _assay_verification(value)
+    if type(value) is ValidatedPrefix and terminal_seen:
+        raise AnalysisError("prefix_already_terminal")
+    return report
+
+
+def assess_assay_prefix(prefix: ValidatedPrefix, frozen: FrozenAssayConfig) -> AssayReport:
+    """Assess a fixed validated stream without requiring a terminal result."""
+    if type(prefix) is not ValidatedPrefix:
+        raise AnalysisError("unvalidated_prefix")
+    if not isinstance(frozen, FrozenAssayConfig):
+        raise AnalysisError("invalid_frozen_config")
+    return _artifact_assay_report(prefix, frozen, prefix.manifest)
+
+
+def _assay_result(report: AssayReport, frozen: FrozenAssayConfig, projection: dict) -> dict:
+    return {
         "result_version": "mbon11-assay-result/v1",
         "frozen_config_sha256": frozen.digest,
         "analysis_version": ANALYSIS_VERSION,
         "status": report.status,
         "reasons": list(report.reasons),
         "report": report.to_dict(),
-        "report_sha256": sha256(canonical_report.encode("utf-8")).hexdigest(),
-        "evidence_event_count": count - 1,
-        "evidence_final_scientific_sha256": terminal.get("previous_scientific_sha256"),
+        "report_sha256": sha256(_canonical(report.to_dict()).encode("utf-8")).hexdigest(),
+        "evidence_event_count": projection["event_count"],
+        "evidence_final_scientific_sha256": projection["final_scientific_sha256"],
     }
+
+
+def build_assay_result(prefix: ValidatedPrefix, frozen: FrozenAssayConfig) -> dict:
+    """Build the terminal payload only from verifier-issued native replay proof."""
+    if type(prefix) is not ValidatedPrefix:
+        raise AnalysisError("unvalidated_prefix")
+    if _assay_verification(prefix)[0] != "native-replay":
+        raise AnalysisError("native_replay_required")
+    report = assess_assay_prefix(prefix, frozen)
+    payload = _assay_result(report, frozen, prefix.scientific_prefix)
+    _assay_verification(prefix)
+    return payload
+
+
+def analyze_assay(run: VerifiedRun, frozen: FrozenAssayConfig) -> AssayReport:
+    """Independently recompute scientific report and final terminal bindings."""
+    if not isinstance(frozen, FrozenAssayConfig):
+        raise AnalysisError("invalid_frozen_config")
+    manifest, events = _verified(run)
+    terminal = None
+    count = 0
+    last = None
+    ambiguous_terminal = False
+    evidence_digest = None
+    for event in events:
+        if event.get("type") == "assay_result":
+            if terminal is not None:
+                ambiguous_terminal = True
+            else:
+                terminal = event
+        else:
+            evidence_digest = event.get("scientific_sha256")
+        count += 1
+        last = event
+    report = _artifact_assay_report(run, frozen, manifest)
+    if ambiguous_terminal or terminal is None or last is not terminal:
+        return AssayReport("inconclusive", report.values,
+                           tuple(sorted(set(report.reasons + ("terminal_result_missing_or_ambiguous",)))))
+    expected = _assay_result(report, frozen, {"event_count": count - 1,
+                                             "final_scientific_sha256": evidence_digest})
     if (any(terminal.get(name) != value for name, value in expected.items())
             or type(terminal.get("evidence_event_count")) is not int
             or terminal.get("sequence") != count - 1
             or terminal.get("scientific_sha256") != manifest.get("final_scientific_sha256")
+            or terminal.get("previous_scientific_sha256") != evidence_digest
             or not _digest(terminal.get("previous_scientific_sha256"))):
         return AssayReport("inconclusive", report.values,
                            tuple(sorted(set(report.reasons + ("terminal_result_mismatch",)))))

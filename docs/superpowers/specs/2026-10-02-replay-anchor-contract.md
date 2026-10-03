@@ -2,8 +2,9 @@
 
 **Status:** Approved; complete-state hashing, durable-rooted black-retention
 reconstruction, persisted occurrence indexing, fixed-prefix verification and
-immutable native replay attestation implemented. Producer/terminal report/CLI
-integration and fullgraph capacity remain open.
+immutable native replay attestation implemented. Shared prefix/terminal scientific
+reports are implemented; full producer/CLI integration and fullgraph capacity
+remain open.
 
 **Date:** 2026-10-02
 
@@ -106,6 +107,15 @@ prefix before pure terminal reduction. Then append the result once, seal,
 formally verify and independently analyze; canonical reports must agree.
 Nonmaterialized parents and verification mode belong inside that shared report.
 
+The implemented report exposes computed `integrity-only`/`native-replay` mode
+and sorted used anchor-occurrence parents. Formal verification with no anchors
+still reports native mode; caller arithmetic inputs cannot issue it. Missing
+terminal reports keep truthful labels and provenance while remaining inconclusive.
+Terminal framing consumes no scientific evidence budget or branch science;
+validated streams still drain completely and sealed terminal bindings are checked
+independently. Honest partial native acceptance proves report equality, not full
+training acquisition, qualification or a supported assay.
+
 Prefix creation checks the entire current checkpoint directory. Later consumption
 rechecks every represented snapshot file and exactly the saved event byte boundary;
 subsequently appended bytes/files, including incomplete tails, are outside that
@@ -145,5 +155,6 @@ different routes. It tests digest completeness/nonmutation, recipe-prefix
 agreement, append/scan/schema parity, actual immutable replay attestation and
 artifact mutation rejection. Changing only excluded operational timings must
 preserve recipe/envelope/report scientific identities while changing raw
-integrity bindings. Discarded-grid replay, producer-wide integration,
-report equality, CLI and formal assays remain subsequent work.
+integrity bindings. Shared prefix/terminal report equality is now implemented and
+tested. Discarded-grid replay, producer-wide integration, CLI and formal assays
+remain subsequent work.

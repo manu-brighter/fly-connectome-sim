@@ -176,7 +176,7 @@ def _engine_identity():
 
 
 class FixtureRun(VerifiedRun):
-    """VerifiedRun-shaped in-memory stream; integrity is tested by the recorder."""
+    """In-memory arithmetic fixture, never evidence of actual artifact verification."""
 
     def __init__(self, manifest, events, attested_anchors=()):
         object.__setattr__(self, "_fixture_manifest", deepcopy(manifest))
@@ -456,12 +456,18 @@ def _confirmation(frozen, sign=1):
 
 def _seal(run, frozen):
     events = list(run.iter_events())
-    report = assess_assay_evidence(
-        events, frozen, attested_state_anchors=run.replay_attested_state_anchors,
-    )
+    report = assess_assay_evidence(events, frozen)
+    report.values["verification_mode"] = "integrity-only"
+    reduced = reduce_assay_evidence(events, frozen)
+    report.values["nonmaterialized_parents"] = [
+        {"parent_sha256": digest, "parent_kind": kind}
+        for digest, kind in sorted({(cell["parent_sha256"], cell["parent_kind"])
+                                   for rows in reduced.rows.values() for row in rows.values()
+                                   for cell in row.values() if cell["parent_kind"] == "anchor"})]
     value = report.to_dict()
     digest = sha256(json.dumps(value, sort_keys=True, separators=(",", ":"),
                                ensure_ascii=False, allow_nan=False).encode()).hexdigest()
+    events[-1]["scientific_sha256"] = H["events"]
     events.append({
         "type": "assay_result", "sequence": len(events),
         "previous_scientific_sha256": H["events"],
@@ -708,12 +714,14 @@ def test_anchor_parent_requires_prior_complete_anchor_with_durable_ancestor():
     position = next(i for i, event in enumerate(events) if event is targets[0])
     events.insert(position, anchor)
     assert _report(FixtureRun(run.manifest, events), frozen).status == "inconclusive"
-    assert _report(FixtureRun(run.manifest, events, [H["memory_after"]]), frozen).status == "supported"
+    assert assess_assay_evidence(events, frozen,
+                                attested_state_anchors=[H["memory_after"]]).status == "supported"
+    assert _report(FixtureRun(run.manifest, events, [H["memory_after"]]), frozen).status == "inconclusive"
     anchor["durable_ancestor_checkpoint_sha256"] = H["memory_after"]
     assert _report(FixtureRun(run.manifest, events, [H["memory_after"]]), frozen).status == "inconclusive"
 
 
-def test_attested_qualification_anchor_can_freeze():
+def test_arithmetic_qualification_anchor_fixture_can_freeze():
     run = _qualification()
     events = list(run.iter_events())
     targets = [event for event in events if event["type"] == "qualification_evidence"
@@ -1322,7 +1330,9 @@ def test_real_recorder_verified_assay_roundtrip(tmp_path):
         after = _checkpoint("brain-after.npz", after_digest, 0, root)
         recorder.append(after)
         events.append(after)
-        report = assess_assay_evidence(events, frozen)
+        from fly_connectome_sim.experiment.analysis import assess_assay_prefix
+        prefix = recorder.validate_prefix()
+        report = assess_assay_prefix(prefix, frozen)
         assert report.status == "supported"
         value = report.to_dict()
         recorder.append({
@@ -1335,20 +1345,14 @@ def test_real_recorder_verified_assay_roundtrip(tmp_path):
             "report_sha256": sha256(json.dumps(value, sort_keys=True,
                                                separators=(",", ":"),
                                                ensure_ascii=False).encode()).hexdigest(),
-            "evidence_event_count": recorder._chain.count,
-            "evidence_final_scientific_sha256": recorder._chain.previous,
+            "evidence_event_count": prefix.scientific_prefix["event_count"],
+            "evidence_final_scientific_sha256": prefix.scientific_prefix["final_scientific_sha256"],
         })
     assert analyze_assay(verify_run(run_path), frozen).status == "supported"
 
 
-def test_real_retention_attestation_authorizes_only_the_target_response_routes(engine_factory, tmp_path):
-    """Retention-route integration; training descriptors are not reconstructed history."""
-    from fly_connectome_sim.experiment.recorder import verify_replay_run
-    from fly_connectome_sim.experiment.replay import (
-        OPERATION_VERSION, build_black_retention_recipe, build_state_anchor,
-    )
-
-    producer = engine_factory()
+def _declared_native_frozen_config(producer):
+    """Declared tiny route-test contract, not evidence of executed qualification."""
     population = len(producer.groups.mbon11)
     # An explicit valid frozen contract, without a manufactured qualification run.
     data = {
@@ -1378,18 +1382,33 @@ def test_real_retention_attestation_authorizes_only_the_target_response_routes(e
     }
     data["digest"] = sha256(json.dumps(data, sort_keys=True, separators=(",", ":"),
                                       ensure_ascii=False).encode()).hexdigest()
-    frozen = FrozenAssayConfig.from_dict(data)
+    return FrozenAssayConfig.from_dict(data)
+
+
+def _native_confirmation_prefix(engine_factory, tmp_path, *, timing=0.0, metadata_changes=None):
+    """Retention-route integration; training descriptors are not reconstructed history."""
+    from fly_connectome_sim.experiment.replay import (
+        OPERATION_VERSION, build_black_retention_recipe, build_state_anchor,
+    )
+
+    producer = engine_factory()
+    population = len(producer.groups.mbon11)
+    frozen = _declared_native_frozen_config(producer)
     frame = np.zeros((32, 32, 3), dtype=np.uint8)
     black = {"generator": "black-rgb/v1", "input_shape": [32, 32, 3],
              "input_dtype": "uint8", "input_sha256": _rgb_input_sha256(frame)}
-    metadata = {"engine_identity": producer.identity(), "protocol_version": "pilot/v1",
+    metadata = {**_confirmation(frozen).manifest["metadata"],
+                "engine_identity": producer.identity(),
+                "mbon11_population_size": population,
+                "protocol_version": "associative-confirmation/v1",
                 "stimulus_version": "associative-stimuli/v1", "family": "confirmation",
-                "seeds": [101, 113], "factors": {}, "black_input": black,
+                "seeds": [101, 113], "black_input": black,
                 "input_sha256": sorted({digest for row in _input_hashes("confirmation").values()
                                           for digest in row.values()})}
+    metadata.update(metadata_changes or {})
     training = _training("confirmation", 101, "A", "AB", "paired")
     root, branch, retained = "baseline", training["branch_id"], "retention"
-    recorder = RunRecorder(tmp_path / "retained-route", run_kind="pilot", metadata=metadata,
+    recorder = RunRecorder(tmp_path / "retained-route", run_kind="confirmation", metadata=metadata,
                            root_branch_id=root)
     snapshot = tmp_path / "durable.npz"
 
@@ -1431,6 +1450,7 @@ def test_real_retention_attestation_authorizes_only_the_target_response_routes(e
                          "operation_version": OPERATION_VERSION, "start_tick": start,
                          "end_tick": producer.brain.cursor, "duration_ticks": ticks,
                          "duration_ms": ticks / 10, "sim_ms": producer.brain.cursor / 10,
+                         "compute_seconds": timing, "kernel_seconds": timing,
                          "stimulation": None, "learning": False, "current_mv": 20.0,
                          "pathway_detail": False, "qualification_detail": False})
     prefix = recorder.validate_prefix()
@@ -1476,6 +1496,18 @@ def test_real_retention_attestation_authorizes_only_the_target_response_routes(e
     assert siblings[0] is not siblings[1]
     assert producer.brain.checkpoint_state_sha256() == producer_state
     durable("brain-after.npz", root)
+    return recorder, frozen, training, anchor, root, target
+
+
+def test_real_retention_attestation_authorizes_only_the_target_response_routes(engine_factory, tmp_path):
+    from fly_connectome_sim.experiment.recorder import verify_replay_run
+
+    recorder, frozen, training, anchor, root, target = _native_confirmation_prefix(engine_factory, tmp_path)
+    from fly_connectome_sim.experiment.analysis import build_assay_result
+    from fly_connectome_sim.experiment.recorder import verify_replay_prefix
+    prefix = verify_replay_prefix(recorder.validate_prefix(), engine_factory=engine_factory)
+    recorder.append({"type": "assay_result", "branch_id": root, "sim_ms": target / 10,
+                     **build_assay_result(prefix, frozen)})
     recorder.close()
     ordinary = verify_run(recorder.path)
     formal = verify_replay_run(recorder.path, engine_factory=engine_factory)
@@ -1497,3 +1529,271 @@ def test_real_retention_attestation_authorizes_only_the_target_response_routes(e
     assert rejected <= set(reductions[0].reasons)
     assert not rejected & set(reductions[1].reasons)
     assert set(reductions[0].reasons) - rejected == set(reductions[1].reasons)
+
+
+def test_native_prefix_shared_report_terminal_roundtrip(engine_factory, tmp_path):
+    from fly_connectome_sim.experiment import analysis
+    from fly_connectome_sim.experiment.recorder import verify_replay_prefix, verify_replay_run
+
+    recorder, frozen, training, anchor, root, target = _native_confirmation_prefix(engine_factory, tmp_path)
+    prefix = verify_replay_prefix(recorder.validate_prefix(), engine_factory=engine_factory)
+    # RED reaches a genuinely recorded/replayed native confirmation before the missing API.
+    assert hasattr(analysis, "assess_assay_prefix")
+    report = analysis.assess_assay_prefix(prefix, frozen)
+    assert prefix.verification_mode == "native-replay"
+    assert report.status == "inconclusive"
+    assert report.values["verification_mode"] == "native-replay"
+    assert report.values["nonmaterialized_parents"] == [
+        {"parent_sha256": anchor["state_anchor_sha256"], "parent_kind": "anchor"}]
+    assert any(reason.startswith("missing_") for reason in report.reasons)
+    assert not any(reason.startswith(("invalid_training:", "invalid_response:", "training_ancestry:",
+                                     "response_ancestry:", "checkpoint_inventory", "terminal_result"))
+                   for reason in report.reasons)
+    reduced = reduce_assay_evidence(prefix.iter_events(), frozen,
+                                   attested_state_anchors=prefix.replay_attested_state_anchors)
+    assert training["training_id"] in reduced.trainings
+    assert anchor["state_anchor_sha256"] in reduced.anchors
+    assert set(reduced.rows["101/A/AB/10000"]["paired"]) == {"post_A", "post_B"}
+    terminal = analysis.build_assay_result(prefix, frozen)
+    assert set(terminal) == {"result_version", "analysis_version", "frozen_config_sha256", "status",
+                             "reasons", "report", "report_sha256", "evidence_event_count",
+                             "evidence_final_scientific_sha256"}
+    assert terminal["evidence_event_count"] == prefix.scientific_prefix["event_count"]
+    assert terminal["evidence_final_scientific_sha256"] == prefix.scientific_prefix["final_scientific_sha256"]
+    recorder.append({"type": "assay_result", "branch_id": root, "sim_ms": target / 10, **terminal})
+    recorder.close()
+    sealed = verify_replay_run(recorder.path, engine_factory=engine_factory)
+    assert sealed.verification_mode == "native-replay"
+    assert analyze_assay(sealed, frozen).to_dict() == report.to_dict()
+    ordinary = analyze_assay(verify_run(recorder.path), frozen)
+    assert ordinary.values["verification_mode"] == "integrity-only"
+    assert "response_ancestry:101/A/AB/10000/paired/post_A" in ordinary.reasons
+    assert "terminal_result_mismatch" in ordinary.reasons
+    assert ordinary.to_dict() != report.to_dict()
+
+
+def test_ordinary_prefix_cannot_issue_native_terminal(engine_factory, tmp_path):
+    from fly_connectome_sim.experiment.analysis import assess_assay_prefix, build_assay_result
+
+    recorder, frozen, _, _, _, _ = _native_confirmation_prefix(engine_factory, tmp_path)
+    prefix = recorder.validate_prefix()
+    report = assess_assay_prefix(prefix, frozen)
+    assert report.values["verification_mode"] == "integrity-only"
+    assert "response_ancestry:101/A/AB/10000/paired/post_A" in report.reasons
+    with pytest.raises(AnalysisError, match="native_replay_required"):
+        build_assay_result(prefix, frozen)
+    with pytest.raises(TypeError):
+        build_assay_result(prefix, frozen, attested_state_anchors=prefix.manifest["state_anchors"])
+
+
+@pytest.mark.parametrize("target", ["source", "events"])
+@pytest.mark.parametrize("boundary", ["prefix", "prefix-ordinary", "sealed-native", "sealed-ordinary"])
+def test_report_generation_detects_mutation_during_scientific_assessment(
+        engine_factory, tmp_path, monkeypatch, target, boundary):
+    from fly_connectome_sim.experiment import analysis
+    from fly_connectome_sim.experiment.recorder import verify_replay_prefix, verify_replay_run
+
+    recorder, frozen, _, _, root, tick = _native_confirmation_prefix(engine_factory, tmp_path)
+    ordinary_prefix = recorder.validate_prefix()
+    prefix = verify_replay_prefix(ordinary_prefix, engine_factory=engine_factory)
+    if boundary.startswith("prefix"):
+        value = prefix if boundary == "prefix" else ordinary_prefix
+        consume = analysis.assess_assay_prefix
+    else:
+        recorder.append({"type": "assay_result", "branch_id": root, "sim_ms": tick / 10,
+                         **analysis.build_assay_result(prefix, frozen)})
+        recorder.close()
+        value = (verify_replay_run(recorder.path, engine_factory=engine_factory)
+                 if boundary == "sealed-native" else verify_run(recorder.path))
+        consume = analyze_assay
+    original = analysis._assess
+
+    def mutate_after_reduction(*args):
+        result = original(*args)
+        path = (recorder.path / "checkpoints" / "training-end.npz" if target == "source"
+                else recorder.path / "events.jsonl")
+        raw = path.read_bytes()
+        path.write_bytes(bytes([raw[0] ^ 1]) + raw[1:])
+        return result
+
+    monkeypatch.setattr(analysis, "_assess", mutate_after_reduction)
+    with pytest.raises(AnalysisError, match="verified_run_changed"):
+        consume(value, frozen)
+
+
+@pytest.mark.parametrize("target", ["source", "events"])
+def test_trusted_terminal_rejects_post_attestation_mutation(engine_factory, tmp_path, target):
+    from fly_connectome_sim.experiment.analysis import build_assay_result
+    from fly_connectome_sim.experiment.recorder import verify_replay_prefix
+
+    recorder, frozen, _, _, _, _ = _native_confirmation_prefix(engine_factory, tmp_path)
+    prefix = verify_replay_prefix(recorder.validate_prefix(), engine_factory=engine_factory)
+    path = (recorder.path / "checkpoints" / "training-end.npz" if target == "source"
+            else recorder.path / "events.jsonl")
+    raw = path.read_bytes()
+    path.write_bytes(bytes([raw[0] ^ 1]) + raw[1:])
+    with pytest.raises(AnalysisError, match="verified_run_changed"):
+        build_assay_result(prefix, frozen)
+
+
+def test_timing_only_native_reports_keep_scientific_identity(engine_factory, tmp_path):
+    from fly_connectome_sim.experiment.analysis import assess_assay_prefix, build_assay_result
+    from fly_connectome_sim.experiment.recorder import verify_replay_prefix, verify_replay_run
+
+    results = []
+    for timing in (0.0, 1.25):
+        location = tmp_path / str(timing)
+        location.mkdir()
+        recorder, frozen, _, anchor, root, tick = _native_confirmation_prefix(
+            engine_factory, location, timing=timing)
+        prefix = verify_replay_prefix(recorder.validate_prefix(), engine_factory=engine_factory)
+        report = assess_assay_prefix(prefix, frozen)
+        payload = build_assay_result(prefix, frozen)
+        recorder.append({"type": "assay_result", "branch_id": root, "sim_ms": tick / 10, **payload})
+        recorder.close()
+        run = verify_replay_run(recorder.path, engine_factory=engine_factory)
+        assert analyze_assay(run, frozen).to_dict() == report.to_dict()
+        results.append((anchor, prefix, report.to_dict(), payload, run))
+    first, second = results
+    assert first[0]["replay_recipe_sha256"] == second[0]["replay_recipe_sha256"]
+    assert first[0]["state_anchor_sha256"] == second[0]["state_anchor_sha256"]
+    assert first[1].scientific_prefix == second[1].scientific_prefix
+    assert first[2] == second[2]
+    assert first[3] == second[3]
+    assert first[1]._raw_sha256 != second[1]._raw_sha256
+    assert first[1]._byte_length != second[1]._byte_length
+    assert first[4].manifest["events_sha256"] != second[4].manifest["events_sha256"]
+    assert first[4]._manifest_bytes != second[4]._manifest_bytes
+
+
+@pytest.mark.parametrize("changes", [
+    {"protocol_version": "unknown/v1"},
+    {"candidate_identity": "other-candidate/v1"},
+    {"mbon11_population_size": 2},
+    {"assay_contract": {"analysis_version": "mbon11-causal-analysis/v1"}},
+])
+def test_native_prefix_provenance_mismatch_cannot_support(engine_factory, tmp_path, changes):
+    from fly_connectome_sim.experiment.analysis import assess_assay_prefix, build_assay_result
+    from fly_connectome_sim.experiment.recorder import verify_replay_prefix, verify_replay_run
+
+    recorder, frozen, _, _, root, tick = _native_confirmation_prefix(
+        engine_factory, tmp_path, metadata_changes=changes)
+    prefix = verify_replay_prefix(recorder.validate_prefix(), engine_factory=engine_factory)
+    report = assess_assay_prefix(prefix, frozen)
+    assert report.status == "inconclusive"
+    assert "manifest_provenance" in report.reasons
+    payload = build_assay_result(prefix, frozen)
+    recorder.append({"type": "assay_result", "branch_id": root, "sim_ms": tick / 10, **payload})
+    recorder.close()
+    assert analyze_assay(verify_replay_run(recorder.path, engine_factory=engine_factory), frozen).to_dict() \
+        == report.to_dict()
+
+
+def test_prefix_analysis_rejects_unknown_config_and_unvalidated_values(engine_factory, tmp_path):
+    from fly_connectome_sim.experiment.analysis import assess_assay_prefix, build_assay_result
+    from fly_connectome_sim.experiment.recorder import verify_replay_prefix
+
+    recorder, frozen, _, _, _, _ = _native_confirmation_prefix(engine_factory, tmp_path)
+    prefix = verify_replay_prefix(recorder.validate_prefix(), engine_factory=engine_factory)
+    for consume in (assess_assay_prefix, build_assay_result):
+        with pytest.raises(AnalysisError, match="invalid_frozen_config"):
+            consume(prefix, object())
+        with pytest.raises(AnalysisError, match="unvalidated_prefix"):
+            consume({"verification_mode": "native-replay"}, frozen)
+        with pytest.raises(AnalysisError, match="unvalidated_prefix"):
+            consume(FixtureRun(prefix.manifest, list(prefix.iter_events()),
+                               prefix.replay_attested_state_anchors), frozen)
+
+
+def test_real_nonconfirmation_zero_anchor_analysis_keeps_shared_mode_and_provenance(engine_factory, tmp_path):
+    from fly_connectome_sim.experiment.recorder import verify_replay_run
+
+    engine = engine_factory()
+    frozen = _declared_native_frozen_config(engine)
+    metadata = {"engine_identity": engine.identity(), "protocol_version": "pilot/v1",
+                "stimulus_version": "associative-stimuli/v1", "family": "confirmation",
+                "seeds": [101, 113], "factors": {},
+                "input_sha256": sorted({digest for row in _input_hashes("confirmation").values()
+                                          for digest in row.values()})}
+    recorder = RunRecorder(tmp_path / "pilot-without-terminal", run_kind="pilot",
+                           metadata=metadata, root_branch_id="root")
+    snapshot = tmp_path / "actual-native.npz"
+    engine.brain.checkpoint(snapshot)
+    for name in ("brain-before.npz", "brain-after.npz"):
+        recorder.ingest_checkpoint(name, snapshot, origin_branch_id="root")
+        recorder.append({"type": "checkpoint", "branch_id": "root", "sim_ms": 0.0,
+                         "checkpoint_name": name})
+    recorder.close()
+    ordinary = verify_run(recorder.path)
+    native = verify_replay_run(recorder.path, engine_factory=engine_factory)
+    assert native.replay_attested_state_anchors == frozenset()
+    for run, mode in ((ordinary, "integrity-only"), (native, "native-replay")):
+        report = analyze_assay(run, frozen)
+        assert report.status == "inconclusive"
+        assert "terminal_result_missing_or_ambiguous" in report.reasons
+        assert report.values.get("verification_mode") == mode
+        assert report.values["nonmaterialized_parents"] == []
+        assert "manifest_provenance" in report.reasons
+        assert any(reason.startswith("missing_") for reason in report.reasons)
+
+
+@pytest.mark.parametrize("evidence_count", [10000, 10001])
+def test_native_terminal_does_not_change_scientific_event_budget(engine_factory, tmp_path, evidence_count):
+    from fly_connectome_sim.experiment.analysis import assess_assay_prefix, build_assay_result
+    from fly_connectome_sim.experiment.recorder import verify_replay_prefix, verify_replay_run
+
+    recorder, frozen, training, anchor, root, tick = _native_confirmation_prefix(engine_factory, tmp_path)
+    initial_events = list(recorder.validate_prefix().iter_events())
+    # Hand-counted route: four durable records, training branch/training/fork/anchor,
+    # two response branches and two responses = 12 relevant scientific records.
+    assert len([event for event in initial_events if event["type"] in {
+        "checkpoint", "branch_start", "assay_training", "fork", "state_anchor", "assay_response"}]) == 12
+    after = next(event for event in initial_events if event.get("checkpoint_name") == "brain-after.npz")
+    for _ in range(evidence_count - 12):
+        recorder.append({"type": "branch_start", "branch_id": root, "sim_ms": tick / 10})
+    prefix = verify_replay_prefix(recorder.validate_prefix(), engine_factory=engine_factory)
+    report = assess_assay_prefix(prefix, frozen)
+    assert report.status == "inconclusive"
+    assert ("evidence_event_limit" in report.reasons) == (evidence_count == 10001)
+    reduction = reduce_assay_evidence(prefix.iter_events(), frozen,
+                                     attested_state_anchors=prefix.replay_attested_state_anchors)
+    assert training["training_id"] in reduction.trainings
+    assert anchor["state_anchor_sha256"] in reduction.anchors
+    assert set(reduction.rows["101/A/AB/10000"]["paired"]) == {"post_A", "post_B"}
+    payload = build_assay_result(prefix, frozen)
+    assert payload["evidence_event_count"] == len(initial_events) + evidence_count - 12
+    assert payload["evidence_final_scientific_sha256"] == prefix.scientific_prefix["final_scientific_sha256"]
+    # A new terminal branch must not consume budget or introduce branch science.
+    recorder.append({"type": "assay_result", "branch_id": "terminal-summary", "sim_ms": tick / 10,
+                     "parent_branch_id": root, "parent_checkpoint_sha256": after["checkpoint_sha256"],
+                     "parent_checkpoint_name": "brain-after.npz", "parent_checkpoint_sequence": after["sequence"],
+                     **payload})
+    recorder.close()
+    sealed = verify_replay_run(recorder.path, engine_factory=engine_factory)
+    final_reduction = reduce_assay_evidence(sealed.iter_events(), frozen,
+                                           attested_state_anchors=sealed.replay_attested_state_anchors)
+    assert final_reduction == reduction
+    final = analyze_assay(sealed, frozen)
+    assert "terminal_result_mismatch" not in final.reasons
+    assert final.to_dict() == report.to_dict()
+
+
+def test_arithmetic_terminal_exclusion_preserves_tail_sequence_and_exhaustion(engine_factory):
+    """Pure stream arithmetic: a terminal does not introduce branch science."""
+    frozen = _declared_native_frozen_config(engine_factory())
+    exhausted = False
+
+    def events():
+        nonlocal exhausted
+        yield _checkpoint("baseline.npz", H["before"], 0, "root")
+        yield {"type": "assay_result", "branch_id": "child", "parent_branch_id": "alien",
+               "parent_checkpoint_sha256": H["donor"]}
+        yield _checkpoint("later.npz", H["after"], 0, "child", parent=("root", H["before"]))
+        exhausted = True
+
+    reduction = reduce_assay_evidence(events(), frozen)
+    assert exhausted
+    later = reduction.checkpoints[H["after"]][0]
+    assert later["sequence"] == 2
+    assert later["parent_branch_id"] == "root"
+    assert later["parent_checkpoint_sha256"] == H["before"]

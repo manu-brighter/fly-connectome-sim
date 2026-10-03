@@ -25,7 +25,7 @@ scientific milestone and claim boundaries are defined by the
 [`associative-plasticity design`](docs/superpowers/specs/2026-09-24-associative-plasticity-pivot-design.md)
 and its [`implementation plan`](docs/superpowers/plans/2026-09-24-associative-plasticity-assay.md).
 
-### WIP status — 2026-10-02
+### WIP status — 2026-10-03
 
 - MaleCNS v1.0 sources are checksum-locked and the prepared graph verifies at
   166,700 cells and 25,582,938 directed edges.
@@ -42,9 +42,13 @@ and its [`implementation plan`](docs/superpowers/plans/2026-09-24-associative-pl
   analysis contract are implemented and independently reviewed.
 - Durable-rooted black-retention anchors, immutable fixed prefixes and actual
   isolated native replay attestations are implemented. Ordinary `verify-run`
-  remains integrity-only; producer/report/CLI replay integration is still pending.
+  remains integrity-only; producer/CLI replay integration is still pending.
+- Validated-prefix and sealed scientific reports share provenance/inventory gates,
+  actual verification-mode and used-anchor labels. A real partial native artifact
+  preserves its canonical report through terminal append and sealing; missing
+  assay cells still classify it as inconclusive, not a positive assay result.
 - In progress: selected qualification interventions, held-out assay production,
-  shared prefix/terminal reports and the `assay` CLI. Formal full-graph qualification
+  production state digests and the `assay` CLI. Formal full-graph qualification
   and confirmation have not run; no positive plasticity or behavior result is
   claimed.
 - Still to add: a separately labelled, unvalidated motor readout. Verified

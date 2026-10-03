@@ -839,6 +839,13 @@ class ValidatedPrefix:
     _attestation: _ReplayAttestation | None = field(default=None, init=False, repr=False)
 
     @property
+    def verification_mode(self) -> str:
+        if self._attestation is None:
+            return "integrity-only"
+        ValidatedPrefix.replay_attested_state_anchors.fget(self)
+        return "native-replay"
+
+    @property
     def manifest(self) -> dict:
         return _strict_load(self._context_bytes)
 
@@ -940,6 +947,13 @@ class VerifiedRun:
     path: Path
     _manifest_bytes: bytes
     _attestation: _ReplayAttestation | None = field(default=None, init=False, repr=False)
+
+    @property
+    def verification_mode(self) -> str:
+        if self._attestation is None:
+            return "integrity-only"
+        VerifiedRun.replay_attested_state_anchors.fget(self)
+        return "native-replay"
 
     @property
     def replay_attested_state_anchors(self) -> frozenset[str]:
