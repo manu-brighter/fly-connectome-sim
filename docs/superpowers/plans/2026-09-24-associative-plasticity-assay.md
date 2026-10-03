@@ -247,6 +247,75 @@ Final root opt-in complete suite:1190 passed in322.64s, including both real
 fullgraph integrations. Candidate hashes prove content, not donor provenance,
 clock compatibility, capacity, formal qualification or a positive assay result.
 
+#### Task7B3c: bounded paired-cohort producer
+
+**Files:** Create `src/fly_connectome_sim/experiment/assay.py` and
+`tests/experiment/test_assay.py`. Extract the existing declared native frozen
+test contract into `tests/experiment/replay_helpers.py`, updating only its
+test caller in `test_analysis.py`. Root owns plan and README status.
+
+**Interface:** `run_paired_cohort(engine_factory, frozen, *, output_dir,
+seed=101, paired_identity="A", presentation_order="AB") -> AssayReport` executes
+one frozen paired cohort. It does not produce the full confirmatory assay or
+choose scientific parameters. Other declared cohorts/controls/interventions
+remain missing, with an inconclusive report.
+
+**Review focus:** Actual current ordered groups must match frozen declarations
+even when engine identity is cached. Candidate content is not occurrence or
+clock proof. Independent pre/post trials must not carry preceding trial state.
+Record response at its window stop before padding. Source/recipe mutation before
+terminal must fail closed; excluded timing cannot contaminate scientific hashes.
+
+- [x] **RED:** The native graph fixture reaches the absent producer module.
+  Subsequent clock and canonical-report regressions fully construct real native
+  engines and a schema-valid declared frozen correctness contract before their
+  failing assertions. The fixture is not qualification evidence and does not
+  call `build_frozen_config`.
+- [x] **GREEN acquisition:** Reuse `_training_timeline(..., controls=True)`,
+  `_trial_segments` and `_split_intervals`. Execute and record every actual
+  <=500 ms call, its clocks/arguments and raw response/CS/DAN bins. Supply explicit
+  black RGB during neutral time, learning-disabled reward-free retention/tests
+  and passive decay. Derive strict training evidence and live candidate/noncandidate
+  digests from actual state. Retain durable before/baseline/training-end/after
+  occurrences and exact parent references. Check actual identity/groups/maps,
+  clock, population and frozen input hashes rather than trusting cached labels.
+- [x] **GREEN responses:** Acquire independent baseline A/B/C pre trials and
+  both retention groups, producing twelve strict descriptors. Pre means restored
+  baseline-state measurement; acquiring it after durable training-end hash exists
+  cannot select parameters or carry training state into that restored copy.
+  Truthful pre measurements may supply both retention rows. For each retention,
+  source-to-anchor black replay stops at CS onset minus1000 ticks. Validate one
+  scratch NPZ outside inventory by actual state SHA/tick, restore all three
+  siblings independently, execute each prelude and reward-free trial, then remove
+  scratch. Record exactly two used anchors and emit responses at window stop.
+- [x] **GREEN lifecycle:** Use actual `verify_replay_prefix`,
+  `assess_assay_prefix` and `build_assay_result`; append exactly one terminal,
+  seal, call `verify_replay_run` and independently `analyze_assay`. Require exact
+  canonical report equality. Ordinary verification remains integrity-only.
+- [x] **Acceptance:** Independently check actual calls/source NPZ/raw counts;
+  both paired rows have pre/post A/B/C without invalid training/response,
+  ancestry/copy/clock/provenance/inventory/terminal reasons. Missing declared
+  cells remain visible and result inconclusive. Source and recipe-operation
+  tampering before terminal returns no attested result or seal. A timing-only
+  native rerun preserves recipe/anchor/report/scientific identities. Reject
+  current-group mismatch despite cached identity; cover declared timing/windows.
+  Reject unreachable anchors before scratch/recorder creation while preserving
+  the reachable anchor-equals-source boundary.
+- [x] Run focused producer/analysis/replay coverage, fresh independent integrity
+  review and the full suite with `FLY_CONNECTOME_SIM_FULL_TEST=1`.
+
+Completion evidence: native missing-module RED, clock/canonical-comparison
+RED/GREEN and timing-preflight artifact RED/GREEN. Independent integrity review
+and scoped fix review are clean after one Important timing finding was fixed.
+Final amended producer coverage:18 passed; final complete opt-in suite:1208
+passed in444.47s, including both actual fullgraph integrations. Commit only
+reviewed source/tests/status files and push the explicit feature branch.
+
+This is a tiny correctness lifecycle pilot, not formal qualification,
+confirmation, fullgraph capacity approval or a positive scientific finding.
+Selected qualification evidence, control/intervention routes, all-factor
+production and the assay CLI remain subsequent tasks.
+
 ### Task 8: Add a motor-only adapter without a behavioral claim
 
 **Files:** Modify `src/fly_connectome_sim/experiment/adapter.py`, `src/fly_connectome_sim/experiment/recorder.py`, `src/fly_connectome_sim/schemas/run.schema.json`, `tests/experiment/test_adapter.py`, `tests/experiment/test_recorder.py`. Keep `preference-adapter/v1` readable for old artifacts.

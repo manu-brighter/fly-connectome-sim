@@ -47,13 +47,19 @@ and its [`implementation plan`](docs/superpowers/plans/2026-09-24-associative-pl
   analysis contract are implemented and independently reviewed.
 - Durable-rooted black-retention anchors, immutable fixed prefixes and actual
   isolated native replay attestations are implemented. Ordinary `verify-run`
-  remains integrity-only; producer/CLI replay integration is still pending.
+  remains integrity-only; full assay/CLI integration is still pending.
 - Validated-prefix and sealed scientific reports share provenance/inventory gates,
   actual verification-mode and used-anchor labels. A real partial native artifact
   preserves its canonical report through terminal append and sealing; missing
   assay cells still classify it as inconclusive, not a positive assay result.
-- In progress: selected qualification interventions, held-out assay production,
-  producer/replay integration and the `assay` CLI. Formal full-graph qualification
+- A bounded paired-cohort producer executes real training and independent A/B/C
+  baseline and retained trials, records twelve response descriptors and two
+  retained-parent anchors, then native-verifies both prefix and sealed reports.
+  Its incomplete tiny native correctness pilot remains inconclusive; the declared
+  test contract is not qualification evidence or a production frozen config.
+- In progress: selected qualification interventions, all-factor held-out assay
+  production, remaining control/intervention routes and the `assay` CLI.
+  Formal full-graph qualification
   and confirmation have not run; no positive plasticity or behavior result is
   claimed.
 - Still to add: a separately labelled, unvalidated motor readout. Verified
