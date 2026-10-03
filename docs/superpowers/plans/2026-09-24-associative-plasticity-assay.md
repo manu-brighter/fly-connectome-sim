@@ -14,6 +14,9 @@
 verification contract is defined in
 [`2026-10-02-replay-anchor-contract.md`](../specs/2026-10-02-replay-anchor-contract.md).
 
+**Candidate-state refinement:** Production candidate/noncandidate content digests
+follow [`2026-10-03-candidate-state-digest-contract.md`](../specs/2026-10-03-candidate-state-digest-contract.md).
+
 ## Global Constraints
 
 - The primary endpoint is MBON11 response, not preference, learned behavior, or event choice. The maximal positive claim is the model-specific statement in the design spec.
@@ -154,10 +157,95 @@ The endpoint for each paired identity is `delta=(post_plus-post_minus)-(pre_plus
 - [x] **7B2b:** Implement strict occurrence-envelope/black-retention recipe primitives and isolated real native execution. Bind exact source occurrence, completed scientific prefix, every explicit call and thaw; preserve analyzer source-identity semantics. These primitives do not yet attest persisted artifacts.
 - [x] **7B2:** Use complete-state hashing to implement the occurrence envelope, strict `black-retention/v1` recipe, recorder/schema anchor indexing and immutable verifier-produced attestation. Demonstrate a real durable source to anchor to two sibling test forks; preserve all analyzer gates. Keep one bounded temporary retention snapshot for sibling restores outside sealed inventory.
 - [x] **7B3a:** Share validated-prefix and sealed report construction, including inventory/provenance gates, computed verifier mode and nonmaterialized-parent labels. Prove exact canonical terminal/report equality using an honest real partial native artifact; missing assay cells remain inconclusive. Terminal framing does not consume the scientific event budget; incomplete reports preserve actual labels and provenance.
+- [x] **7B3b:** Implement validated live candidate/noncandidate state digests with exact ordered selection maps, separate content domains and streamed complement exclusions. Follow the candidate-state contract and bounded steps below; existing candidate replacement, numerical behavior and complete checkpoint preimages remain unchanged.
 - [ ] Extend the producer/artifact with strict response/intervention events and shared validated-prefix replay before terminal reduction. Formally verify after sealing and independently recompute the same canonical report, including nonmaterialized-parent and verification-mode labels. Retain durable before/after and all selected ordinary training-end/intervention checkpoints.
 - [ ] Decide discarded-grid training ancestry using measured durable-storage versus separately reviewed exact training-replay cost; black-retention replay alone does not solve it. Do not introduce a generic replay interpreter or weaken freeze-input ancestry.
 - [ ] Measure or conservatively project full-graph checkpoint/event/wall-time capacity before source freeze. Keep full response/CS/DAN bins but compact passive black-gap telemetry.
 - [ ] Run focused/full pytest and a disposable CLI pilot. Commit source/tests only: `feat / frozen-assay : Implement MBON11 causal analysis`.
+
+#### Task7B3b: bounded state-digest implementation
+
+**Files:** `src/fly_connectome_sim/neural/brain.py` owns actual live validation;
+`src/fly_connectome_sim/neural/checkpoint.py` owns the narrow private codec;
+`tests/test_checkpoint.py` owns wire/native/invalid-state/streaming regressions;
+`tests/test_full_graph_engine.py` owns one opt-in read-only fullgraph hash test.
+No engine, analysis, recorder, qualification, protocol or native-core changes.
+
+**Interfaces:** `MemoryBrain.candidate_state_digests(target_indices, *,
+chunk_bytes=HASH_CHUNK_BYTES) -> dict[str, str]` returns exactly
+`candidate_memory_sha256` and `noncandidate_state_sha256`.
+`checkpoint._candidate_state_digests(metadata, arrays, *, target_indices,
+candidate_positions, edge_indices, chunk_bytes=HASH_CHUNK_BYTES)` is a private
+encoding seam, not artifact/model authentication. The normative domains, G/A/E/X
+records, maps, validation and acceptance cases are in the candidate-state contract.
+
+**Review focus:** Unsorted global edges must not reorder memory; fully excluded
+arrays must retain schema/map; invalid excluded values must still reject; actual
+readonly arrays must remain unchanged; terminal/route identity must not enter
+content or silently replace later donor provenance checks. Each is covered below.
+
+- [x] **RED live boundary:** Reuse the actual native `intervention_brains` fixture,
+  lock model provenance before hashing and capture tiny state bytes. Initial test:
+
+```python
+def test_candidate_state_digests_are_read_only(intervention_brains):
+    brain, _ = intervention_brains
+    brain.lock_model_provenance()
+    before = state_bytes(brain)
+    result = brain.candidate_state_digests(np.array([2, 3], dtype=np.int32))
+    assert set(result) == {"candidate_memory_sha256", "noncandidate_state_sha256"}
+    assert all(len(value) == 64 and set(value) <= set("0123456789abcdef")
+               for value in result.values())
+    assert state_bytes(brain) == before
+```
+
+- [x] Run `.venv/Scripts/python.exe -m pytest tests/test_checkpoint.py -k
+  candidate_state_digests -q --basetemp=.tools/pytest-temp-7b3b-worker --tb=short`.
+  Expected RED is absent live API after real brain construction/lock, not broken
+  fixtures or imports. Record command/output before product edits.
+- [x] Add independent literal-byte wire tests for both exact domains and map
+  order, negative zero and an empty component complement. Assemble expected
+  preimages from literal canonical metadata/header bytes, `struct.pack('<Q', n)`
+  and literal numeric bytes, never production canonical/map/header helpers.
+  Add native necessity/sufficiency/sham equality tests with distinct donor neural
+  state, both targets selecting circuit edges `[1,0]`, and checkpoint-restore parity.
+- [x] Implement the private codec using existing JSON/chunk/framing primitives,
+  selected gathers bounded by `chunk_bytes` and basic complement slices. Validate
+  entire array values before exclusion; preserve complete-state/raw digest wire
+  bytes. Add the live wrapper validating the actual locked complete payload,
+  registration/native state, exact candidate map and actual rule-bound/weight
+  consistency before calling the codec; recheck the model lock before returning.
+  The call computes both values from one quiescent state without snapshot/NPZ.
+- [x] Add parameterized sensitivity/rejection tests for every contract acceptance
+  category: all untouched registered fields and mutable scalars, candidate `rate_kc`,
+  selected-only replacements, readonly inputs, wrong/empty/duplicate/out-of-range
+  maps, invalid excluded u/w/weight, registration/schema/native/clock/model-lock
+  divergence, endian/index-width/layout equivalence, dtype/rank/shape/map/signed-zero
+  discrimination, empty state arrays and fully excluded components. Invalid calls
+  leave actual state unchanged. Targets with no edges remain bound if group-wide
+  selection is nonempty; an entirely edge-free candidate rejects.
+- [x] Add sparse unsorted large synthetic-weight streaming guards and chunk-size
+  invariance at8 and nonmultiple sizes. Observe encoder buffers/hash update pieces,
+  not native validator/selection allocations. Reject full complement masks/copies,
+  full-array byte/astype/byteswap/contiguous conversions and concatenation in codec.
+- [x] Add opt-in `test_full_graph_candidate_digests_are_read_only`: create a real
+  prepared-graph engine, obtain identity to lock, record complete-state SHA and
+  scalar/array references, call live API twice on actual MBON11 targets and require
+  equal digests plus unchanged complete-state SHA/scalars/references. No extra
+  graph-scale snapshot/archive, observe, qualification or capacity measurement.
+- [x] Run focused checkpoint/native/engine tests, self-review and report exact
+  RED/GREEN/API/wire/limits. Freeze and notify coordinator before one ordinary
+  complete suite; coordinator owns fresh independent review and final opt-in full
+  suite after any fixes. Do not claim fullgraph capacity or an executed assay.
+- [x] Coordinator commits reviewed code/tests and accurate contract/plan/status
+  updates: `feat / state-digests : Bind candidate and noncandidate state evidence`;
+  push explicitly `git push -u origin feat/connectome-experiment-core`.
+
+Completion evidence: genuine native RED/GREEN implementation and review-fix
+regressions; independent state/wire review plus clean scoped fix review.
+Final root opt-in complete suite:1190 passed in322.64s, including both real
+fullgraph integrations. Candidate hashes prove content, not donor provenance,
+clock compatibility, capacity, formal qualification or a positive assay result.
 
 ### Task 8: Add a motor-only adapter without a behavioral claim
 

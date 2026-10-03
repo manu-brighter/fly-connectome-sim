@@ -11,6 +11,8 @@ import numpy as np
 
 STATE_HASH_DOMAIN = b"fly-connectome-checkpoint-state/v1\0"
 HASH_CHUNK_BYTES = 1024 * 1024
+CANDIDATE_HASH_DOMAIN = b"fly-connectome-candidate-memory/v1\0"
+NONCANDIDATE_HASH_DOMAIN = b"fly-connectome-noncandidate-state/v1\0"
 
 
 def _validate_json(value):
@@ -139,6 +141,153 @@ def checkpoint_state_sha256(metadata, arrays, *, chunk_bytes=HASH_CHUNK_BYTES):
                 raise ValueError(f"Nonfinite checkpoint state: {name}")
             _update_bytes(hasher, chunk, chunk_bytes)
     return hasher.hexdigest()
+
+
+def _u64(value):
+    if not 0 <= value <= 2**64 - 1:
+        raise ValueError("State digest length exceeds uint64 range")
+    return struct.pack("<Q", value)
+
+
+def _numeric_header(name, dtype, shape):
+    if not (dtype.fields is None and dtype.subdtype is None
+            and ((dtype.kind in "iu" and dtype.itemsize in (1, 2, 4, 8))
+                 or (dtype.kind == "f" and dtype.itemsize in (4, 8)))):
+        raise ValueError(f"Unsupported checkpoint dtype: {name}")
+    nbytes = math.prod(shape) * dtype.itemsize
+    _u64(nbytes)
+    return _canonical_json({
+        "name": name, "kind": dtype.kind, "itemsize": dtype.itemsize,
+        "byteorder": "independent" if dtype.itemsize == 1 else "little",
+        "rank": len(shape), "shape": list(shape), "nbytes": nbytes,
+    })
+
+
+def _validate_numeric_arrays(arrays, chunk_bytes):
+    if type(arrays) is not dict or any(type(name) is not str for name in arrays):
+        raise ValueError("Checkpoint arrays require string names")
+    for name, value in arrays.items():
+        if not isinstance(value, np.ndarray) or isinstance(value, np.ma.MaskedArray):
+            raise ValueError(f"Checkpoint state must be a numeric ndarray: {name}")
+        _numeric_header(name, value.dtype, value.shape)
+        if value.dtype.kind == "f":
+            for chunk in _array_chunks(value, chunk_bytes):
+                if not np.isfinite(chunk).all():
+                    raise ValueError(f"Nonfinite checkpoint state: {name}")
+
+
+def _validate_index_vector(value, name, *, ascending=False):
+    if (type(value) is not np.ndarray or value.ndim != 1 or not value.size
+            or value.dtype.kind not in "iu" or value.dtype.itemsize not in (1, 2, 4, 8)
+            or np.any(value < 0) or len(np.unique(value)) != len(value)):
+        raise ValueError(f"Invalid candidate map: {name}")
+    if ascending and np.any(value[1:] <= value[:-1]):
+        raise ValueError(f"Candidate map must be ascending: {name}")
+
+
+def _selected_chunks(value, indices, chunk_bytes):
+    count = max(1, chunk_bytes // value.dtype.itemsize)
+    for start in range(0, len(indices), count):
+        selected = value[indices[start:start + count]]
+        yield from _array_chunks(selected, chunk_bytes, canonical=True)
+
+
+def _index_chunks(indices, chunk_bytes):
+    count = max(1, chunk_bytes // 8)
+    for start in range(0, len(indices), count):
+        canonical = indices[start:start + count].astype("<u8", copy=False)
+        yield from _array_chunks(canonical, chunk_bytes, canonical=True)
+
+
+def _candidate_state_digests(
+    metadata, arrays, *, target_indices, candidate_positions, edge_indices,
+    chunk_bytes=HASH_CHUNK_BYTES,
+):
+    """Encode borrowed validated state; this seam cannot authenticate a model/map.
+
+    Encoder numeric buffers and SHA update pieces are bounded by chunk_bytes;
+    validation, maps, sorting and JSON have separate allocation costs.
+    """
+    _validate_chunk_bytes(chunk_bytes)
+    if (type(metadata) is not dict
+            or not {"cursor", "total_spikes", "weights_frozen"} <= metadata.keys()):
+        raise ValueError("Candidate digests require complete checkpoint metadata")
+    encoded = _canonical_json(metadata)
+    _validate_numeric_arrays(arrays, chunk_bytes)
+    maps = {
+        "circuit_positions": candidate_positions, "edge_indices": edge_indices,
+        "target_indices": target_indices,
+    }
+    for name, value in maps.items():
+        _validate_index_vector(value, name, ascending=name == "circuit_positions")
+    if len(candidate_positions) != len(edge_indices):
+        raise ValueError("Candidate map lengths mismatch")
+    for name, indices in (("memory_u", candidate_positions), ("memory_w", candidate_positions),
+                          ("weight", edge_indices)):
+        if name not in arrays or arrays[name].ndim != 1 or np.any(indices >= arrays[name].size):
+            raise ValueError(f"Candidate map outside array: {name}")
+
+    candidate, noncandidate = sha256(), sha256()
+    immutable = _canonical_json({
+        key: value for key, value in metadata.items()
+        if key not in {"cursor", "total_spikes", "weights_frozen"}
+    })
+    for hasher, domain, content in ((candidate, CANDIDATE_HASH_DOMAIN, immutable),
+                                    (noncandidate, NONCANDIDATE_HASH_DOMAIN, encoded)):
+        for data in (domain, b"M", _u64(len(content)), content, b"G", _u64(3)):
+            _update_bytes(hasher, data, chunk_bytes)
+        for name in sorted(maps):
+            value = maps[name]
+            header = _numeric_header(name, np.dtype("<u8"), (len(value),))
+            for data in (b"A", _u64(len(header)), header, _u64(len(value) * 8)):
+                _update_bytes(hasher, data, chunk_bytes)
+            for chunk in _index_chunks(value, chunk_bytes):
+                _update_bytes(hasher, chunk, chunk_bytes)
+
+    for data in (b"C", _u64(3)):
+        _update_bytes(candidate, data, chunk_bytes)
+    for name, indices in (("memory_u", candidate_positions), ("memory_w", candidate_positions),
+                          ("weight", edge_indices)):
+        value = arrays[name]
+        header = _numeric_header(name, value.dtype, (len(indices),))
+        for data in (b"A", _u64(len(header)), header, _u64(len(indices) * value.dtype.itemsize)):
+            _update_bytes(candidate, data, chunk_bytes)
+        for chunk in _selected_chunks(value, indices, chunk_bytes):
+            _update_bytes(candidate, chunk, chunk_bytes)
+
+    exclusions = {
+        "memory_u": candidate_positions, "memory_w": candidate_positions,
+        "weight": np.sort(edge_indices),
+    }
+    for data in (b"N", _u64(len(arrays))):
+        _update_bytes(noncandidate, data, chunk_bytes)
+    for name in sorted(arrays):
+        value = arrays[name]
+        indices = exclusions.get(name, ())
+        header = _numeric_header(name, value.dtype, value.shape)
+        for data in (b"E", _u64(len(header)), header, b"X", _u64(len(indices))):
+            _update_bytes(noncandidate, data, chunk_bytes)
+        if len(indices):
+            for chunk in _index_chunks(indices, chunk_bytes):
+                _update_bytes(noncandidate, chunk, chunk_bytes)
+        retained_nbytes = value.nbytes - len(indices) * value.dtype.itemsize
+        _update_bytes(noncandidate, _u64(retained_nbytes), chunk_bytes)
+        if not len(indices):
+            for chunk in _array_chunks(value, chunk_bytes, canonical=True):
+                _update_bytes(noncandidate, chunk, chunk_bytes)
+        else:
+            start = 0
+            for excluded in indices:
+                stop = int(excluded)
+                for chunk in _array_chunks(value[start:stop], chunk_bytes, canonical=True):
+                    _update_bytes(noncandidate, chunk, chunk_bytes)
+                start = stop + 1
+            for chunk in _array_chunks(value[start:], chunk_bytes, canonical=True):
+                _update_bytes(noncandidate, chunk, chunk_bytes)
+    return {
+        "candidate_memory_sha256": candidate.hexdigest(),
+        "noncandidate_state_sha256": noncandidate.hexdigest(),
+    }
 
 
 def model_fingerprint(root=None):

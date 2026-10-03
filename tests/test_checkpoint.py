@@ -121,6 +121,664 @@ def test_candidate_snapshot_is_ordered_copied_and_frozen(intervention_brains):
     assert snapshot.memory_u[0] == 0
 
 
+def test_candidate_state_digests_are_read_only(intervention_brains):
+    brain, _ = intervention_brains
+    brain.lock_model_provenance()
+    before = state_bytes(brain)
+    result = brain.candidate_state_digests(np.array([2, 3], dtype=np.int32))
+    assert set(result) == {"candidate_memory_sha256", "noncandidate_state_sha256"}
+    assert all(len(value) == 64 and set(value) <= set("0123456789abcdef")
+               for value in result.values())
+    assert state_bytes(brain) == before
+
+
+def digest_codec(metadata=None, arrays=None, **kwargs):
+    return checkpoint._candidate_state_digests(
+        {"cursor": 0, "total_spikes": 0, "weights_frozen": False, "dt": 0.1}
+        if metadata is None else metadata,
+        {"memory_u": np.array([0.0, 0.25], dtype=np.float32),
+         "memory_w": np.array([0.0, -0.25], dtype=np.float32),
+         "weight": np.array([-0.0, 1.0, 2.0, 3.0, 5.0], dtype=np.float32)}
+        if arrays is None else arrays,
+        target_indices=kwargs.pop("target_indices", np.array([2, 3])),
+        candidate_positions=kwargs.pop("candidate_positions", np.array([0, 1])),
+        edge_indices=kwargs.pop("edge_indices", np.array([4, 1])), **kwargs,
+    )
+
+
+def test_candidate_state_digests_literal_wire_vectors():
+    # Literal headers/data independently specify the normative A/G/E/X framing.
+    headers = {
+        "circuit_positions": b'{"byteorder":"little","itemsize":8,"kind":"u","name":"circuit_positions","nbytes":16,"rank":1,"shape":[2]}',
+        "edge_indices": b'{"byteorder":"little","itemsize":8,"kind":"u","name":"edge_indices","nbytes":16,"rank":1,"shape":[2]}',
+        "target_indices": b'{"byteorder":"little","itemsize":8,"kind":"u","name":"target_indices","nbytes":16,"rank":1,"shape":[2]}',
+        "memory_u": b'{"byteorder":"little","itemsize":4,"kind":"f","name":"memory_u","nbytes":8,"rank":1,"shape":[2]}',
+        "memory_w": b'{"byteorder":"little","itemsize":4,"kind":"f","name":"memory_w","nbytes":8,"rank":1,"shape":[2]}',
+        "weight_selected": b'{"byteorder":"little","itemsize":4,"kind":"f","name":"weight","nbytes":8,"rank":1,"shape":[2]}',
+        "weight": b'{"byteorder":"little","itemsize":4,"kind":"f","name":"weight","nbytes":20,"rank":1,"shape":[5]}',
+    }
+    u64 = lambda n: struct.pack("<Q", n)
+    vectors = {
+        "circuit_positions": bytes.fromhex("00000000000000000100000000000000"),
+        "edge_indices": bytes.fromhex("04000000000000000100000000000000"),
+        "target_indices": bytes.fromhex("02000000000000000300000000000000"),
+        "memory_u": bytes.fromhex("000000000000803e"),
+        "memory_w": bytes.fromhex("00000000000080be"),
+        "weight_selected": bytes.fromhex("0000a0400000803f"),
+    }
+    def record(name):
+        header, data = headers[name], vectors[name]
+        return b"A" + u64(len(header)) + header + u64(len(data)) + data
+    group = b"G" + u64(3) + b"".join(record(name) for name in
+        ("circuit_positions", "edge_indices", "target_indices"))
+    immutable = b'{"dt":0.1}'
+    candidate = (b"fly-connectome-candidate-memory/v1\0" + b"M"
+                 + u64(len(immutable)) + immutable + group + b"C" + u64(3)
+                 + b"".join(record(name) for name in
+                            ("memory_u", "memory_w", "weight_selected")))
+    metadata = b'{"cursor":0,"dt":0.1,"total_spikes":0,"weights_frozen":false}'
+    noncandidate = (b"fly-connectome-noncandidate-state/v1\0" + b"M"
+                    + u64(len(metadata)) + metadata + group + b"N" + u64(3))
+    for name, indices, data in (
+        ("memory_u", vectors["circuit_positions"], b""),
+        ("memory_w", vectors["circuit_positions"], b""),
+        ("weight", bytes.fromhex("01000000000000000400000000000000"),
+         bytes.fromhex("000000800000004000004040")),
+    ):
+        header = headers[name]
+        noncandidate += (b"E" + u64(len(header)) + header + b"X" + u64(2)
+                         + indices + u64(len(data)) + data)
+    expected = {"candidate_memory_sha256": hashlib.sha256(candidate).hexdigest(),
+                "noncandidate_state_sha256": hashlib.sha256(noncandidate).hexdigest()}
+    assert digest_codec() == expected
+    for size in (8, 9, 15, 17, 64):
+        assert digest_codec(chunk_bytes=size) == expected
+    assert len(set(expected.values())) == 2
+    arrays = {"memory_u": np.array([0, .25], dtype=np.float32),
+              "memory_w": np.array([0, -.25], dtype=np.float32),
+              "weight": np.array([-0., 1, 2, 3, 5], dtype=np.float32)}
+    assert checkpoint.checkpoint_state_sha256(
+        {"cursor": 0, "dt": .1, "total_spikes": 0, "weights_frozen": False}, arrays,
+    ) not in expected.values()
+    assert checkpoint.raw_array_sha256(arrays["weight"]) not in expected.values()
+
+
+@pytest.mark.parametrize("branch", ["necessity", "sufficiency", "sham"])
+@pytest.mark.parametrize("targets", [[2], [2, 3]])
+def test_candidate_state_digests_intervention_relations(intervention_brains, branch, targets, tmp_path):
+    trained, matched = intervention_brains
+    targets = np.array(targets, dtype=np.int32)
+    for member in (trained, matched):
+        member.lock_model_provenance()
+        member.cursor = 20
+        member.sim_ms = 20 * member.dt
+    trained.memory_u[:] = [.25, .125]
+    trained.memory_w[:] = [.25, .125]
+    trained.weight[trained.circuit["edges"]] = trained.baseline_plastic * (1 + trained.memory_w)
+    trained.v[0] += 1
+    trained.rate_kc[:] = 2
+    recipient, donor = {"necessity": (trained, matched), "sufficiency": (matched, trained),
+                        "sham": (trained, trained)}[branch]
+    donor_digest = donor.candidate_state_digests(targets)
+    snapshot = donor.candidate_memory(targets)
+    before = recipient.candidate_state_digests(targets)
+    recipient.replace_candidate_memory(snapshot)
+    after = recipient.candidate_state_digests(targets)
+    assert after["noncandidate_state_sha256"] == before["noncandidate_state_sha256"]
+    assert after["candidate_memory_sha256"] == donor_digest["candidate_memory_sha256"]
+    assert (after["candidate_memory_sha256"] == before["candidate_memory_sha256"]) == (branch == "sham")
+    path = tmp_path / "digests.npz"
+    recipient.checkpoint(path)
+    recipient.v[1] += 2
+    recipient.restore(path)
+    assert recipient.candidate_state_digests(targets) == after
+
+
+@pytest.mark.parametrize("targets", [None, [], [2], np.array([], dtype=int),
+    np.array([True]), np.array([2.]), np.array([2, 2]), np.array([-1]),
+    np.array([4]), np.array([0]), np.ma.array([2], mask=[False])])
+def test_candidate_state_digests_reject_targets(intervention_brains, targets):
+    brain, _ = intervention_brains
+    brain.lock_model_provenance()
+    before = state_bytes(brain)
+    with pytest.raises(ValueError):
+        brain.candidate_state_digests(targets)
+    assert state_bytes(brain) == before
+
+
+def test_candidate_state_digests_target_order_and_edge_free_target(intervention_brains):
+    brain, _ = intervention_brains
+    brain.lock_model_provenance()
+    first = brain.candidate_state_digests(np.array([2, 3], dtype=np.int32))
+    assert all(first[key] != brain.candidate_state_digests(np.array([3, 2]))[key] for key in first)
+    with_free = brain.candidate_state_digests(np.array([2, 0]))
+    assert all(with_free[key] != brain.candidate_state_digests(np.array([2]))[key] for key in first)
+    for dtype in ("i1", "u2", ">i4", ">u8"):
+        assert brain.candidate_state_digests(np.array([2, 3], dtype=dtype)) == first
+
+
+@pytest.mark.parametrize("field,value", [("memory_u", np.nan), ("memory_w", np.inf),
+    ("weight", np.nan), ("memory_u", 2.), ("memory_w", -2.), ("weight", .1)])
+def test_candidate_state_digests_reject_invalid_excluded(intervention_brains, field, value):
+    brain, _ = intervention_brains
+    brain.lock_model_provenance()
+    getattr(brain, field)[0] = value
+    before = state_bytes(brain)
+    with pytest.raises(ValueError):
+        brain.candidate_state_digests(np.array([2, 3]))
+    assert state_bytes(brain) == before
+
+
+def test_candidate_state_digests_readonly_and_signed_zero(intervention_brains):
+    brain, _ = intervention_brains
+    brain.lock_model_provenance()
+    targets = np.array([2, 3])
+    first = brain.candidate_state_digests(targets)
+    brain.memory_u[0] = -0.
+    changed = brain.candidate_state_digests(targets)
+    assert changed["candidate_memory_sha256"] != first["candidate_memory_sha256"]
+    assert changed["noncandidate_state_sha256"] == first["noncandidate_state_sha256"]
+    targets.flags.writeable = False
+    for name in ["weight", *brain.fields]:
+        getattr(brain, name).flags.writeable = False
+    before = state_bytes(brain)
+    assert brain.candidate_state_digests(targets, chunk_bytes=9) == changed
+    assert state_bytes(brain) == before
+
+
+@pytest.mark.parametrize("change", ["unlocked", "model", "duplicate", "missing", "extra",
+    "shape", "dtype", "masked", "cursor", "spikes", "frozen", "sim_ms", "active",
+    "queue", "trace"])
+def test_candidate_state_digests_reject_invalid_live(intervention_brains, change):
+    brain, _ = intervention_brains
+    if change != "unlocked":
+        brain.lock_model_provenance()
+    if change == "model": brain.eta += .1
+    elif change == "duplicate": brain.fields.append(brain.fields[0])
+    elif change == "missing": brain.fields.remove(brain.fields[0])
+    elif change == "extra": brain.fields.append("unexpected"); brain.unexpected = np.zeros(1)
+    elif change == "shape": brain.memory_u = np.zeros((1, 2), dtype=np.float32)
+    elif change == "dtype": brain.memory_u = brain.memory_u.astype(np.float32)
+    elif change == "masked": brain.memory_u = np.ma.array(brain.memory_u)
+    elif change == "cursor": brain.cursor = True
+    elif change == "spikes": brain.total_spikes = -1
+    elif change == "frozen": brain.weights_frozen = 1
+    elif change == "sim_ms": brain.sim_ms = .1
+    elif change == "active": brain.active_flag[0] = 0
+    elif change == "queue": brain.queue_count[-1] = 1
+    elif change == "trace": brain.eligibility_last[0] = 1
+    before = state_bytes(brain)
+    with pytest.raises(RuntimeError if change in ("unlocked", "model") else ValueError):
+        brain.candidate_state_digests(np.array([2, 3]))
+    assert state_bytes(brain) == before
+
+
+@pytest.mark.parametrize("field", ["v", "g", "drive", "previous_drive", "refractory",
+    "queue", "queue_count", "counts", "luminance", "active", "active_flag", "nactive",
+    "last", "eligibility", "eligibility_last", "modulation", "modulation_last", "adaptation",
+    "rate_kc", "rate_dan", "memory_u", "memory_w", "weight", "r8_light"])
+def test_candidate_state_digests_untouched_field_sensitivity(intervention_brains, field):
+    brain, _ = intervention_brains
+    # Register the same visual storage used by VisualMemoryBrain, without anatomy mocks.
+    brain.r8_light = np.zeros(2, dtype=np.float32)
+    brain.fields.append("r8_light")
+    brain.initial["r8_light"] = brain.r8_light.copy()
+    brain.cursor = 20
+    brain.sim_ms = 20 * brain.dt
+    brain.lock_model_provenance()
+    targets = np.array([2])
+    before = brain.candidate_state_digests(targets)
+    if field == "active": brain.active[-1] = 3  # Inactive backing remains in state.
+    elif field == "queue": brain.queue[0, -1] = 3  # Inactive queue backing.
+    elif field == "queue_count": brain.queue_count[1] = 1
+    elif field == "active_flag": brain.active_flag[0] = 0  # Invalid membership rejects.
+    elif field == "nactive": brain.nactive[0] = 0
+    elif field in ("memory_u", "memory_w"): getattr(brain, field)[0] += .125
+    elif field == "weight": brain.weight[2] += .125
+    elif field == "last": brain.last[0] = 0
+    else: getattr(brain, field).flat[0] += 1
+    invalid = field in ("active_flag", "nactive")
+    actual = state_bytes(brain)
+    if invalid:
+        with pytest.raises(ValueError): brain.candidate_state_digests(targets)
+    else:
+        after = brain.candidate_state_digests(targets)
+        assert after["candidate_memory_sha256"] == before["candidate_memory_sha256"]
+        assert after["noncandidate_state_sha256"] != before["noncandidate_state_sha256"]
+    assert state_bytes(brain) == actual
+
+
+@pytest.mark.parametrize("field", ["cursor", "total_spikes", "weights_frozen"])
+def test_candidate_state_digests_mutable_metadata(intervention_brains, field):
+    brain, _ = intervention_brains
+    brain.lock_model_provenance()
+    before = brain.candidate_state_digests(np.array([2]))
+    setattr(brain, field, True if field == "weights_frozen" else 1)
+    if field == "cursor": brain.sim_ms = brain.cursor * brain.dt
+    after = brain.candidate_state_digests(np.array([2]))
+    assert after["candidate_memory_sha256"] == before["candidate_memory_sha256"]
+    assert after["noncandidate_state_sha256"] != before["noncandidate_state_sha256"]
+
+
+@pytest.mark.parametrize("field,value", [("cursor", -1), ("cursor", 1.5), ("cursor", 2**63),
+    ("cursor", 2**63 - 1), ("total_spikes", True), ("total_spikes", 2**63),
+    ("sim_ms", np.nan), ("sim_ms", np.inf), ("sim_ms", True)])
+def test_candidate_state_digests_invalid_scalars(intervention_brains, field, value):
+    brain, _ = intervention_brains
+    brain.lock_model_provenance()
+    setattr(brain, field, value)
+    if field == "cursor": brain.sim_ms = value * brain.dt
+    before = state_bytes(brain)
+    with pytest.raises(ValueError): brain.candidate_state_digests(np.array([2]))
+    # NaN does not compare equal to itself; use unchanged scalar object identity.
+    if field == "sim_ms" and np.isnan(value):
+        assert brain.sim_ms is value
+        before.pop("sim_ms")
+        after = state_bytes(brain)
+        after.pop("sim_ms")
+        assert after == before
+    else: assert state_bytes(brain) == before
+
+
+@pytest.mark.parametrize("field,value", [("target_indices", np.array([], dtype=int)),
+    ("target_indices", np.array([2, 2])), ("target_indices", np.array([-1])),
+    ("target_indices", np.array([2.0])), ("candidate_positions", np.array([1, 0])),
+    ("candidate_positions", np.array([0, 0])), ("candidate_positions", np.array([0, 2])),
+    ("candidate_positions", np.array([0])), ("edge_indices", np.array([1, 1])),
+    ("edge_indices", np.array([-1, 1])), ("edge_indices", np.array([4, 5])),
+    ("edge_indices", np.array([4])), ("edge_indices", np.array([True, False]))])
+def test_candidate_state_digests_codec_rejects_invalid_maps(field, value):
+    with pytest.raises(ValueError): digest_codec(**{field: value})
+
+
+@pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf])
+@pytest.mark.parametrize("field", ["memory_u", "memory_w", "weight"])
+def test_candidate_state_digests_codec_rejects_excluded_nonfinite(field, value):
+    arrays = {"memory_u": np.zeros(2), "memory_w": np.zeros(2), "weight": np.ones(5)}
+    arrays[field][0 if field != "weight" else 4] = value
+    with pytest.raises(ValueError): digest_codec(arrays=arrays, chunk_bytes=9)
+
+
+def test_candidate_state_digests_codec_schema_layout_and_index_normalization():
+    arrays = {"memory_u": np.zeros(2), "memory_w": np.zeros(2), "weight": np.ones(5),
+              "ordinary": np.arange(12, dtype=np.int32).reshape(3, 4),
+              "empty": np.zeros((0, 2), dtype=np.float32)}
+    first = digest_codec(arrays=arrays)
+    for ordinary in (np.asfortranarray(arrays["ordinary"]),
+        arrays["ordinary"].astype(">i4"), np.repeat(arrays["ordinary"], 2, axis=1)[:, ::2]):
+        assert digest_codec(arrays={**arrays, "ordinary": ordinary},
+            target_indices=np.array([2, 3], dtype=">u2"),
+            candidate_positions=np.array([0, 1], dtype="i1"),
+            edge_indices=np.array([4, 1], dtype=">u8"), chunk_bytes=9) == first
+    for changed in ({**arrays, "ordinary": arrays["ordinary"].reshape(12)},
+                    {**arrays, "ordinary": arrays["ordinary"].astype(np.int64)},
+                    {**arrays, "renamed": arrays["ordinary"]},
+                    {**arrays, "empty": np.zeros((2, 0), dtype=np.float32)}):
+        result = digest_codec(arrays=changed)
+        assert result["candidate_memory_sha256"] == first["candidate_memory_sha256"]
+        assert result["noncandidate_state_sha256"] != first["noncandidate_state_sha256"]
+    for name in ("memory_u", "memory_w", "weight"):
+        changed = {**arrays, name: arrays[name].astype(np.float32)}
+        result = digest_codec(arrays=changed)
+        assert all(result[key] != first[key] for key in first)
+    changed = {**arrays, "weight": arrays["weight"].copy()}
+    changed["weight"][0] = -0.
+    negative = digest_codec(arrays=changed)
+    changed["weight"][0] = 0.
+    positive = digest_codec(arrays=changed)
+    assert negative["candidate_memory_sha256"] == positive["candidate_memory_sha256"]
+    assert negative["noncandidate_state_sha256"] != positive["noncandidate_state_sha256"]
+
+
+@pytest.mark.parametrize("chunk_bytes", [True, 0, 7, 8., np.int64(8), None])
+def test_candidate_state_digests_invalid_chunk_bytes(intervention_brains, chunk_bytes):
+    brain, _ = intervention_brains
+    brain.lock_model_provenance()
+    with pytest.raises(ValueError): brain.candidate_state_digests(np.array([2]), chunk_bytes=chunk_bytes)
+    with pytest.raises(ValueError): digest_codec(chunk_bytes=chunk_bytes)
+
+
+def test_candidate_state_digests_hashes_accepted_weight_rounding(intervention_brains):
+    brain, _ = intervention_brains
+    brain.lock_model_provenance()
+    first = brain.candidate_state_digests(np.array([2]))
+    brain.weight[0] = np.nextafter(brain.weight[0], np.float32(np.inf))
+    after = brain.candidate_state_digests(np.array([2]))
+    assert after["candidate_memory_sha256"] != first["candidate_memory_sha256"]
+    assert after["noncandidate_state_sha256"] == first["noncandidate_state_sha256"]
+
+
+@pytest.mark.parametrize("change", ["metadata_extra", "metadata_missing", "provenance",
+    "array_extra", "array_missing", "lock_during_hash"])
+def test_candidate_state_digests_validates_payload_and_rechecks_lock(intervention_brains, change, monkeypatch):
+    brain, _ = intervention_brains
+    brain.lock_model_provenance()
+    payload = brain._checkpoint_payload
+    def altered_payload():
+        metadata, arrays = payload()
+        if change == "metadata_extra": metadata["unknown"] = 1
+        elif change == "metadata_missing": del metadata["total_spikes"]
+        elif change == "provenance": metadata["eta"] += .1
+        elif change == "array_extra": arrays["unknown"] = np.zeros(1)
+        elif change == "array_missing": del arrays["v"]
+        return metadata, arrays
+    monkeypatch.setattr(brain, "_checkpoint_payload", altered_payload)
+    if change == "lock_during_hash":
+        original = checkpoint._candidate_state_digests
+        def change_lock(*args, **kwargs):
+            result = original(*args, **kwargs)
+            brain.eta += .1
+            return result
+        monkeypatch.setattr("fly_connectome_sim.neural.brain._candidate_state_digests", change_lock)
+    before = state_bytes(brain)
+    with pytest.raises(RuntimeError if change == "lock_during_hash" else ValueError):
+        brain.candidate_state_digests(np.array([2]))
+    assert state_bytes(brain) == before
+
+
+@pytest.mark.parametrize("edges", [np.array([], dtype=np.int64), np.array([0, 0]),
+    np.array([-1, 0]), np.array([0, 3]), np.array([0., 1.]), np.array([[1, 0]]),
+    np.ma.array([1, 0], mask=[False, False]), np.array([0])])
+def test_candidate_state_digests_reject_invalid_live_circuit(intervention_brains, edges):
+    brain, _ = intervention_brains
+    brain.circuit["edges"] = edges
+    brain.lock_model_provenance()
+    before = state_bytes(brain)
+    with pytest.raises(ValueError): brain.candidate_state_digests(np.array([2]))
+    assert state_bytes(brain) == before
+
+
+@pytest.mark.parametrize("chunk_bytes", [8, 9, 17, 64])
+def test_candidate_state_digests_sparse_streaming_buffers(chunk_bytes, monkeypatch):
+    # Guard encoder storage, not the separately documented map/native allocations.
+    class GuardedArray(np.ndarray):
+        def __getitem__(self, key):
+            if isinstance(key, np.ndarray):
+                assert key.dtype.kind in "iu", "Complement boolean mask"
+                assert key.size * self.dtype.itemsize <= chunk_bytes, "Unbounded gather"
+            return super().__getitem__(key)
+        def copy(self, *args, **kwargs):
+            assert self.nbytes <= chunk_bytes, "Whole-array copy"
+            return super().copy(*args, **kwargs)
+        def tobytes(self, *args, **kwargs):
+            assert self.nbytes <= chunk_bytes, "Whole-array bytes"
+            return super().tobytes(*args, **kwargs)
+        def astype(self, *args, **kwargs):
+            assert self.nbytes <= chunk_bytes, "Whole-array dtype conversion"
+            return super().astype(*args, **kwargs)
+        def byteswap(self, *args, **kwargs):
+            assert self.nbytes <= chunk_bytes, "Whole-array byteswap"
+            return super().byteswap(*args, **kwargs)
+    arrays = {"memory_u": np.arange(12, dtype=">f8") / 100,
+              "memory_w": np.zeros(12, dtype=np.float32),
+              "weight": np.arange(50006, dtype=">f8")[::2],
+              "ordinary": np.arange(200, dtype=">i4").reshape(20, 10).T}
+    maps = {"candidate_positions": np.array([1, 5, 9]),
+            "edge_indices": np.array([25002, 3, 12345]), "target_indices": np.array([2, 3])}
+    expected = digest_codec(arrays=arrays, **maps)
+    guarded = {name: value.view(GuardedArray) for name, value in arrays.items()}
+    original_chunks = checkpoint._array_chunks
+    original_finite = np.isfinite
+    original_contiguous = np.ascontiguousarray
+    original_sha = checkpoint.sha256
+    updates = []
+    def checked_chunks(value, size, **kwargs):
+        for chunk in original_chunks(value, size, **kwargs):
+            assert chunk.nbytes <= size, "Unbounded numeric buffer"
+            yield chunk
+    def checked_finite(value, *args, **kwargs):
+        assert value.nbytes <= chunk_bytes, "Unbounded finite scan"
+        return original_finite(value, *args, **kwargs)
+    def checked_contiguous(value, *args, **kwargs):
+        assert value.nbytes <= chunk_bytes, "Unbounded contiguous conversion"
+        return original_contiguous(value, *args, **kwargs)
+    class CheckedHash:
+        def __init__(self): self.inner = original_sha()
+        def update(self, value):
+            assert len(value) <= chunk_bytes, "Unbounded SHA update"
+            updates.append(len(value))
+            self.inner.update(value)
+        def hexdigest(self): return self.inner.hexdigest()
+    def no_concatenate(*args, **kwargs): raise AssertionError("Encoder concatenation")
+    monkeypatch.setattr(checkpoint, "_array_chunks", checked_chunks)
+    monkeypatch.setattr(checkpoint.np, "isfinite", checked_finite)
+    monkeypatch.setattr(checkpoint.np, "ascontiguousarray", checked_contiguous)
+    monkeypatch.setattr(checkpoint.np, "concatenate", no_concatenate)
+    monkeypatch.setattr(checkpoint, "sha256", CheckedHash)
+    assert digest_codec(arrays=guarded, **maps, chunk_bytes=chunk_bytes) == expected
+    assert max(updates) <= chunk_bytes
+
+
+@pytest.mark.parametrize("dtype", ["?", "f2", "c8", "O", "U1", [("x", "i4")]])
+def test_candidate_state_digests_codec_rejects_unsupported_state(dtype):
+    arrays = {"memory_u": np.zeros(2), "memory_w": np.zeros(2), "weight": np.ones(5),
+              "ordinary": np.zeros(2, dtype=dtype)}
+    with pytest.raises(ValueError): digest_codec(arrays=arrays)
+
+
+@pytest.mark.parametrize("change", ["weight_rank", "missing_memory", "masked", "bad_name",
+    "metadata_object", "metadata_nan", "metadata_key"])
+def test_candidate_state_digests_codec_invalid_schema_and_json(change):
+    arrays = {"memory_u": np.zeros(2), "memory_w": np.zeros(2), "weight": np.ones(5)}
+    metadata = {"cursor": 0, "dt": .1, "total_spikes": 0, "weights_frozen": False}
+    if change == "weight_rank": arrays["weight"] = arrays["weight"].reshape(1, 5)
+    elif change == "missing_memory": del arrays["memory_u"]
+    elif change == "masked": arrays["memory_u"] = np.ma.array(arrays["memory_u"])
+    elif change == "bad_name": arrays[1] = np.zeros(1)
+    elif change == "metadata_object": metadata["bad"] = np.int64(1)
+    elif change == "metadata_nan": metadata["bad"] = np.nan
+    elif change == "metadata_key": metadata[1] = 1
+    with pytest.raises(ValueError): digest_codec(metadata=metadata, arrays=arrays)
+
+
+def test_candidate_state_digests_codec_uint64_indices_and_scalar_schema():
+    max_target = np.array([2**64 - 1], dtype=np.uint64)
+    first = digest_codec(target_indices=max_target)
+    assert first != digest_codec(target_indices=np.array([2**63 - 1], dtype=np.int64))
+    arrays = {"memory_u": np.zeros(2), "memory_w": np.zeros(2), "weight": np.ones(5),
+              "ordinary": np.array(1, dtype=np.int32)}
+    scalar = digest_codec(arrays=arrays)
+    vector = digest_codec(arrays={**arrays, "ordinary": arrays["ordinary"].reshape(1)})
+    assert scalar["candidate_memory_sha256"] == vector["candidate_memory_sha256"]
+    assert scalar["noncandidate_state_sha256"] != vector["noncandidate_state_sha256"]
+
+
+def test_candidate_state_digests_live_rejects_subclass_and_uint64_out_of_range(intervention_brains):
+    class ArraySubclass(np.ndarray): pass
+    brain, _ = intervention_brains
+    brain.lock_model_provenance()
+    for targets in (np.array([2]).view(ArraySubclass), np.array([2**64 - 1], dtype=np.uint64)):
+        with pytest.raises(ValueError): brain.candidate_state_digests(targets)
+    brain.memory_u = brain.memory_u.view(ArraySubclass)
+    with pytest.raises(ValueError): brain.candidate_state_digests(np.array([2]))
+
+
+def test_candidate_state_digests_payload_cannot_substitute_actual_state(intervention_brains, monkeypatch):
+    brain, _ = intervention_brains
+    brain.lock_model_provenance()
+    brain.memory_u[0] = np.nan
+    payload = brain._checkpoint_payload
+    def sanitized():
+        metadata, arrays = payload()
+        arrays["memory_u"] = np.zeros_like(brain.memory_u)
+        return metadata, arrays
+    monkeypatch.setattr(brain, "_checkpoint_payload", sanitized)
+    with pytest.raises(ValueError): brain.candidate_state_digests(np.array([2, 3]))
+
+
+def test_candidate_state_digests_strided_uint64_maps(intervention_brains):
+    brain, _ = intervention_brains
+    brain.lock_model_provenance()
+    targets = np.array([2, 99, 3, 99], dtype=np.uint64)[::2]
+    assert brain.candidate_state_digests(targets) == brain.candidate_state_digests(np.array([2, 3]))
+    assert digest_codec(target_indices=targets,
+        candidate_positions=np.array([0, 99, 1, 99], dtype=np.uint64)[::2],
+        edge_indices=np.array([4, 99, 1, 99], dtype=np.uint64)[::2], chunk_bytes=64) == digest_codec()
+
+
+@pytest.fixture
+def digest_visual_brain(intervention_brains, tmp_path, monkeypatch):
+    # Only anatomical lookup/projection is replaced; construction/state/native API
+    # remain the real VisualMemoryBrain on the existing four-neuron graph.
+    import pandas as pd
+    from fly_connectome_sim.neural import visual
+
+    source, _ = intervention_brains
+    monkeypatch.setattr(visual, "annotations", lambda ids: pd.DataFrame({
+        "type": ["R8p", "DAN", "MBON", "MBON"],
+    }))
+    monkeypatch.setattr(visual, "projection", lambda brain, annotations: (
+        np.array([0], dtype=np.int32), np.array([[.5, .5]], dtype=np.float32),
+        np.array([1.], dtype=np.float32),
+    ))
+    return VisualMemoryBrain(path=tmp_path / "intervention-graph.npz",
+        circuit=source.circuit, modulation_mask=source.modulation_mask)
+
+
+@pytest.mark.parametrize("before_lock", [True, False])
+@pytest.mark.parametrize("field", ["rate_kc", "eligibility_last"])
+def test_candidate_state_digests_required_registration_removal(intervention_brains, field, before_lock):
+    brain, _ = intervention_brains
+    if not before_lock:
+        brain.lock_model_provenance()
+    brain.fields.remove(field)
+    del brain.initial[field]
+    if before_lock:
+        brain.lock_model_provenance()
+    before = state_bytes(brain)
+    with pytest.raises(ValueError):
+        brain.candidate_state_digests(np.array([2]))
+    assert state_bytes(brain) == before
+
+
+@pytest.mark.parametrize("before_lock", [True, False])
+def test_candidate_state_digests_visual_registration_removal(digest_visual_brain, before_lock):
+    brain = digest_visual_brain
+    if not before_lock:
+        brain.lock_model_provenance()
+    brain.fields.remove("r8_light")
+    del brain.initial["r8_light"]
+    if before_lock:
+        brain.lock_model_provenance()
+    before = state_bytes(brain)
+    with pytest.raises(ValueError):
+        brain.candidate_state_digests(np.array([2]))
+    assert state_bytes(brain) == before
+
+
+@pytest.mark.parametrize("before_lock", [True, False])
+@pytest.mark.parametrize("change", ["dtype", "shape"])
+def test_candidate_state_digests_coordinated_native_schema_mutation(intervention_brains, change, before_lock):
+    brain, _ = intervention_brains
+    if not before_lock:
+        brain.lock_model_provenance()
+    brain.rate_kc = (brain.rate_kc.astype(np.float32) if change == "dtype"
+                     else np.zeros(1, dtype=np.float64))
+    brain.initial["rate_kc"] = brain.rate_kc.copy()
+    if before_lock:
+        brain.lock_model_provenance()
+    before = state_bytes(brain)
+    with pytest.raises(ValueError):
+        brain.candidate_state_digests(np.array([2]))
+    assert state_bytes(brain) == before
+
+
+@pytest.mark.parametrize("change", ["remove", "shape", "dtype"])
+def test_candidate_state_digests_registered_extension_integrity(intervention_brains, change):
+    brain, _ = intervention_brains
+    brain.extra_state = np.zeros(2, dtype=np.float32)
+    brain.fields.append("extra_state")
+    brain.initial["extra_state"] = brain.extra_state.copy()
+    brain.lock_model_provenance()
+    first = brain.candidate_state_digests(np.array([2]))
+    brain.extra_state[0] += 1
+    after = brain.candidate_state_digests(np.array([2]))
+    assert first["candidate_memory_sha256"] == after["candidate_memory_sha256"]
+    assert first["noncandidate_state_sha256"] != after["noncandidate_state_sha256"]
+    if change == "remove":
+        brain.fields.remove("extra_state")
+        del brain.initial["extra_state"]
+    else:
+        brain.extra_state = (np.zeros(1, dtype=np.float32) if change == "shape"
+                             else brain.extra_state.astype(np.float64))
+        brain.initial["extra_state"] = brain.extra_state.copy()
+    with pytest.raises(ValueError):
+        brain.candidate_state_digests(np.array([2]))
+
+
+@pytest.mark.parametrize("cursor", [0, 20])
+def test_candidate_state_digests_rejects_prelock_unsupported_dt(intervention_brains, cursor):
+    brain, peer = intervention_brains
+    brain.dt = .2
+    assert brain.model_provenance() == peer.model_provenance()
+    brain.lock_model_provenance()
+    brain.cursor = cursor
+    brain.sim_ms = cursor * brain.dt
+    before = state_bytes(brain)
+    with pytest.raises(ValueError):
+        brain.candidate_state_digests(np.array([2]))
+    assert state_bytes(brain) == before
+
+
+def test_candidate_state_digests_rejects_postlock_dt_divergence(intervention_brains):
+    brain, _ = intervention_brains
+    brain.lock_model_provenance()
+    brain.dt = .2
+    with pytest.raises(RuntimeError):
+        brain.candidate_state_digests(np.array([2]))
+
+
+@pytest.mark.parametrize("before_lock", [True, False])
+@pytest.mark.parametrize("population", [5, 3, 0, -1, True, 4.0, np.int64(4)])
+def test_candidate_state_digests_authenticates_population(intervention_brains, population, before_lock):
+    brain, _ = intervention_brains
+    if not before_lock:
+        brain.lock_model_provenance()
+    brain.n = population
+    if before_lock:
+        brain.lock_model_provenance()
+    before = state_bytes(brain)
+    with pytest.raises(ValueError):
+        brain.candidate_state_digests(np.array([2]))
+    assert state_bytes(brain) == before
+
+
+def test_candidate_state_digests_rejects_invented_edge_free_target(intervention_brains):
+    brain, _ = intervention_brains
+    brain.lock_model_provenance()
+    brain.n = 5
+    with pytest.raises(ValueError):
+        brain.candidate_state_digests(np.array([2, 4]))
+
+
+def test_candidate_state_digests_selected_rate_kc_sensitivity(intervention_brains):
+    brain, _ = intervention_brains
+    brain.lock_model_provenance()
+    targets = np.array([2])  # Circuit [1, 0] selects memory/rate position 1.
+    before = brain.candidate_state_digests(targets)
+    brain.rate_kc[1] += 1
+    after = brain.candidate_state_digests(targets)
+    assert after["candidate_memory_sha256"] == before["candidate_memory_sha256"]
+    assert after["noncandidate_state_sha256"] != before["noncandidate_state_sha256"]
+
+
+@pytest.mark.parametrize("before_lock", [True, False])
+@pytest.mark.parametrize("change", ["dtype", "shape"])
+def test_candidate_state_digests_coordinated_visual_schema_mutation(digest_visual_brain, change, before_lock):
+    brain = digest_visual_brain
+    if not before_lock:
+        brain.lock_model_provenance()
+    brain.r8_light = (brain.r8_light.astype(np.float64) if change == "dtype"
+                      else np.zeros(2, dtype=np.float32))
+    brain.initial["r8_light"] = brain.r8_light.copy()
+    if before_lock:
+        brain.lock_model_provenance()
+    before = state_bytes(brain)
+    with pytest.raises(ValueError):
+        brain.candidate_state_digests(np.array([2]))
+    assert state_bytes(brain) == before
+
+
 @pytest.mark.parametrize("branch", ["necessity", "sufficiency", "sham"])
 def test_candidate_intervention_preserves_non_candidate_state_and_passive_decay(
     intervention_brains, branch, tmp_path,

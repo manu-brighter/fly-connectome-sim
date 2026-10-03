@@ -28,6 +28,23 @@ def brain_state(brain):
     }
 
 
+def test_full_graph_candidate_digests_are_read_only():
+    engine = FlyEngine.from_prepared_graph()
+    engine.identity()
+    brain = engine.brain
+    before = brain.checkpoint_state_sha256()
+    scalars = (brain.cursor, brain.sim_ms, brain.total_spikes, brain.weights_frozen)
+    references = {name: getattr(brain, name) for name in ["weight", *brain.fields]}
+    first = brain.candidate_state_digests(engine.groups.mbon11)
+    assert brain.candidate_state_digests(engine.groups.mbon11) == first
+    assert set(first) == {"candidate_memory_sha256", "noncandidate_state_sha256"}
+    assert all(len(value) == 64 and set(value) <= set("0123456789abcdef")
+               for value in first.values())
+    assert brain.checkpoint_state_sha256() == before
+    assert (brain.cursor, brain.sim_ms, brain.total_spikes, brain.weights_frozen) == scalars
+    assert all(getattr(brain, name) is value for name, value in references.items())
+
+
 def test_full_graph_replays_identically_after_checkpoint_restore(tmp_path):
     engine = FlyEngine.from_prepared_graph()
     brain = engine.brain

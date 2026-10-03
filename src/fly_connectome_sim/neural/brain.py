@@ -13,6 +13,11 @@ import numpy as np
 
 from .circuit import identify
 from .checkpoint import (
+    HASH_CHUNK_BYTES,
+    _candidate_state_digests,
+    _validate_chunk_bytes,
+    _validate_index_vector,
+    _validate_numeric_arrays,
     checkpoint_state_sha256,
     load_checkpoint,
     model_fingerprint,
@@ -186,6 +191,13 @@ class MemoryBrain(NativeBrain):
         for k in ["rate_kc", "rate_dan", "memory_u", "memory_w"]:
             self.fields.append(k)
             self.initial[k] = getattr(self, k).copy()
+        # Independent native schema: editing both public registries cannot erase
+        # state still consumed by the numerical model. No numerical arrays copy.
+        self._native_checkpoint_schema = tuple(
+            (name, getattr(self, name).shape, getattr(self, name).dtype)
+            for name in self.fields
+        )
+        self._native_population_size = len(self.ids)
 
     def reset(self, keep_memory=False):
         if keep_memory:
@@ -396,6 +408,113 @@ class MemoryBrain(NativeBrain):
             sim_ms=self.sim_ms,
         )
 
+    def candidate_state_digests(
+        self, target_indices: np.ndarray, *, chunk_bytes=HASH_CHUNK_BYTES,
+    ) -> dict[str, str]:
+        """Validate/hash quiescent locked live state without writes or snapshots.
+
+        The caller keeps state/targets quiescent. Content hashes do not verify
+        donor history, engine/group identity or intervention-clock compatibility.
+        """
+        _validate_chunk_bytes(chunk_bytes)
+        self.assert_model_provenance_locked()
+        if (type(self.n) is not int or self.n <= 0
+                or self.n != self._native_population_size
+                or self.n != self._locked_population_size
+                or self.ids.ndim != 1 or self.n != len(self.ids)
+                or self.ptr.shape != (self.n + 1,)):
+            raise ValueError("Live population disagrees with native graph cardinality")
+        self._validate_candidate_checkpoint_registration()
+        metadata, arrays = self._checkpoint_payload()
+        expected_model = json.loads(self._locked_model_provenance_json)
+        validate_metadata(metadata, expected_model)
+        if self.dt != expected_model["parameters"]["neural_dt_ms"]:
+            raise ValueError("Live neural dt disagrees with supported model dt")
+        for name in ("cursor", "total_spikes", "weights_frozen"):
+            actual = getattr(self, name)
+            if type(actual) is not type(metadata[name]) or actual != metadata[name]:
+                raise ValueError(f"Live checkpoint metadata mismatch: {name}")
+        if (type(self.sim_ms) not in (int, float) or not math.isfinite(self.sim_ms)
+                or self.sim_ms != self.cursor * self.dt):
+            raise ValueError("Live checkpoint clock disagrees with cursor")
+        if type(arrays) is not dict or set(arrays) != {"weight", *self.fields}:
+            raise ValueError("Live checkpoint array fields mismatch")
+        for name, value in arrays.items():
+            shape, dtype = (
+                (self.post.shape, np.dtype(np.float32)) if name == "weight"
+                else (self.initial[name].shape, self.initial[name].dtype)
+            )
+            if (type(value) is not np.ndarray or value is not getattr(self, name)
+                    or value.shape != shape or value.dtype != dtype):
+                raise ValueError(f"Live checkpoint array mismatch: {name}")
+        _validate_numeric_arrays(arrays, chunk_bytes)
+        validate_native_state(arrays, self.n, metadata["cursor"])
+        _validate_index_vector(target_indices, "target_indices")
+        if np.any(target_indices >= self.n):
+            raise ValueError("Invalid candidate target indices")
+        circuit_edges = self.circuit["edges"]
+        _validate_index_vector(circuit_edges, "circuit_edges")
+        if np.any(circuit_edges >= self.weight.size):
+            raise ValueError("Candidate circuit edges outside graph")
+        if (self.memory_u.ndim != 1 or self.memory_w.ndim != 1 or self.weight.ndim != 1
+                or type(self.baseline_plastic) is not np.ndarray
+                or self.baseline_plastic.ndim != 1
+                or not (len(circuit_edges) == len(self.memory_u)
+                        == len(self.memory_w) == len(self.baseline_plastic))):
+            raise ValueError("Candidate circuit and memory lengths mismatch")
+        positions = self._candidate_positions(target_indices)
+        edges = circuit_edges[positions]
+        lower = self.rule_parameters["minimum_fraction"] - 1
+        upper = self.rule_parameters["maximum_fraction"] - 1
+        block_size = max(1, chunk_bytes // max(
+            self.memory_u.dtype.itemsize, self.memory_w.dtype.itemsize,
+            self.baseline_plastic.dtype.itemsize, self.weight.dtype.itemsize,
+        ))
+        for start in range(0, len(positions), block_size):
+            block = positions[start:start + block_size]
+            u, w = self.memory_u[block], self.memory_w[block]
+            if np.any(u < lower) or np.any(u > upper) or np.any(w < lower) or np.any(w > upper):
+                raise ValueError("Candidate memory exceeds rule bounds")
+            expected = (self.baseline_plastic[block] * (1 + w)).astype(self.weight.dtype)
+            if not np.allclose(
+                self.weight[edges[start:start + block_size]], expected,
+                rtol=2 * np.finfo(self.weight.dtype).eps,
+                atol=np.finfo(self.weight.dtype).tiny,
+            ):
+                raise ValueError("Candidate weight disagrees with baseline and memory")
+        result = _candidate_state_digests(
+            metadata, arrays, target_indices=target_indices,
+            candidate_positions=positions, edge_indices=edges, chunk_bytes=chunk_bytes,
+        )
+        self.assert_model_provenance_locked()
+        return result
+
+    def _validate_candidate_checkpoint_registration(self):
+        """Validate native/visual schemas and the locked registered extensions."""
+        from .visual import VisualMemoryBrain
+
+        locked = self._locked_checkpoint_schema
+        if (len(self.fields) != len(set(self.fields))
+                or set(self.fields) != set(self.initial)
+                or set(self.fields) != {name for name, _, _ in locked}
+                or "weight" in self.fields):
+            raise ValueError("Live checkpoint array fields mismatch")
+        required = self._native_checkpoint_schema
+        if isinstance(self, VisualMemoryBrain) or hasattr(self, "r8_light"):
+            light = getattr(self, "r8_light", None)
+            if type(light) is not np.ndarray:
+                raise ValueError("Live checkpoint visual state mismatch")
+            shape = (len(self.r8),) if hasattr(self, "r8") else light.shape
+            required += (("r8_light", shape, np.dtype(np.float32)),)
+        for name, shape, dtype in (*required, *locked):
+            template = self.initial.get(name)
+            value = getattr(self, name, None)
+            if (name not in self.fields or type(template) is not np.ndarray
+                    or template.shape != shape or template.dtype != dtype
+                    or type(value) is not np.ndarray
+                    or value.shape != shape or value.dtype != dtype):
+                raise ValueError(f"Live checkpoint registration/schema mismatch: {name}")
+
     def replace_candidate_memory(self, snapshot: CandidateMemory) -> None:
         """Validate a complete candidate state before replacing its three slices."""
         if not isinstance(snapshot, CandidateMemory):
@@ -474,6 +593,10 @@ class MemoryBrain(NativeBrain):
             return json.loads(self._locked_model_provenance_json)
 
         provenance = self.model_provenance()
+        self._locked_checkpoint_schema = tuple(
+            (name, value.shape, value.dtype) for name, value in self.initial.items()
+        )
+        self._locked_population_size = len(self.ids)
         arrays = self._model_provenance_arrays()
         for value in arrays.values():
             value.flags.writeable = False

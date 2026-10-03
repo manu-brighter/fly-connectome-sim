@@ -37,6 +37,11 @@ and its [`implementation plan`](docs/superpowers/plans/2026-09-24-associative-pl
   determinism are tested. Hashing uses bounded array buffers without writing
   checkpoints. Synthetic stimuli, counterbalanced protocols, pathway telemetry
   and atomic candidate-memory interventions are implemented.
+- Live candidate/noncandidate content hashes bind the exact selected memory
+  triplet and all other state in separate domains, with complete-state validation
+  before exclusions and bounded numeric encoding. Content equality is not donor
+  history, current-group identity or clock-compatibility proof; the later producer
+  must verify those separately.
 - Exploratory qualification and append-only verified artifacts are available
   through `qualify` and `verify-run`. The pure frozen-config builder and MBON11
   analysis contract are implemented and independently reviewed.
@@ -48,7 +53,7 @@ and its [`implementation plan`](docs/superpowers/plans/2026-09-24-associative-pl
   preserves its canonical report through terminal append and sealing; missing
   assay cells still classify it as inconclusive, not a positive assay result.
 - In progress: selected qualification interventions, held-out assay production,
-  production state digests and the `assay` CLI. Formal full-graph qualification
+  producer/replay integration and the `assay` CLI. Formal full-graph qualification
   and confirmation have not run; no positive plasticity or behavior result is
   claimed.
 - Still to add: a separately labelled, unvalidated motor readout. Verified
