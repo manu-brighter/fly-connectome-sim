@@ -356,6 +356,43 @@ fullgraph integrations, on the unchanged reviewed source/test bytes.
 This slice does not supply formal qualification, a production frozen config,
 fullgraph capacity approval, all-factor controls or the assay CLI.
 
+#### Task7B3e: complete native control routes for one cohort
+
+**Files:** Extend `experiment/assay.py` and its native tests; update status docs.
+
+**Interface:** `run_controlled_cohort(...) -> AssayReport` shares the existing
+producer and executes all eight conditions for one seed/identity/order cohort.
+Preserve paired and intervention APIs. Add frozen-plasticity, no-external-DAN
+and temporally-unpaired acquisition through the existing five ordinary plans.
+
+- [x] **RED:** Initialize native engine/config before the absent-API failure.
+- [x] **GREEN:** Acquire all five ordinary sources independently from baseline;
+  match time/exposure/order and preflight every retention source. Execute each
+  shared plan's learning/stimulation declarations. Frozen plasticity disables
+  acquisition learning while weights stay unfrozen for passive memory decay.
+  No-external-DAN preserves endogenous learning/telemetry. The unpaired pulse
+  receives black RGB and stays at least 10000ms from every CS boundary.
+- [x] Native evidence proves five trainings, three interventions, sixteen
+  anchors, ninety-six responses, eleven durable checkpoints and forty-eight
+  independent post trials. All sixteen condition/time rows have pre/post A/B/C;
+  other declared factors remain missing and classify the pilot as inconclusive.
+- [x] Preserve existing forty-five paired/intervention regressions, terminal
+  canonical equality and native prefix/sealed replay. Independently review and
+  run a final complete opt-in suite before feature-branch commit/push.
+
+Completion evidence (2026-10-04): initialized native missing-API RED;
+focused native coverage:52 passed in522.89s, including all forty-five existing
+paired/intervention regressions. Fresh independent integrity review has no open
+findings. Final complete opt-in suite with regular sandbox permission:1242 passed
+in852.34s, including both fullgraph integrations and the native-build smoke, on
+unchanged reviewed source/test bytes. Earlier sandbox full runs passed1241 tests
+but Windows application control blocked the freshly built smoke DLL at load
+(WinError4551); compilation completed, and no product or security-policy change
+was made to obtain the final host-environment verification.
+
+This slice supplies complete conditions for one factor cohort, not all-factor
+confirmation, formal qualification/configuration, capacity approval or the CLI.
+
 ### Task 8: Add a motor-only adapter without a behavioral claim
 
 **Files:** Modify `src/fly_connectome_sim/experiment/adapter.py`, `src/fly_connectome_sim/experiment/recorder.py`, `src/fly_connectome_sim/schemas/run.schema.json`, `tests/experiment/test_adapter.py`, `tests/experiment/test_recorder.py`. Keep `preference-adapter/v1` readable for old artifacts.

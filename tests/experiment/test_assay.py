@@ -35,11 +35,14 @@ def _tracked_factory(factory, records, *, timing=0):
             record["operations"].append("observe")
             start = engine.brain.cursor
             state = engine.brain.checkpoint_state_sha256()
+            weights_frozen = engine.brain.weights_frozen
             result = observe(frame, duration, **kwargs)
             result["compute_seconds"] = timing
             result["kernel_seconds"] = timing
             record["calls"].append({"start": start, "end": engine.brain.cursor,
                                     "state": state, "frame": frame.copy(), "duration": duration,
+                                    "weights_frozen": weights_frozen,
+                                    "after_weights_frozen": engine.brain.weights_frozen,
                                     "kwargs": kwargs, "telemetry": deepcopy(result)})
             return result
 
@@ -72,6 +75,219 @@ def _tracked_factory(factory, records, *, timing=0):
         engine.brain.candidate_state_digests = traced_digests
         return engine
     return create
+
+
+def test_real_controlled_cohort(engine_factory, tmp_path, monkeypatch):
+    import fly_connectome_sim.experiment.assay as assay
+    from fly_connectome_sim.experiment.qualification import GridConfiguration, _training_timeline
+
+    native = engine_factory()
+    frozen = _declared_native_frozen_config(native)
+    records, producer_records, sealed_runs = [], [], []
+    verify_prefix, verify_sealed = assay.verify_replay_prefix, assay.verify_replay_run
+
+    def tracked_prefix(*args, **kwargs):
+        producer_records.extend(records)
+        return verify_prefix(*args, **kwargs)
+
+    def tracked_sealed(*args, **kwargs):
+        run = verify_sealed(*args, **kwargs)
+        sealed_runs.append(run)
+        return run
+
+    monkeypatch.setattr(assay, "verify_replay_prefix", tracked_prefix)
+    monkeypatch.setattr(assay, "verify_replay_run", tracked_sealed)
+    path = tmp_path / "controls"
+    report = assay.run_controlled_cohort(_tracked_factory(engine_factory, records), frozen,
+                                       output_dir=path)
+    assert len(sealed_runs) == 1
+    run = sealed_runs[0]
+    events = list(run.iter_events())
+    trainings = [e for e in events if e["type"] == "assay_training"]
+    interventions = [e for e in events if e["type"] == "assay_intervention"]
+    responses = [e for e in events if e["type"] == "assay_response"]
+    anchors = list(run.manifest["state_anchors"].values())
+    conditions = ("paired", "frozen_plasticity", "no_external_dan", "temporally_unpaired",
+                  "matched_reference", "necessity", "sufficiency", "sham")
+    assert [t["condition"] for t in trainings] == list(conditions[:5])
+    assert [i["condition"] for i in interventions] == list(conditions[5:])
+    assert len(responses) == 96 and len(anchors) == 16
+    assert set(run.manifest["checkpoints"]) == {
+        "brain-before.npz", "baseline.npz", "training-end.npz", "brain-after.npz",
+        "frozen_plasticity-training-end.npz", "no_external_dan-training-end.npz",
+        "temporally_unpaired-training-end.npz", "matched-reference-training-end.npz",
+        "necessity-post.npz", "sufficiency-post.npz", "sham-post.npz",
+    }
+    assert report.status == "inconclusive"
+    missing = [reason for reason in report.reasons if reason.startswith("missing_")]
+    assert missing and all(":101/A/AB/" not in reason for reason in missing)
+    # This tiny correctness fixture has no qualified scientific effect. Completing
+    # its controls legitimately exposes effect/floor failures as well as absent factors.
+    assert set(report.reasons) - set(missing) == {
+        f"{gate}:101/A/AB/{retention}"
+        for gate in ("C_floor", "control_frozen_plasticity", "control_no_external_dan",
+                     "control_temporally_unpaired", "necessity_contrast", "paired_effect",
+                     "sufficiency_absolute", "sufficiency_reference")
+        for retention in (10000, 70000)}
+    assert any("113/" in reason for reason in report.reasons)
+    assert any("101/B/" in reason for reason in report.reasons)
+    assert any("101/A/BA/" in reason for reason in report.reasons)
+    assert report.values["verification_mode"] == "native-replay"
+    assert sum(e["type"] == "assay_result" for e in events) == 1
+    assert report.to_dict() == analyze_assay(run, frozen).to_dict() == events[-1]["report"]
+    assert {r["parent_sha256"] for r in report.values["nonmaterialized_parents"]} == {
+        a["state_anchor_sha256"] for a in anchors}
+    reduction = reduce_assay_evidence(run.iter_events(), frozen,
+                                     attested_state_anchors=run.replay_attested_state_anchors)
+    for retention in (10000, 70000):
+        for condition in conditions:
+            assert set(reduction.rows[f"101/A/AB/{retention}"][condition]) == {
+                f"{phase}_{stimulus}" for phase in ("pre", "post") for stimulus in ("A", "B", "C")}
+
+    config = frozen.to_dict()
+    grid = GridConfiguration(**config["selected_configuration"])
+    baseline = engine_factory()
+    baseline.brain.restore(path / "checkpoints" / "baseline.npz")
+    baseline_state = baseline.brain.checkpoint_state_sha256()
+    paired = trainings[0]
+    for record, training in zip(producer_records[1:6], trainings):
+        condition = training["condition"]
+        schedule, _, total_end, t0 = _training_timeline(grid, "A", "AB", condition, controls=True)
+        assert record["restores"][0]["path"].name == "baseline.npz"
+        assert record["calls"][0]["state"] == record["restores"][0]["state"] == baseline_state
+        assert training["baseline_tick"] == baseline.brain.cursor
+        assert training["training_end_tick"] == baseline.brain.cursor + round(total_end * 10)
+        assert training["association_t0_tick"] == baseline.brain.cursor + round(t0 * 10)
+        assert training["retention_reference_tick"] == paired["association_t0_tick"]
+        assert training["training_visual_exposure_ticks"] == {"A": 1000, "B": 1000, "C": 0}
+        assert len(record["calls"]) == len(schedule) == len(training["segments"])
+        actual_rows = []
+        for call, segment in zip(record["calls"], schedule):
+            learning = (condition in ("paired", "no_external_dan", "temporally_unpaired")
+                        and segment.start_ms < t0 and bool(segment.stimulus or segment.stimulation))
+            assert call["duration"] == segment.end_ms - segment.start_ms <= 500
+            assert call["kwargs"] == {"stimulation": segment.stimulation, "learning": learning}
+            assert call["weights_frozen"] is False and call["after_weights_frozen"] is False
+            expected_pulse = {"population": "ppl101", "current_mv": 20.0,
+                              "duration_ms": call["duration"]} if segment.stimulation else None
+            assert call["telemetry"]["stimulation"] == expected_pulse
+            if segment.stimulus is None:
+                assert not np.any(call["frame"])
+            else:
+                from fly_connectome_sim.experiment.stimuli import AssayStimuli
+                assert np.array_equal(call["frame"], AssayStimuli(101, "confirmation").frame(segment.stimulus))
+            actual_rows.append({"start_tick": call["start"], "end_tick": call["end"],
+                                "stimulus": segment.stimulus, "external_stimulation": call["kwargs"]["stimulation"],
+                                "learning": call["kwargs"]["learning"], "current_mv": 20.0 if expected_pulse else None,
+                                "input_sha256": call["telemetry"]["input_sha256"]})
+        assert actual_rows == training["segments"]
+        assert {name: sum(c["end"] - c["start"] for c, s in zip(record["calls"], schedule)
+                          if s.stimulus == name) for name in ("A", "B", "C")} == {
+            "A": 1000, "B": 1000, "C": 0}
+        pulse_calls = [c for c in record["calls"] if c["kwargs"]["stimulation"]]
+        pulse_end = max((c["end"] for c in pulse_calls), default=None)
+        assert training["last_external_dan_end_tick"] == pulse_end
+        if condition in ("paired", "frozen_plasticity", "temporally_unpaired"):
+            assert sum(c["end"] - c["start"] for c in pulse_calls) == 1000
+        else:
+            assert not pulse_calls
+        if condition == "no_external_dan":
+            logged = [e["telemetry"] for e in events
+                      if e["branch_id"] == training["branch_id"] and e["type"] == "observe"]
+            observed = [c["telemetry"] for c in record["calls"]
+                        if any(c["frame"].flat) or c["kwargs"]["stimulation"]]
+            assert logged == observed
+            assert [b["group_spikes"]["ppl101"] for o in logged for b in o["bins"]] == [
+                b["group_spikes"]["ppl101"] for o in observed for b in o["bins"]]
+        if condition == "temporally_unpaired":
+            assert [(c["start"], c["end"]) for c in pulse_calls] == [(baseline.brain.cursor, baseline.brain.cursor + 1000)]
+            assert all(not np.any(c["frame"]) for c in pulse_calls)
+            first_cs = next(c["start"] for c, s in zip(record["calls"], schedule) if s.stimulus)
+            assert first_cs == baseline.brain.cursor + 101000
+            assert first_cs - pulse_end == training["unpaired_nearest_cs_boundary_ticks"] == 100000
+        name = {"paired": "training-end.npz", "matched_reference": "matched-reference-training-end.npz"}.get(
+            condition, f"{condition}-training-end.npz")
+        source = engine_factory()
+        source.identity()
+        source.brain.restore(path / "checkpoints" / name)
+        assert source.brain.cursor == training["training_end_tick"]
+        assert source.brain.candidate_state_digests(source.groups.mbon11) == {
+            k: training[k] for k in ("candidate_memory_sha256", "noncandidate_state_sha256")}
+        assert sha256((path / "checkpoints" / name).read_bytes()).hexdigest() == training["training_end_checkpoint_sha256"]
+
+    pre_records = [r for r in producer_records if r["calls"] and r["restores"]
+                   and r["restores"][0]["path"].name == "baseline.npz"
+                   and not any(r is t for t in producer_records[1:6])]
+    post_records = [r for r in producer_records if r["restores"] and r["restores"][0]["path"].name == "retained.npz"]
+    assert len(pre_records) == 3 and len(post_records) == 48
+    assert len({id(r["engine"]) for r in pre_records + post_records}) == 51
+    assert len([e for e in responses if e["phase"] == "pre"]) == 48
+    for record in pre_records + post_records:
+        restored = record["restores"][0]
+        assert len(record["restores"]) == 1 and record["calls"][0]["state"] == restored["state"]
+        if any(record is pre for pre in pre_records):
+            assert restored["state"] == baseline_state
+        else:
+            assert not restored["path"].exists()
+            assert restored["state"] in {a["complete_state_sha256"] for a in anchors}
+        assert all(c["kwargs"] == {"learning": False, "stimulation": None}
+                   and c["weights_frozen"] is False and c["after_weights_frozen"] is False for c in record["calls"])
+    trial_records = {f"pre/{stimulus}": r for stimulus, r in zip(("A", "B", "C"), pre_records)}
+    trial_records.update({f"{'' if condition == 'paired' else condition + '/'}post/{retention}/{stimulus}": record
+                         for (condition, retention, stimulus), record in zip(
+                             ((c, t, s) for c in conditions for t in (10000, 70000) for s in ("A", "B", "C")), post_records)})
+    for response in responses:
+        observations = [c["telemetry"] for c in trial_records[response["branch_id"]]["calls"]]
+        logged = [e["telemetry"] for e in events if e["branch_id"] == response["branch_id"] and e["type"] == "observe"]
+        assert observations == logged
+        start, stop = response["bins"][0]["start_tick"], response["bins"][-1]["end_tick"]
+        raw = [{"start_tick": round(b["end_ms"] * 10) - round(b["duration_ms"] * 10),
+                "end_tick": round(b["end_ms"] * 10), "spikes": b["group_spikes"]["mbon11"]}
+               for o in observations for b in o["bins"] if start < round(b["end_ms"] * 10) <= stop]
+        assert raw == response["bins"]
+        assert response["rate_hz"] == sum(b["spikes"] for b in raw) * 10000 / (stop - start)
+        assert response["endogenous_dan_spikes"] == sum(b["group_spikes"]["ppl101"]
+            for o in observations for b in o["bins"] if round(b["end_ms"] * 10) <= stop)
+    retained = [r for r in producer_records if r["calls"] and r["restores"]
+                and r["restores"][0]["path"].name.endswith("training-end.npz")]
+    assert len(retained) == 10
+    for record in retained:
+        assert all(not np.any(c["frame"]) and c["kwargs"] == {"learning": False, "stimulation": None}
+                   and c["weights_frozen"] is False and c["after_weights_frozen"] is False for c in record["calls"])
+    assert len([r for r in producer_records if r["replacements"]]) == 3
+
+
+@pytest.mark.parametrize("factor,value", [("seed", True), ("seed", 11), ("paired_identity", "C"), ("presentation_order", "AA")])
+def test_controlled_undeclared_factors_fail_before_artifact(engine_factory, tmp_path, factor, value):
+    import fly_connectome_sim.experiment.assay as assay
+    native = engine_factory()
+    frozen = _declared_native_frozen_config(native)
+    with pytest.raises(ValueError, match="Undeclared"):
+        assay.run_controlled_cohort(engine_factory, frozen, output_dir=tmp_path / "controls", **{factor: value})
+    assert not (tmp_path / "controls").exists()
+
+
+@pytest.mark.parametrize("paired_identity,presentation_order", [("B", "AB"), ("A", "BA")])
+def test_controlled_unreachable_anchor_rejects_before_artifact(
+        engine_factory, tmp_path, paired_identity, presentation_order, monkeypatch):
+    import fly_connectome_sim.experiment.assay as assay
+    from fly_connectome_sim.experiment.analysis import FrozenAssayConfig
+    native = engine_factory()
+    data = _declared_native_frozen_config(native).to_dict()
+    data["selected_configuration"]["post_pair_gap_ms"] = 10000.0
+    del data["digest"]
+    data["digest"] = sha256(json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
+    frozen = FrozenAssayConfig.from_dict(data)
+
+    def unexpected_artifact(*args, **kwargs):
+        pytest.fail("Scratch/recorder opened before training reachability preflight")
+
+    monkeypatch.setattr(assay, "TemporaryDirectory", unexpected_artifact)
+    monkeypatch.setattr(assay, "RunRecorder", unexpected_artifact)
+    with pytest.raises(ValueError, match="(?i)(target|anchor).*source"):
+        assay.run_controlled_cohort(engine_factory, frozen, output_dir=tmp_path / "controls",
+                                   paired_identity=paired_identity, presentation_order=presentation_order)
+    assert not (tmp_path / "controls").exists()
 
 
 def test_real_paired_cohort(engine_factory, tmp_path):

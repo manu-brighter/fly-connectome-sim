@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 import numpy as np
 
 from ..engine import _rgb_input_sha256
-from .analysis import (FrozenAssayConfig, AssayReport, _canonical, _training_plan,
+from .analysis import (CONDITIONS, ORDINARY_CONDITIONS, FrozenAssayConfig, AssayReport, _canonical, _training_plan,
                        assess_assay_prefix, build_assay_result, analyze_assay)
 from .qualification import GridConfiguration, _training_timeline, _trial_segments, _split_intervals
 from .recorder import RunRecorder, _digest_file, verify_replay_prefix, verify_replay_run
@@ -157,6 +157,13 @@ def run_intervention_cohort(engine_factory, frozen: FrozenAssayConfig, *, output
                        conditions=("paired", "matched_reference", "necessity", "sufficiency", "sham"))
 
 
+def run_controlled_cohort(engine_factory, frozen: FrozenAssayConfig, *, output_dir,
+                          seed=101, paired_identity="A", presentation_order="AB") -> AssayReport:
+    return _run_cohort(engine_factory, frozen, output_dir=output_dir, seed=seed,
+                       paired_identity=paired_identity, presentation_order=presentation_order,
+                       conditions=CONDITIONS)
+
+
 def _run_cohort(engine_factory, frozen, *, output_dir, seed, paired_identity, presentation_order, conditions):
     config = FrozenAssayConfig.from_dict(frozen.to_dict()).to_dict()
     if (type(seed) is not int or seed not in config["confirmation_seeds"]
@@ -180,7 +187,7 @@ def _run_cohort(engine_factory, frozen, *, output_dir, seed, paired_identity, pr
     baseline_tick = producer.brain.cursor
     root = "baseline"
     grid = GridConfiguration(**config["selected_configuration"])
-    acquisitions = tuple(condition for condition in conditions if condition in ("paired", "matched_reference"))
+    acquisitions = tuple(condition for condition in conditions if condition in ORDINARY_CONDITIONS)
     plans = {condition: _training_plan(config, seed, paired_identity, presentation_order,
                                       condition, "confirmation", baseline_tick) for condition in acquisitions}
     for plan in plans.values():
@@ -262,7 +269,8 @@ def _run_cohort(engine_factory, frozen, *, output_dir, seed, paired_identity, pr
                 rows = []
                 for segment in schedule:
                     start = acquired.brain.cursor
-                    learning = (condition == "paired" and segment.start_ms < t0
+                    learning = (condition in ("paired", "no_external_dan", "temporally_unpaired")
+                                and segment.start_ms < t0
                                 and bool(segment.stimulus or segment.stimulation))
                     call(acquired, training_branch, round((segment.end_ms - segment.start_ms) * 10),
                          segment.stimulus, segment.stimulation, learning,
@@ -275,7 +283,8 @@ def _run_cohort(engine_factory, frozen, *, output_dir, seed, paired_identity, pr
                                       if row["stimulus"] == name) for name in ("A", "B", "C")}
                 if rows != plan["segments"] or exposure != plan["training_visual_exposure_ticks"]:
                     raise ValueError("Executed training disagrees with declared schedule")
-                name = "training-end.npz" if condition == "paired" else "matched-reference-training-end.npz"
+                name = {"paired": "training-end.npz", "matched_reference": "matched-reference-training-end.npz"}.get(
+                    condition, f"{condition}-training-end.npz")
                 source = durable(acquired, name, training_branch, parent(baseline))
                 training = {"type": "assay_training", "training_version": "associative-training/v1",
                             "training_id": training_branch, "branch_id": training_branch, "seed": seed,
