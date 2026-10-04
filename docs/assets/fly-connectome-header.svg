@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="340" viewBox="0 0 1200 340" role="img" aria-labelledby="title description">
+  <title id="title">Fly Connectome Sim</title>
+  <desc id="description">Offline, reproducible MaleCNS experiments. A mint and amber neural fly schematic illustrates the subject; its nodes and connections are decorative, not MaleCNS anatomy or measured activity. Python 3.12, native C++17, MaleCNS v1.0, work in progress.</desc>
+  <defs>
+    <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M28 0H0V28" fill="none" stroke="#17333f" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="340" rx="16" fill="#081a24"/>
+  <path d="M734 0H1184Q1200 0 1200 16V324Q1200 340 1184 340H734Z" fill="url(#grid)"/>
+  <path d="M48 43H103" stroke="#4edbc4" stroke-width="4"/>
+  <g font-family="Arial, Helvetica, sans-serif">
+    <text x="48" y="124" fill="#f1f8f8" font-size="64" font-weight="700" letter-spacing="-2">Fly Connectome Sim</text>
+    <text x="50" y="174" fill="#a9c4ce" font-size="29">Offline, reproducible experiments</text>
+    <text x="50" y="215" fill="#a9c4ce" font-size="29">on the MaleCNS wiring graph.</text>
+    <g font-size="20">
+      <rect x="48" y="271" width="153" height="36" rx="6" fill="#12323b"/>
+      <text x="124.5" y="296" text-anchor="middle" fill="#4edbc4">Python 3.12</text>
+      <rect x="213" y="271" width="168" height="36" rx="6" fill="#142d45"/>
+      <text x="297" y="296" text-anchor="middle" fill="#88bafa">Native C++17</text>
+      <rect x="393" y="271" width="180" height="36" rx="6" fill="#12323b"/>
+      <text x="483" y="296" text-anchor="middle" fill="#4edbc4">MaleCNS v1.0</text>
+      <rect x="585" y="271" width="87" height="36" rx="6" fill="#3b3025"/>
+      <text x="628.5" y="296" text-anchor="middle" fill="#f2b45c">WIP</text>
+    </g>
+    <text x="964" y="310" text-anchor="middle" fill="#a9c4ce" font-size="17">Illustrative schematic · not anatomy</text>
+  </g>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M968 142C936 94 846 55 811 92C785 122 866 180 950 183M970 142C1002 94 1092 55 1127 92C1153 122 1072 180 988 183" fill="#12343c" stroke="#357f83" stroke-width="2"/>
+    <path d="M964 161L849 101L831 124L892 159L952 181M976 161L1089 101L1107 124L1046 159L988 181" stroke="#4edbc4" stroke-width="2" opacity="0.65"/>
+    <path d="M963 130L939 87L919 76M977 130L1001 87L1021 76M957 182L909 192L887 218M956 204L916 221L902 247M984 182L1031 192L1053 218M984 204L1024 221L1038 247" stroke="#589ee6" stroke-width="3"/>
+    <path d="M970 170V246" stroke="#4edbc4" stroke-width="3"/>
+    <path d="M951 146L970 130L989 146L984 177L970 204L956 177Z" stroke="#4edbc4" stroke-width="2"/>
+    <path d="M822 123L862 139L893 120L933 155L970 130L1006 155L1047 120L1078 139L1116 123M862 139L892 159L933 155L956 177L970 204L984 177L1006 155L1046 159L1078 139" stroke="#4edbc4" stroke-width="2"/>
+  </g>
+  <g fill="#4edbc4" stroke="#081a24" stroke-width="3">
+    <circle cx="822" cy="123" r="6"/><circle cx="862" cy="139" r="7"/><circle cx="893" cy="120" r="5"/><circle cx="892" cy="159" r="6"/>
+    <circle cx="933" cy="155" r="8"/><circle cx="956" cy="177" r="6"/><circle cx="984" cy="177" r="6"/><circle cx="1006" cy="155" r="8"/>
+    <circle cx="1047" cy="120" r="5"/><circle cx="1046" cy="159" r="6"/><circle cx="1078" cy="139" r="7"/><circle cx="1116" cy="123" r="6"/>
+    <circle cx="970" cy="204" r="7"/><circle cx="970" cy="225" r="5"/><circle cx="970" cy="246" r="4"/>
+  </g>
+  <circle cx="970" cy="130" r="13" fill="#f2b45c" stroke="#081a24" stroke-width="4"/>
+</svg>

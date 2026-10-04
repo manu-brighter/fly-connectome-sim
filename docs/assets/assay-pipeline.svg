@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="840" viewBox="0 0 600 840" role="img" aria-labelledby="title description">
+  <title id="title">Conceptual associative-plasticity assay pipeline</title>
+  <desc id="description">Five stages: checksum-locked MaleCNS v1.0 graph; explicit native numerical model; controlled visual stimulus and PPL101 training; MBON11 A/B/C probes without external stimulation at two retention times; immutable recording, native replay verification and analysis. This workflow is not evidence of a positive result; correctness pilots remain inconclusive.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M1 1L8 5L1 9" fill="none" stroke="#4edbc4" stroke-width="2"/>
+    </marker>
+  </defs>
+  <rect width="600" height="840" rx="14" fill="#081a24"/>
+  <g font-family="Arial, Helvetica, sans-serif">
+    <text x="36" y="47" font-size="28" font-weight="700" fill="#f1f8f8">From wiring to recorded evidence</text>
+    <text x="36" y="80" font-size="20" fill="#a9c4ce">Conceptual workflow · correctness pilots inconclusive</text>
+    <g fill="#102a35" stroke="#294956">
+      <rect x="76" y="108" width="488" height="114" rx="9"/>
+      <rect x="76" y="248" width="488" height="114" rx="9"/>
+      <rect x="76" y="388" width="488" height="114" rx="9"/>
+      <rect x="76" y="528" width="488" height="114" rx="9"/>
+      <rect x="76" y="668" width="488" height="114" rx="9"/>
+    </g>
+    <g font-size="24" font-weight="700" fill="#f1f8f8">
+      <text x="99" y="142">Locked MaleCNS v1.0 graph</text>
+      <text x="99" y="282">Explicit native model</text>
+      <text x="99" y="422">Controlled training</text>
+      <text x="99" y="562">MBON11 response endpoint</text>
+      <text x="99" y="702">Recorded replay and analysis</text>
+    </g>
+    <g font-size="20" fill="#a9c4ce">
+      <text x="99" y="175">Released sources + prepared-array locks</text>
+      <text x="99" y="203">Verified before model construction</text>
+      <text x="99" y="315">C++17 dynamics + declared plasticity</text>
+      <text x="99" y="343">Checkpointed state; explicit assumptions</text>
+      <text x="99" y="455">Synthetic A/B visuals + PPL101 input</text>
+      <text x="99" y="483">Matched controls + memory interventions</text>
+      <text x="99" y="595">A/B/C probes at two retention times</text>
+      <text x="99" y="623">No external stimulation during probes</text>
+      <text x="99" y="735">Append-only events + native replay</text>
+      <text x="99" y="763">Provenance gates; missing evidence visible</text>
+    </g>
+    <g fill="#4edbc4" font-size="23" font-weight="700" text-anchor="middle">
+      <text x="38" y="173">1</text><text x="38" y="313">2</text><text x="38" y="453">3</text><text x="38" y="593">4</text><text x="38" y="733">5</text>
+    </g>
+    <text x="36" y="817" font-size="19" fill="#f2b45c">Integrity and replay verification do not establish learning.</text>
+  </g>
+  <g fill="none" stroke="#4edbc4" stroke-width="2" marker-end="url(#arrow)">
+    <path d="M38 187V271"/><path d="M38 327V411"/><path d="M38 467V551"/><path d="M38 607V691"/>
+  </g>
+</svg>
