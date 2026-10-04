@@ -1,4 +1,4 @@
-![Fly Connectome Sim: offline, reproducible MaleCNS experiments. The neural fly motif is illustrative, not an anatomical reconstruction.](docs/assets/fly-connectome-header.svg)
+![Fly Connectome Sim: offline, reproducible MaleCNS experiments with an animated neural fly. The motif and motion are illustrative, not an anatomical reconstruction or measured activity.](docs/assets/fly-connectome-header.svg)
 
 <p align="center">
   <a href="#current-status">Status</a> ·
