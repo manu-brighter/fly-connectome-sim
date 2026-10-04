@@ -393,6 +393,45 @@ was made to obtain the final host-environment verification.
 This slice supplies complete conditions for one factor cohort, not all-factor
 confirmation, formal qualification/configuration, capacity approval or the CLI.
 
+#### Task7B3f: shared artifact for reciprocal controlled cohorts
+
+**Files:** Extend `experiment/assay.py` and its native tests; update status docs.
+
+**Interface:** `run_controlled_cohorts(engine_factory, frozen, *, output_dir,
+cohorts) -> AssayReport` accepts a nonempty bounded list/tuple of unique declared
+seed/identity/order triples. Existing single-cohort APIs and evidence names stay
+compatible. All requested cohorts share one real baseline occurrence and one
+recorder, prefix, terminal and sealed artifact. Durable training/intervention
+checkpoints and pre/post/retention/anchor identifiers are unique per cohort.
+
+- [x] **RED:** Initialize genuine tiny native engine/config before missing API.
+- [x] **GREEN:** Execute all eight conditions for each requested cohort from
+  independent restores of one global baseline. Preflight actual input hashes and
+  retention reachability for every requested cohort before scratch/recorder.
+  Preserve source/donor/recipient occurrences, clocks, passive decay, sequence
+  order and native replay contracts; no combination of independently sealed runs.
+- [x] Native reciprocal acceptance executes `101/A/AB` and `101/B/AB`: ten
+  trainings, six interventions, thirty-two anchors, 192 responses and nineteen
+  durable checkpoints. Both cells at both retention times contain all eight
+  conditions and pre/post A/B/C, while other factors remain visibly missing.
+  Preserve negative scientific and reciprocal gates; status remains inconclusive.
+- [x] Reject empty, duplicate, malformed and undeclared cohort factors plus
+  late-cohort bad inputs/unreachable sources before creating artifacts. Preserve
+  all fifty-two existing regressions. Independently review, freeze tested bytes,
+  then run a complete opt-in suite before explicit feature-branch commit/push.
+
+Completion evidence (2026-10-04): initialized native missing-API RED; final-byte
+preflight coverage:20 passed. Fresh independent integrity review has no open
+findings. Final complete opt-in suite:1263 passed in1661.01s, including all73
+producer cases, both fullgraph integrations and the native-build smoke, with
+zero failures/errors/skips and unchanged reviewed source/test hashes. The genuine
+reciprocal native acceptance passed in791.396s on the stronger final assertions;
+its one shared sealed artifact remains scientifically inconclusive.
+
+This slice validates two cohorts in one native artifact; it does not establish
+all-factor confirmation, formal qualification/configuration, fullgraph capacity
+or the assay CLI. Full factor execution remains a subsequent validation gate.
+
 ### Task 8: Add a motor-only adapter without a behavioral claim
 
 **Files:** Modify `src/fly_connectome_sim/experiment/adapter.py`, `src/fly_connectome_sim/experiment/recorder.py`, `src/fly_connectome_sim/schemas/run.schema.json`, `tests/experiment/test_adapter.py`, `tests/experiment/test_recorder.py`. Keep `preference-adapter/v1` readable for old artifacts.

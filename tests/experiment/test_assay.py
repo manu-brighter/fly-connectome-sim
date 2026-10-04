@@ -77,6 +77,265 @@ def _tracked_factory(factory, records, *, timing=0):
     return create
 
 
+def test_real_reciprocal_controlled_cohorts(engine_factory, tmp_path, monkeypatch):
+    import fly_connectome_sim.experiment.assay as assay
+    from fly_connectome_sim.engine import _rgb_input_sha256
+    from fly_connectome_sim.experiment.stimuli import AssayStimuli
+
+    native = engine_factory()
+    frozen = _declared_native_frozen_config(native)
+    records, producer_records, prefixes, sealed_runs = [], [], [], []
+    verify_prefix, verify_sealed = assay.verify_replay_prefix, assay.verify_replay_run
+
+    def tracked_prefix(*args, **kwargs):
+        producer_records.extend(records)
+        prefix = verify_prefix(*args, **kwargs)
+        prefixes.append(prefix)
+        return prefix
+
+    def tracked_sealed(*args, **kwargs):
+        run = verify_sealed(*args, **kwargs)
+        sealed_runs.append(run)
+        return run
+
+    monkeypatch.setattr(assay, "verify_replay_prefix", tracked_prefix)
+    monkeypatch.setattr(assay, "verify_replay_run", tracked_sealed)
+    path = tmp_path / "reciprocal"
+    report = assay.run_controlled_cohorts(_tracked_factory(engine_factory, records), frozen,
+        output_dir=path, cohorts=[(101, "A", "AB"), (101, "B", "AB")])
+    assert len(prefixes) == len(sealed_runs) == 1
+    run = sealed_runs[0]
+    events = list(run.iter_events())
+    trainings = [e for e in events if e["type"] == "assay_training"]
+    interventions = [e for e in events if e["type"] == "assay_intervention"]
+    responses = [e for e in events if e["type"] == "assay_response"]
+    anchors = list(run.manifest["state_anchors"].values())
+    checkpoints = run.manifest["checkpoints"]
+    conditions = ("paired", "frozen_plasticity", "no_external_dan", "temporally_unpaired",
+                  "matched_reference", "necessity", "sufficiency", "sham")
+    assert len(trainings) == 10 and len(interventions) == 6
+    assert len(responses) == 192 and len(anchors) == 32 and len(checkpoints) == 19
+    assert len({a["anchor_id"] for a in anchors}) == 32
+    starts = [e for e in events if e["type"] in ("branch_start", "fork")]
+    assert len({e["branch_id"] for e in starts}) == len(starts)
+    assert [e["sequence"] for e in events] == list(range(len(events)))
+    assert sum(e["type"] == "assay_result" for e in events) == 1
+    assert report.to_dict() == analyze_assay(run, frozen).to_dict() == events[-1]["report"]
+    assert report.to_dict() == assay.assess_assay_prefix(prefixes[0], frozen).to_dict()
+    assert report.status == "inconclusive" and report.values["verification_mode"] == "native-replay"
+    missing = [r for r in report.reasons if r.startswith("missing_")]
+    assert missing and all(":101/A/AB/" not in r and ":101/B/AB/" not in r for r in missing)
+    assert any("113/" in r for r in missing) and any("101/A/BA/" in r for r in missing)
+    assert {r for r in report.reasons if r.startswith("reciprocal:")} == {
+        "reciprocal:101/AB/10000", "reciprocal:101/AB/70000"}
+    assert any(r.startswith("paired_effect:") for r in report.reasons)
+    reduction = reduce_assay_evidence(run.iter_events(), frozen,
+                                     attested_state_anchors=run.replay_attested_state_anchors)
+    for identity in ("A", "B"):
+        assert [t["condition"] for t in trainings if t["paired_identity"] == identity] == list(conditions[:5])
+        for retention in (10000, 70000):
+            for condition in conditions:
+                assert set(reduction.rows[f"101/{identity}/AB/{retention}"][condition]) == {
+                    f"{phase}_{stimulus}" for phase in ("pre", "post") for stimulus in ("A", "B", "C")}
+
+    baseline = engine_factory()
+    baseline.brain.restore(path / "checkpoints" / "baseline.npz")
+    baseline_state = baseline.brain.checkpoint_state_sha256()
+    baseline_occurrence = checkpoints["baseline.npz"]
+    assert set(checkpoints) == {"brain-before.npz", "baseline.npz", "brain-after.npz"} | {
+        f"101-{identity}-AB-{name}.npz" for identity in ("A", "B") for name in (
+            "training-end", "frozen_plasticity-training-end", "no_external_dan-training-end",
+            "temporally_unpaired-training-end", "matched-reference-training-end",
+            "necessity-post", "sufficiency-post", "sham-post")}
+    # Native acquisition records are identified by their exact event call stream,
+    # rather than inference from frozen-plasticity learning flags.
+    acquisition_records = []
+    for training in trainings:
+        logged = [e for e in events if e["branch_id"] == training["branch_id"]
+                  and e["type"] in ("observe", "neutral_gap_chunk")]
+        matches = [r for r in producer_records if r["calls"] and r["restores"]
+                   and r["restores"][0]["path"].name == "baseline.npz"
+                   and [(c["start"], c["end"]) for c in r["calls"]] == [
+                       (e["start_tick"], e["end_tick"]) for e in logged]
+                   and [c["telemetry"]["input_sha256"] for c in r["calls"]] == [
+                       s["input_sha256"] for s in training["segments"]]
+                   and [c["kwargs"]["learning"] for c in r["calls"]] == [
+                       s["learning"] for s in training["segments"]]
+                   and [c["kwargs"]["stimulation"] for c in r["calls"]] == [
+                       s["external_stimulation"] for s in training["segments"]]]
+        # Paired reciprocal records can have identical inputs but different DAN
+        # placement. No native engine may be assigned to both acquisitions.
+        record = next(r for r in matches if not any(r is used for used in acquisition_records))
+        acquisition_records.append(record)
+        assert record["restores"][0]["state"] == record["calls"][0]["state"] == baseline_state
+        branch = next(e for e in starts if e["branch_id"] == training["branch_id"])
+        assert branch["parent_checkpoint_name"] == "baseline.npz"
+        assert branch["parent_checkpoint_sequence"] == baseline_occurrence["checkpoint_sequence"]
+        assert training["baseline_checkpoint_sha256"] == baseline_occurrence["sha256"]
+        for call, segment in zip(record["calls"], training["segments"]):
+            expected = (np.zeros((32, 32, 3), dtype=np.uint8) if segment["stimulus"] is None
+                        else AssayStimuli(101, "confirmation").frame(segment["stimulus"]))
+            assert np.array_equal(call["frame"], expected)
+            assert _rgb_input_sha256(call["frame"]) == segment["input_sha256"]
+            assert call["duration"] <= 500 and not call["weights_frozen"] and not call["after_weights_frozen"]
+        occurrence = next(e for e in events if e["type"] == "checkpoint"
+                          and e["branch_id"] == training["branch_id"])
+        assert occurrence["checkpoint_name"].startswith(f"101-{training['paired_identity']}-AB-")
+        inventory = checkpoints[occurrence["checkpoint_name"]]
+        assert inventory["checkpoint_sequence"] == occurrence["sequence"]
+        assert inventory["origin_branch_id"] == training["branch_id"]
+        source = engine_factory()
+        source.identity()
+        source.brain.restore(path / "checkpoints" / occurrence["checkpoint_name"])
+        assert source.brain.cursor == training["training_end_tick"]
+        assert source.brain.candidate_state_digests(source.groups.mbon11) == {
+            k: training[k] for k in ("candidate_memory_sha256", "noncandidate_state_sha256")}
+        assert sha256((path / "checkpoints" / occurrence["checkpoint_name"]).read_bytes()).hexdigest() == training["training_end_checkpoint_sha256"]
+    assert len({id(r["engine"]) for r in acquisition_records}) == 10
+    replacements = [r for r in producer_records if r["replacements"]]
+    assert len(replacements) == 6
+    for record, intervention in zip(replacements, interventions):
+        assert record["operations"][record["operations"].index("replace") - 1:][:3] == ["digests", "replace", "digests"]
+        transfer = record["replacements"][0]
+        assert transfer["before_clock"] == transfer["after_clock"]
+        for role in ("donor", "recipient"):
+            training = next(t for t in trainings if t["training_id"] == intervention[f"{role}_training_id"])
+            assert training["paired_identity"] == intervention["paired_identity"]
+            assert intervention[f"{role}_checkpoint_sha256"] == training["training_end_checkpoint_sha256"]
+        assert intervention["recipient_candidate_memory_after_sha256"] == intervention["donor_candidate_memory_sha256"]
+        assert intervention["noncandidate_state_before_sha256"] == intervention["noncandidate_state_after_sha256"]
+        recipient_source = next(e for e in events if e["type"] == "checkpoint"
+                                and e["branch_id"] == intervention["branch_id"])
+        assert recipient_source["checkpoint_name"].startswith(f"101-{intervention['paired_identity']}-AB-")
+        assert recipient_source["parent_branch_id"] == intervention["recipient_training_id"]
+        assert recipient_source["checkpoint_sha256"] == intervention["post_intervention_checkpoint_sha256"]
+    pre_records = [r for r in producer_records if r["calls"] and r["restores"]
+                   and r["restores"][0]["path"].name == "baseline.npz"
+                   and not any(r is acquired for acquired in acquisition_records)]
+    post_records = [r for r in producer_records if r["restores"] and r["restores"][0]["path"].name == "retained.npz"]
+    assert len(pre_records) == 6 and len(post_records) == 96
+    assert len({id(r["engine"]) for r in pre_records + post_records}) == 102
+    for record in pre_records + post_records:
+        assert len(record["restores"]) == 1
+        assert record["calls"][0]["state"] == record["restores"][0]["state"]
+        assert all(c["kwargs"] == {"learning": False, "stimulation": None} for c in record["calls"])
+    for record in pre_records:
+        assert record["restores"][0]["state"] == baseline_state
+    for record in post_records:
+        assert not record["restores"][0]["path"].exists()
+        assert record["restores"][0]["state"] in {a["complete_state_sha256"] for a in anchors}
+    trial_records = {}
+    for index, identity in enumerate(("A", "B")):
+        trial_records.update({f"101/{identity}/AB/pre/{stimulus}": record
+                              for stimulus, record in zip(("A", "B", "C"), pre_records[index * 3:index * 3 + 3])})
+        trial_records.update({f"101/{identity}/AB/{'' if condition == 'paired' else condition + '/'}post/{retention}/{stimulus}": record
+            for (condition, retention, stimulus), record in zip(
+                ((c, t, s) for c in conditions for t in (10000, 70000) for s in ("A", "B", "C")),
+                post_records[index * 48:index * 48 + 48])})
+    for response in responses:
+        assert response["branch_id"].startswith(f"101/{response['paired_identity']}/AB/")
+        training = next(t for t in trainings if t["training_id"] == response["training_id"])
+        assert training["paired_identity"] == response["paired_identity"]
+        source_digest = training["training_end_checkpoint_sha256"]
+        if response["intervention_id"]:
+            intervention = next(i for i in interventions if i["intervention_id"] == response["intervention_id"])
+            assert intervention["paired_identity"] == response["paired_identity"]
+            source_digest = intervention["post_intervention_checkpoint_sha256"]
+        assert response["retention_source_checkpoint_sha256"] == source_digest
+        record = trial_records[response["branch_id"]]
+        observations = [c["telemetry"] for c in record["calls"]]
+        assert observations == [e["telemetry"] for e in events
+                                if e["branch_id"] == response["branch_id"] and e["type"] == "observe"]
+        start, stop = response["bins"][0]["start_tick"], response["bins"][-1]["end_tick"]
+        raw = [{"start_tick": round(b["end_ms"] * 10) - round(b["duration_ms"] * 10),
+                "end_tick": round(b["end_ms"] * 10), "spikes": b["group_spikes"]["mbon11"]}
+               for o in observations for b in o["bins"] if start < round(b["end_ms"] * 10) <= stop]
+        assert response["bins"] == raw and response["sim_ms"] == stop / 10
+        assert response["rate_hz"] == sum(b["spikes"] for b in raw) * 10000 / (stop - start)
+        visual = next(c for c in record["calls"] if np.any(c["frame"]))
+        assert np.array_equal(visual["frame"], AssayStimuli(101, "confirmation").frame(response["stimulus"]))
+        assert _rgb_input_sha256(visual["frame"]) == response["input_sha256"]
+    for anchor in anchors:
+        occurrence = anchor["source_occurrence"]
+        inventory = checkpoints[occurrence["checkpoint_name"]]
+        assert inventory["checkpoint_sequence"] == occurrence["checkpoint_sequence"]
+        assert inventory["origin_branch_id"] == occurrence["origin_branch_id"]
+        assert inventory["sha256"] == occurrence["checkpoint_sha256"]
+        assert anchor["origin_branch_id"].startswith("101/")
+        factors = anchor["origin_branch_id"].split("/")[:3]
+        assert "/".join(factors) in occurrence["origin_branch_id"]
+    assert "retained.npz" not in checkpoints
+
+
+@pytest.mark.parametrize("cohorts", [None, [], (), {}, "101/A/AB", [(101, "A")],
+    [(101, "A", "AB", "extra")], [None], [(True, "A", "AB")], [(11, "A", "AB")],
+    [(101, "C", "AB")], [(101, "A", "AA")], [(101, "A", "AB"), (101, "A", "AB")],
+    [([], "A", "AB")], [(101, [], "AB")], [(101, "A", [])], [(101, "A", "AB")] * 9])
+def test_controlled_cohorts_invalid_request_fails_before_artifact(engine_factory, tmp_path, monkeypatch, cohorts):
+    import fly_connectome_sim.experiment.assay as assay
+    frozen = _declared_native_frozen_config(engine_factory())
+    def unexpected_artifact(*args, **kwargs):
+        pytest.fail("Scratch/recorder opened before cohort validation")
+    monkeypatch.setattr(assay, "TemporaryDirectory", unexpected_artifact)
+    monkeypatch.setattr(assay, "RunRecorder", unexpected_artifact)
+    with pytest.raises(ValueError, match="(?i)cohort"):
+        assay.run_controlled_cohorts(engine_factory, frozen, output_dir=tmp_path / "invalid", cohorts=cohorts)
+    assert not (tmp_path / "invalid").exists()
+
+
+@pytest.mark.parametrize("mutation", ["input_hash", "black_hash", "unreachable"])
+def test_controlled_cohorts_late_preflight_fails_before_artifact(engine_factory, tmp_path, monkeypatch, mutation):
+    import fly_connectome_sim.experiment.assay as assay
+    from fly_connectome_sim.experiment.analysis import FrozenAssayConfig
+    def advanced():
+        engine = engine_factory()
+        engine.observe(np.zeros((32, 32, 3), dtype=np.uint8), 0.3)
+        return engine
+    data = _declared_native_frozen_config(advanced()).to_dict()
+    plans = []
+    training_plan = assay._training_plan
+    def tracked_plan(*args):
+        plan = training_plan(*args)
+        plans.append((args[1:4], plan))
+        return plan
+    monkeypatch.setattr(assay, "_training_plan", tracked_plan)
+    if mutation == "unreachable":
+        data["selected_configuration"]["post_pair_gap_ms"] = 10000.0
+        cohorts = ((101, "B", "BA"), (101, "A", "BA"))
+    else:
+        cohorts = ((101, "A", "AB"), (113, "B", "AB"))
+    del data["digest"]
+    data["digest"] = sha256(json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
+    frozen = FrozenAssayConfig.from_dict(data)
+    hashes = []
+    actual_hash = assay._rgb_input_sha256
+    def changed_late_input(frame):
+        # Change genuine producer RGB bytes after frozen validation. The hash
+        # remains the real codec, so this probes actual late-cohort inputs.
+        if len(hashes) == (7 if mutation == "black_hash" else 4):
+            frame[0, 0, 0] ^= np.uint8(1)
+        digest = actual_hash(frame)
+        hashes.append(digest)
+        return digest
+    if mutation != "unreachable":
+        monkeypatch.setattr(assay, "_rgb_input_sha256", changed_late_input)
+    def unexpected_artifact(*args, **kwargs):
+        pytest.fail("Scratch/recorder opened before late-cohort preflight")
+    monkeypatch.setattr(assay, "TemporaryDirectory", unexpected_artifact)
+    monkeypatch.setattr(assay, "RunRecorder", unexpected_artifact)
+    with pytest.raises(ValueError, match="(?i)(hash|anchor.*source)"):
+        assay.run_controlled_cohorts(advanced, frozen, output_dir=tmp_path / "late", cohorts=cohorts)
+    if mutation == "unreachable":
+        assert len(plans) == 10
+        assert all(p["training_end_tick"] <= p["retention_reference_tick"] + 99000 for _, p in plans[:5])
+        assert all(p["training_end_tick"] > p["retention_reference_tick"] + 99000 for _, p in plans[5:])
+        assert all(p["segments"][0]["start_tick"] == 3 for _, p in plans)
+    else:
+        assert len(hashes) == 8
+        assert hashes[:4] == list(data["confirmation_input_sha256"]["101"].values())
+    assert not (tmp_path / "late").exists()
+
+
 def test_real_controlled_cohort(engine_factory, tmp_path, monkeypatch):
     import fly_connectome_sim.experiment.assay as assay
     from fly_connectome_sim.experiment.qualification import GridConfiguration, _training_timeline

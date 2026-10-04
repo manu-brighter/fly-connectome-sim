@@ -164,16 +164,41 @@ def run_controlled_cohort(engine_factory, frozen: FrozenAssayConfig, *, output_d
                        conditions=CONDITIONS)
 
 
+def run_controlled_cohorts(engine_factory, frozen: FrozenAssayConfig, *, output_dir,
+                           cohorts) -> AssayReport:
+    return _run_cohorts(engine_factory, frozen, output_dir=output_dir,
+                        cohorts=cohorts, conditions=CONDITIONS, namespace=True)
+
+
 def _run_cohort(engine_factory, frozen, *, output_dir, seed, paired_identity, presentation_order, conditions):
+    return _run_cohorts(engine_factory, frozen, output_dir=output_dir,
+                        cohorts=((seed, paired_identity, presentation_order),),
+                        conditions=conditions, namespace=False)
+
+
+def _run_cohorts(engine_factory, frozen, *, output_dir, cohorts, conditions, namespace):
     config = FrozenAssayConfig.from_dict(frozen.to_dict()).to_dict()
-    if (type(seed) is not int or seed not in config["confirmation_seeds"]
-            or paired_identity not in ("A", "B") or presentation_order not in ("AB", "BA")):
-        raise ValueError("Undeclared cohort factors")
-    frames = {name: AssayStimuli(seed, "confirmation").frame(name) for name in ("A", "B", "C")}
-    frames["black"] = np.zeros((32, 32, 3), dtype=np.uint8)
-    hashes = {name: _rgb_input_sha256(frame) for name, frame in frames.items()}
-    if hashes != config["confirmation_input_sha256"][str(seed)]:
-        raise ValueError("Actual input hashes disagree with frozen declaration")
+    if type(cohorts) not in (list, tuple) or not cohorts or len(cohorts) > 8:
+        raise ValueError("Invalid bounded cohort request")
+    declared = []
+    for cohort in cohorts:
+        if (type(cohort) not in (list, tuple) or len(cohort) != 3
+                or type(cohort[0]) is not int or cohort[0] not in config["confirmation_seeds"]
+                or type(cohort[1]) is not str or cohort[1] not in ("A", "B")
+                or type(cohort[2]) is not str or cohort[2] not in ("AB", "BA")):
+            raise ValueError("Undeclared or malformed cohort factors")
+        factors = tuple(cohort)
+        if factors in declared:
+            raise ValueError("Duplicate cohort factors")
+        declared.append(factors)
+    inputs = {}
+    for seed, _, _ in declared:
+        frames = {name: AssayStimuli(seed, "confirmation").frame(name) for name in ("A", "B", "C")}
+        frames["black"] = np.zeros((32, 32, 3), dtype=np.uint8)
+        hashes = {name: _rgb_input_sha256(frame) for name, frame in frames.items()}
+        if hashes != config["confirmation_input_sha256"][str(seed)]:
+            raise ValueError("Actual input hashes disagree with frozen declaration")
+        inputs[seed] = frames, hashes
     black = {"generator": "black-rgb/v1", "input_shape": [32, 32, 3],
              "input_dtype": "uint8", "input_sha256": hashes["black"]}
 
@@ -188,12 +213,15 @@ def _run_cohort(engine_factory, frozen, *, output_dir, seed, paired_identity, pr
     root = "baseline"
     grid = GridConfiguration(**config["selected_configuration"])
     acquisitions = tuple(condition for condition in conditions if condition in ORDINARY_CONDITIONS)
-    plans = {condition: _training_plan(config, seed, paired_identity, presentation_order,
-                                      condition, "confirmation", baseline_tick) for condition in acquisitions}
-    for plan in plans.values():
-        if any(plan["retention_reference_tick"] + round(retention * 10) - 1000 < plan["training_end_tick"]
-               for retention in config["retention_times_ms"]):
-            raise ValueError("Retained anchor precedes training-end source")
+    cohort_plans = {}
+    for seed, paired_identity, presentation_order in declared:
+        plans = {condition: _training_plan(config, seed, paired_identity, presentation_order,
+                                          condition, "confirmation", baseline_tick) for condition in acquisitions}
+        for plan in plans.values():
+            if any(plan["retention_reference_tick"] + round(retention * 10) - 1000 < plan["training_end_tick"]
+                   for retention in config["retention_times_ms"]):
+                raise ValueError("Retained anchor precedes training-end source")
+        cohort_plans[seed, paired_identity, presentation_order] = plans
     with TemporaryDirectory(prefix="paired-cohort-") as temporary:
         scratch = Path(temporary)
         with RunRecorder(output_dir, run_kind="confirmation", metadata=_metadata(config, frozen, black),
@@ -257,162 +285,167 @@ def _run_cohort(engine_factory, frozen, *, output_dir, seed, paired_identity, pr
 
             durable(producer, "brain-before.npz", root)
             baseline = durable(producer, "baseline.npz", root)
-            routes = {}
-            for condition in acquisitions:
-                acquired = producer if conditions == ("paired",) else restore(baseline)
-                training_branch = f"{condition}/{seed}/{paired_identity}/{presentation_order}/training"
-                plan = plans[condition]
-                schedule, _, _, t0 = _training_timeline(grid, paired_identity, presentation_order,
-                                                        condition, controls=True)
-                append({"type": "branch_start", "branch_id": training_branch,
-                        "sim_ms": acquired.brain.cursor / 10, **parent(baseline)})
-                rows = []
-                for segment in schedule:
-                    start = acquired.brain.cursor
-                    learning = (condition in ("paired", "no_external_dan", "temporally_unpaired")
-                                and segment.start_ms < t0
-                                and bool(segment.stimulus or segment.stimulation))
-                    call(acquired, training_branch, round((segment.end_ms - segment.start_ms) * 10),
-                         segment.stimulus, segment.stimulation, learning,
-                         compact=not segment.stimulus and not segment.stimulation)
-                    rows.append({"start_tick": start, "end_tick": acquired.brain.cursor,
-                                 "stimulus": segment.stimulus, "external_stimulation": segment.stimulation,
-                                 "learning": learning, "current_mv": 20.0 if segment.stimulation else None,
-                                 "input_sha256": hashes[segment.stimulus or "black"]})
-                exposure = {name: sum(row["end_tick"] - row["start_tick"] for row in rows
-                                      if row["stimulus"] == name) for name in ("A", "B", "C")}
-                if rows != plan["segments"] or exposure != plan["training_visual_exposure_ticks"]:
-                    raise ValueError("Executed training disagrees with declared schedule")
-                name = {"paired": "training-end.npz", "matched_reference": "matched-reference-training-end.npz"}.get(
-                    condition, f"{condition}-training-end.npz")
-                source = durable(acquired, name, training_branch, parent(baseline))
-                training = {"type": "assay_training", "training_version": "associative-training/v1",
-                            "training_id": training_branch, "branch_id": training_branch, "seed": seed,
-                            "paired_identity": paired_identity, "presentation_order": presentation_order,
+            for seed, paired_identity, presentation_order in declared:
+                frames, hashes = inputs[seed]
+                plans = cohort_plans[seed, paired_identity, presentation_order]
+                cohort_prefix = f"{seed}/{paired_identity}/{presentation_order}/" if namespace else ""
+                checkpoint_prefix = f"{seed}-{paired_identity}-{presentation_order}-" if namespace else ""
+                routes = {}
+                for condition in acquisitions:
+                    acquired = producer if conditions == ("paired",) else restore(baseline)
+                    training_branch = f"{condition}/{seed}/{paired_identity}/{presentation_order}/training"
+                    plan = plans[condition]
+                    schedule, _, _, t0 = _training_timeline(grid, paired_identity, presentation_order,
+                                                            condition, controls=True)
+                    append({"type": "branch_start", "branch_id": training_branch,
+                            "sim_ms": acquired.brain.cursor / 10, **parent(baseline)})
+                    rows = []
+                    for segment in schedule:
+                        start = acquired.brain.cursor
+                        learning = (condition in ("paired", "no_external_dan", "temporally_unpaired")
+                                    and segment.start_ms < t0
+                                    and bool(segment.stimulus or segment.stimulation))
+                        call(acquired, training_branch, round((segment.end_ms - segment.start_ms) * 10),
+                             segment.stimulus, segment.stimulation, learning,
+                             compact=not segment.stimulus and not segment.stimulation)
+                        rows.append({"start_tick": start, "end_tick": acquired.brain.cursor,
+                                     "stimulus": segment.stimulus, "external_stimulation": segment.stimulation,
+                                     "learning": learning, "current_mv": 20.0 if segment.stimulation else None,
+                                     "input_sha256": hashes[segment.stimulus or "black"]})
+                    exposure = {name: sum(row["end_tick"] - row["start_tick"] for row in rows
+                                          if row["stimulus"] == name) for name in ("A", "B", "C")}
+                    if rows != plan["segments"] or exposure != plan["training_visual_exposure_ticks"]:
+                        raise ValueError("Executed training disagrees with declared schedule")
+                    name = {"paired": "training-end.npz", "matched_reference": "matched-reference-training-end.npz"}.get(
+                        condition, f"{condition}-training-end.npz")
+                    source = durable(acquired, checkpoint_prefix + name, training_branch, parent(baseline))
+                    training = {"type": "assay_training", "training_version": "associative-training/v1",
+                                "training_id": training_branch, "branch_id": training_branch, "seed": seed,
+                                "paired_identity": paired_identity, "presentation_order": presentation_order,
+                                "condition": condition, "candidate_identity": config["candidate_identity"],
+                                "baseline_tick": baseline_tick, "baseline_checkpoint_sha256": baseline["checkpoint_sha256"],
+                                "training_end_checkpoint_sha256": source["checkpoint_sha256"], **plan,
+                                **acquired.brain.candidate_state_digests(acquired.groups.mbon11),
+                                "sim_ms": acquired.brain.cursor / 10}
+                    append(training)
+                    routes[condition] = {"condition": condition, "training": training, "source": source,
+                                         "intervention_id": None}
+                    if condition == "paired":
+                        producer = acquired
+
+                for condition in conditions:
+                    if condition in acquisitions:
+                        continue
+                    donor_route = routes["matched_reference" if condition == "necessity" else "paired"]
+                    recipient_route = routes["matched_reference" if condition == "sufficiency" else "paired"]
+                    donor = _restore_training_source(recorder, donor_route["source"], donor_route["training"],
+                        factory, config["engine_identity"], config["mbon11_population_size"])
+                    recipient = _restore_training_source(recorder, recipient_route["source"], recipient_route["training"],
+                        factory, config["engine_identity"], config["mbon11_population_size"])
+                    branch = f"{condition}/{seed}/{paired_identity}/{presentation_order}/intervention"
+                    append({"type": "branch_start", "branch_id": branch,
+                            "sim_ms": recipient.brain.cursor / 10, **parent(recipient_route["source"])})
+                    digests = _replace_candidate_state(donor, recipient, donor_route["training"],
+                        recipient_route["training"], config["engine_identity"], config["mbon11_population_size"])
+                    if (condition == "sham" and digests["recipient_candidate_memory_before_sha256"]
+                            != digests["recipient_candidate_memory_after_sha256"]):
+                        raise ValueError("Sham candidate state changed")
+                    source = durable(recipient, f"{checkpoint_prefix}{condition}-post.npz", branch, parent(recipient_route["source"]))
+                    append({"type": "assay_intervention", "branch_id": branch, **parent(recipient_route["source"]),
+                            "intervention_version": "candidate-memory-replacement/v1", "intervention_id": branch,
+                            "seed": seed, "paired_identity": paired_identity, "presentation_order": presentation_order,
                             "condition": condition, "candidate_identity": config["candidate_identity"],
-                            "baseline_tick": baseline_tick, "baseline_checkpoint_sha256": baseline["checkpoint_sha256"],
-                            "training_end_checkpoint_sha256": source["checkpoint_sha256"], **plan,
-                            **acquired.brain.candidate_state_digests(acquired.groups.mbon11),
-                            "sim_ms": acquired.brain.cursor / 10}
-                append(training)
-                routes[condition] = {"condition": condition, "training": training, "source": source,
-                                     "intervention_id": None}
-                if condition == "paired":
-                    producer = acquired
+                            "donor_role": "matched_baseline" if condition == "necessity" else "trained",
+                            "recipient_role": "untrained" if condition == "sufficiency" else "trained",
+                            "donor_training_id": donor_route["training"]["training_id"],
+                            "recipient_training_id": recipient_route["training"]["training_id"],
+                            "donor_training_end_tick": donor.brain.cursor, "recipient_training_end_tick": recipient.brain.cursor,
+                            "donor_checkpoint_sha256": donor_route["source"]["checkpoint_sha256"],
+                            "recipient_checkpoint_sha256": recipient_route["source"]["checkpoint_sha256"],
+                            "post_intervention_checkpoint_sha256": source["checkpoint_sha256"], **digests,
+                            "replaced_components": ["memory_u", "memory_w", "weight"], "complete_replacement": True,
+                            "sim_ms": recipient.brain.cursor / 10})
+                    routes[condition] = {"condition": condition, "training": recipient_route["training"],
+                                         "source": source, "intervention_id": branch}
 
-            for condition in conditions:
-                if condition in acquisitions:
-                    continue
-                donor_route = routes["matched_reference" if condition == "necessity" else "paired"]
-                recipient_route = routes["matched_reference" if condition == "sufficiency" else "paired"]
-                donor = _restore_training_source(recorder, donor_route["source"], donor_route["training"],
-                    factory, config["engine_identity"], config["mbon11_population_size"])
-                recipient = _restore_training_source(recorder, recipient_route["source"], recipient_route["training"],
-                    factory, config["engine_identity"], config["mbon11_population_size"])
-                branch = f"{condition}/{seed}/{paired_identity}/{presentation_order}/intervention"
-                append({"type": "branch_start", "branch_id": branch,
-                        "sim_ms": recipient.brain.cursor / 10, **parent(recipient_route["source"])})
-                digests = _replace_candidate_state(donor, recipient, donor_route["training"],
-                    recipient_route["training"], config["engine_identity"], config["mbon11_population_size"])
-                if (condition == "sham" and digests["recipient_candidate_memory_before_sha256"]
-                        != digests["recipient_candidate_memory_after_sha256"]):
-                    raise ValueError("Sham candidate state changed")
-                source = durable(recipient, f"{condition}-post.npz", branch, parent(recipient_route["source"]))
-                append({"type": "assay_intervention", "branch_id": branch, **parent(recipient_route["source"]),
-                        "intervention_version": "candidate-memory-replacement/v1", "intervention_id": branch,
-                        "seed": seed, "paired_identity": paired_identity, "presentation_order": presentation_order,
-                        "condition": condition, "candidate_identity": config["candidate_identity"],
-                        "donor_role": "matched_baseline" if condition == "necessity" else "trained",
-                        "recipient_role": "untrained" if condition == "sufficiency" else "trained",
-                        "donor_training_id": donor_route["training"]["training_id"],
-                        "recipient_training_id": recipient_route["training"]["training_id"],
-                        "donor_training_end_tick": donor.brain.cursor, "recipient_training_end_tick": recipient.brain.cursor,
-                        "donor_checkpoint_sha256": donor_route["source"]["checkpoint_sha256"],
-                        "recipient_checkpoint_sha256": recipient_route["source"]["checkpoint_sha256"],
-                        "post_intervention_checkpoint_sha256": source["checkpoint_sha256"], **digests,
-                        "replaced_components": ["memory_u", "memory_w", "weight"], "complete_replacement": True,
-                        "sim_ms": recipient.brain.cursor / 10})
-                routes[condition] = {"condition": condition, "training": recipient_route["training"],
-                                     "source": source, "intervention_id": branch}
+                def trial(engine, branch, binding, phase, stimulus, onset, retentions, response_routes):
+                    append({"type": "branch_start", "branch_id": branch, "sim_ms": engine.brain.cursor / 10, **binding})
+                    measured = []
+                    trial_schedule = _trial_segments(grid, stimulus, paired=False)
+                    stop = onset + round(config["response_window"]["end_ms"] * 10)
+                    # Preserve the shared trial timeline while splitting at the declared window stop.
+                    for segment in trial_schedule:
+                        a, b = onset + round(segment.start_ms * 10), onset + round(segment.end_ms * 10)
+                        pieces = _split_intervals(a / 10, b / 10,
+                                                 ((a / 10, b / 10, stimulus),) if segment.stimulus else (),
+                                                 None, extra_cuts=(stop / 10,))
+                        for part in pieces:
+                            observed = call(engine, branch, round((part.end_ms - part.start_ms) * 10), part.stimulus)
+                            measured.extend(observed["bins"])
+                            if engine.brain.cursor == stop:
+                                window_start = onset + round(config["response_window"]["start_ms"] * 10)
+                                bins = [{"start_tick": round(item["end_ms"] * 10) - round(item["duration_ms"] * 10),
+                                         "end_tick": round(item["end_ms"] * 10), "spikes": item["group_spikes"]["mbon11"]}
+                                        for item in measured if window_start < round(item["end_ms"] * 10) <= stop]
+                                population = len(engine.groups.mbon11)
+                                duration = (stop - window_start) / 10
+                                for route in response_routes:
+                                    training, source = route["training"], route["source"]
+                                    shared = {k: training[k] for k in ("training_id", "association_t0_tick", "retention_reference_tick",
+                                        "training_start_tick", "training_end_tick", "last_visual_end_tick", "last_external_dan_end_tick",
+                                        "unpaired_nearest_cs_boundary_ticks", "training_visual_exposure_ticks", "training_end_checkpoint_sha256")}
+                                    for retention in retentions:
+                                        append({"type": "assay_response", "branch_id": branch, **binding, **shared,
+                                                "evidence_version": "mbon11-response/v1", "seed": seed,
+                                                "paired_identity": paired_identity, "presentation_order": presentation_order,
+                                                "retention_ms": retention, "condition": route["condition"], "phase": phase, "stimulus": stimulus,
+                                                "candidate_identity": config["candidate_identity"], "population": "mbon11",
+                                                "population_size": population, "cs_onset_tick": onset, "bins": bins,
+                                                "rate_hz": sum(item["spikes"] for item in bins) * 1000 / (population * duration),
+                                                "one_spike_rate_hz": 1000 / (population * duration),
+                                                "retention_source_checkpoint_sha256": source["checkpoint_sha256"],
+                                                "passive_decay_ticks": training["retention_reference_tick"] + round(retention * 10) - source["sim_tick"],
+                                                "input_sha256": hashes[stimulus], "black_sha256": hashes["black"],
+                                                "endogenous_dan_spikes": sum(item["group_spikes"]["ppl101"] for item in measured),
+                                                "learning": False, "external_stimulation": None, "intervention_id": route["intervention_id"],
+                                                "response_replay_resolution_hz": config["replay_resolution_hz"], "sim_ms": engine.brain.cursor / 10})
 
-            def trial(engine, branch, binding, phase, stimulus, onset, retentions, response_routes):
-                append({"type": "branch_start", "branch_id": branch, "sim_ms": engine.brain.cursor / 10, **binding})
-                measured = []
-                trial_schedule = _trial_segments(grid, stimulus, paired=False)
-                stop = onset + round(config["response_window"]["end_ms"] * 10)
-                # Preserve the shared trial timeline while splitting at the declared window stop.
-                for segment in trial_schedule:
-                    a, b = onset + round(segment.start_ms * 10), onset + round(segment.end_ms * 10)
-                    pieces = _split_intervals(a / 10, b / 10,
-                                             ((a / 10, b / 10, stimulus),) if segment.stimulus else (),
-                                             None, extra_cuts=(stop / 10,))
-                    for part in pieces:
-                        observed = call(engine, branch, round((part.end_ms - part.start_ms) * 10), part.stimulus)
-                        measured.extend(observed["bins"])
-                        if engine.brain.cursor == stop:
-                            window_start = onset + round(config["response_window"]["start_ms"] * 10)
-                            bins = [{"start_tick": round(item["end_ms"] * 10) - round(item["duration_ms"] * 10),
-                                     "end_tick": round(item["end_ms"] * 10), "spikes": item["group_spikes"]["mbon11"]}
-                                    for item in measured if window_start < round(item["end_ms"] * 10) <= stop]
-                            population = len(engine.groups.mbon11)
-                            duration = (stop - window_start) / 10
-                            for route in response_routes:
-                                training, source = route["training"], route["source"]
-                                shared = {k: training[k] for k in ("training_id", "association_t0_tick", "retention_reference_tick",
-                                    "training_start_tick", "training_end_tick", "last_visual_end_tick", "last_external_dan_end_tick",
-                                    "unpaired_nearest_cs_boundary_ticks", "training_visual_exposure_ticks", "training_end_checkpoint_sha256")}
-                                for retention in retentions:
-                                    append({"type": "assay_response", "branch_id": branch, **binding, **shared,
-                                            "evidence_version": "mbon11-response/v1", "seed": seed,
-                                            "paired_identity": paired_identity, "presentation_order": presentation_order,
-                                            "retention_ms": retention, "condition": route["condition"], "phase": phase, "stimulus": stimulus,
-                                            "candidate_identity": config["candidate_identity"], "population": "mbon11",
-                                            "population_size": population, "cs_onset_tick": onset, "bins": bins,
-                                            "rate_hz": sum(item["spikes"] for item in bins) * 1000 / (population * duration),
-                                            "one_spike_rate_hz": 1000 / (population * duration),
-                                            "retention_source_checkpoint_sha256": source["checkpoint_sha256"],
-                                            "passive_decay_ticks": training["retention_reference_tick"] + round(retention * 10) - source["sim_tick"],
-                                            "input_sha256": hashes[stimulus], "black_sha256": hashes["black"],
-                                            "endogenous_dan_spikes": sum(item["group_spikes"]["ppl101"] for item in measured),
-                                            "learning": False, "external_stimulation": None, "intervention_id": route["intervention_id"],
-                                            "response_replay_resolution_hz": config["replay_resolution_hz"], "sim_ms": engine.brain.cursor / 10})
-
-            for stimulus in ("A", "B", "C"):
-                trial(restore(baseline), f"pre/{stimulus}", parent(baseline), "pre", stimulus,
-                      baseline_tick + 1000, config["retention_times_ms"], tuple(routes.values()))
-            for condition in conditions:
-                route = routes[condition]
-                source, training = route["source"], route["training"]
-                prefix_name = "" if condition == "paired" else condition + "/"
-                for retention in config["retention_times_ms"]:
-                    retained = restore(source)
-                    branch = f"{prefix_name}retention/{retention}"
-                    append({"type": "fork", "operation_version": OPERATION_VERSION, "branch_id": branch,
-                            "sim_tick": retained.brain.cursor, "sim_ms": retained.brain.cursor / 10, **parent(source)})
-                    onset = training["retention_reference_tick"] + round(retention * 10)
-                    target = onset - 1000
-                    while retained.brain.cursor < target:
-                        call(retained, branch, min(5000, target - retained.brain.cursor), compact=True)
-                    prefix = recorder.validate_prefix()
-                    recipe = build_black_retention_recipe(prefix.iter_events(), source_occurrence=source,
-                        origin_branch_id=branch, target_tick=target, engine_identity=retained.identity(),
-                        run_metadata_sha256=prefix.manifest["run_metadata_sha256"], black_input=black,
-                        scientific_prefix=prefix.scientific_prefix)
-                    anchor = build_state_anchor(anchor_id=branch, recipe=recipe,
-                                                complete_state_sha256=retained.brain.checkpoint_state_sha256())
-                    recorder.append_state_anchor(anchor)
-                    sequence += 1
-                    retained.brain.checkpoint(scratch / "retained.npz")
-                    for stimulus in ("A", "B", "C"):
-                        sibling = factory()
-                        sibling.brain.restore(scratch / "retained.npz")
-                        check(sibling)
-                        if sibling.brain.cursor != target or sibling.brain.checkpoint_state_sha256() != anchor["complete_state_sha256"]:
-                            raise ValueError("Retained sibling state mismatch")
-                        trial(sibling, f"{prefix_name}post/{retention}/{stimulus}",
-                              {"parent_branch_id": branch, "parent_state_anchor_sha256": anchor["state_anchor_sha256"]},
-                              "post", stimulus, onset, [retention], (route,))
-                    (scratch / "retained.npz").unlink()
+                for stimulus in ("A", "B", "C"):
+                    trial(restore(baseline), f"{cohort_prefix}pre/{stimulus}", parent(baseline), "pre", stimulus,
+                          baseline_tick + 1000, config["retention_times_ms"], tuple(routes.values()))
+                for condition in conditions:
+                    route = routes[condition]
+                    source, training = route["source"], route["training"]
+                    prefix_name = cohort_prefix + ("" if condition == "paired" else condition + "/")
+                    for retention in config["retention_times_ms"]:
+                        retained = restore(source)
+                        branch = f"{prefix_name}retention/{retention}"
+                        append({"type": "fork", "operation_version": OPERATION_VERSION, "branch_id": branch,
+                                "sim_tick": retained.brain.cursor, "sim_ms": retained.brain.cursor / 10, **parent(source)})
+                        onset = training["retention_reference_tick"] + round(retention * 10)
+                        target = onset - 1000
+                        while retained.brain.cursor < target:
+                            call(retained, branch, min(5000, target - retained.brain.cursor), compact=True)
+                        prefix = recorder.validate_prefix()
+                        recipe = build_black_retention_recipe(prefix.iter_events(), source_occurrence=source,
+                            origin_branch_id=branch, target_tick=target, engine_identity=retained.identity(),
+                            run_metadata_sha256=prefix.manifest["run_metadata_sha256"], black_input=black,
+                            scientific_prefix=prefix.scientific_prefix)
+                        anchor = build_state_anchor(anchor_id=branch, recipe=recipe,
+                                                    complete_state_sha256=retained.brain.checkpoint_state_sha256())
+                        recorder.append_state_anchor(anchor)
+                        sequence += 1
+                        retained.brain.checkpoint(scratch / "retained.npz")
+                        for stimulus in ("A", "B", "C"):
+                            sibling = factory()
+                            sibling.brain.restore(scratch / "retained.npz")
+                            check(sibling)
+                            if sibling.brain.cursor != target or sibling.brain.checkpoint_state_sha256() != anchor["complete_state_sha256"]:
+                                raise ValueError("Retained sibling state mismatch")
+                            trial(sibling, f"{prefix_name}post/{retention}/{stimulus}",
+                                  {"parent_branch_id": branch, "parent_state_anchor_sha256": anchor["state_anchor_sha256"]},
+                                  "post", stimulus, onset, [retention], (route,))
+                        (scratch / "retained.npz").unlink()
             durable(producer, "brain-after.npz", root)
             prefix = verify_replay_prefix(recorder.validate_prefix(), engine_factory=factory)
             report = assess_assay_prefix(prefix, frozen)
