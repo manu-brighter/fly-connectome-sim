@@ -25,7 +25,7 @@ scientific milestone and claim boundaries are defined by the
 [`associative-plasticity design`](docs/superpowers/specs/2026-09-24-associative-plasticity-pivot-design.md)
 and its [`implementation plan`](docs/superpowers/plans/2026-09-24-associative-plasticity-assay.md).
 
-### WIP status — 2026-10-03
+### WIP status — 2026-10-04
 
 - MaleCNS v1.0 sources are checksum-locked and the prepared graph verifies at
   166,700 cells and 25,582,938 directed edges.
@@ -40,8 +40,8 @@ and its [`implementation plan`](docs/superpowers/plans/2026-09-24-associative-pl
 - Live candidate/noncandidate content hashes bind the exact selected memory
   triplet and all other state in separate domains, with complete-state validation
   before exclusions and bounded numeric encoding. Content equality is not donor
-  history, current-group identity or clock-compatibility proof; the later producer
-  must verify those separately.
+  history, current-group identity or clock-compatibility proof; native intervention
+  production verifies those separately against authenticated training sources.
 - Exploratory qualification and append-only verified artifacts are available
   through `qualify` and `verify-run`. The pure frozen-config builder and MBON11
   analysis contract are implemented and independently reviewed.
@@ -57,8 +57,13 @@ and its [`implementation plan`](docs/superpowers/plans/2026-09-24-associative-pl
   retained-parent anchors, then native-verifies both prefix and sealed reports.
   Its incomplete tiny native correctness pilot remains inconclusive; the declared
   test contract is not qualification evidence or a production frozen config.
+- A five-route cohort adds independently acquired matched reference, necessity,
+  sufficiency and sham. Actual replacements bind authenticated training-end
+  occurrences and preserve noncandidate state. Two trainings, three interventions,
+  sixty response descriptors and ten retained-parent anchors pass the same native
+  prefix/terminal/sealed lifecycle; missing factors and controls remain visible.
 - In progress: selected qualification interventions, all-factor held-out assay
-  production, remaining control/intervention routes and the `assay` CLI.
+  production, remaining control routes and the `assay` CLI.
   Formal full-graph qualification
   and confirmation have not run; no positive plasticity or behavior result is
   claimed.

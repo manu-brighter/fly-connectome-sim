@@ -316,6 +316,46 @@ confirmation, fullgraph capacity approval or a positive scientific finding.
 Selected qualification evidence, control/intervention routes, all-factor
 production and the assay CLI remain subsequent tasks.
 
+#### Task7B3d: native matched reference and candidate replacement routes
+
+**Files:** Extend `experiment/assay.py` and its native tests; update status docs.
+
+**Interface:** `run_intervention_cohort(...) -> AssayReport` uses the paired
+producer's arguments and shared execution path. Preserve `run_paired_cohort`
+behavior. Execute paired and time-/exposure-matched reference acquisition from
+independent baseline restores, then necessity, sufficiency and sham replacements
+at their common training-end clock. Bind each route to its recipient training and
+actual post-intervention source occurrence, including baseline responses.
+
+- [x] **RED:** Initialize the genuine tiny native engine and declared test config
+  before asserting the missing API. Then prove two training events, three real
+  interventions, ten anchors, sixty responses and eight durable checkpoints.
+- [x] **GREEN:** Reuse training/trial/retention schedules and preflight both source
+  clocks before recording. Authenticate exact durable donor/recipient occurrences
+  and their live training-end digests; compare canonical identities, current
+  groups, clocks and actual ordered candidate maps. Capture a quiescent authentic
+  donor snapshot. Bracket only replacement with recipient component digests;
+  preserve noncandidate state and sham content. Identical necessity/sufficiency
+  content is valid and must not be fabricated into a shift.
+- [x] Verify native baseline/retained trial isolation, actual replacement triplets,
+  telemetry/counts, source/occurrence tampering and compatibility rejection. Keep
+  timing-only scientific equivalence and the existing paired API regressions.
+- [x] Native-verify prefix and sealed artifact, with one terminal and independent
+  canonical report equality. Ten complete route/time rows remain inconclusive
+  because other declared factors and the three controls are still missing.
+- [x] Freeze/self-review, independent integrity review, covering fixes and final
+  complete opt-in suite before the explicit feature-branch commit/push.
+
+Completion evidence (2026-10-04): genuine initialized native missing-API RED,
+source/transfer and signed-zero snapshot-spoof RED/GREEN; focused native suite
+45 passed in320.80s, including all eighteen paired regressions. Independent
+integrity/specification/quality review found no open Critical, Important or Minor
+findings. Final complete opt-in suite:1235 passed in643.92s, including both actual
+fullgraph integrations, on the unchanged reviewed source/test bytes.
+
+This slice does not supply formal qualification, a production frozen config,
+fullgraph capacity approval, all-factor controls or the assay CLI.
+
 ### Task 8: Add a motor-only adapter without a behavioral claim
 
 **Files:** Modify `src/fly_connectome_sim/experiment/adapter.py`, `src/fly_connectome_sim/experiment/recorder.py`, `src/fly_connectome_sim/schemas/run.schema.json`, `tests/experiment/test_adapter.py`, `tests/experiment/test_recorder.py`. Keep `preference-adapter/v1` readable for old artifacts.
