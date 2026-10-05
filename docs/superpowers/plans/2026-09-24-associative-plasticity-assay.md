@@ -512,6 +512,39 @@ and native compiler smoke. The scientific report remains `unsupported`, with
 the same negative gates; formal qualification/configuration and CLI work remain
 pending.
 
+#### Task7B3i: measure bounded fullgraph resource components
+
+**Files:** Create `docs/experiments/2026-10-05-fullgraph-capacity.md`; update
+status docs. Keep package source, tests and scientific gates unchanged.
+Measurement scripts and native artifacts remain private ignored outputs.
+
+- [x] Measure actual current-source fullgraph factory, state/candidate digests,
+  NPZ write/restore/hash, process working set and scoped scratch-file sizes.
+  Authenticate the compatible checkpoint and preserve source/checkpoint bytes.
+- [x] Repeat a 500-ms black retention call and separate 100-ms A/B/C response
+  calls twice from the same source, using production flags; verify native tick
+  advances, endpoint digests and telemetry equality excluding wall-clock fields.
+- [x] Publish component ranges and clearly scoped memory/storage measurements;
+  distinguish illustrative workload arithmetic from total runtime or resource
+  guarantees. No formal configuration, qualification or assay capacity claim.
+- [x] Obtain fresh independent measurement/report review, check provenance and
+  documented arithmetic, then commit/push only the report and plan status.
+
+Verified 2026-10-05: bounded native probe completed in about 21 seconds;
+two real fullgraph factories and two repeats per black/A/B/C condition preserved
+complete native endpoint and telemetry equality. All 29 package source files and
+the compatible checkpoint retain their hashes. The 500-ms black calls took
+1.297331/1.359500 seconds; 100-ms A/B/C calls took 0.272256-0.289507 seconds;
+process lifetime peak working set was 1,065,197,568 bytes. The linked
+[result report](../../experiments/2026-10-05-fullgraph-capacity.md) records
+provenance, exact component samples and limitations. Fresh independent
+SPEC/QUALITY review passed with no Critical, Important or Minor findings;
+root independently checked actual telemetry/checkpoint files, hashes, counters,
+determinism and arithmetic. This documentation-only slice preserves the existing
+1,299-case acceptance and does not establish whole-assay resource capacity.
+A representative-source one-anchor recorder/replay pilot remains the next
+resource gate; formal qualification and configuration remain pending.
+
 ### Task 8: Add a motor-only adapter without a behavioral claim
 
 **Files:** Modify `src/fly_connectome_sim/experiment/adapter.py`, `src/fly_connectome_sim/experiment/recorder.py`, `src/fly_connectome_sim/schemas/run.schema.json`, `tests/experiment/test_adapter.py`, `tests/experiment/test_recorder.py`. Keep `preference-adapter/v1` readable for old artifacts.
