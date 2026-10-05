@@ -283,6 +283,62 @@ def _telemetry_bindings(value: object, event: dict, identity: dict, black: dict)
             _telemetry_bindings(item, event, identity, black)
 
 
+def _check_source_event(event: dict, source: dict) -> None:
+    """Require an actual typed earlier checkpoint, not an inventory declaration."""
+    if (event.get("type") != "checkpoint"
+            or event.get("branch_id") != source["origin_branch_id"]
+            or event.get("checkpoint_name") != source["checkpoint_name"]
+            or event.get("checkpoint_sha256") != source["checkpoint_sha256"]
+            or _integer(event.get("sim_tick")) != source["sim_tick"]):
+        raise ValueError("Exact durable checkpoint occurrence mismatch")
+    _clock(event.get("sim_ms"), source["sim_tick"])
+
+
+def _project_operation(event: dict, source: dict, identity: dict, black: dict) -> dict:
+    """Shared exact scientific event projection; no prefix authenticity claim."""
+    if event.get("operation_version") != OPERATION_VERSION:
+        raise ValueError("Late source or unsupported replay operation version")
+    kind = event.get("type")
+    reference = {"type": kind, "event_sequence": event["sequence"],
+                 "event_scientific_sha256": event["scientific_sha256"]}
+    if kind == "fork":
+        _fields(event, FRAMING | FORK_FIELDS, "direct replay fork event")
+        if (event["parent_branch_id"] != source["origin_branch_id"]
+                or event["parent_checkpoint_name"] != source["checkpoint_name"]
+                or _integer(event["parent_checkpoint_sequence"]) != source["checkpoint_sequence"]
+                or event["parent_checkpoint_sha256"] != source["checkpoint_sha256"]
+                or _integer(event["sim_tick"]) != source["sim_tick"]):
+            raise ValueError("Direct fork occurrence mismatch")
+        _clock(event["sim_ms"], source["sim_tick"])
+        return {**reference, "sim_tick": event["sim_tick"]}
+    elif kind == "replay_thaw":
+        _fields(event, FRAMING | THAW_FIELDS, "explicit thaw event")
+        _clock(event["sim_ms"], _integer(event["sim_tick"]))
+        return {**reference, **{key: event[key] for key in THAW_FIELDS - {"type"}}}
+    elif kind == "neutral_gap_chunk":
+        fields = FRAMING | {"type"} | BLACK_FIELDS | CALL_FIELDS
+        _fields(event, fields | ({"telemetry"} if "telemetry" in event else set()),
+                "black replay call event")
+        _call(event, _integer(event["start_tick"]))
+        if _canonical_json(_black({key: event[key] for key in BLACK_FIELDS})) != _canonical_json(black):
+            raise ValueError("Replay call input is not the context-declared black input")
+        if "telemetry" in event:
+            if type(event["telemetry"]) is not dict:
+                raise ValueError("Replay telemetry must be an object")
+            _telemetry_bindings(event["telemetry"], event, identity, black)
+        return {**reference, **{key: event[key] for key in CALL_FIELDS}}
+    else:
+        raise ValueError("Unknown branch-local event in bounded replay interval")
+
+
+def _recipe_headers(source: dict, branch: str, target: int, identity: dict,
+                    metadata: str, black: dict, prefix: dict) -> dict:
+    return {"recipe_version": RECIPE_VERSION, "source_occurrence": source,
+            "origin_branch_id": branch, "target_tick": target,
+            "engine_identity": identity, "run_metadata_sha256": metadata,
+            "black_input": black, "scientific_prefix": prefix}
+
+
 def build_black_retention_recipe(
     events: Iterable[dict], *, source_occurrence: dict, origin_branch_id: str,
     target_tick: int, engine_identity: dict, run_metadata_sha256: str,
@@ -319,59 +375,186 @@ def build_black_retention_recipe(
         previous = expected
         count += 1
         if event["sequence"] == source["checkpoint_sequence"]:
-            if (event.get("type") != "checkpoint"
-                    or event.get("branch_id") != source["origin_branch_id"]
-                    or event.get("checkpoint_name") != source["checkpoint_name"]
-                    or event.get("checkpoint_sha256") != source["checkpoint_sha256"]
-                    or _integer(event.get("sim_tick")) != source["sim_tick"]):
-                raise ValueError("Exact durable checkpoint occurrence mismatch")
-            _clock(event.get("sim_ms"), source["sim_tick"])
+            _check_source_event(event, source)
             source_seen = True
         if event.get("branch_id") != branch:
             continue
         if not source_seen or event.get("operation_version") != OPERATION_VERSION:
             raise ValueError("Late source or unsupported replay operation version")
-        kind = event.get("type")
-        reference = {"type": kind, "event_sequence": event["sequence"],
-                     "event_scientific_sha256": event["scientific_sha256"]}
-        if kind == "fork":
-            _fields(event, FRAMING | FORK_FIELDS, "direct replay fork event")
-            if (event["parent_branch_id"] != source["origin_branch_id"]
-                    or event["parent_checkpoint_name"] != source["checkpoint_name"]
-                    or _integer(event["parent_checkpoint_sequence"]) != source["checkpoint_sequence"]
-                    or event["parent_checkpoint_sha256"] != source["checkpoint_sha256"]
-                    or _integer(event["sim_tick"]) != source["sim_tick"]):
-                raise ValueError("Direct fork occurrence mismatch")
-            _clock(event["sim_ms"], source["sim_tick"])
-            operations.append({**reference, "sim_tick": event["sim_tick"]})
-        elif kind == "replay_thaw":
-            _fields(event, FRAMING | THAW_FIELDS, "explicit thaw event")
-            _clock(event["sim_ms"], _integer(event["sim_tick"]))
-            operations.append({**reference, **{key: event[key] for key in THAW_FIELDS - {"type"}}})
-        elif kind == "neutral_gap_chunk":
-            fields = FRAMING | {"type"} | BLACK_FIELDS | CALL_FIELDS
-            _fields(event, fields | ({"telemetry"} if "telemetry" in event else set()),
-                    "black replay call event")
-            _call(event, _integer(event["start_tick"]))
-            if _canonical_json(_black({key: event[key] for key in BLACK_FIELDS})) != _canonical_json(black):
-                raise ValueError("Replay call input is not the context-declared black input")
-            if "telemetry" in event:
-                if type(event["telemetry"]) is not dict:
-                    raise ValueError("Replay telemetry must be an object")
-                _telemetry_bindings(event["telemetry"], event, identity, black)
-            operations.append({**reference, **{key: event[key] for key in CALL_FIELDS}})
-        else:
-            raise ValueError("Unknown branch-local event in bounded replay interval")
+        operations.append(_project_operation(event, source, identity, black))
     if count != prefix["event_count"] or previous != prefix["final_scientific_sha256"]:
         raise ValueError("Completed prefix count or scientific endpoint mismatch")
     if not source_seen:
         raise ValueError("Durable source occurrence absent from prefix")
-    data = {"recipe_version": RECIPE_VERSION, "source_occurrence": source,
-            "origin_branch_id": branch, "target_tick": target,
-            "engine_identity": identity, "run_metadata_sha256": metadata,
-            "black_input": black, "scientific_prefix": prefix, "operations": operations}
+    data = {**_recipe_headers(source, branch, target, identity, metadata, black, prefix),
+            "operations": operations}
     data["replay_recipe_sha256"] = _domain_sha256(RECIPE_DOMAIN, data)
     return validate_black_retention_recipe(data)
+
+
+class _OperationGrammar:
+    """Scalar grammar state, shared by recipe validation and scanner projection."""
+
+    def __init__(self, source: dict):
+        self.cursor = source["sim_tick"]
+        self.previous_sequence = source["checkpoint_sequence"]
+        self.count = 0
+        self.thaw_seen = False
+
+    def accept(self, operation: dict, final_sequence: int) -> None:
+        if type(operation) is not dict:
+            raise ValueError("Invalid replay operation")
+        sequence = _integer(operation.get("event_sequence"))
+        if not self.previous_sequence < sequence <= final_sequence:
+            raise ValueError("Operation sequence order or prefix range mismatch")
+        _digest(operation.get("event_scientific_sha256"))
+        kind = operation.get("type")
+        cursor = self.cursor
+        thaw_seen = self.thaw_seen
+        if self.count == 0:
+            _fields(operation, REFERENCE_FIELDS | {"sim_tick"}, "fork operation")
+            if kind != "fork" or _integer(operation["sim_tick"]) != cursor:
+                raise ValueError("Replay must start with its direct source fork")
+        elif kind == "replay_thaw":
+            _fields(operation, REFERENCE_FIELDS | (THAW_FIELDS - {"type"}), "thaw operation")
+            if thaw_seen or self.count != 1:
+                raise ValueError("Duplicate or reordered replay thaw")
+            _thaw(operation, cursor)
+            thaw_seen = True
+        elif kind == "neutral_gap_chunk":
+            _fields(operation, REFERENCE_FIELDS | CALL_FIELDS, "black call operation")
+            cursor = _call(operation, cursor)
+        else:
+            raise ValueError("Unsupported replay operation")
+        self.cursor = cursor
+        self.thaw_seen = thaw_seen
+        self.previous_sequence = sequence
+        self.count += 1
+
+    def finish(self, target: int) -> None:
+        if not self.count or self.cursor != target:
+            raise ValueError("Replay operations do not reach exact target tick")
+
+
+class _BranchProjection:
+    """Canonical operation-array binding with no retained operation history."""
+
+    def __init__(self, source: dict):
+        self.source = dict(source)
+        self.grammar = _OperationGrammar(source)
+        self.operations_sha256 = sha256(b"[")
+
+    def accept(self, event: dict, identity: dict, black: dict) -> None:
+        operation = _project_operation(event, self.source, identity, black)
+        encoded = _canonical_json(operation)
+        self.grammar.accept(operation, event["sequence"])
+        if self.grammar.count > 1:
+            self.operations_sha256.update(b",")
+        self.operations_sha256.update(encoded)
+
+    def matches_operations(self, operations: list) -> bool:
+        if self.grammar.count != len(operations):
+            return False
+        expected = self.operations_sha256.copy()
+        expected.update(b"]")
+        actual = sha256(b"[")
+        for index, operation in enumerate(operations):
+            if index:
+                actual.update(b",")
+            actual.update(_canonical_json(operation))
+        actual.update(b"]")
+        return expected.digest() == actual.digest()
+
+
+class _PrefixProjection:
+    """One scan's accepted events only; replay-only failures stay deferred.
+
+    None is a permanent branch tombstone. The hash binds the full canonical
+    array under the same SHA256 collision-resistance assumption as the chain;
+    all source, header and operation semantic checks remain independent.
+    """
+
+    def __init__(self, metadata: dict, metadata_digest: str):
+        # Snapshot without replay validation: legacy/no-anchor identities remain
+        # readable. Each context is validated lazily once, shared by candidates.
+        self.context = json.loads(_canonical_json(metadata))
+        self.metadata_digest = metadata_digest
+        self.context_checked = False
+        self.identity = None
+        self.black = None
+        self.raw_prefix_invalid = False
+        self.sources: dict[str, dict] = {}
+        self.branches: dict[str, _BranchProjection | None] = {}
+
+    def _check_context(self) -> None:
+        if not self.context_checked:
+            self.context_checked = True
+            try:
+                identity = _identity(_copy(self.context["engine_identity"]))
+                black = _black(_copy(self.context.get("black_input")))
+            except ValueError:
+                pass
+            else:
+                self.identity, self.black = identity, black
+            self.context = None
+        if self.identity is None or self.black is None:
+            raise ValueError("Anchor requires replay identity and declared black input")
+
+    def accept(self, raw: dict) -> None:
+        """Called only after every ordinary chain check, before yielding aliases."""
+        try:
+            _reject_raw_prefix(raw)
+        except ValueError:
+            self.raw_prefix_invalid = True
+        branch = raw["branch_id"]
+        if branch not in self.branches:
+            self.branches[branch] = None
+            if raw.get("type") == "fork":
+                source = self.sources.get(raw.get("parent_checkpoint_name"))
+                if source is not None and branch != source["origin_branch_id"]:
+                    self.branches[branch] = _BranchProjection(source)
+        candidate = self.branches[branch]
+        if raw["type"] == "state_anchor":
+            # Its validation used strictly earlier events. Once accepted, this
+            # unsupported branch-local event permanently releases the candidate.
+            self.branches[branch] = None
+            candidate = None
+        if candidate is not None:
+            try:
+                self._check_context()
+                from .recorder import _scientific
+
+                candidate.accept(_scientific(raw), self.identity, self.black)
+            except ValueError:
+                self.branches[branch] = None
+        if raw.get("type") == "checkpoint" and "checkpoint_name" in raw:
+            try:
+                source = _source({"checkpoint_name": raw["checkpoint_name"],
+                    "checkpoint_sha256": raw["checkpoint_sha256"], "origin_branch_id": branch,
+                    "checkpoint_sequence": raw["sequence"], "sim_tick": raw.get("sim_tick")})
+                _check_source_event(raw, source)
+            except ValueError:
+                pass
+            else:
+                self.sources[source["checkpoint_name"]] = source
+
+    def check_recipe(self, recipe: dict, prefix: dict) -> None:
+        """Compare an already fully validated recipe against strictly prior events."""
+        if self.raw_prefix_invalid:
+            raise ValueError("Raw prefix integrity fields cannot enter scientific replay data")
+        self._check_context()
+        branch = recipe["origin_branch_id"]
+        candidate = self.branches.get(branch)
+        if candidate is None:
+            raise ValueError("Unsupported earlier branch-local replay history")
+        candidate.grammar.finish(recipe["target_tick"])
+        expected = _recipe_headers(candidate.source, branch, candidate.grammar.cursor,
+                                   self.identity, self.metadata_digest, self.black, prefix)
+        actual = {key: value for key, value in recipe.items()
+                  if key not in {"operations", "replay_recipe_sha256"}}
+        if _canonical_json(expected) != _canonical_json(actual) \
+                or not candidate.matches_operations(recipe["operations"]):
+            raise ValueError("Anchor recipe differs from actual completed prefix")
 
 
 def validate_black_retention_recipe(recipe: dict) -> dict:
@@ -390,35 +573,10 @@ def validate_black_retention_recipe(recipe: dict) -> dict:
     operations = data["operations"]
     if type(operations) is not list or not operations:
         raise ValueError("Replay recipe must include its direct fork")
-    cursor = source["sim_tick"]
-    previous_sequence = source["checkpoint_sequence"]
-    thaw_seen = False
-    for index, operation in enumerate(operations):
-        if type(operation) is not dict:
-            raise ValueError("Invalid replay operation")
-        sequence = _integer(operation.get("event_sequence"))
-        if not previous_sequence < sequence <= prefix["final_sequence"]:
-            raise ValueError("Operation sequence order or prefix range mismatch")
-        previous_sequence = sequence
-        _digest(operation.get("event_scientific_sha256"))
-        kind = operation.get("type")
-        if index == 0:
-            _fields(operation, REFERENCE_FIELDS | {"sim_tick"}, "fork operation")
-            if kind != "fork" or _integer(operation["sim_tick"]) != cursor:
-                raise ValueError("Replay must start with its direct source fork")
-        elif kind == "replay_thaw":
-            _fields(operation, REFERENCE_FIELDS | (THAW_FIELDS - {"type"}), "thaw operation")
-            if thaw_seen or index != 1:
-                raise ValueError("Duplicate or reordered replay thaw")
-            _thaw(operation, cursor)
-            thaw_seen = True
-        elif kind == "neutral_gap_chunk":
-            _fields(operation, REFERENCE_FIELDS | CALL_FIELDS, "black call operation")
-            cursor = _call(operation, cursor)
-        else:
-            raise ValueError("Unsupported replay operation")
-    if cursor != target:
-        raise ValueError("Replay operations do not reach exact target tick")
+    grammar = _OperationGrammar(source)
+    for operation in operations:
+        grammar.accept(operation, prefix["final_sequence"])
+    grammar.finish(target)
     payload = {key: item for key, item in data.items() if key != "replay_recipe_sha256"}
     if _digest(data["replay_recipe_sha256"]) != _domain_sha256(RECIPE_DOMAIN, payload):
         raise ValueError("Replay recipe digest mismatch")

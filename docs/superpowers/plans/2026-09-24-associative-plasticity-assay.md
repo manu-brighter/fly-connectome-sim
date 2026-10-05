@@ -465,6 +465,53 @@ This validates the complete declared factor matrix on the tiny native fixture;
 it does not establish formal qualification, production configuration, fullgraph
 assay execution/capacity or the CLI. Those remain separate gates.
 
+#### Task7B3h: remove nested historical scans within authentic validation
+
+**Files:** Update `experiment/recorder.py` and `experiment/replay.py`; create
+`tests/experiment/test_recorder_projection.py`; update status docs.
+
+Original read-only measurement: a genuine 64-anchor, 7,009-event prefix required
+239,425 raw event consumptions in 38.398736 seconds. Source/artifact hashes stayed
+unchanged. The full producer-loop traversal count of 120,410,288 is a call-graph
+inference, not isolated wall-time attribution of the fourteen-hour native case.
+
+- [x] Add a genuine deterministic RED regression counting raw reads during one
+  complete chain scan; require one outer traversal and no historical rereads.
+- [x] Share strict branch operation projection and use ephemeral scanner state
+  with a bounded SHA256 accumulator over the exact canonical operation array.
+  Independently compare all source/header/prefix fields and preserve grammar,
+  deferred global/branch errors, mutation checks and actual checkpoint occurrence.
+  This provides cryptographic equality under the existing hash assumption;
+  it does not compare reconstructed operation arrays byte for byte.
+- [x] Preserve standalone full-prefix authentication, live recorder physical
+  rereads, wire/schema hashes, current-byte revalidation and verifier-only native
+  attestations. Keep ordinary unanchored/legacy acceptance and bounded history
+  memory; run existing integrity guards and new differential/projection tests.
+- [x] Measure the same authentic prefix after the change, freeze reviewed bytes,
+  obtain fresh independent integrity review and run one complete opt-in suite
+  including the unchanged all-factor native case before explicit feature push.
+
+No persistent trust cache, public skip-validation mode, new scientific support,
+formal qualification or fullgraph capacity claim is introduced by this slice.
+
+Verified 2026-10-05: fresh independent SPEC/QUALITY integrity review passed
+with no Critical, Important or Minor findings. The complete opt-in suite passed
+all 1,299 cases with zero failures, errors or skips in 2,646.14 seconds
+(44 minutes 6 seconds), versus the prior 52,202.15 seconds. The unchanged genuine
+all-factor native case took 1,701.331 seconds (28 minutes 21 seconds), versus
+50,563.872 seconds: about 29.7 times faster in this comparison. The same authentic
+64-anchor parser scan dropped from 38.398736 to 1.614710 seconds, with 7,009 raw
+event reads and no historical readers. These local and end-to-end measurements
+are separate evidence; neither establishes fullgraph assay capacity.
+
+The fresh native artifact retains all 14,048 events, 40 trainings, 24 interventions,
+768 responses, 128 native-attested anchors and 67 checkpoints. Independent XML
+and artifact checks confirmed the frozen implementation hashes, all 73 existing
+producer regressions, 35 new projection regressions, fullgraph checkpoint tests
+and native compiler smoke. The scientific report remains `unsupported`, with
+the same negative gates; formal qualification/configuration and CLI work remain
+pending.
+
 ### Task 8: Add a motor-only adapter without a behavioral claim
 
 **Files:** Modify `src/fly_connectome_sim/experiment/adapter.py`, `src/fly_connectome_sim/experiment/recorder.py`, `src/fly_connectome_sim/schemas/run.schema.json`, `tests/experiment/test_adapter.py`, `tests/experiment/test_recorder.py`. Keep `preference-adapter/v1` readable for old artifacts.

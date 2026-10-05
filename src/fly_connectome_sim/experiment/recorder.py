@@ -250,6 +250,7 @@ class _Chain:
         self.anchors: dict[str, dict] = {}
         self.anchor_ids: set[str] = set()
         self.prefix_events = prefix_events
+        self.projection = None
         self.count = 0
         self.previous = GENESIS
         self.result_seen = False
@@ -326,17 +327,20 @@ class _Chain:
             prefix = {"event_count": self.count, "final_sequence": self.count - 1,
                       "final_scientific_sha256": self.previous}
             black = self.metadata.get("black_input")
-            if self.prefix_events is None or black is None:
+            if (self.prefix_events is None and self.projection is None) or black is None:
                 raise ValueError("Anchor requires actual prefix and declared black input")
-            recipe = build_black_retention_recipe(
-                self.prefix_events(self.count), source_occurrence=anchor["source_occurrence"],
-                origin_branch_id=anchor["origin_branch_id"], target_tick=anchor["sim_tick"],
-                engine_identity=self.metadata["engine_identity"],
-                run_metadata_sha256=self.metadata_digest, black_input=black,
-                scientific_prefix=prefix,
-            )
-            if _canonical(recipe) != _canonical(anchor["recipe"]):
-                raise ValueError("Anchor recipe differs from actual completed prefix")
+            if self.projection is not None:
+                self.projection.check_recipe(anchor["recipe"], prefix)
+            else:
+                recipe = build_black_retention_recipe(
+                    self.prefix_events(self.count), source_occurrence=anchor["source_occurrence"],
+                    origin_branch_id=anchor["origin_branch_id"], target_tick=anchor["sim_tick"],
+                    engine_identity=self.metadata["engine_identity"],
+                    run_metadata_sha256=self.metadata_digest, black_input=black,
+                    scientific_prefix=prefix,
+                )
+                if _canonical(recipe) != _canonical(anchor["recipe"]):
+                    raise ValueError("Anchor recipe differs from actual completed prefix")
             return {**anchor, "event_sequence": self.count}
         except ValueError as error:
             raise RunArtifactError(f"Invalid state anchor: {error}") from error
@@ -437,6 +441,8 @@ class _Chain:
         scientific_digest = sha256(_canonical(_scientific_event(event))).hexdigest()
         if event.get("scientific_sha256") != scientific_digest:
             raise RunArtifactError("Scientific event digest mismatch")
+        if self.projection is not None:
+            self.projection.accept(event)
         self.branches[branch] = branch_state
         if checkpoint_name is not None:
             self.checkpoints[checkpoint_name]["sim_ms"] = wire_clock_value
@@ -789,9 +795,11 @@ def _digest_boundary(path: Path, byte_length: int) -> str:
 
 
 def _scan_chain(path: Path, manifest: dict, *, byte_length: int | None = None) -> Iterator[dict]:
+    from .replay import _PrefixProjection
+
     chain = _Chain(manifest["root_branch_id"], manifest["metadata"],
-                   _strict_load(_canonical(manifest["checkpoints"])), manifest["run_kind"],
-                   lambda count: _raw_events(path, count=count, byte_length=byte_length))
+                   _strict_load(_canonical(manifest["checkpoints"])), manifest["run_kind"])
+    chain.projection = _PrefixProjection(chain.metadata, chain.metadata_digest)
     raw_digest = sha256()
     for event in _raw_events(path, byte_length=byte_length):
         # _raw_events has already checked exact canonical bytes including LF.
