@@ -432,6 +432,39 @@ This slice validates two cohorts in one native artifact; it does not establish
 all-factor confirmation, formal qualification/configuration, fullgraph capacity
 or the assay CLI. Full factor execution remains a subsequent validation gate.
 
+#### Task7B3g: native acceptance of the complete factor matrix
+
+**Files:** Create `tests/experiment/test_assay_all_factors.py`; update status docs.
+Production APIs and existing producer regressions remain unchanged.
+
+- [x] Add one genuine native opt-in integration using all eight declared
+  seed/identity/order triples through `run_controlled_cohorts` in one artifact.
+  Reuse the existing full-test environment convention and native fixture.
+- [x] Require forty trainings, twenty-four interventions, 768 responses,
+  128 native-attested anchors and sixty-seven durable checkpoints. Check all
+  sixteen factor/retention keys and eight conditions with pre/post A/B/C,
+  cohort-qualified source occurrences, actual inputs and response/anchor ancestry.
+- [x] Independently verify and reduce the sealed evidence; require canonical
+  report equality and a structurally complete matrix with honest scientific
+  failures. Do not weaken gates or fabricate qualification/positive results.
+- [x] Freeze and independently review the test; run one final complete opt-in
+  suite covering the new native case and all existing regressions before explicit
+  feature-branch commit/push. Retain actual verification evidence.
+
+Verified 2026-10-05: fresh independent integrity review passed; the complete
+opt-in suite passed all 1,264 cases with no failures, errors or skips in
+52,202.15 seconds. The new native case took 50,563.872 seconds and authenticated
+the complete 768-response matrix, 128 anchors and 67 durable checkpoints.
+The report remains scientifically `unsupported`, including negative reciprocal
+gates; matrix completeness does not imply learning or qualification. Production
+source and all 73 existing producer regressions retain their frozen hashes.
+Investigate recorder/replay timing before scaling this acceptance to fullgraph;
+repeated prefix scans are a static hypothesis, not an isolated measurement.
+
+This validates the complete declared factor matrix on the tiny native fixture;
+it does not establish formal qualification, production configuration, fullgraph
+assay execution/capacity or the CLI. Those remain separate gates.
+
 ### Task 8: Add a motor-only adapter without a behavioral claim
 
 **Files:** Modify `src/fly_connectome_sim/experiment/adapter.py`, `src/fly_connectome_sim/experiment/recorder.py`, `src/fly_connectome_sim/schemas/run.schema.json`, `tests/experiment/test_adapter.py`, `tests/experiment/test_recorder.py`. Keep `preference-adapter/v1` readable for old artifacts.
