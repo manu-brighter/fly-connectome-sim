@@ -11,9 +11,10 @@ An offline experiment built on the released **MaleCNS v1.0** wiring graph.
 The first goal is to test a declared KC → MBON11 associative-plasticity mechanism
 using controlled visual stimuli and explicit PPL101 stimulation.
 
-**Work in progress: native correctness pilots remain scientifically inconclusive.**
-Formal full-graph qualification, confirmation and capacity measurements have not
-run; a production frozen configuration has not been established. No positive
+**Work in progress: native correctness pilots have not established scientific support.**
+Formal full-graph qualification and confirmation have not run. Bounded fullgraph
+resource pilots have run, but whole-assay capacity and a production frozen
+configuration have not been established. No positive
 plasticity or learned-behavior result is claimed.
 
 The graph supplies wiring and annotations. Physiology, plasticity and action
@@ -29,7 +30,8 @@ left/right preference.
 | Data | Checksum-locked MaleCNS v1.0 sources; prepared graph verified at **166,700 cells** and **25,582,938 directed edges** | Formal assay qualification and confirmation on the full graph |
 | Native model | C++17 kernel; explicit PAM11/PPL101 stimulation; KC, MBON07, MBON11 and DNa02 telemetry | Physiological validity beyond the declared model |
 | Experiment state | Checkpoint restore, complete-state hashes, reset determinism and candidate-memory interventions | A qualified production frozen configuration |
-| Assay evidence | Native cohort production, independent A/B/C trials, two retention times, provenance-bound reports and native replay verification | All-factor held-out production, remaining integration and the `assay` CLI |
+| Assay evidence | Complete eight-cohort tiny-native production, independent A/B/C trials, two retention times, provenance-bound reports and native replay verification | Selected qualification evidence, fullgraph held-out confirmation and the `assay` CLI |
+| Resource pilots | Bounded fullgraph components and an actual trained one-anchor pilot with isolated native replay | Longer-retention costs, whole-assay capacity and a tested cloud/Linux environment |
 | Product | Scientific foundation for the event-planning experiment | Separately labelled motor readout, offline 3D replay and LLM event planning |
 
 Implementation and verification details live in the
@@ -37,6 +39,10 @@ Implementation and verification details live in the
 The [assay design](docs/superpowers/specs/2026-09-24-associative-plasticity-pivot-design.md)
 defines the scientific boundaries; the [product specification](docs/specs/fly-event-planner.md)
 describes the future event planner.
+
+For a fresh cloud checkout, start with the versioned
+[cloud handover and live TODOs](docs/cloud-handover.md). Local runtime data,
+toolchains and private working notes are not part of the repository.
 
 ## The assay
 

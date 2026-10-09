@@ -17,6 +17,27 @@ verification contract is defined in
 **Candidate-state refinement:** Production candidate/noncandidate content digests
 follow [`2026-10-03-candidate-state-digest-contract.md`](../specs/2026-10-03-candidate-state-digest-contract.md).
 
+## Current checkpoint and live remaining work — 2026-10-09
+
+The early task-level RED/GREEN boxes are historical execution instructions, not
+the current backlog. Tasks 1–6 and strict analysis 7A are implemented; native
+controlled all-factor production and bounded validation improvements are shipped.
+The complete tiny-native pilot is still unsupported (136 negative gates), not
+formal fullgraph qualification. Historical unchanged-source Windows acceptance
+is 1,299 passes; do not present it as a newly executed cloud suite.
+
+- [ ] Establish/verify the cloud toolchain and regenerate ignored runtime before
+  any actual fullgraph work; see [tracked handover](../../cloud-handover.md).
+- [ ] Measure a separately bounded longer-retention fullgraph anchor/replay pilot.
+- [ ] Complete strict selected qualification controls/interventions, frozen-config
+  integration and the real assay CLI; current CLI lacks `assay`.
+- [ ] Resolve discarded-grid training ancestry without mistaking black-retention
+  replay for proof of training history.
+- [ ] Complete Task 8's motor-only readout, then full source-bearing acceptance.
+- [ ] Perform Task 9 source freeze/formal qualification; create a production
+  frozen config only if all gates pass, before held-out confirmation.
+- [ ] Complete reviewed confirmation/reproducibility before viewer/LLM phases.
+
 ## Global Constraints
 
 - The primary endpoint is MBON11 response, not preference, learned behavior, or event choice. The maximal positive claim is the model-specific statement in the design spec.
@@ -544,6 +565,57 @@ determinism and arithmetic. This documentation-only slice preserves the existing
 1,299-case acceptance and does not establish whole-assay resource capacity.
 A representative-source one-anchor recorder/replay pilot remains the next
 resource gate; formal qualification and configuration remain pending.
+
+#### Task7B3j: trained fullgraph one-anchor recorder/replay resource pilot
+
+**Files:** Create `docs/experiments/2026-10-08-fullgraph-anchor-pilot.md`; update
+this plan only. Probe/raw/native artifacts remain ignored; package source,
+tests, schemas, dependencies and scientific gates remain unchanged.
+
+**Declared sample:** Fresh prepared fullgraph, qualification-family seed11,
+paired A/order AB, grid CS100ms/DAN onset0/post-pair gap500ms and the existing
+`controls=True` training timeline. This is a resource declaration, not a selected
+qualification setting. Actual association reference109000ticks and complete
+training source111000ticks stay distinct. T10000ms gives CS onset209000ticks,
+anchor208000ticks and9700ms reward-free source-to-anchor replay. Two independent
+A/B siblings each execute the existing100ms-prelude/100ms-CS/200ms-tail schedule
+from one authenticated scratch archive outside inventory. No frozen config,
+scientific response classification or confirmation terminal is manufactured.
+
+- [x] Execute the complete actual declared native training and retain exact
+  source/checkpoint occurrence, identity/groups, input/call flags and clocks.
+  Measure complete/candidate hashes, factory/write/restore/ingest and observations.
+- [x] Build one actual black-retention recipe/anchor through the validated prefix;
+  verify scratch/independent siblings. Produce a real sealed pilot with ordinary
+  integrity verification and separate actual isolated prefix/sealed native replay.
+  Require the same nonempty singleton anchor attestation; replay reconstructs
+  black endpoint only, not all training or response observations.
+- [x] Measure validation/recipe/anchor/replay wall time, actual event/checkpoint
+  bytes and scoped process/scratch resources. Preserve all package/schema bytes,
+  avoid overlapping-timer totals and distinguish this one sample from a full
+  assay/qualification/cold-cache/concurrent-capacity guarantee.
+- [x] Independently check artifact/bindings/counts/clocks/arithmetic, obtain fresh
+  measurement/integrity review, then commit/push only public report+plan. Use fresh
+  focused baseline plus genuine probe checks; unchanged prior1299-case source
+  acceptance is historical, not a newly executed complete suite.
+
+Measured on `ec6474b3693beb49a9dde28c0e02c3cca9987dad`: one actual trained
+fullgraph pilot passed with six sequential factories, 92 native observations,
+59 sealed events, three durable checkpoints and one retained anchor. Genuine
+prefix/sealed native verification took 82.445835/81.125468 seconds and attested
+the same retained endpoint. Process lifetime peak was 1,274,982,400 bytes;
+dedicated regular-file boundary maximum was 47,724,285 bytes, not an upper bound.
+Root independently rebuilt the recipe/envelope and checked clocks, inventory,
+state/file/telemetry hashes and resource arithmetic. Fresh focused baseline:
+346 passed in 33.80 seconds; package/schema bytes and historical 1,299-case
+accepted source remain unchanged. See
+[`2026-10-08-fullgraph-anchor-pilot.md`](../../experiments/2026-10-08-fullgraph-anchor-pilot.md).
+Independent SPEC/QUALITY review passed with no Critical, Important or Minor
+findings on the frozen measured report. The documentation checkpoint also adds
+tracked cloud handover/TODOs and repository instructions, without changing the
+measured source or raw artifacts. This sample does not
+qualify settings, demonstrate learning or establish full-assay capacity; a
+longer retained endpoint remains a separate bounded resource gate.
 
 ### Task 8: Add a motor-only adapter without a behavioral claim
 
