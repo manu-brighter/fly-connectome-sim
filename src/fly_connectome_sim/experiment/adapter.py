@@ -82,3 +82,60 @@ class PreferenceAdapter:
 
 
 DEFAULT_PREFERENCE_ADAPTER = PreferenceAdapter()
+
+
+@dataclass(frozen=True)
+class MotorDecision:
+    """Engineered motor evidence, without a behavioral validation claim."""
+
+    adapter_version: str
+    signed_difference_hz: float
+    evidence_strength: float
+    action: AdapterAction
+
+
+@dataclass(frozen=True)
+class LateralMotorAdapter:
+    """Motor-only display policy; the threshold is not behaviorally calibrated."""
+
+    version: str = "lateral-motor-adapter/v1"
+    action_threshold_hz: float = 1.0
+
+    def __post_init__(self) -> None:
+        if type(self.version) is not str or self.version != "lateral-motor-adapter/v1":
+            raise ValueError("Unsupported motor adapter version")
+        self._nonnegative_number(self.action_threshold_hz, "action_threshold_hz")
+
+    @staticmethod
+    def _nonnegative_number(value: object, name: str) -> float:
+        if type(value) not in (int, float):
+            raise ValueError(f"Motor readout requires a finite nonnegative {name}")
+        try:
+            number = float(value)
+        except OverflowError as error:
+            raise ValueError(f"Motor readout requires a finite nonnegative {name}") from error
+        if not math.isfinite(number) or number < 0:
+            raise ValueError(f"Motor readout requires a finite nonnegative {name}")
+        return number
+
+    def adapt(self, telemetry: Mapping[str, object]) -> MotorDecision:
+        """Use only the two measured lateral rates, independent of MBON activity."""
+        if not isinstance(telemetry, Mapping) or not isinstance(telemetry.get("rates_hz"), Mapping):
+            raise ValueError("Telemetry must contain a rates_hz mapping")
+        rates = telemetry["rates_hz"]
+        try:
+            left = self._nonnegative_number(rates["motor_left"], "motor_left")
+            right = self._nonnegative_number(rates["motor_right"], "motor_right")
+        except KeyError as error:
+            raise ValueError("Telemetry requires both motor rates") from error
+        difference = right - left
+        scale = max(left, right)
+        # Normalize before summation so finite near-limit rates cannot overflow.
+        strength = abs(difference / scale) / (right / scale + left / scale) if scale else 0.0
+        if difference > self.action_threshold_hz:
+            action: AdapterAction = "inspect_right"
+        elif difference < -self.action_threshold_hz:
+            action = "inspect_left"
+        else:
+            action = "defer"
+        return MotorDecision(self.version, difference, strength, action)

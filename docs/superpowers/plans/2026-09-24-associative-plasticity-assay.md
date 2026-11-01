@@ -17,6 +17,10 @@ verification contract is defined in
 **Candidate-state refinement:** Production candidate/noncandidate content digests
 follow [`2026-10-03-candidate-state-digest-contract.md`](../specs/2026-10-03-candidate-state-digest-contract.md).
 
+**Strict qualification refinement:** Remaining integration follows
+[`2026-11-01-strict-qualification-contract.md`](../specs/2026-11-01-strict-qualification-contract.md).
+It is not implemented or a source-freeze/qualification approval.
+
 ## Current checkpoint and live remaining work — 2026-11-01
 
 The early task-level RED/GREEN boxes are historical execution instructions, not
@@ -24,13 +28,16 @@ the current backlog. Tasks 1–6 and strict analysis 7A are implemented; native
 controlled all-factor production and bounded validation improvements are shipped.
 The complete tiny-native pilot is still unsupported (136 negative gates), not
 formal fullgraph qualification. Historical unchanged-source Windows acceptance
-is 1,299 passes; do not present it as a newly executed cloud suite.
+is 1,299 passes. Fresh Task8 Windows acceptance is 1,449 passes in 3,237.62
+seconds with no errors, failures or skips; neither result is a cloud run.
 
 Continuation is back on the original Windows workstation, not the cloud.
 Fresh local runtime locks pass; recorder/replay/projection baseline is
 380 passed and one permission-limited Windows junction skip (57.23 seconds).
-The next bounded resource slice is Task7B3k; source-bearing work waits until its
-measurement and independent review finish. The cloud setup item below applies
+Task7B3k's longer-retention measurement and independent review are complete.
+Task8's motor-only implementation passed independent scoped review and complete
+opt-in acceptance, including the genuine all-factor and both fullgraph tests. The next
+source slice is the shared checkpoint reader in Task7B4a. The cloud setup item below applies
 only when moving to a fresh cloud checkout, not as a gate on local continuation.
 
 - [ ] Establish/verify the cloud toolchain and regenerate ignored runtime before
@@ -42,7 +49,7 @@ only when moving to a fresh cloud checkout, not as a gate on local continuation.
   integration and the real assay CLI; current CLI lacks `assay`.
 - [ ] Resolve discarded-grid training ancestry without mistaking black-retention
   replay for proof of training history.
-- [ ] Complete Task 8's motor-only readout, then full source-bearing acceptance.
+- [x] Complete Task 8's motor-only readout and its complete opt-in acceptance.
 - [ ] Perform Task 9 source freeze/formal qualification; create a production
   frozen config only if all gates pass, before held-out confirmation.
 - [ ] Complete reviewed confirmation/reproducibility before viewer/LLM phases.
@@ -663,22 +670,127 @@ Minor findings. This is assay-style False/False
 detail flags, not the legacy qualifier's detail-enabled cost, whole-assay
 capacity, scientific support or formal qualification. No new complete suite ran.
 
+#### Task7B4: strict qualification integration after Task8
+
+Keep the same plan/workspace. These are pending, reviewable source slices, not
+permission to run formal qualification now. Preserve all existing confirmation
+routes and scientific gates. Concrete per-slice briefs must settle exact data
+shapes before implementation; do not bootstrap with a fabricated frozen object.
+
+**7B4a — shared schema-only archive reader.** Own `neural/checkpoint.py` and
+checkpoint tests. Produce `read_checkpoint(path, expected, schema, n)`;
+`schema` maps each array name to its exact dtype string and shape. Existing
+`load_checkpoint(path, expected, templates, n)` keeps writable-destination
+checks and delegates to that single decoder, without changing NPZ/preimages.
+- [ ] RED: read valid archives through a schema without writable live arrays;
+  preserve rejection of malformed metadata, zip/schema/shape/dtype/finite/queue
+  state and all existing destination/nonmutation behavior.
+- [ ] GREEN: factor the existing codec; run focused checkpoint guards, review
+  and complete ordinary acceptance before the bounded feature checkpoint.
+
+**7B4b — authentic qualification map context.** Own recorder/replay helpers and
+native tests. Extend private attestation with optional immutable
+`qualification_context_bytes`; derive it from the fresh compatible engine
+using actual rehashed maps/schema/initial weights before the first restore.
+Preserve the current reused-engine loop: qualification uses exactly one fresh
+factory for zero/one/multiple anchors. Confirmation stays zero for no anchors,
+one otherwise; the builder creates no engine.
+- [ ] RED: wrong equal-length candidate/KC/DAN maps, swapped compartment maps,
+  stale/transplanted/missing contexts, mutation after proof and ordinary objects
+  claiming context. Prove zero-anchor native context and zero builder factories.
+- [ ] GREEN: artifact-bound native context with decoded-copy access only;
+  unchanged checkpoint format and confirmation replay regression coverage.
+
+**7B4c — declared, authenticated grid and bounded history.** Own qualification,
+CLI metadata, analysis grid reduction, recorder/schema and their tests. Add the
+six missing strict metadata declarations and 96 `qualification_grid_binding`
+records with exact occurrence/raw-observation references. Point replicates name
+`grid_evidence_id`. `_reduce_qualification_grid(value)` consumes genuine proof
+context, validates all candidates/inventory and recomputes metrics/selection.
+Use explicit `controls=True` grid schedules; do not copy later raw effects.
+- [ ] RED: omitted metadata, discarded-source swap, occurrence alias/ordering,
+  altered raw summary/selection, old mixed washout schedules and branch overflow.
+  Enumerate the no-skip proposed grammar before enabling the changed cap.
+- [ ] GREEN: closed qualification-only 5120 branches (bound4850), unchanged
+  2048 snapshots/10000 relevant events; reject orphans, retain/drain all history.
+  Static CP/event bounds1602/8064 are not execution/capacity measurements.
+
+**7B4d — caller-owned selected native execution.** Own `assay.py`, qualification
+integration and producer tests. Extract `_produce_cohorts(engine_factory,
+recorder, *, execution, cohorts, conditions, baseline_occurrence, namespace,
+measure_replay=False)`; execution declares family/seeds/identity/population/
+candidate/timing/window/two retentions/per-seed A/B/C/black hash mapping only.
+Outer confirmation wrapper retains genuine frozen validation and lifecycle.
+- [ ] RED: real native qualification seed11 cannot use the confirmation-only
+  wrapper; reject late source/clock/input/family errors before creating output.
+- [ ] GREEN: one qualification cohort's five sources, three interventions and
+  independent two-T siblings, then eight-factor 40/24/128/768 evidence. Preserve
+  all existing confirmation APIs/counts and exact occurrence/transfer checks.
+
+**7B4e — actual replay-resolution measurements.** Own producer, analysis/schema
+and native tests. `measure_replay=True` repeats 408 actual distinct selected
+trials and binds `qualification_replay` diagnostics to source/observation/state
+references and each response's `replay_id`; no borrowed frozen tolerance.
+- [ ] RED: copied zero, missing T+60 trial, changed bin/state/source, duplicated
+  logical cells without physical comparisons or fake diagnostic proof.
+- [ ] GREEN: 24 pre/384 post comparisons and actual state pairs; independently
+  derive resolution/one-spike floors, preserving scientific arithmetic and
+  separate black-parent attestation versus response-repeat interpretation.
+
+**7B4f — truthful terminal and real freeze lifecycle.** Own analysis,
+qualification, recorder/schema and tests. Share `_evaluate_qualification(value)`
+over genuine prefix/seal proof plus a private execution contract. Keep public
+`build_frozen_config(VerifiedRun)` sealed-only and engine-free.
+- [ ] RED: early support, missing causal cell/context, forged prefix/frozen
+  data, terminal/report mutation and integrity-only objects claiming native proof.
+- [ ] GREEN: prefix native verification, one evidence-bound terminal, seal,
+  independent sealed evaluation/report equality. Complete valid negatives never
+  freeze; malformed/incomplete data do not become scientific negatives. Keep
+  mathematical fixtures separate from artifact/native proof.
+
+**7B4g — CLI and integrated capacity.** Own CLI, assay wrapper and integration
+tests. `run_assay(engine_factory, frozen, *, output_dir)` runs all frozen cohorts;
+`assay --config PATH --output-dir PATH` uses actual fresh factories and refuses
+overwrite/bad identity/config, rather than returning a preconstructed engine.
+- [ ] RED/GREEN: actual CLI routing, strict native negative qualification and
+  sealed verification. Do not create a positive config to continue a negative run.
+- [ ] Benchmark actual detail-enabled grid/archive I/O and both verifications,
+  conservatively account for the fixed complete grammar, review and complete
+  source-bearing acceptance. Only then enter Task9; no capacity approval is
+  inferred from the existing False/False resource samples.
+
 ### Task 8: Add a motor-only adapter without a behavioral claim
 
-**Files:** Modify `src/fly_connectome_sim/experiment/adapter.py`, `src/fly_connectome_sim/experiment/recorder.py`, `src/fly_connectome_sim/schemas/run.schema.json`, `tests/experiment/test_adapter.py`, `tests/experiment/test_recorder.py`. Keep `preference-adapter/v1` readable for old artifacts.
+**Files:** Modify `src/fly_connectome_sim/experiment/adapter.py`, `src/fly_connectome_sim/experiment/recorder.py`, `src/fly_connectome_sim/schemas/run.schema.json`, `tests/experiment/test_adapter.py`, `tests/experiment/test_recorder.py` and the primary-classification regression in `tests/experiment/test_analysis.py`. Keep `preference-adapter/v1` readable for old artifacts.
 
 **Interfaces:** `LateralMotorAdapter(version="lateral-motor-adapter/v1", action_threshold_hz=1.0).adapt(telemetry) -> MotorDecision` uses only `motor_right - motor_left`, with `evidence_strength=abs(right-left)/(right+left)` (zero when both are zero). It never reads MBON activity, stimulus identity, condition, reward or event metadata. The 1 Hz threshold is an explicitly engineered display rule, not a calibrated behavioral threshold. This task exposes unvalidated motor telemetry only; motor qualification and held-out validation require a later dedicated design/plan.
 
-- [ ] **RED:** Assert MBON-only changes cannot affect action, right/left motor changes produce the corresponding proposal, zero/threshold evidence defers, metadata changes do nothing, and v1 output remains readable.
-- [ ] Run `.venv/Scripts/python.exe -m pytest tests/experiment/test_adapter.py -q`; expected failure: missing motor-only adapter.
-- [ ] **GREEN:** Implement the adapter and use `evidence_strength`; never infer direction from MBON07−MBON11. Recorder labels the output `engineered_unvalidated_motor_readout` and it cannot alter the primary analysis classification.
-- [ ] Run focused/full pytest. Commit adapter/recorder/schema tests together: `feat / motor-readout : Separate lateral evidence from MBON analysis`.
+- [x] **RED:** Assert MBON-only changes cannot affect action, right/left motor changes produce the corresponding proposal, zero/threshold evidence defers, metadata changes do nothing, and v1 output remains readable.
+- [x] Run `.venv/Scripts/python.exe -m pytest tests/experiment/test_adapter.py -q`; expected failure: missing motor-only adapter.
+- [x] **GREEN:** Implement the adapter and use `evidence_strength`; never infer direction from MBON07−MBON11. Recorder labels the output `engineered_unvalidated_motor_readout` and it cannot alter the primary analysis classification.
+- [x] Run focused/full pytest. Commit adapter/recorder/schema tests together: `feat / motor-readout : Separate lateral evidence from MBON analysis`.
+
+Independent scoped review: spec and quality passed without Critical, Important
+or Minor findings. Root complete Windows acceptance on 2026-11-01:
+`FLY_CONNECTOME_SIM_FULL_TEST=1`, `python -m pytest -q -p no:cacheprovider`
+(fresh ignored basetemp, JUnit output and `--tb=short`): **1,449 passed in
+3,237.62 s**, no failures/errors/skips or deselections. It includes the genuine
+all-eight-cohort case (2,134.180 s), actual recorder/analyzer roundtrip (6.589 s)
+and both fullgraph tests. The tiny-native artifact again has 40 trainings,
+24 interventions, 768 responses, 128 anchors, 67 checkpoints and 14,048 events;
+its report is unsupported with 136 negative gates. This is functional acceptance,
+not formal qualification, motor validation or a source freeze.
 
 ### Task 9: Source freeze, formal qualification and held-out confirmation
 
 **Files:** Create `configs/assay.synthetic.json` only after formal qualification; modify `tests/test_full_graph_engine.py` for opt-in end-to-end coverage; create a concise result document under `docs/`. Use ignored `runs/qualification-*` and `runs/confirmation-*`; do not modify packaged `.py`/`.cpp` after source freeze.
 
 **Source-freeze rule:** Begin from a clean commit after Tasks 1–8. Run source/runtime verification and the complete suite including full graph. Record commit SHA and engine identity. From this point, any package-source change discards all formal qualification/config/confirmation artifacts and restarts Task 9 from a new clean commit. Tests, config and result docs may change because they are outside `model_fingerprint`, but they cannot alter numerical behavior.
+
+Before that clean commit, pin LF checkout handling for packaged Python/C++
+sources and normalize their bytes once. Recompute the source identity and run
+acceptance on the normalized state; mixed line endings and a workstation's
+`core.autocrlf` setting do not lock a fresh checkout's exact source bytes.
 
 - [ ] Run formal `fly-connectome-sim qualify` on the full graph with qualification family/seeds `(11,23)`, all fixed grid points, both paired identities and AB/BA order. Apply matched controls and causal interventions to the selected candidate configuration, not as extra grid-selection dimensions. Record benchmark values and verify the artifact before selecting anything. If integrity, observability, state-shift, saturation, intervention or independent washout fails, stop: commit only an honest negative qualification report and do not create a confirmation config.
 - [ ] If qualification passes, generate `configs/assay.synthetic.json` only via `build_frozen_config()`. It contains exact qualification hashes and engine identity, selected fixed-grid timing/window/sign/T, all floor terms, confirmation family/seeds `(101,113)`, conditions and intervention clocks. Independently review and commit this config before reading confirmation output: `feat / assay-preregistration : Freeze the held-out MBON11 assay`.

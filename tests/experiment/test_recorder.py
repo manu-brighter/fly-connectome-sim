@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from dataclasses import asdict
 from hashlib import sha256
 from importlib.resources import files
 import json
@@ -13,6 +14,7 @@ import subprocess
 import pytest
 
 from fly_connectome_sim.experiment.recorder import RunArtifactError, RunRecorder, verify_run
+from fly_connectome_sim.experiment import adapter as adapter_module
 
 
 METADATA = {
@@ -68,6 +70,231 @@ def supported_result_event(**fields):
         selected_retention_ms=10000.0, observed_effect_sign=1,
         **fields,
     )
+
+
+def motor_event(**fields):
+    adapter_type = getattr(adapter_module, "LateralMotorAdapter", None)
+    assert adapter_type is not None, "Missing motor-only adapter API"
+    telemetry = {
+        "engine_identity": deepcopy(METADATA["engine_identity"]),
+        "sim_ms": 0.0,
+        "rates_hz": {"motor_left": 5.0, "motor_right": 15.0},
+    }
+    return event(telemetry=telemetry, motor_readout={
+        "interpretation": "engineered_unvalidated_motor_readout",
+        "action_threshold_hz": 1.0,
+        "decision": asdict(adapter_type().adapt(telemetry)),
+    }, **fields)
+
+
+@pytest.mark.parametrize("event_type", ["observation", "observe"])
+def test_motor_readout_roundtrip_binds_same_observation_and_legacy_stays_readable(tmp_path, event_type):
+    recorder = RunRecorder(tmp_path / "run", run_kind="pilot", metadata=METADATA, root_branch_id="root")
+    measured = motor_event(type=event_type)
+    recorder.append(measured)
+    legacy = event(preference_readout={"adapter_version": "preference-adapter/v1", "confidence": 0.5})
+    recorder.append(legacy)
+    prefix = recorder.validate_prefix()
+    prefix_events = list(prefix.iter_events())
+    assert prefix_events[0]["motor_readout"] == {
+        "interpretation": "engineered_unvalidated_motor_readout", "action_threshold_hz": 1.0,
+        "decision": {"adapter_version": "lateral-motor-adapter/v1", "signed_difference_hz": 10.0,
+                     "evidence_strength": 0.5, "action": "inspect_right"},
+    }
+    assert "motor_readout" not in prefix_events[1]
+    assert prefix_events[1]["preference_readout"] == legacy["preference_readout"]
+    seal(recorder, tmp_path)
+    assert list(verify_run(recorder.path).iter_events())[:2] == prefix_events
+
+
+MOTOR_INVALID_FIELDS = [
+    (("motor_readout",), None),
+    (("motor_readout", "extra"), True),
+    (("motor_readout", "interpretation"), "validated"),
+    (("motor_readout", "action_threshold_hz"), True),
+    (("motor_readout", "action_threshold_hz"), "1"),
+    (("motor_readout", "action_threshold_hz"), -1),
+    (("motor_readout", "decision"), []),
+    (("motor_readout", "decision", "extra"), True),
+    (("motor_readout", "decision", "adapter_version"), "preference-adapter/v1"),
+    (("motor_readout", "decision", "action"), "inspect_left"),
+    (("motor_readout", "decision", "action"), True),
+    (("motor_readout", "decision", "signed_difference_hz"), 9.0),
+    (("motor_readout", "decision", "signed_difference_hz"), True),
+    (("motor_readout", "decision", "signed_difference_hz"), "10"),
+    (("motor_readout", "decision", "evidence_strength"), 0.6),
+    (("motor_readout", "decision", "evidence_strength"), -0.5),
+    (("motor_readout", "decision", "evidence_strength"), 1.5),
+    (("motor_readout", "decision", "evidence_strength"), True),
+    (("motor_readout", "decision", "evidence_strength"), "0.5"),
+    (("type",), "other_event"),
+    (("telemetry",), None),
+    (("telemetry", "engine_identity"), {}),
+    (("telemetry", "rates_hz"), []),
+    (("telemetry", "rates_hz", "motor_left"), True),
+    (("telemetry", "rates_hz", "motor_left"), "5"),
+    (("telemetry", "rates_hz", "motor_left"), -5),
+    (("telemetry", "rates_hz", "motor_left"), 4.0),
+    (("telemetry", "sim_ms"), 1.0),
+    (("telemetry", "sim_ms"), True),
+    (("telemetry", "sim_ms"), "0"),
+    (("telemetry", "sim_ms"), None),
+]
+
+
+def replace_motor_field(item, path, value):
+    target = item
+    for field in path[:-1]:
+        target = target[field]
+    target[path[-1]] = value
+
+
+@pytest.mark.parametrize(("path", "value"), MOTOR_INVALID_FIELDS)
+def test_invalid_motor_readout_append_does_not_advance_chain(tmp_path, path, value):
+    recorder = RunRecorder(tmp_path / "run", run_kind="pilot", metadata=METADATA, root_branch_id="root")
+    malformed = motor_event()
+    replace_motor_field(malformed, path, value)
+    with pytest.raises(RunArtifactError):
+        recorder.append(malformed)
+    assert (recorder.path / "events.jsonl").read_bytes() == b""
+    recorder.append(motor_event())
+    assert list(recorder.validate_prefix().iter_events())[0]["sequence"] == 0
+    seal(recorder, tmp_path)
+    assert verify_run(recorder.path).manifest["event_count"] == 3
+
+
+@pytest.mark.parametrize("path", [
+    ("telemetry",), ("telemetry", "rates_hz"), ("telemetry", "engine_identity"),
+    ("telemetry", "sim_ms"),
+    ("telemetry", "rates_hz", "motor_right"), ("motor_readout", "interpretation"),
+    ("motor_readout", "action_threshold_hz"), ("motor_readout", "decision"),
+    ("motor_readout", "decision", "action"),
+    ("motor_readout", "decision", "adapter_version"),
+    ("motor_readout", "decision", "signed_difference_hz"),
+    ("motor_readout", "decision", "evidence_strength"),
+])
+def test_motor_readout_requires_complete_fields_and_same_event_source(tmp_path, path):
+    recorder = RunRecorder(tmp_path / "run", run_kind="pilot", metadata=METADATA, root_branch_id="root")
+    malformed = motor_event()
+    target = malformed
+    for field in path[:-1]:
+        target = target[field]
+    del target[path[-1]]
+    with pytest.raises(RunArtifactError):
+        recorder.append(malformed)
+    seal(recorder, tmp_path)
+
+
+@pytest.mark.parametrize(("path", "value"), MOTOR_INVALID_FIELDS)
+def test_rehashed_forged_motor_readout_rejected_by_prefix_and_sealed_scanners(tmp_path, path, value):
+    from fly_connectome_sim.experiment.recorder import validate_prefix
+
+    recorder = RunRecorder(tmp_path / "run", run_kind="pilot", metadata=METADATA, root_branch_id="root")
+    recorder.append(motor_event())
+    seal(recorder, tmp_path)
+    verified = verify_run(recorder.path)
+    events = list(verified.iter_events())
+    replace_motor_field(events[0], path, value)
+    rewrite_sealed_run(recorder.path, events, verified.manifest)
+    with pytest.raises(RunArtifactError):
+        verify_run(recorder.path)
+    with pytest.raises(RunArtifactError):
+        validate_prefix(recorder.path, run_kind="pilot", metadata=METADATA,
+                        root_branch_id="root", checkpoints=verified.manifest["checkpoints"])
+
+
+def test_motor_readout_recomputes_custom_threshold_and_rejects_prior_event_source(tmp_path):
+    recorder = RunRecorder(tmp_path / "run", run_kind="pilot", metadata=METADATA, root_branch_id="root")
+    measured = motor_event()
+    measured["motor_readout"]["action_threshold_hz"] = 10.0
+    measured["motor_readout"]["decision"]["action"] = "defer"
+    recorder.append(measured)
+    missing_source = motor_event()
+    del missing_source["telemetry"]
+    with pytest.raises(RunArtifactError):
+        recorder.append(missing_source)
+    seal(recorder, tmp_path)
+    assert list(verify_run(recorder.path).iter_events())[0]["motor_readout"]["decision"]["action"] == "defer"
+
+
+@pytest.mark.parametrize("path", [
+    ("motor_readout", "action_threshold_hz"),
+    ("motor_readout", "decision", "signed_difference_hz"),
+    ("motor_readout", "decision", "evidence_strength"),
+    ("telemetry", "rates_hz", "motor_left"),
+    ("telemetry", "rates_hz", "motor_right"),
+    ("telemetry", "sim_ms"),
+])
+@pytest.mark.parametrize("value", [float("inf"), float("nan"), 10 ** 400])
+def test_motor_readout_nonfinite_or_overflowing_numbers_fail_before_append(tmp_path, path, value):
+    recorder = RunRecorder(tmp_path / "run", run_kind="pilot", metadata=METADATA, root_branch_id="root")
+    malformed = motor_event()
+    replace_motor_field(malformed, path, value)
+    with pytest.raises(RunArtifactError):
+        recorder.append(malformed)
+    assert (recorder.path / "events.jsonl").read_bytes() == b""
+    seal(recorder, tmp_path)
+
+
+def test_motor_source_identity_is_exact_even_for_boolean_numeric_equality(tmp_path):
+    metadata = deepcopy(METADATA)
+    metadata["engine_identity"]["neuron_ids"] = [1]
+    recorder = RunRecorder(tmp_path / "run", run_kind="pilot", metadata=metadata, root_branch_id="root")
+    measured = motor_event()
+    measured["telemetry"]["engine_identity"] = deepcopy(metadata["engine_identity"])
+    measured["telemetry"]["engine_identity"]["neuron_ids"] = [True]
+    with pytest.raises(RunArtifactError):
+        recorder.append(measured)
+    seal(recorder, tmp_path)
+
+
+def test_extreme_finite_motor_rates_remain_json_safe_through_real_recorder(tmp_path):
+    recorder = RunRecorder(tmp_path / "run", run_kind="pilot", metadata=METADATA, root_branch_id="root")
+    measured = motor_event()
+    measured["telemetry"]["rates_hz"] = {"motor_left": 1e308, "motor_right": 1.5e308}
+    adapter_type = getattr(adapter_module, "LateralMotorAdapter", None)
+    measured["motor_readout"]["decision"] = asdict(adapter_type().adapt(measured["telemetry"]))
+    recorder.append(measured)
+    seal(recorder, tmp_path)
+    result = list(verify_run(recorder.path).iter_events())[0]["motor_readout"]["decision"]
+    assert result["signed_difference_hz"] == pytest.approx(5e307)
+    assert result["evidence_strength"] == pytest.approx(0.2)
+    assert result["action"] == "inspect_right"
+
+
+def test_motor_schema_declares_exact_optional_derived_contract():
+    schema = json.loads(files("fly_connectome_sim.schemas").joinpath("run.schema.json").read_bytes())
+    definitions = schema["$defs"]
+    assert "motor_readout" not in definitions["event"]["required"]
+    readout = definitions.get("motor_readout")
+    assert readout is not None, "Schema must declare the optional motor contract"
+    assert readout["additionalProperties"] is False
+    assert set(readout["required"]) == set(readout["properties"]) == {
+        "interpretation", "action_threshold_hz", "decision",
+    }
+    assert readout["properties"]["interpretation"] == {"const": "engineered_unvalidated_motor_readout"}
+    assert readout["properties"]["action_threshold_hz"] == {"type": "number", "minimum": 0}
+    decision = definitions["motor_decision"]
+    assert decision["additionalProperties"] is False
+    assert set(decision["required"]) == set(decision["properties"]) == {
+        "adapter_version", "signed_difference_hz", "evidence_strength", "action",
+    }
+    assert decision["properties"]["adapter_version"] == {"const": "lateral-motor-adapter/v1"}
+    assert decision["properties"]["signed_difference_hz"] == {"type": "number"}
+    assert decision["properties"]["evidence_strength"] == {"type": "number", "minimum": 0, "maximum": 1}
+    assert decision["properties"]["action"]["enum"] == ["inspect_left", "inspect_right", "defer"]
+    conditional = next(rule["then"] for rule in definitions["event"]["allOf"]
+                       if rule["if"].get("required") == ["motor_readout"])
+    assert conditional["required"] == ["telemetry"]
+    assert conditional["properties"]["type"]["enum"] == ["observation", "observe"]
+    telemetry = conditional["properties"]["telemetry"]
+    assert telemetry["type"] == "object"
+    assert set(telemetry["required"]) == {"engine_identity", "rates_hz", "sim_ms"}
+    assert telemetry["properties"]["sim_ms"] == {"type": "number", "minimum": 0}
+    rates = telemetry["properties"]["rates_hz"]
+    assert set(rates["required"]) == {"motor_left", "motor_right"}
+    for side in ("motor_left", "motor_right"):
+        assert rates["properties"][side] == {"type": "number", "minimum": 0}
 
 
 def test_exclusive_directory_and_sealed_reopen(tmp_path):

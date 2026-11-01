@@ -20,6 +20,7 @@ and pushes, without pausing at each checkpoint. No PR/merge is authorized.
    [candidate-state digest contract](superpowers/specs/2026-10-03-candidate-state-digest-contract.md).
 6. [Latest longer-retention report](experiments/2026-11-01-fullgraph-retention-pilot.md)
    and [earlier short-retention report](experiments/2026-10-08-fullgraph-anchor-pilot.md).
+7. [Strict qualification integration contract](superpowers/specs/2026-11-01-strict-qualification-contract.md).
 
 The older connectome-experiment-core plan is background, not the next task list.
 The private local SDD ledger, scripts, raw results and agent conversations do
@@ -35,6 +36,10 @@ orienting the next session; they do not replace missing native evidence files.
 - Independent stimulus/schedule factors, exact neutral-gap execution, pathway
   telemetry, candidate-memory interventions, recorder/integrity/replay contracts
   and strict analysis primitives.
+- Optional `LateralMotorAdapter` and recorder-validated
+  `engineered_unvalidated_motor_readout`. Decisions use only the measured lateral
+  rates, retain legacy v1 readability and cannot change the primary MBON11 report.
+  The display threshold is engineered, not behaviorally calibrated.
 - All eight controlled cohorts are produced in one authentic tiny-native pilot:
   40 trainings, 24 interventions, 768 responses, 128 anchors, 67 checkpoints,
   14,048 events. It remains **unsupported with 136 negative gates**; complete
@@ -60,6 +65,8 @@ source/schema, native, checkpoint, recipe and event bindings. The underlying
 raw run is local-only: a cloud session cannot claim to have reverified it unless
 those exact bytes are separately made available. On a new compiler/platform,
 generate new evidence; do not relabel a Windows identity as a cloud identity.
+The later motor-readout changes alter package/schema identities. Reverification
+of either historical resource artifact requires its matching source revision.
 
 Final handover-focused Windows check on 2026-10-09: protocol, recorder and replay
 tests **502 passed, 1 skipped in 39.08 s**. The skip was a Windows junction test
@@ -68,10 +75,21 @@ also occurred. No complete suite or fullgraph simulation was repeated for this
 documentation-only handover. The independent measurement review passed without
 Critical, Important or Minor findings; its private report is not cloud evidence.
 
-Fresh local recorder/replay/projection baseline on 2026-11-01: 380 passed and
-one Windows junction-permission skip in 57.23 s. Runtime locks verified the
-actual fullgraph. The longer native pilot is separate from that focused suite;
-no new complete/all-factor suite or Linux execution is claimed.
+Fresh Task8 Windows complete opt-in acceptance on 2026-11-01: **1,449 passed in
+3,237.62 s**, no failures, errors, skips or deselections. It includes the genuine
+all-factor case (2,134.180 s), actual recorder/analyzer roundtrip and both
+fullgraph tests. The all-factor report remains unsupported with 136 negative
+gates and the same 40/24/768/128/67/14,048 training/intervention/response/anchor/
+checkpoint/event counts. No Linux execution or formal qualification is claimed.
+Independent scoped Task8 review passed without Critical, Important or Minor
+findings. Reviewed file hashes and model/schema identities matched after testing.
+
+The completed Task8 working-source identity is
+`3c712e0b6b30dc83e3048db2bab18a12f8918c87b5723a52c17bceb73a88faa9`;
+schema SHA256 is
+`767dc2bfed78ecc5f6a935b031e257ff44789fb7fb1a005a4bd827a7054ea4f1`.
+Later source-bearing integration will change this identity again; it is not a
+formal source freeze.
 
 ## Actual next work
 
@@ -88,13 +106,20 @@ RED/GREEN steps because an old procedural checkbox is unchecked.
   strict artifact/config integration and the actual `assay --config --output-dir`
   CLI. Current CLI has only `qualify` and `verify-run`; planning text describing
   the future `assay` invocation does not mean it exists.
-- [ ] Decide discarded-grid training ancestry from measured durable-storage
-  versus separately reviewed exact training-replay costs. Black-retention replay
-  does not authenticate discarded training history; no generic interpreter.
-- [ ] Implement Task 8's separately labelled motor-only adapter; keep the old v1
-  readable and never derive left/right preference from MBON07 minus MBON11.
+- [ ] Implement exact bindings for all durable grid snapshots, including
+  discarded candidates, and authenticate maps in the real native verifier.
+  Preserve the existing grid ancestry; any later storage redesign needs separate
+  measurements and review. Black-retention replay does not prove training history.
+- [x] Implement and independently review Task 8's labelled motor-only adapter,
+  preserve old v1 readability and complete opt-in acceptance.
+- [ ] Start Task7B4a: factor the schema-only checkpoint reader from the existing
+  codec with bounded header checks before allocation; then follow the reviewed
+  strict qualification contract through authenticated maps and selected evidence.
 - [ ] Finish source-bearing tasks, independently review and run full acceptance;
   only then perform Task 9 source freeze and formal fullgraph qualification.
+- [ ] Before that source freeze, pin LF checkout handling for packaged Python/C++
+  sources, normalize once and verify the resulting exact source identity.
+  The present mixed line endings and local `core.autocrlf` are not a portable lock.
 - [ ] If every qualification gate passes, build/review/commit the production
   frozen config before reading held-out confirmation. If gates fail, publish
   an honest negative report, without manufacturing a configuration.

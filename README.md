@@ -32,7 +32,11 @@ left/right preference.
 | Experiment state | Checkpoint restore, complete-state hashes, reset determinism and candidate-memory interventions | A qualified production frozen configuration |
 | Assay evidence | Complete eight-cohort tiny-native production, independent A/B/C trials, two retention times, provenance-bound reports and native replay verification | Selected qualification evidence, fullgraph held-out confirmation and the `assay` CLI |
 | Resource pilots | Fullgraph components and trained 10-/70-second one-anchor pilots with isolated native replay | Complete grid/assay capacity and a tested cloud/Linux environment |
-| Product | Scientific foundation for the event-planning experiment | Separately labelled motor readout, offline 3D replay and LLM event planning |
+| Product | Optional, separately labelled motor-only readout | Motor validation, offline 3D replay and LLM event planning |
+
+The motor readout is an engineered display policy with an uncalibrated 1 Hz
+threshold. It uses measured lateral motor rates and leaves the primary MBON11
+classification unchanged; it does not establish learned behavior.
 
 Implementation and verification details live in the
 [assay plan](docs/superpowers/plans/2026-09-24-associative-plasticity-assay.md).

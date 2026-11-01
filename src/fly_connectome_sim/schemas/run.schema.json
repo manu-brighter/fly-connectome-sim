@@ -250,6 +250,25 @@
         "peak_event_buffer_bytes": {"type": "integer", "minimum": 0}
       }
     },
+    "motor_decision": {
+      "type": "object", "additionalProperties": false,
+      "required": ["adapter_version", "signed_difference_hz", "evidence_strength", "action"],
+      "properties": {
+        "adapter_version": {"const": "lateral-motor-adapter/v1"},
+        "signed_difference_hz": {"type": "number"},
+        "evidence_strength": {"type": "number", "minimum": 0, "maximum": 1},
+        "action": {"type": "string", "enum": ["inspect_left", "inspect_right", "defer"]}
+      }
+    },
+    "motor_readout": {
+      "type": "object", "additionalProperties": false,
+      "required": ["interpretation", "action_threshold_hz", "decision"],
+      "properties": {
+        "interpretation": {"const": "engineered_unvalidated_motor_readout"},
+        "action_threshold_hz": {"type": "number", "minimum": 0},
+        "decision": {"$ref": "#/$defs/motor_decision"}
+      }
+    },
     "event": {
       "type": "object",
       "required": ["sequence", "type", "branch_id", "sim_ms", "run_metadata_sha256", "previous_scientific_sha256", "scientific_sha256"],
@@ -271,7 +290,8 @@
         "parent_checkpoint_sequence": {"$ref": "#/$defs/tick"},
         "checkpoint_name": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*\\.npz$"},
         "checkpoint_sha256": {"$ref": "#/$defs/digest"},
-        "checkpoint_size": {"type": "integer", "minimum": 0}
+        "checkpoint_size": {"type": "integer", "minimum": 0},
+        "motor_readout": {"$ref": "#/$defs/motor_readout"}
       },
       "additionalProperties": true,
       "not": {"required": ["parent_checkpoint_sha256", "parent_state_anchor_sha256"]},
@@ -339,6 +359,28 @@
             "then": {"properties": {"reasons": {"maxItems": 0}}},
             "else": {"properties": {"reasons": {"minItems": 1}}}
           }]
+        }
+      }, {
+        "if": {"required": ["motor_readout"]},
+        "then": {
+          "required": ["telemetry"],
+          "properties": {
+            "type": {"enum": ["observation", "observe"]},
+            "telemetry": {
+              "type": "object", "required": ["engine_identity", "rates_hz", "sim_ms"],
+              "properties": {
+                "engine_identity": {"type": "object", "minProperties": 1},
+                "sim_ms": {"type": "number", "minimum": 0},
+                "rates_hz": {
+                  "type": "object", "required": ["motor_left", "motor_right"],
+                  "properties": {
+                    "motor_left": {"type": "number", "minimum": 0},
+                    "motor_right": {"type": "number", "minimum": 0}
+                  }
+                }
+              }
+            }
+          }
         }
       }]
     },

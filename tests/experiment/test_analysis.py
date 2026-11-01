@@ -524,6 +524,44 @@ def test_complete_qualification_freezes_hand_calculated_floor_and_assay_passes()
     assert cell["global_gain_residual_hz"] == 4
 
 
+def test_arithmetic_primary_analysis_is_independent_of_optional_motor_proposals():
+    """Pure analysis fixture; this does not establish native/artifact qualification."""
+    from fly_connectome_sim.experiment import adapter as adapter_module
+
+    adapter_type = getattr(adapter_module, "LateralMotorAdapter", None)
+    assert adapter_type is not None, "Missing motor-only adapter API"
+    frozen = build_frozen_config(_qualification())
+    confirmation = _confirmation(frozen)
+    baseline = _report(confirmation, frozen)
+    proposals = []
+    reports = []
+    for left, right in ((5.0, 15.0), (15.0, 5.0)):
+        events = list(confirmation.iter_events())
+        source = events[0]
+        telemetry = {
+            "engine_identity": confirmation.manifest["metadata"]["engine_identity"],
+            "sim_ms": source["sim_ms"],
+            "rates_hz": {"motor_left": left, "motor_right": right},
+        }
+        decision = asdict(adapter_type().adapt(telemetry))
+        events.insert(1, {
+            "type": "observation", "branch_id": source["branch_id"],
+            "sim_ms": source["sim_ms"], "telemetry": telemetry,
+            "motor_readout": {
+                "interpretation": "engineered_unvalidated_motor_readout",
+                "action_threshold_hz": 1.0, "decision": decision,
+            },
+        })
+        reports.append(_report(FixtureRun(confirmation.manifest, events), frozen))
+        proposals.append(decision["action"])
+    assert proposals == ["inspect_right", "inspect_left"]
+    assert baseline.status == "supported"
+    assert baseline.reasons == ()
+    assert baseline.values["cells"]["101/A/AB/10000"]["delta_hz"]["paired"] == 4
+    for report in reports:
+        assert report.to_dict() == baseline.to_dict()
+
+
 def test_negative_expected_sign_uses_signed_effect_without_changing_floors():
     frozen = build_frozen_config(_qualification(sign=-1))
     report = _report(_confirmation(frozen, sign=-1), frozen)

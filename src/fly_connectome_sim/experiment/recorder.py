@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from hashlib import sha256
 from importlib.resources import files
 import json
@@ -174,6 +174,43 @@ def _finite_number(value: object, *, positive: bool = False,
 def _numeric_object(value: object, fields: set[str]) -> bool:
     return isinstance(value, dict) and set(value) == fields \
         and all(_finite_number(item, allow_negative=True) for item in value.values())
+
+
+def _check_motor_readout(event: dict, metadata: dict) -> None:
+    from .adapter import LateralMotorAdapter
+
+    readout = event["motor_readout"]
+    telemetry = event.get("telemetry")
+    if event["type"] not in {"observation", "observe"} \
+            or not isinstance(telemetry, dict) \
+            or not isinstance(telemetry.get("rates_hz"), dict) \
+            or not _finite_number(telemetry.get("sim_ms")) \
+            or telemetry["sim_ms"] != event["sim_ms"] \
+            or not isinstance(telemetry.get("engine_identity"), dict) \
+            or _canonical(telemetry["engine_identity"]) != _canonical(metadata["engine_identity"]):
+        raise RunArtifactError("Motor readout requires same-event measured telemetry, clock and engine identity")
+    if not isinstance(readout, dict) \
+            or set(readout) != {"interpretation", "action_threshold_hz", "decision"} \
+            or readout["interpretation"] != "engineered_unvalidated_motor_readout" \
+            or not _finite_number(readout["action_threshold_hz"]):
+        raise RunArtifactError("Invalid engineered motor readout declaration")
+    decision = readout["decision"]
+    if not isinstance(decision, dict) \
+            or set(decision) != {"adapter_version", "signed_difference_hz", "evidence_strength", "action"} \
+            or not isinstance(decision["adapter_version"], str) \
+            or not isinstance(decision["action"], str) \
+            or not _finite_number(decision["signed_difference_hz"], allow_negative=True) \
+            or not _finite_number(decision["evidence_strength"]) \
+            or decision["evidence_strength"] > 1:
+        raise RunArtifactError("Invalid motor decision fields")
+    try:
+        expected = asdict(LateralMotorAdapter(
+            action_threshold_hz=readout["action_threshold_hz"],
+        ).adapt(telemetry))
+    except ValueError as error:
+        raise RunArtifactError(f"Invalid measured motor source: {error}") from error
+    if _canonical(decision) != _canonical(expected):
+        raise RunArtifactError("Motor decision differs from bound measured telemetry")
 
 
 def _check_qualification_result(event: dict, metadata: dict) -> None:
@@ -437,6 +474,8 @@ class _Chain:
                     or event["evidence_event_count"] != self.count \
                     or event["evidence_final_scientific_sha256"] != self.previous:
                 raise RunArtifactError("Assay result evidence prefix mismatch")
+        if "motor_readout" in event:
+            _check_motor_readout(event, self.metadata)
         _walk_bindings(event, self.metadata)
         scientific_digest = sha256(_canonical(_scientific_event(event))).hexdigest()
         if event.get("scientific_sha256") != scientific_digest:
