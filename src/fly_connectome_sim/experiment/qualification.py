@@ -148,6 +148,28 @@ class _PointSummary:
 
 
 @dataclass(frozen=True)
+class _ResponseCounts:
+    """Actual primary response totals, independent of displayed rates."""
+    population: int
+    duration_ticks: int
+    pre: tuple[int | None, int | None, int | None]
+    post: tuple[int | None, int | None, int | None]
+    replay_pre: int | None
+    frozen_post: int | None
+    reference_post: int | None
+
+
+@dataclass(frozen=True)
+class _CountBoundaries:
+    one_spike_hz: float
+    replay_hz: float | None
+    washout_hz: float | None
+    threshold_hz: float | None
+    c_failed: bool | None
+    washout_failed: bool | None
+
+
+@dataclass(frozen=True)
 class ControlMeasurement:
     seed: int
     paired_identity: str
@@ -421,16 +443,13 @@ def _qualification_role_slots(selected_retention_ms: int) -> dict:
     }
 
 
-def _aggregate_window(
+def _window_spikes(
     telemetries: list[dict] | tuple[dict, ...],
     cs_onset_ms: float,
     window: ResponseWindow,
     population: str,
-    group_size: int,
-) -> float:
+) -> int:
     """Sum raw bin counts; bins crossing window edges are not observable."""
-    if group_size <= 0:
-        raise ValueError("Missing population observability")
     start = _ticks(cs_onset_ms + window.start_ms)
     end = _ticks(cs_onset_ms + window.end_ms)
     spikes = 0
@@ -445,12 +464,24 @@ def _aggregate_window(
                     raise ValueError("Response bin crosses a half-open window boundary")
                 if duration <= 0 or bin_start != cursor:
                     raise ValueError("Response window bins are not ordered and contiguous")
-                spikes += int(bin_record["group_spikes"][population])
+                value = bin_record["group_spikes"][population]
+                if type(value) is not int or value < 0:
+                    raise ValueError("Response spike counts must be nonnegative integers")
+                spikes += value
                 cursor = bin_end
     if cursor != end:
         raise ValueError("Response window has missing bins")
-    return _response_rate(spikes, end - start, group_size)
+    return spikes
 
+
+def _aggregate_window(
+    telemetries: list[dict] | tuple[dict, ...], cs_onset_ms: float,
+    window: ResponseWindow, population: str, group_size: int,
+) -> float:
+    if group_size <= 0:
+        raise ValueError("Missing population observability")
+    count = _window_spikes(telemetries, cs_onset_ms, window, population)
+    return _response_rate(count, _ticks(window.end_ms - window.start_ms), group_size)
 
 def _response_rate(spikes: int, duration_ticks: int, population: int) -> float:
     """Pure rate arithmetic after the extraction layer proves tick coverage."""
@@ -483,7 +514,8 @@ def _selection_summary(configuration: GridConfiguration, window: ResponseWindow,
                 for paired in ("A", "B") for order in ("AB", "BA")}
     keys = {(item.seed, item.paired_identity, item.presentation_order) for item in replicates}
     complete = keys == expected and len(replicates) == len(expected)
-    washout = not any(item.washout_hz is None or item.washout_threshold_hz is None
+    washout = not any("washout" in item.reasons
+                      or item.washout_hz is None or item.washout_threshold_hz is None
                       or item.washout_hz > item.washout_threshold_hz for item in replicates)
     return _PointSummary(configuration, window, retention_ms, mean, reasons, complete, washout)
 
@@ -1160,43 +1192,96 @@ def _retained_tests(run: _Run, root: Path, base: dict,
 
 
 def _one_spike_rate(population: int, window: ResponseWindow) -> float | None:
-    return (1000.0 / (population * (window.end_ms - window.start_ms))
+    return (_response_rate(1, _ticks(window.end_ms - window.start_ms), population)
             if population else None)
 
 
+def _count_boundaries(
+    population: int, duration_ticks: int, *, pre_c: int | None = None,
+    post_c: int | None = None, pre_paired: int | None = None,
+    replay_pre: int | None = None, frozen_post: int | None = None,
+    reference_post: int | None = None, strict_c: bool = False,
+) -> _CountBoundaries:
+    """Exact C/replay/washout decisions; convert integer differences only afterward."""
+    if type(population) is not int or population <= 0 \
+            or type(duration_ticks) is not int or duration_ticks <= 0:
+        raise ValueError("Count boundaries require a positive population and tick duration")
+    values = (pre_c, post_c, pre_paired, replay_pre, frozen_post, reference_post)
+    if any(value is not None and (type(value) is not int or value < 0) for value in values):
+        raise ValueError("Response spike counts must be nonnegative integers or unavailable")
+    replay = abs(pre_paired - replay_pre) if pre_paired is not None and replay_pre is not None else None
+    washout = abs(frozen_post - reference_post) if frozen_post is not None and reference_post is not None else None
+    threshold = max(5 * replay, 1) if replay is not None else None
+    c_failed = None
+    if pre_c is not None and post_c is not None:
+        c_failed = (pre_c <= 1 or post_c <= 1) if strict_c else (pre_c < 1 or post_c < 1)
+    return _CountBoundaries(
+        _response_rate(1, duration_ticks, population),
+        _response_rate(replay, duration_ticks, population) if replay is not None else None,
+        _response_rate(washout, duration_ticks, population) if washout is not None else None,
+        _response_rate(threshold, duration_ticks, population) if threshold is not None else None,
+        c_failed, (washout > threshold) if washout is not None and threshold is not None else None,
+    )
+
+
 def _measurement_from_compact(
-    compact: ReplicateMeasurement, *, replay_pre_hz: float | None = None,
-    frozen_post_hz: float | None = None, reference_post_hz: float | None = None,
+    compact: ReplicateMeasurement, *, counts: _ResponseCounts | None = None,
     pathway_orders: tuple[tuple[int, ...], ...] = (), failure_reason: str | None = None,
 ) -> ReplicateMeasurement:
     """Pure gates from independently obtained scalars/vectors, never raw telemetry.
 
     ReplicateMeasurement is also the compact projection carrier. Derived response
-    fields are overwritten here; callers supply actual rates, state projections,
-    window KC counts, first drive, bounds, trace and orders. A failed prefix keeps
+    fields are overwritten here; callers supply actual primary integer counts,
+    state projections, window KC counts, first drive, bounds, trace and orders. A failed prefix keeps
     its existing availability exactly and does not evaluate unavailable gates.
     """
     if failure_reason is not None:
         return replace(compact, reasons=(failure_reason,))
+    if counts is None:
+        raise ValueError("Actual primary response counts are required")
+    for totals in (counts.pre, counts.post):
+        if type(totals) is not tuple or len(totals) != 3 or any(
+            value is not None and (type(value) is not int or value < 0) for value in totals
+        ):
+            raise ValueError("Primary response counts must be three nonnegative integers or unavailable")
+    plus = 0 if compact.paired_identity == "A" else 1
+    boundary = _count_boundaries(
+        counts.population, counts.duration_ticks, pre_c=counts.pre[2], post_c=counts.post[2],
+        pre_paired=counts.pre[plus], replay_pre=counts.replay_pre,
+        frozen_post=counts.frozen_post, reference_post=counts.reference_post,
+    )
+    rates = []
+    for values, totals in ((compact.pre_mbon11, counts.pre), (compact.post_mbon11, counts.post)):
+        canonical = tuple(_response_rate(value, counts.duration_ticks, counts.population)
+                          if value is not None else None for value in totals)
+        if any(value is not None and value != rate for value, rate in zip(values, canonical)):
+            raise ValueError("Primary response rate disagrees with its actual count")
+        rates.append(canonical)
+    compact = replace(compact, pre_mbon11=rates[0], post_mbon11=rates[1],
+                      one_spike_rate_hz=boundary.one_spike_hz)
     reasons = list(compact.reasons)
     pre11, post11 = compact.pre_mbon11, compact.post_mbon11
     pre07, post07 = compact.pre_mbon07, compact.post_mbon07
-    one_spike = compact.one_spike_rate_hz
     replay_resolution = washout = threshold = delta = None
     try:
-        replay_resolution = abs(pre11[("A", "B", "C").index(compact.paired_identity)] - replay_pre_hz)
+        replay_resolution = boundary.replay_hz
+        if replay_resolution is None:
+            raise ValueError("Unavailable PRE replay count")
         if replay_resolution > 0:
             reasons.append("checkpoint_replay")
-        washout = abs(frozen_post_hz - reference_post_hz)
-        threshold = max(5 * replay_resolution, one_spike)
+        washout, threshold = boundary.washout_hz, boundary.threshold_hz
+        if washout is None or threshold is None:
+            raise ValueError("Unavailable washout counts")
         plus = 0 if compact.paired_identity == "A" else 1
         minus = 1 - plus
         delta = (post11[plus] - post11[minus]) - (pre11[plus] - pre11[minus])
-        if pre11[2] < one_spike or post11[2] < one_spike:
+        if boundary.c_failed is None:
+            raise ValueError("Unavailable C counts")
+        if boundary.c_failed:
             reasons.append("c_below_floor")
         if abs(pre11[0] - pre11[1]) <= replay_resolution:
             reasons.append("mbon11_dynamic_range")
-        if washout > threshold:
+        if boundary.washout_failed:
             reasons.append("washout")
         if not math.isfinite(delta) or any(
             not math.isfinite(value) for value in (*pre11, *post11, *pre07, *post07,
@@ -1235,26 +1320,27 @@ def _measurement(run: _Run, base: dict, retained: dict,
     post11 = [None, None, None]
     pre07 = [None, None, None]
     post07 = [None, None, None]
+    pre_counts = [None, None, None]
+    post_counts = [None, None, None]
     replay_pre = frozen_post = reference_post = None
+    duration_ticks = _ticks(window.end_ms - window.start_ms)
+    population = len(run.engine.groups.mbon11)
     pathway_orders = ()
     try:
         for i, identity in enumerate(("A", "B", "C")):
-            for target, trial in ((pre11, base["pre"][identity]),
-                                  (post11, retained["paired"][identity])):
-                target[i] = _aggregate_window(trial[0], trial[1], window,
-                                              "mbon11", len(run.engine.groups.mbon11))
+            for target, totals, trial in ((pre11, pre_counts, base["pre"][identity]),
+                                         (post11, post_counts, retained["paired"][identity])):
+                totals[i] = _window_spikes(trial[0], trial[1], window, "mbon11")
+                target[i] = _response_rate(totals[i], duration_ticks, population)
             for target, trial in ((pre07, base["pre"][identity]),
                                   (post07, retained["paired"][identity])):
                 target[i] = _aggregate_window(trial[0], trial[1], window,
                                               "mbon07", len(run.engine.groups.mbon07))
-        replay_pre = _aggregate_window(base["pre_replay"][0], base["pre_replay"][1], window,
-                                       "mbon11", len(run.engine.groups.mbon11))
+        replay_pre = _window_spikes(base["pre_replay"][0], base["pre_replay"][1], window, "mbon11")
         frozen = retained["frozen_plasticity"][paired]
         unstimulated = retained["matched_reference"][paired]
-        frozen_post = _aggregate_window(frozen[0], frozen[1], window, "mbon11",
-                                        len(run.engine.groups.mbon11))
-        reference_post = _aggregate_window(unstimulated[0], unstimulated[1], window,
-                                           "mbon11", len(run.engine.groups.mbon11))
+        frozen_post = _window_spikes(frozen[0], frozen[1], window, "mbon11")
+        reference_post = _window_spikes(unstimulated[0], unstimulated[1], window, "mbon11")
     except (KeyError, TypeError, ValueError, IndexError, ZeroDivisionError):
         pass
     window_pre = ((), ())
@@ -1327,9 +1413,11 @@ def _measurement(run: _Run, base: dict, retained: dict,
         matched_mbon07_bound_hit_fraction=matched07[5] if matched07 else None,
     )
 
-    return _measurement_from_compact(compact, replay_pre_hz=replay_pre,
-                                     frozen_post_hz=frozen_post, reference_post_hz=reference_post,
-                                     pathway_orders=pathway_orders)
+    return _measurement_from_compact(
+        compact, counts=_ResponseCounts(population, duration_ticks, tuple(pre_counts), tuple(post_counts),
+                                         replay_pre, frozen_post, reference_post),
+        pathway_orders=pathway_orders,
+    )
 
 
 def _failed_measurement(run: _Run, window: ResponseWindow,

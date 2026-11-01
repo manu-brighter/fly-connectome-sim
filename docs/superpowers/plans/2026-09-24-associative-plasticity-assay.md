@@ -44,8 +44,10 @@ review, three actual graph cases and ordinary acceptance (1,627 passed, four
 declared opt-in skips). Task7B4c.1's grid capture passed independent review,
 ordinary acceptance (1,693 passed, four opt-in skips) and three separate actual
 graph tests. Task7B4c.2a's compact arithmetic passed Astra numerical review and
-targeted acceptance (470 passed, one opt-in skip). Next is the separately reviewed
-inherited numerical boundary fix, then c.2b's authenticated reduction.
+targeted acceptance (470 passed, one opt-in skip). The separate integer-boundary
+correction also passed fresh Astra review, ordinary acceptance (2,230 passed,
+four opt-in skips) and three actual graph tests. Next is c.2b's authenticated
+reduction, with no production configuration or formal qualification established.
 The cloud setup item below applies
 only when moving to a fresh cloud checkout, not as a gate on local continuation.
 
@@ -791,15 +793,17 @@ directly; public sealed-only freezing and arithmetic-fixture migration stay in
   one declared opt-in skip in 349.63 s**, no failures/errors. The fullgraph context
   case is the sole skip; fullgraph/all8 were not repeated. Reviewed hashes matched.
   No authenticated consumer, formal qualification or new scientific support.
-- [ ] Before c.2b/source freeze, separately resolve the inherited one-spike/C-floor
-  and washout-equality rounding boundary. Preserve qualification's `<` and
-  confirmation's `<=` rejection rules; establish exact shared arithmetic with
-  zero/exact-one/above-one and threshold-equality tests, without ad hoc tolerance.
-  Astra's closed recommendation uses actual integer counts for C/replay/washout,
-  subtracts before Hz conversion and converts the integer threshold directly.
-  Share canonical count-to-rate conversion with the consumer and assay emitter;
-  never infer counts from arbitrary declared scalar rates. Keep raw formats and
-  intended inequalities; source fingerprints distinguish the corrected execution.
+- [x] Separately correct inherited one-spike/C-floor and washout-equality rounding:
+  actual integer counts, qualification `<1` versus confirmation `<=1`, washout
+  `w > max(5*r,1)`, direct canonical conversion after integer differences. No
+  tolerance or unrelated delta/gain/effect/state/KC/sham rewrite. Raw formats and
+  versions remain; source identity distinguishes intentionally corrected scalars.
+  Fresh independent Astra review C0/I0/M0. Worker full qualification/analysis
+  **774 passed in 315.52 s** and two final native tests **passed in 39.55 s**.
+  Root complete ordinary acceptance **2,230 passed, four declared opt-in skips
+  in 1,064.83 s**, no failures/errors; actual graph cases **three passed in 18.03 s**.
+  Ordinary skips are all8 and those graph cases; all8 was not repeated. Reviewed
+  hashes matched. No formal qualification, support or capacity approval.
 - [ ] c.2b authenticated two-pass reconstruction and genuine prefix/seal tests.
   Parent c/cap activation and public freeze integration remain unfinished.
 

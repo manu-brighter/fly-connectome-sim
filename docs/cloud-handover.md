@@ -174,12 +174,32 @@ Arithmetic snapshot model-source identity:
 Schema is unchanged from c.1. This is still not authenticated grid reduction,
 formal qualification, support, a frozen config or capacity approval.
 
-The review separately identified inherited one-spike rounding: for population 3
-and 100 ms, exactly one spike can compare below its floor. It is intentionally
-preserved by this equivalence refactor and requires the separate fix below.
-The reviewed fix design uses actual integer C/replay/washout counts, subtracts
-counts before Hz conversion and preserves qualification's inclusive C floor
-versus confirmation's strict floor. It introduces no ad hoc tolerance.
+That review separately identified inherited one-spike rounding, deliberately
+preserved by the equivalence refactor. The following correction addresses it.
+
+The separate boundary correction passed a fresh independent Astra numerical/
+integrity review without Critical, Important or Minor findings. C/replay/washout
+gates now use actual integer counts, subtract before converting to Hz, and convert
+the integer washout threshold directly. Qualification rejects C counts `<1`;
+confirmation rejects `<=1`; washout rejects `w > max(5*r,1)`. Producer, analyzer,
+config/floor validation and assay emission share the canonical conversion.
+No ad hoc tolerance or change to those mathematical inequalities was introduced.
+Some reported scalar bits and formerly incorrect boundary outcomes intentionally
+change; c.2a's prior exact-equivalence statement belongs to its earlier snapshot.
+
+Worker final coverage: **774 qualification/analysis tests in 315.52 s**, plus
+**two targeted native tests in 39.55 s**, no skips/errors/failures. Root complete
+ordinary Windows suite: **2,230 passed, four declared opt-in skips in 1,064.83 s**,
+no failures/errors. The three actual MaleCNS compatibility cases passed separately
+in **18.03 s**. Ordinary skips are those graph cases and the all-eight matrix;
+that matrix was not repeated. Source/schema hashes matched after acceptance.
+The native emitter fixture uses an explicitly declared three-cell group on a
+four-node test graph, not anatomical MBON annotation or fullgraph qualification.
+
+Boundary-correction model-source identity:
+`aa2ffb172d9694e1d727199f533eaf2ec59432c3445cf758cccfd4ed5a6c5b29`.
+Schema/formats/versions and native core are unchanged. No production configuration,
+formal qualification, upstream training attestation or capacity approval follows.
 
 ## Actual next work
 
@@ -210,10 +230,8 @@ RED/GREEN steps because an old procedural checkbox is unchecked.
   closed intended grammar, independent review and ordinary/scoped graph acceptance.
 - [x] Task7B4c.2a: compact pure producer arithmetic, independent numerical review
   and targeted qualification/analysis/replay/CLI acceptance.
-- [ ] Resolve the inherited one-spike/C-floor and washout-equality rounding
-  boundary before the strict consumer/source freeze. Preserve qualification's
-  inclusive floor versus confirmation's strict floor; use a reviewed exact
-  numerical convention, never an ad hoc tolerance to obtain a positive gate.
+- [x] Correct inherited one-spike/C-floor and washout-equality boundaries with
+  actual integer counts, independent Astra review and complete ordinary acceptance.
 - [ ] Task7B4c.2b: implement authenticated bounded two-pass grid reconstruction,
   checking all candidates and available prefixes without inventing missing data.
   Public qualification/freeze integration still belongs to Task7B4f.

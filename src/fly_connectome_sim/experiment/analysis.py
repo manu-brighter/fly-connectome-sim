@@ -22,7 +22,8 @@ from .qualification import (GRID, RESPONSE_WINDOWS, RETENTION_CANDIDATES_MS,
                             QUALIFICATION_SEEDS, CONFIRMATION_SEEDS,
                             PULSE_DURATION_MS, CURRENT_MV,
                             UNPAIRED_SEPARATION_MS, GridConfiguration,
-                            _training_timeline)
+                            _training_timeline, ResponseWindow, _response_rate,
+                            _one_spike_rate, _count_boundaries)
 from .recorder import ValidatedPrefix, VerifiedRun
 from .stimuli import AssayStimuli
 
@@ -309,7 +310,7 @@ def _validate_config(data: object) -> dict:
                  "dynamic_range_hz", "effect_floor_hz", "one_spike_floor_hz"):
         if not _number(data[name], minimum=0):
             raise AnalysisError(f"invalid_{name}")
-    expected_one_spike = 1000 / (population * (window["end_ms"] - window["start_ms"]))
+    expected_one_spike = _one_spike_rate(population, ResponseWindow(**window))
     if not _same_number(data["one_spike_floor_hz"], expected_one_spike):
         raise AnalysisError("one_spike_floor_mismatch")
     r = data["replay_resolution_hz"]
@@ -508,7 +509,7 @@ def _response_key(event: dict) -> tuple:
 
 
 def _validate_response(event: dict, config: dict, seeds: tuple[int, int],
-                       event_type: str) -> tuple[float, str]:
+                       event_type: str) -> tuple[float, str, int]:
     if not RESPONSE_FIELDS <= event.keys():
         raise ValueError("response_fields")
     if event["evidence_version"] != EVIDENCE_VERSION:
@@ -616,11 +617,11 @@ def _validate_response(event: dict, config: dict, seeds: tuple[int, int],
         raise ValueError("response_bin_coverage")
     if _checkpoint_tick(event.get("sim_ms")) != stop:
         raise ValueError("response_event_clock")
-    rate = spikes / (event["population_size"] * ((stop - start) / 10000))
+    rate = _response_rate(spikes, stop - start, event["population_size"])
     if not _number(event["rate_hz"], minimum=0) or not _same_number(event["rate_hz"], rate):
         raise ValueError("response_rate_mismatch")
     return rate, (event.get("parent_checkpoint_sha256")
-                  or event["parent_state_anchor_sha256"])
+                  or event["parent_state_anchor_sha256"]), spikes
 
 
 def _validate_intervention(event: dict, config: dict, seeds: tuple[int, int]) -> None:
@@ -786,7 +787,7 @@ def reduce_assay_evidence(
             continue
         if event.get("type") == event_type:
             try:
-                rate, parent = _validate_response(event, config, seeds, event_type)
+                rate, parent, spikes = _validate_response(event, config, seeds, event_type)
                 if "parent_state_anchor_sha256" in event:
                     anchor = anchors.get(parent)
                     if anchor is None:
@@ -804,7 +805,7 @@ def reduce_assay_evidence(
                 if key in responses:
                     reasons.append("duplicate_response:" + "/".join(map(str, key)))
                 else:
-                    responses[key] = {"rate_hz": rate,
+                    responses[key] = {"rate_hz": rate, "spikes": spikes,
                                       "branch_id": event["branch_id"],
                                       "sequence": sequence,
                                       "training_id": event["training_id"],
@@ -1194,7 +1195,14 @@ def _assess(reduction: EvidenceReduction, config: dict,
                         cell[f"paired_minus_{control}_hz"] = contrast
                         if contrast <= floor:
                             fail(f"control_{control}")
-                    if pre_c <= config["one_spike_floor_hz"] or post_c <= config["one_spike_floor_hz"]:
+                    c_boundary = _count_boundaries(
+                        config["mbon11_population_size"],
+                        int((config["response_window"]["end_ms"] - config["response_window"]["start_ms"]) * 10),
+                        pre_c=paired["pre_C"]["spikes"], post_c=paired["post_C"]["spikes"], strict_c=True,
+                    )
+                    if c_boundary.c_failed is None:
+                        raise AnalysisError("response_counts_unavailable")
+                    if c_boundary.c_failed:
                         fail("C_floor")
                         cell["global_gain_factor"] = None
                         cell["global_gain_residual_hz"] = None
@@ -1362,7 +1370,7 @@ def _selected_point(events: Iterable[dict], result: dict) -> dict:
 
 def _validate_selected_replicates(point: dict, population: int, window: dict) -> None:
     """Recompute the producer's selected replicate gates from declared measurements."""
-    one_spike = 1000 / (population * (window["end_ms"] - window["start_ms"]))
+    one_spike = _one_spike_rate(population, ResponseWindow(**window))
     expected_order = None
     for item in point["replicates"]:
         try:
@@ -1503,6 +1511,15 @@ def _inventory_reasons(manifest: dict, reduction: EvidenceReduction) -> tuple[st
     return tuple(sorted(set(reasons)))
 
 
+def _selected_washout_hz(row: dict, stimulus: str, population: int, window: dict) -> float | None:
+    """Use validated raw totals, never subtract rounded displayed control rates."""
+    return _count_boundaries(
+        population, int((window["end_ms"] - window["start_ms"]) * 10),
+        frozen_post=row["frozen_plasticity"][f"post_{stimulus}"]["spikes"],
+        reference_post=row["matched_reference"][f"post_{stimulus}"]["spikes"],
+    ).washout_hz
+
+
 def _validate_control_summaries(events: Iterable[dict], reduction: EvidenceReduction,
                                 retention: int) -> None:
     seen = set()
@@ -1577,7 +1594,7 @@ def build_frozen_config(qualification: VerifiedRun) -> FrozenAssayConfig:
     window = result["selected_window"]
     population = metadata["mbon11_population_size"]
     _validate_selected_replicates(point, population, window)
-    one_spike = 1000 / (population * (window["end_ms"] - window["start_ms"]))
+    one_spike = _one_spike_rate(population, ResponseWindow(**window))
     payload = {
         "version": CONFIG_VERSION, "analysis_version": ANALYSIS_VERSION,
         "qualification_version": QUALIFICATION_VERSION, "aggregation": AGGREGATION,
@@ -1627,10 +1644,7 @@ def build_frozen_config(qualification: VerifiedRun) -> FrozenAssayConfig:
         stimulus = replicate["paired_identity"]
         row = reduced.rows[_key(replicate["seed"], stimulus,
                                 replicate["presentation_order"], selected_retention)]
-        actual_washout = abs(
-            row["frozen_plasticity"][f"post_{stimulus}"]["rate_hz"]
-            - row["matched_reference"][f"post_{stimulus}"]["rate_hz"]
-        )
+        actual_washout = _selected_washout_hz(row, stimulus, population, window)
         if not _same_number(replicate["washout_hz"], actual_washout):
             raise AnalysisError("selected_replicate_washout")
     replay = []

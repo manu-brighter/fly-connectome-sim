@@ -8,7 +8,7 @@ import numpy as np
 from ..engine import _rgb_input_sha256
 from .analysis import (CONDITIONS, ORDINARY_CONDITIONS, FrozenAssayConfig, AssayReport, _canonical, _training_plan,
                        assess_assay_prefix, build_assay_result, analyze_assay)
-from .qualification import GridConfiguration, _training_timeline, _trial_segments, _split_intervals
+from .qualification import GridConfiguration, _training_timeline, _trial_segments, _split_intervals, _response_rate
 from .recorder import RunRecorder, _digest_file, verify_replay_prefix, verify_replay_run
 from .replay import OPERATION_VERSION, build_black_retention_recipe, build_state_anchor
 from .stimuli import AssayStimuli
@@ -388,7 +388,6 @@ def _run_cohorts(engine_factory, frozen, *, output_dir, cohorts, conditions, nam
                                          "end_tick": round(item["end_ms"] * 10), "spikes": item["group_spikes"]["mbon11"]}
                                         for item in measured if window_start < round(item["end_ms"] * 10) <= stop]
                                 population = len(engine.groups.mbon11)
-                                duration = (stop - window_start) / 10
                                 for route in response_routes:
                                     training, source = route["training"], route["source"]
                                     shared = {k: training[k] for k in ("training_id", "association_t0_tick", "retention_reference_tick",
@@ -401,8 +400,8 @@ def _run_cohorts(engine_factory, frozen, *, output_dir, cohorts, conditions, nam
                                                 "retention_ms": retention, "condition": route["condition"], "phase": phase, "stimulus": stimulus,
                                                 "candidate_identity": config["candidate_identity"], "population": "mbon11",
                                                 "population_size": population, "cs_onset_tick": onset, "bins": bins,
-                                                "rate_hz": sum(item["spikes"] for item in bins) * 1000 / (population * duration),
-                                                "one_spike_rate_hz": 1000 / (population * duration),
+                                                "rate_hz": _response_rate(sum(item["spikes"] for item in bins), stop - window_start, population),
+                                                "one_spike_rate_hz": _response_rate(1, stop - window_start, population),
                                                 "retention_source_checkpoint_sha256": source["checkpoint_sha256"],
                                                 "passive_decay_ticks": training["retention_reference_tick"] + round(retention * 10) - source["sim_tick"],
                                                 "input_sha256": hashes[stimulus], "black_sha256": hashes["black"],

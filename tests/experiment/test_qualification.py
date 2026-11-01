@@ -31,6 +31,130 @@ from fly_connectome_sim.experiment.stimuli import AssayStimuli
 from replay_helpers import engine_factory
 
 
+@pytest.mark.parametrize("c_count,frozen_count,reference_count", [(1, 0, 0), (2, 4, 3)])
+def test_producer_count_boundaries_accept_exact_one_c_and_one_washout(
+    tmp_path, c_count, frozen_count, reference_count,
+):
+    """Hand-counted synthetic producer inputs, without artifact/native proof."""
+    import fly_connectome_sim.experiment.qualification as module
+    engine = TinyEngine()
+    run = _Run(engine, PointRecorder(), engine.identity())
+    baseline = tmp_path / "baseline.npz"
+    run.checkpoint(baseline)
+    frames = {name: AssayStimuli(11, "qualification").frame(name) for name in ("A", "B", "C")}
+    base = module._replicate_base(run, tmp_path, baseline, GRID[0], 11, "A", "AB", frames)
+    retained, bound, onset = module._retained_tests(run, tmp_path, base, GRID[0], frames, "A", 10000)
+
+    def set_count(trial, count):
+        records, cs = trial
+        bins = [item for record in records for item in record["bins"]
+                if cs < item["end_ms"] <= cs + 100]
+        assert sum(item["duration_ms"] for item in bins) == 100
+        for index, item in enumerate(bins):
+            item["group_spikes"]["mbon11"] = count if index == 0 else 0
+
+    for stimulus, count in (("A", 20), ("B", 10), ("C", c_count)):
+        set_count(base["pre"][stimulus], count)
+        set_count(retained["paired"][stimulus], 30 if stimulus == "A" else count)
+    set_count(base["pre_replay"], 20)
+    set_count(retained["frozen_plasticity"]["A"], frozen_count)
+    set_count(retained["matched_reference"]["A"], reference_count)
+    # Population is an explicit compact producer boundary input. Two candidate
+    # edges do not require every measured population member to have an edge.
+    measured_run = SimpleNamespace(engine=SimpleNamespace(groups=SimpleNamespace(
+        mbon11=np.array([8, 9, 10]), mbon07=np.array([7]),
+    )))
+    result = module._measurement(measured_run, base, retained, bound, onset, GRID[0],
+                                  RESPONSE_WINDOWS[0], 11, "A", "AB")
+    assert result.reasons == ()
+    assert result.one_spike_rate_hz == 3.333333333333333
+    if c_count == 2:
+        assert result.washout_hz == result.washout_threshold_hz == 3.333333333333333
+
+
+@pytest.mark.parametrize("population", [1, 2, 3, 7, 10, 13, 166700])
+@pytest.mark.parametrize("duration_ticks", [1000, 3000, 2000])
+@pytest.mark.parametrize("pre_c,post_c,qualification_bad,confirmation_bad", [
+    (0, 2, True, True), (1, 2, False, True), (2, 2, False, False),
+    (2, 0, True, True), (2, 1, False, True), (None, 2, None, None),
+])
+def test_exact_count_c_boundaries_preserve_missing_and_strictness(
+    population, duration_ticks, pre_c, post_c, qualification_bad, confirmation_bad,
+):
+    import fly_connectome_sim.experiment.qualification as module
+    result = module._count_boundaries(population, duration_ticks, pre_c=pre_c, post_c=post_c)
+    strict = module._count_boundaries(population, duration_ticks, pre_c=pre_c, post_c=post_c, strict_c=True)
+    assert result.c_failed is qualification_bad
+    assert strict.c_failed is confirmation_bad
+    if population == 3 and duration_ticks == 1000:
+        assert result.one_spike_hz == 3.333333333333333
+    if population == 13 and duration_ticks == 3000:
+        assert result.one_spike_hz == 0.25641025641025644
+
+
+@pytest.mark.parametrize("population", [1, 2, 3, 7, 10, 13, 166700])
+@pytest.mark.parametrize("duration_ticks", [1000, 3000, 2000])
+@pytest.mark.parametrize("replay_difference", [0, 1, 2])
+@pytest.mark.parametrize("offset", [-1, 0, 1])
+@pytest.mark.parametrize("reverse", [False, True])
+def test_exact_count_washout_uses_integer_difference_and_threshold(
+    population, duration_ticks, replay_difference, offset, reverse,
+):
+    import fly_connectome_sim.experiment.qualification as module
+    k = (1, 5, 10)[replay_difference]
+    frozen, reference = 100 + k + offset, 100
+    if reverse:
+        frozen, reference = reference, frozen
+    result = module._count_boundaries(population, duration_ticks,
+                                      pre_paired=30, replay_pre=30 - replay_difference,
+                                      frozen_post=frozen, reference_post=reference)
+    assert result.washout_failed is (offset > 0)
+    if offset == 0:
+        assert result.washout_hz.hex() == result.threshold_hz.hex()
+    if replay_difference == 0:
+        assert result.replay_hz == 0.0
+    else:
+        assert result.replay_hz > 0
+
+
+def test_exact_count_boundaries_do_not_infer_missing_counts_from_rates():
+    import fly_connectome_sim.experiment.qualification as module
+    result = module._count_boundaries(3, 1000, pre_paired=4, replay_pre=None,
+                                      frozen_post=4, reference_post=3)
+    assert result.replay_hz is None and result.threshold_hz is None
+    assert result.washout_failed is None
+    assert result.washout_hz == 3.333333333333333
+    for invalid in (True, -1, 1.0, "1"):
+        with pytest.raises(ValueError):
+            module._count_boundaries(3, 1000, pre_c=invalid, post_c=2)
+
+
+def test_compact_count_projection_rejects_scalar_only_or_noninteger_primary_counts():
+    import fly_connectome_sim.experiment.qualification as module
+    with pytest.raises(ValueError, match="counts"):
+        module._measurement_from_compact(_measurement())
+    compact = replace(_measurement(), pre_mbon11=(None, None, None), post_mbon11=(None, None, None))
+    for invalid in (True, 1.5, -1):
+        counts = module._ResponseCounts(3, 1000, (2, invalid, 2), (3, 2, 2), 2, 4, 3)
+        with pytest.raises(ValueError, match="counts"):
+            module._measurement_from_compact(compact, counts=counts)
+
+
+def test_selection_uses_exact_washout_reason_before_other_reasons():
+    import fly_connectome_sim.experiment.qualification as module
+    items = tuple(module._ReplicateSummary(seed, paired, order, 2.0, ("washout",), 1.0, 1.0)
+                  for seed in (11, 23) for paired in ("A", "B") for order in ("AB", "BA"))
+    earliest = module._summarize_point(GRID[0], RESPONSE_WINDOWS[0], 10000.0, items)
+    later = module._summarize_point(GRID[0], RESPONSE_WINDOWS[0], 20000.0,
+                                     tuple(replace(item, reasons=()) for item in items))
+    assert not earliest.washout_eligible
+    assert module._select_compact_points((earliest, later)) == (GRID[0], RESPONSE_WINDOWS[0], 20000.0, 1)
+    other = module._summarize_point(GRID[0], RESPONSE_WINDOWS[0], 10000.0,
+                                     tuple(replace(item, reasons=("candidate_saturation",)) for item in items))
+    assert other.washout_eligible
+    assert module._select_compact_points((other, later)) is None
+
+
 @pytest.mark.parametrize("intervals", [
     ((0, 40), (30, 60), (70, 100)),  # Same total duration conceals overlap plus gap.
     ((50, 100), (0, 50)),
@@ -53,7 +177,7 @@ def test_compact_measurement_uses_independent_rates_and_preserves_gate_order():
                       post_candidate_kc_vectors=((2, 0), (0, 2)),
                       response_replay_resolution_hz=None, washout_hz=None, washout_threshold_hz=None)
     result = module._measurement_from_compact(
-        compact, replay_pre_hz=30.0, frozen_post_hz=30.0, reference_post_hz=25.0,
+        compact, counts=module._ResponseCounts(2, 1000, (6, 2, 1), (12, 4, 1), 6, 6, 5),
         pathway_orders=((4, 5),) * 4,
     )
     assert result.delta_hz == 20.0
@@ -66,7 +190,7 @@ def test_compact_measurement_uses_independent_rates_and_preserves_gate_order():
                   candidate_kc_vectors=((0, 0), (0, 0)), post_candidate_kc_vectors=((0, 0), (0, 0)),
                   maximum_bound_hit_fraction=0.02)
     result = module._measurement_from_compact(
-        bad, replay_pre_hz=29.0, frozen_post_hz=30.0, reference_post_hz=20.0,
+        bad, counts=module._ResponseCounts(2, 1000, (6, 6, 0), (6, 6, 0), 5, 12, 4),
         pathway_orders=((4, 5), (5, 4), (4, 5), (4, 5)),
     )
     assert result.reasons == (
@@ -94,12 +218,12 @@ def test_compact_state_projection_preserves_float32_subtraction_and_mean():
     assert module._state_assessment(states) == (1.0, 0.5, ("checkpoint_replay", "candidate_state_shift"))
 
 
-def test_compact_rate_helpers_keep_native_rate_and_one_spike_rounding():
+def test_compact_rate_helpers_share_canonical_count_conversion():
     import fly_connectome_sim.experiment.qualification as module
 
-    # Preserve the two existing operation orders, despite mathematical equivalence.
+    # This correctness fix deliberately replaces the inherited one-spike rounding.
     assert module._response_rate(1, 1000, 3) == 3.333333333333333
-    assert module._one_spike_rate(3, RESPONSE_WINDOWS[0]) == 3.3333333333333335
+    assert module._one_spike_rate(3, RESPONSE_WINDOWS[0]) == 3.333333333333333
     assert module._one_spike_rate(0, RESPONSE_WINDOWS[0]) is None
 
 

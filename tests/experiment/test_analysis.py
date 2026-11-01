@@ -48,6 +48,79 @@ ORDINARY = ("paired", "frozen_plasticity", "no_external_dan",
 BASE_TICK = 100000
 
 
+def _count_response_fixture(population, window, *, pre_c=2, post_c=2):
+    """Declared arithmetic fixture with explicit raw integer counts, never native proof."""
+    from fly_connectome_sim.experiment.qualification import ResponseWindow, _one_spike_rate, _response_rate
+    data = build_frozen_config(_qualification()).to_dict()
+    identity = data["engine_identity"]
+    identity["neural_groups"]["mbon11"] = list(range(population))
+    identity.pop("sha256")
+    identity["sha256"] = sha256(json.dumps(identity, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    data.update(mbon11_population_size=population, response_window=window,
+                one_spike_floor_hz=_one_spike_rate(population, ResponseWindow(**window)))
+    data.pop("digest")
+    data["digest"] = sha256(json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
+    frozen = FrozenAssayConfig.from_dict(data)
+    events = _responses("confirmation")
+    start, stop = round(window["start_ms"] * 10), round(window["end_ms"] * 10)
+    for event in events:
+        if event["type"] != "assay_response":
+            continue
+        count = ((pre_c if event["phase"] == "pre" else post_c) if event["stimulus"] == "C"
+                 else event["bins"][0]["spikes"])
+        event["bins"] = [{"start_tick": event["cs_onset_tick"] + start,
+                          "end_tick": event["cs_onset_tick"] + stop, "spikes": count}]
+        event.update(population_size=population, rate_hz=_response_rate(count, stop - start, population),
+                     one_spike_rate_hz=_response_rate(1, stop - start, population),
+                     sim_ms=(event["cs_onset_tick"] + stop) / 10)
+    return frozen, events
+
+
+def test_consumer_one_c_spike_is_rejected_for_upward_rounded_population_13():
+    frozen, events = _count_response_fixture(13, {"start_ms": 0.0, "end_ms": 300.0}, pre_c=1, post_c=1)
+    reduction = reduce_assay_evidence(events, frozen)
+    assert reduction.status == "supported" and reduction.reasons == ()
+    report = assess_assay_evidence(events, frozen)
+    assert "C_floor:101/A/AB/10000" in report.reasons
+    cell = reduction.rows["101/A/AB/10000"]["paired"]["pre_C"]
+    assert cell["spikes"] == 1 and cell["rate_hz"] == 0.25641025641025644
+
+
+@pytest.mark.parametrize("population,window", [
+    (3, {"start_ms": 0.0, "end_ms": 100.0}),
+    (13, {"start_ms": 0.0, "end_ms": 300.0}),
+    (7, {"start_ms": 100.0, "end_ms": 300.0}),
+])
+@pytest.mark.parametrize("pre_c,post_c,failed", [
+    (0, 2, True), (1, 2, True), (2, 2, False), (2, 0, True), (2, 1, True),
+])
+def test_consumer_retains_counts_and_confirms_strict_c_floor(population, window, pre_c, post_c, failed):
+    frozen, events = _count_response_fixture(population, window, pre_c=pre_c, post_c=post_c)
+    reduced = reduce_assay_evidence(events, frozen)
+    assert reduced.status == "supported" and reduced.reasons == ()
+    row = reduced.rows["101/A/AB/10000"]["paired"]
+    assert row["pre_C"]["spikes"] == pre_c and row["post_C"]["spikes"] == post_c
+    report = assess_assay_evidence(events, frozen)
+    assert ("C_floor:101/A/AB/10000" in report.reasons) is failed
+
+
+def test_selected_washout_reconstructs_validated_integer_difference():
+    import fly_connectome_sim.experiment.analysis as analysis
+    frozen, events = _count_response_fixture(3, {"start_ms": 0.0, "end_ms": 100.0})
+    for condition, count in (("frozen_plasticity", 4), ("matched_reference", 3)):
+        target = next(event for event in events if event["type"] == "assay_response"
+                      and _is_cell(event, condition=condition))
+        target["bins"][0]["spikes"] = count
+        target["rate_hz"] = (13.333333333333332 if count == 4 else 9.999999999999998)
+    reduced = reduce_assay_evidence(events, frozen)
+    assert reduced.status == "supported" and reduced.reasons == ()
+    row = reduced.rows["101/A/AB/10000"]
+    assert analysis._selected_washout_hz(row, "A", 3, {"start_ms": 0.0, "end_ms": 100.0}) == 3.333333333333333
+    row["frozen_plasticity"]["post_A"].pop("spikes")
+    with pytest.raises(KeyError):
+        analysis._selected_washout_hz(row, "A", 3, {"start_ms": 0.0, "end_ms": 100.0})
+
+
 def _h(name):
     return sha256(name.encode()).hexdigest()
 

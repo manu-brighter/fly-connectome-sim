@@ -111,6 +111,20 @@ with the shared lifecycle in Task7B4f, without synthetic context fallbacks.
 
 ## Shared native selected execution and measured resolution
 
+The inherited one-spike boundary is corrected before strict grid consumption.
+For equal actual populations/window durations, retain integer raw counts and
+compute `r=abs(pre_paired-pre_replay)`, `w=abs(frozen_post-reference_post)` and
+`k=max(5*r,1)`. Qualification C fails below one count; confirmation C fails at
+or below one. Washout fails only at `w>k`. Convert counts/differences/k afterward
+through the shared `count/(N*(duration_ticks/10000.0))` function. Do not subtract
+rounded control rates, multiply an already rounded replay rate, infer counts
+from declared scalar rates or introduce a gate tolerance. Missing remains
+unavailable. Preserve other endpoint equations and reason/selection ordering;
+only the exactly derived washout reason participates before earliest-T choice.
+This corrects numerical boundary outcomes without changing the intended policy,
+raw formats or version strings; exact source identity distinguishes execution.
+It does not supply native history proof or complete the public freeze lifecycle.
+
 Extract the current producer body as private
 `_produce_cohorts(engine_factory, recorder, *, execution, cohorts, conditions,
 baseline_occurrence, namespace, measure_replay=False)`.

@@ -1,6 +1,7 @@
 """Native execution and fail-closed lifecycle of one paired confirmation cohort."""
 
 from copy import deepcopy
+from dataclasses import replace
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -11,6 +12,35 @@ import pytest
 from replay_helpers import engine_factory, _declared_native_frozen_config
 from fly_connectome_sim.experiment.analysis import analyze_assay, reduce_assay_evidence
 from fly_connectome_sim.experiment.recorder import verify_replay_run
+
+
+def test_count_boundary_emission_matches_validated_native_bins(engine_factory, tmp_path):
+    """Bounded real native emission with an explicit three-cell measured group."""
+    from fly_connectome_sim.engine import FlyEngine
+    from fly_connectome_sim.experiment.assay import run_paired_cohort
+
+    def factory():
+        original = engine_factory()
+        return FlyEngine(brain=original.brain, groups=replace(
+            original.groups, mbon11=np.array([0, 2, 3], dtype=np.int32),
+        ))
+
+    frozen = _declared_native_frozen_config(factory())
+    path = tmp_path / "boundary-emission"
+    run_paired_cohort(factory, frozen, output_dir=path)
+    verified = verify_replay_run(path, engine_factory=factory)
+    events = list(verified.iter_events())
+    reduction = reduce_assay_evidence(events, frozen,
+                                     attested_state_anchors=verified.replay_attested_state_anchors)
+    responses = [event for event in events if event["type"] == "assay_response"]
+    assert len(responses) == 12
+    assert not any(reason.startswith("invalid_response") for reason in reduction.reasons)
+    for event in responses:
+        count = sum(item["spikes"] for item in event["bins"])
+        assert event["one_spike_rate_hz"] == 3.333333333333333
+        assert event["rate_hz"] == count / 0.30000000000000004
+        cell = reduction.rows[f"{event['seed']}/{event['paired_identity']}/{event['presentation_order']}/{event['retention_ms']}"]["paired"][f"{event['phase']}_{event['stimulus']}"]
+        assert cell["spikes"] == count and cell["rate_hz"] == event["rate_hz"]
 
 
 def _tracked_factory(factory, records, *, timing=0):
