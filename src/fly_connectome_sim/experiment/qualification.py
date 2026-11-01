@@ -6,7 +6,7 @@ does not interpret the setting as biological learning or behavior.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from hashlib import sha256
 import json
 import math
@@ -111,6 +111,7 @@ class ReplicateMeasurement:
     matched_mbon07_lower_bound_hits: int | None = None
     matched_mbon07_upper_bound_hits: int | None = None
     matched_mbon07_bound_hit_fraction: float | None = None
+    grid_evidence_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -287,6 +288,116 @@ def _training_timeline(
     return _split_intervals(0.0, total_end, visual, pulse), second_end, total_end, t0
 
 
+def _qualification_role_slots(selected_retention_ms: int) -> dict:
+    """Finite future c.2/d/e role contract, not a runtime cap or legacy conformance claim.
+
+    Slots are exact factor tuples, independent of a future producer's namespace.
+    A partial route uses a subset; it cannot introduce another candidate or role.
+    Relevant counts include first restores, sources, summaries and terminal; raw
+    observations are separately bounded and must still be completely consumed.
+    """
+    if type(selected_retention_ms) is not int or selected_retention_ms not in (10000, 20000, 30000, 60000):
+        raise ValueError("Selected retention must be one declared integer T")
+    categories = {name: set() for name in ("grid", "selected", "replay", "shared")}
+    checkpoints = set()
+    events = {}
+    raw = 0
+
+    def branch(category, slot):
+        categories[category].add(slot)
+
+    def event(kind, slot):
+        events.setdefault(kind, set()).add(slot)
+
+    def source(slot):
+        checkpoints.add(slot)
+        event("checkpoint", slot)
+
+    factors = [(seed, paired, order) for seed in QUALIFICATION_SEEDS
+               for paired in ("A", "B") for order in ("AB", "BA")]
+    acquisitions = ("paired", "matched_reference", "frozen_plasticity", "paired_replay")
+    ordinary = ("paired", "frozen_plasticity", "no_external_dan", "temporally_unpaired", "matched_reference")
+    conditions = (*ordinary, "necessity", "sufficiency", "sham")
+    for index, configuration in enumerate(GRID):
+        trial_calls = len(_trial_segments(configuration, "A", paired=False))
+        for seed, paired, order in factors:
+            unit = ("grid", index, seed, paired, order)
+            event("grid_binding", unit)
+            for stimulus in ("A", "B", "C"):
+                branch("grid", (*unit, "pre", stimulus))
+            branch("grid", (*unit, "pre_replay", paired))
+            raw += 4 * trial_calls
+            for condition in acquisitions:
+                slot = (*unit, "training", condition)
+                branch("grid", slot)
+                source(slot)
+                schedule, _, end, t0 = _training_timeline(
+                    configuration, paired, order,
+                    "paired" if condition == "paired_replay" else condition, controls=True,
+                )
+                raw += len(schedule)
+            for retention in (10000, 20000, 30000, 60000):
+                gap = max(0, _ticks(t0 + retention - 100 - end))
+                raw += 3 * ((gap + 4999) // 5000) + 5 * trial_calls
+                for condition in ("paired", "frozen_plasticity", "matched_reference"):
+                    slot = (*unit, "retention", retention, condition)
+                    branch("grid", slot)
+                    source(slot)
+                    for stimulus in (("A", "B", "C") if condition == "paired" else (paired,)):
+                        branch("grid", (*unit, "post", retention, condition, stimulus))
+        for window in RESPONSE_WINDOWS:
+            for retention in (10000, 20000, 30000, 60000):
+                event("point", (index, window.start_ms, window.end_ms, retention))
+    times = (selected_retention_ms, selected_retention_ms + 60000)
+    for seed, paired, order in factors:
+        unit = ("selected", seed, paired, order)
+        for condition in conditions:
+            slot = (*unit, "training" if condition in ordinary else "intervention", condition)
+            branch("selected", slot)
+            source(slot)
+            event("training" if condition in ordinary else "intervention", slot)
+            for retention in times:
+                retained = (*unit, "retention", condition, retention)
+                branch("selected", retained)
+                event("anchor", retained)
+                for stimulus in ("A", "B", "C"):
+                    post = (*unit, "post", condition, retention, stimulus)
+                    branch("selected", post)
+                    branch("replay", ("replay", *post))
+                    event("response", post)
+                    event("response_replay", post)
+        for stimulus in ("A", "B", "C"):
+            pre = (*unit, "pre", stimulus)
+            branch("selected", pre)
+            branch("replay", ("replay", *pre))
+            event("response_replay", pre)
+            for condition in conditions:
+                for retention in times:
+                    event("response", (*pre, condition, retention))
+        for condition in ordinary:
+            event("control_summary", (*unit, condition))
+        # Conservative selected maximum over the fixed grid, independent of selection.
+        raw += max(sum(len(_training_timeline(config, paired, order, condition, controls=True)[0])
+                       for condition in ordinary) for config in GRID)
+        raw += 8 * sum((retention * 10 + 4999) // 5000 for retention in times)
+        raw += (3 + 8 * 2 * 3) * 4 * 2  # Originals plus all physical response repeats.
+    categories["shared"].update({("shared", "baseline"), ("shared", "summary")})
+    source(("shared", "baseline"))
+    source(("shared", "final"))
+    event("terminal", ("shared", "terminal"))
+    for category in ("grid", "selected", "replay"):
+        for slot in categories[category]:
+            event("branch_first", slot)
+    # Baseline first is its checkpoint; summary first is its first grid binding.
+    return {
+        "branches": frozenset().union(*categories.values()),
+        "checkpoints": frozenset(checkpoints),
+        "branch_categories": {key: len(value) for key, value in categories.items()},
+        "relevant_events": {key: len(value) for key, value in events.items()},
+        "raw_observation_upper_bound": raw,
+    }
+
+
 def _aggregate_window(
     telemetries: list[dict] | tuple[dict, ...],
     cs_onset_ms: float,
@@ -396,18 +507,86 @@ class _Run:
         self.checkpoints: dict[Path, tuple[str, str, str]] = {}
         self.checkpoint_serial = 0
         self.phase = "baseline"
+        self.occurrences: dict[Path, dict] = {}
+        self.grid_capture: dict | None = None
+        self.capture_sequences: list[int] | None = None
+        self.capture_stage = "base_validation"
+        self.capture_condition: str | None = None
+        self.capture_stimulus: str | None = None
+        self.capture_retention: int | None = None
+        self.partial_base: dict = {}
+        self.partial_retained: dict = {}
 
-    def emit(self, event: dict) -> None:
+    def begin_grid(self, baseline: Path, index: int, seed: int, paired: str, order: str) -> None:
+        self.partial_base = {}
+        self.partial_retained = {}
+        self.capture_sequences = None
+        self.capture_stage, self.capture_condition = "base_validation", None
+        self.capture_stimulus = self.capture_retention = None
+        # Arithmetic/orchestration doubles without real ingest/position have no evidence refs.
+        if baseline not in self.occurrences:
+            self.grid_capture = None
+            return
+        self.grid_capture = {
+            "binding_version": "qualification-grid-binding/v1",
+            "grid_evidence_id": f"grid/{index}/{seed}/{paired}/{order}",
+            "grid_index": index, "seed": seed, "paired_identity": paired,
+            "presentation_order": order,
+            "baseline_occurrence": dict(self.occurrences[baseline]),
+            "training_occurrences": {}, "retained_occurrences": {},
+            "observation_sequences": {"pre": {}, "training": {}, "retention": {}, "post": {}},
+            "failures": [],
+        }
+
+    def enter_grid_role(self, stage: str, path: tuple[str, ...] | None = None,
+                        *, condition: str | None = None, stimulus: str | None = None,
+                        retention_ms: int | None = None) -> None:
+        self.capture_stage, self.capture_condition = stage, condition
+        self.capture_stimulus, self.capture_retention = stimulus, retention_ms
+        self.capture_sequences = None
+        if self.grid_capture is not None and path is not None:
+            target = self.grid_capture["observation_sequences"]
+            for key in path[:-1]:
+                target = target.setdefault(key, {})
+            target[path[-1]] = []
+            self.capture_sequences = target[path[-1]]
+
+    def grid_failure(self, reason: str) -> None:
+        if self.grid_capture is not None:
+            self.grid_capture["failures"].append({
+                "scope": "base" if self.capture_retention is None else "retention",
+                "stage": self.capture_stage, "condition": self.capture_condition,
+                "stimulus": self.capture_stimulus, "retention_ms": self.capture_retention,
+                "reason": reason,
+            })
+        self.capture_sequences = None
+
+    def finish_grid(self, baseline: Path) -> None:
+        if self.grid_capture is not None:
+            self.emit({
+                "type": "qualification_grid_binding", "branch_id": "qualification/summary",
+                "sim_ms": 0.0, "parent_branch_id": "qualification/baseline",
+                "parent_checkpoint_sha256": self.checkpoints[baseline][1],
+                **self.grid_capture,
+            })
+        self.grid_capture = None
+        self.capture_sequences = None
+
+    def emit(self, event: dict) -> int | None:
         event = {key: value for key, value in event.items()
                  if key not in {"parent_branch_id", "parent_checkpoint_sha256"}
                  or value is not None}
         encoded = json.dumps(event, allow_nan=False, separators=(",", ":"))
-        self.event_count += 1
         self.peak_event_buffer_bytes = max(self.peak_event_buffer_bytes,
                                            len(encoded.encode("utf-8")))
+        sequence = getattr(self.recorder, "next_sequence", None)
         self.recorder.append(event)
+        self.event_count += 1
+        return sequence
 
-    def checkpoint(self, path: Path, *, logical_name: str | None = None) -> None:
+    def checkpoint(self, path: Path, *, logical_name: str | None = None,
+                   training_start_tick: int | None = None,
+                   association_t0_tick: int | None = None) -> dict | None:
         self.engine.brain.checkpoint(path)
         size = path.stat().st_size
         self.checkpoint_bytes += size
@@ -426,7 +605,8 @@ class _Run:
         if ingest is not None and ingest(logical_name, path, origin_branch_id=self.branch_id) != digest:
             raise _GateFailure("checkpoint_replay")
         self.checkpoints[path] = (logical_name, digest, self.branch_id)
-        self.emit({
+        tick = _ticks(float(self.engine.brain.sim_ms))
+        sequence = self.emit({
             "type": "qualification_checkpoint",
             "branch_id": self.branch_id,
             "parent_checkpoint_sha256": self.parent_checkpoint_sha256,
@@ -434,7 +614,20 @@ class _Run:
             "checkpoint_sha256": digest,
             "checkpoint_size": size,
             "sim_ms": float(self.engine.brain.sim_ms),
+            "sim_tick": tick,
+            **({"training_start_tick": training_start_tick,
+                "association_t0_tick": association_t0_tick, "training_end_tick": tick}
+               if training_start_tick is not None else {}),
         })
+        if ingest is not None and sequence is not None:
+            occurrence = {
+                "checkpoint_name": logical_name, "checkpoint_sha256": digest,
+                "origin_branch_id": self.branch_id,
+                "checkpoint_sequence": sequence, "sim_tick": tick,
+            }
+            self.occurrences[path] = occurrence
+            return dict(occurrence)
+        return None
 
     def restore(self, path: Path) -> None:
         _, digest, parent_branch_id = self.checkpoints[path]
@@ -452,10 +645,16 @@ class _Run:
             "parent_checkpoint_sha256": digest,
             "checkpoint_sha256": digest,
             "sim_ms": float(self.engine.brain.sim_ms),
+            "sim_tick": _ticks(float(self.engine.brain.sim_ms)),
+            **({"parent_checkpoint_name": self.occurrences[path]["checkpoint_name"],
+                "parent_checkpoint_sequence": self.occurrences[path]["checkpoint_sequence"]}
+               if path in self.occurrences else {}),
         })
 
     def observe(self, frame, duration_ms, *, stimulation=None, learning=False,
                 stimulus=None, local_start_ms=None, local_end_ms=None) -> dict:
+        if self.grid_capture is not None:
+            self.capture_stimulus = stimulus
         start_tick = _ticks(float(self.engine.brain.sim_ms))
         try:
             telemetry = self.engine.observe(
@@ -486,7 +685,7 @@ class _Run:
             json.dumps(telemetry, allow_nan=False)
         except (TypeError, ValueError) as error:
             raise _GateFailure("nonfinite") from error
-        self.emit({
+        sequence = self.emit({
             "type": "qualification_observation",
             "branch_id": self.branch_id,
             "parent_checkpoint_sha256": self.parent_checkpoint_sha256,
@@ -494,6 +693,9 @@ class _Run:
             "sim_ms": expected_tick / 10,
             "start_ms": start_tick / 10,
             "end_ms": expected_tick / 10,
+            "start_tick": start_tick,
+            "end_tick": expected_tick,
+            "duration_ticks": _ticks(duration_ms),
             "duration_ms": duration_ms,
             "local_start_ms": local_start_ms,
             "local_end_ms": local_end_ms,
@@ -503,6 +705,8 @@ class _Run:
             "learning": learning,
             "telemetry": telemetry,
         })
+        if self.capture_sequences is not None and sequence is not None:
+            self.capture_sequences.append(sequence)
         return telemetry
 
     def neutral(self, duration_ms: float, shape: tuple[int, int, int],
@@ -513,10 +717,15 @@ class _Run:
         if detail:
             black = np.zeros(shape, dtype=np.uint8)
             remaining = _ticks(duration_ms)
+            total = remaining
             maximum_bound = 0.0
             while remaining:
                 chunk = min(5000, remaining)
-                telemetry = self.observe(black, chunk / 10, learning=False)
+                telemetry = self.observe(
+                    black, chunk / 10, learning=False,
+                    local_start_ms=(total - remaining) / 10,
+                    local_end_ms=(total - remaining + chunk) / 10,
+                )
                 maximum_bound = max(maximum_bound, _max_bound((telemetry,)))
                 remaining -= chunk
             return maximum_bound
@@ -727,7 +936,9 @@ def _replicate_base(run: _Run, root: Path, baseline: Path,
     errors: list[str] = []
     pre = {}
     pre_paths = {}
+    run.partial_base = {"pre": pre, "pre_paths": pre_paths}
     for identity in ("A", "B", "C"):
+        run.enter_grid_role("pre", ("pre", identity), stimulus=identity)
         run.branch_id = f"{prefix}/pre/{identity}"
         run.restore(baseline)
         pre[identity] = _test_trial(run, configuration, frames, identity)
@@ -737,6 +948,7 @@ def _replicate_base(run: _Run, root: Path, baseline: Path,
             errors.append("missing_kc_observability" if "KC observability" in str(error)
                           else "modeled_drive" if "drive" in str(error)
                           else "pathway_order")
+    run.enter_grid_role("pre_replay", ("pre_replay",), stimulus=paired)
     run.branch_id = f"{prefix}/pre_replay/{paired}"
     run.restore(baseline)
     replay, replay_onset = _test_trial(run, configuration, frames, paired)
@@ -748,16 +960,20 @@ def _replicate_base(run: _Run, root: Path, baseline: Path,
     state = {}
     state07 = {}
     checkpoints = {}
+    run.partial_base.update(training=training, state=state, state07=state07)
     training_t0_ms = training_end_ms = None
     for condition in ("paired", "matched_reference", "frozen_plasticity", "paired_replay"):
+        run.enter_grid_role("training", ("training", condition), condition=condition)
         run.branch_id = f"{prefix}/{condition}/training"
         run.restore(baseline)
         baseline_ms = float(run.engine.brain.sim_ms)
         actual = "paired" if condition == "paired_replay" else condition
-        records, _, _, t0 = _training(run, configuration, paired, order, actual, frames)
+        records, _, _, t0 = _training(run, configuration, paired, order, actual, frames,
+                                     controls=True)
         if condition == "paired":
             training_t0_ms = baseline_ms + t0
             training_end_ms = float(run.engine.brain.sim_ms)
+            run.partial_base.update(training_t0_ms=training_t0_ms, training_end_ms=training_end_ms)
         training[condition] = records
         try:
             state[condition] = _candidate_state(run)
@@ -765,8 +981,12 @@ def _replicate_base(run: _Run, root: Path, baseline: Path,
             errors.append("missing_mbon11_observability")
         state07[condition] = _mbon07_state(run)
         path = root / f"{condition}.npz"
-        run.checkpoint(path)
+        occurrence = run.checkpoint(path, training_start_tick=_ticks(baseline_ms),
+                                    association_t0_tick=_ticks(baseline_ms + t0))
+        if run.grid_capture is not None:
+            run.grid_capture["training_occurrences"][condition] = occurrence
         checkpoints[condition] = path
+    run.enter_grid_role("base_validation")
     state_shift = state_resolution = None
     if len(state) != 4:
         raise _GateFailure("missing_mbon11_observability")
@@ -819,12 +1039,17 @@ def _retained_tests(run: _Run, root: Path, base: dict,
                     configuration: GridConfiguration, frames: dict,
                     paired: str, retention_ms: float) -> tuple[dict, float, float]:
     result = {}
+    run.partial_retained = result
+    retention = int(retention_ms)
+    run.enter_grid_role("retention_timing", retention_ms=retention)
     maximum_bound = 0.0
     target_onset_tick = _ticks(base["training_t0_ms"]) + _ticks(retention_ms)
     remaining_ticks = target_onset_tick - 1000 - _ticks(base["training_end_ms"])
     if remaining_ticks < 0:
         raise _GateFailure("retention_timing")
     for condition in ("paired", "frozen_plasticity", "matched_reference"):
+        run.enter_grid_role("retention", ("retention", str(retention), condition),
+                            condition=condition, retention_ms=retention)
         run.branch_id = f"{base['prefix']}/{condition}/T{int(retention_ms)}/retention"
         run.restore(base["checkpoints"][condition])
         if _ticks(float(run.engine.brain.sim_ms)) != _ticks(base["training_end_ms"]):
@@ -833,16 +1058,21 @@ def _retained_tests(run: _Run, root: Path, base: dict,
         maximum_bound = max(maximum_bound,
                             run.neutral(remaining_ticks / 10, frames["A"].shape))
         retained = root / f"retained-{condition}-{int(retention_ms)}.npz"
-        run.checkpoint(retained)
+        occurrence = run.checkpoint(retained)
+        if run.grid_capture is not None:
+            run.grid_capture["retained_occurrences"].setdefault(str(retention), {})[condition] = occurrence
         result[condition] = {}
         identities = ("A", "B", "C") if condition == "paired" else (paired,)
         for identity in identities:
+            run.enter_grid_role("post", ("post", str(retention), condition, identity),
+                                condition=condition, stimulus=identity, retention_ms=retention)
             run.branch_id = (f"{base['prefix']}/{condition}/T{int(retention_ms)}"
                              f"/test/{identity}")
             run.restore(retained)
             result[condition][identity] = _test_trial(run, configuration, frames, identity)
             if _ticks(result[condition][identity][1]) != target_onset_tick:
                 raise _GateFailure("retention_timing")
+    run.enter_grid_role("measurement", retention_ms=retention)
     return result, maximum_bound, target_onset_tick / 10
 
 
@@ -977,18 +1207,73 @@ def _measurement(run: _Run, base: dict, retained: dict,
 
 def _failed_measurement(run: _Run, window: ResponseWindow,
                         seed: int, paired: str, order: str,
-                        reason: str, base: dict | None = None) -> ReplicateMeasurement:
+                        reason: str, base: dict | None = None,
+                        retained: dict | None = None) -> ReplicateMeasurement:
     group_size = len(run.engine.groups.mbon11)
     one_spike = (1000.0 / (group_size * (window.end_ms - window.start_ms))
                  if group_size else None)
     absent = (None, None, None)
-    return ReplicateMeasurement(
+    result = ReplicateMeasurement(
         seed, paired, order, absent, absent, absent, absent,
         None, one_spike, None, None, None, None, None, None,
         absent, ((), ()), (), (), (), (), (), (reason,),
-        training_t0_ms=base["training_t0_ms"] if base else None,
-        training_end_ms=base["training_end_ms"] if base else None,
+        training_t0_ms=base.get("training_t0_ms") if base else None,
+        training_end_ms=base.get("training_end_ms") if base else None,
     )
+    # Complete prefix trials still contain real measurements when a later role failed.
+    rates = {}
+    for field, trials, population in (
+        ("pre_mbon11", (base or {}).get("pre", {}), "mbon11"),
+        ("pre_mbon07", (base or {}).get("pre", {}), "mbon07"),
+        ("post_mbon11", (retained or {}).get("paired", {}), "mbon11"),
+        ("post_mbon07", (retained or {}).get("paired", {}), "mbon07"),
+    ):
+        values = []
+        for identity in ("A", "B", "C"):
+            try:
+                trial, onset = trials[identity]
+                value = _aggregate_window(trial, onset, window, population,
+                                          len(getattr(run.engine.groups, population)))
+            except (KeyError, TypeError, ValueError, IndexError, AttributeError):
+                value = None
+            values.append(value)
+        rates[field] = tuple(values)
+    base = base or {}
+    state = base.get("state", {})
+    memories = {}
+    for field, condition in (("training_memory_w", "paired"),
+                             ("matched_memory_w", "matched_reference"),
+                             ("replay_memory_w", "paired_replay")):
+        if condition in state:
+            memories[field] = tuple(float(value) for value in state[condition][1])
+    paths = base.get("pre_paths", {})
+    first = paths.get("A")
+    known = {
+        "state_shift": base.get("state_shift"),
+        "state_replay_resolution": base.get("state_resolution"),
+        "modeled_drive": tuple(paths[name][0] if name in paths else None for name in ("A", "B", "C")),
+    }
+    if first is not None:
+        known.update(candidate_kc_ids=first[1], candidate_edge_indices=first[3], dan_indices=first[4],
+                     candidate_edge_pre_source_ids=first[7], candidate_edge_post_source_ids=first[8],
+                     candidate_kc_source_ids=first[9], dan_source_ids=first[10])
+    training = base.get("training", {}).get("paired")
+    if training:
+        trace = training[-1]["bins"][-1]["qualification_detail"]
+        known.update(rate_kc=tuple(float(value) for value in trace["rate_kc"]),
+                     rate_dan=tuple(float(value) for value in trace["rate_dan"]))
+    trained07 = base.get("state07", {}).get("paired")
+    matched07 = base.get("state07", {}).get("matched_reference")
+    if trained07:
+        known.update(mbon07_edge_indices=trained07[0], training_mbon07_memory_u=trained07[1],
+                     training_mbon07_memory_w=trained07[2], mbon07_lower_bound_hits=trained07[3],
+                     mbon07_upper_bound_hits=trained07[4], mbon07_bound_hit_fraction=trained07[5],
+                     mbon07_lower_bound=trained07[6], mbon07_upper_bound=trained07[7])
+    if matched07:
+        known.update(matched_mbon07_memory_u=matched07[1], matched_mbon07_memory_w=matched07[2],
+                     matched_mbon07_lower_bound_hits=matched07[3], matched_mbon07_upper_bound_hits=matched07[4],
+                     matched_mbon07_bound_hit_fraction=matched07[5])
+    return replace(result, **rates, **memories, **known)
 
 
 def _selected_controls(run: _Run, baseline: Path, configuration: GridConfiguration,
@@ -1148,15 +1433,24 @@ def qualify(engine_factory, recorder, *, seeds, family) -> QualificationResult:
                 frames = frames_by_seed[seed]
                 for paired in ("A", "B"):
                     for order in ("AB", "BA"):
+                        run.begin_grid(baseline, GRID.index(configuration), seed, paired, order)
+                        evidence_id = (run.grid_capture["grid_evidence_id"]
+                                       if run.grid_capture is not None else None)
+
+                        def linked(measurement):
+                            return replace(measurement, grid_evidence_id=evidence_id)
+
                         try:
                             base = _replicate_base(run, root, baseline, configuration,
                                                    seed, paired, order, frames)
                         except _GateFailure as failure:
+                            run.grid_failure(failure.reason)
                             for window, retention in measurements:
                                 measurements[(window, retention)].append(
-                                    _failed_measurement(run, window, seed, paired,
-                                                        order, failure.reason)
+                                    linked(_failed_measurement(run, window, seed, paired,
+                                                               order, failure.reason, run.partial_base))
                                 )
+                            run.finish_grid(baseline)
                             continue
                         for retention in RETENTION_CANDIDATES_MS:
                             try:
@@ -1164,19 +1458,29 @@ def qualify(engine_factory, recorder, *, seeds, family) -> QualificationResult:
                                     run, root, base, configuration, frames, paired, retention,
                                 )
                             except _GateFailure as failure:
+                                run.grid_failure(failure.reason)
                                 for window in RESPONSE_WINDOWS:
                                     measurements[(window, retention)].append(
-                                        _failed_measurement(run, window, seed, paired,
-                                                            order, failure.reason, base)
+                                        linked(_failed_measurement(run, window, seed, paired,
+                                                                   order, failure.reason, base,
+                                                                   run.partial_retained))
                                     )
                                 continue
-                            for window in RESPONSE_WINDOWS:
-                                measurements[(window, retention)].append(
-                                    _measurement(run, base, retained, retention_bound,
-                                                 test_onset_ms,
-                                                 configuration,
-                                                 window, seed, paired, order)
-                                )
+                            for index, window in enumerate(RESPONSE_WINDOWS):
+                                try:
+                                    measured = _measurement(run, base, retained, retention_bound,
+                                                            test_onset_ms, configuration,
+                                                            window, seed, paired, order)
+                                except _GateFailure as failure:
+                                    run.grid_failure(failure.reason)
+                                    for pending in RESPONSE_WINDOWS[index:]:
+                                        measurements[(pending, retention)].append(linked(
+                                            _failed_measurement(run, pending, seed, paired, order,
+                                                                failure.reason, base, retained),
+                                        ))
+                                    break
+                                measurements[(window, retention)].append(linked(measured))
+                        run.finish_grid(baseline)
             for window in RESPONSE_WINDOWS:
                 for retention in RETENTION_CANDIDATES_MS:
                     replicates = tuple(measurements[(window, retention)])

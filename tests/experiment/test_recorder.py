@@ -29,6 +29,147 @@ METADATA = {
 ZERO = "0" * 64
 
 
+def test_next_sequence_is_authoritative_readonly_and_rejected_append_does_not_advance(tmp_path):
+    recorder = RunRecorder(tmp_path / "position", run_kind="pilot", metadata=METADATA,
+                           root_branch_id="root")
+    recorder.append(event())
+    assert recorder.next_sequence == 1
+    with pytest.raises(AttributeError):
+        recorder.next_sequence = 99
+    with pytest.raises(RunArtifactError):
+        recorder.append(event(sequence=99))
+    assert recorder.next_sequence == 1
+    recorder.append(event())
+    assert [item["sequence"] for item in recorder.validate_prefix().iter_events()] == [0, 1]
+    recorder._stream.close()
+
+
+def _grid_binding_recorder(tmp_path):
+    recorder = RunRecorder(tmp_path / "grid-binding", run_kind="qualification", metadata=METADATA,
+                           root_branch_id="root")
+    digest = checkpoint(recorder, tmp_path, "brain-before.npz")
+    recorder.append(event(type="qualification_checkpoint", checkpoint_name="brain-before.npz", sim_tick=0))
+    recorder.append(event(type="qualification_observation"))
+    binding = event(type="qualification_grid_binding", binding_version="qualification-grid-binding/v1",
+                    grid_evidence_id="grid/0/11/A/AB", grid_index=0, seed=11,
+                    paired_identity="A", presentation_order="AB",
+                    baseline_occurrence={"checkpoint_name": "brain-before.npz", "checkpoint_sha256": digest,
+                                         "origin_branch_id": "root", "checkpoint_sequence": 0, "sim_tick": 0},
+                    training_occurrences={}, retained_occurrences={},
+                    observation_sequences={"pre": {"A": [1]}, "training": {}, "retention": {}, "post": {}},
+                    failures=[{"scope": "base", "stage": "pre", "condition": None, "stimulus": "A",
+                               "retention_ms": None, "reason": "native data unavailable"}])
+    return recorder, binding
+
+
+GRID_INVALID_FIELDS = [
+    (("binding_version",), "qualification-grid-binding/v2"),
+    (("grid_index",), True), (("grid_index",), 12), (("seed",), True), (("seed",), 101),
+    (("paired_identity",), "C"), (("presentation_order",), "AA"),
+    (("grid_evidence_id",), "grid/1/11/A/AB"),
+    (("extra",), None),
+    (("baseline_occurrence", "checkpoint_sequence"), True),
+    (("baseline_occurrence", "checkpoint_sequence"), 1),
+    (("baseline_occurrence", "checkpoint_sha256"), "f" * 64),
+    (("baseline_occurrence", "sim_tick"), 1),
+    (("baseline_occurrence", "extra"), 0),
+    (("training_occurrences", "unknown"), {}),
+    (("retained_occurrences", "10000.0"), {}),
+    (("retained_occurrences", "10000", "paired_replay"), {}),
+    (("observation_sequences", "pre", "C"), [True]),
+    (("observation_sequences", "pre", "A"), [1, 1]),
+    (("observation_sequences", "pre", "A"), [2]),
+    (("observation_sequences", "pre", "A"), [-1]),
+    (("observation_sequences", "post", "10000", "frozen_plasticity", "B"), []),
+    (("failures",), [{"scope": "base", "stage": "post", "condition": None, "stimulus": None,
+                      "retention_ms": None, "reason": "bad stage"}]),
+    (("failures",), [{"scope": "retention", "stage": "post", "condition": "paired_replay", "stimulus": "A",
+                      "retention_ms": 10000, "reason": "bad role"}]),
+    (("failures",), [{"scope": "retention", "stage": "post", "condition": "paired", "stimulus": "A",
+                      "retention_ms": True, "reason": "bad T"}]),
+    (("failures",), [{"scope": "base", "stage": "pre", "condition": None, "stimulus": None,
+                      "retention_ms": None, "reason": ""}]),
+]
+
+
+@pytest.mark.parametrize("path,value", GRID_INVALID_FIELDS)
+def test_grid_binding_invalid_append_is_nonmutating_and_valid_retry_succeeds(tmp_path, path, value):
+    recorder, binding = _grid_binding_recorder(tmp_path)
+    invalid = deepcopy(binding)
+    target = invalid
+    for key in path[:-1]:
+        target = target.setdefault(key, {})
+    target[path[-1]] = value
+    before = recorder.validate_prefix().scientific_prefix
+    with pytest.raises(RunArtifactError):
+        recorder.append(invalid)
+    assert recorder.validate_prefix().scientific_prefix == before
+    recorder.append(binding)
+    with pytest.raises(RunArtifactError):
+        recorder.append(binding)
+    assert list(recorder.validate_prefix().iter_events())[-1]["grid_evidence_id"] == "grid/0/11/A/AB"
+    recorder._stream.close()
+
+
+def test_grid_binding_failures_are_one_base_or_ordered_distinct_fixed_retention_times(tmp_path):
+    recorder, binding = _grid_binding_recorder(tmp_path)
+    retention = [{"scope": "retention", "stage": "retention_timing", "condition": None,
+                  "stimulus": None, "retention_ms": value, "reason": "unreachable clock"}
+                 for value in (10000, 20000, 30000, 60000)]
+    for invalid in (retention[::-1], retention[:1] * 2, binding["failures"] + retention,
+                    binding["failures"] * 2, retention + retention[:1]):
+        with pytest.raises(RunArtifactError):
+            recorder.append({**binding, "failures": invalid})
+    recorder.append({**binding, "failures": retention})
+    recorder.validate_prefix()
+    recorder._stream.close()
+
+
+@pytest.mark.parametrize("path,value", GRID_INVALID_FIELDS)
+def test_rehashed_grid_binding_tampering_is_rejected_by_both_stream_scanners(tmp_path, path, value):
+    """Structural synthetic bytes, not native evidence or a complete grid."""
+    from fly_connectome_sim.experiment.recorder import _scan_chain
+
+    recorder, binding = _grid_binding_recorder(tmp_path)
+    recorder.append(binding)
+    checkpoint(recorder, tmp_path, "brain-after.npz", data=b"after")
+    recorder.append(event(type="checkpoint", checkpoint_name="brain-after.npz"))
+    recorder.append(result_event(branch="root"))
+    recorder.close()
+    verified = verify_run(recorder.path)
+    events = list(verified.iter_events())
+    target = events[2]
+    for key in path[:-1]:
+        target = target.setdefault(key, {})
+    target[path[-1]] = value
+    manifest = verified.manifest
+    rewrite_sealed_run(recorder.path, events, manifest)
+    with pytest.raises(RunArtifactError):
+        list(_scan_chain(recorder.path, manifest))
+    with pytest.raises(RunArtifactError):
+        verify_run(recorder.path)
+
+
+def test_grid_binding_schema_closes_partial_role_maps_and_typed_sequences():
+    schema = json.loads(files("fly_connectome_sim.schemas").joinpath("run.schema.json").read_text(encoding="utf-8"))
+    definitions = schema["$defs"]
+    binding = definitions["qualification_grid_binding"]
+    assert binding["additionalProperties"] is False
+    assert set(binding["properties"]["training_occurrences"]["properties"]) == {
+        "paired", "matched_reference", "frozen_plasticity", "paired_replay",
+    }
+    assert set(definitions["grid_retained_occurrences"]["properties"]) == {
+        "paired", "frozen_plasticity", "matched_reference",
+    }
+    for role, rule in definitions["grid_retention_sequences"]["properties"].items():
+        assert role in {"paired", "frozen_plasticity", "matched_reference"}
+        assert rule == {"type": "array", "maxItems": 120, "uniqueItems": True, "items": {"$ref": "#/$defs/tick"}}
+    assert definitions["tick"]["type"] == "integer"
+    assert definitions["source_occurrence"]["additionalProperties"] is False
+    assert {"if": {"properties": {"type": {"const": "qualification_grid_binding"}}, "required": ["type"]},
+            "then": {"$ref": "#/$defs/qualification_grid_binding"}} in definitions["event"]["allOf"]
+
+
 def event(branch="root", sim_ms=0.0, **fields):
     return {"type": "observation", "branch_id": branch, "sim_ms": sim_ms, **fields}
 

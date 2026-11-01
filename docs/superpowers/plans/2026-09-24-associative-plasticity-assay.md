@@ -41,8 +41,10 @@ Task7B4a's shared checkpoint reader is also reviewed and accepted: 1,556 passed
 with three declared opt-in skips in the ordinary suite, then both actual
 fullgraph tests passed separately. Task7B4b's native map context passed Astra
 review, three actual graph cases and ordinary acceptance (1,627 passed, four
-declared opt-in skips). The next source slice is Task7B4c.1's grid capture and
-grammar, followed by Task7B4c.2's authenticated reduction. The cloud setup item below applies
+declared opt-in skips). Task7B4c.1's grid capture passed independent review,
+ordinary acceptance (1,693 passed, four opt-in skips) and three separate actual
+graph tests. Next are c.2a's shared compact arithmetic and c.2b's authenticated
+reduction. The cloud setup item below applies
 only when moving to a fresh cloud checkout, not as a gate on local continuation.
 
 - [ ] Establish/verify the cloud toolchain and regenerate ignored runtime before
@@ -744,11 +746,24 @@ Use explicit `controls=True` grid schedules; do not copy later raw effects.
   Enumerate the no-skip proposed grammar before enabling the changed cap.
 - [ ] GREEN: closed qualification-only 5120 branches (bound4850), unchanged
   2048 snapshots/10000 relevant events; reject orphans, retain/drain all history.
-  Static CP/event bounds1602/8064 are not execution/capacity measurements.
+  Static CP/event bounds1602/8099 are not execution/capacity measurements.
 
 Implement this as two sequential reviewed slices: **7B4c.1** owns capture,
 declarations, binding schema, recorder position and closed grammar; **7B4c.2**
 owns the authenticated reducer and minimal shared pure arithmetic extraction.
+Execute c.2 as two reviewed commits: **c.2a** extracts compact pure arithmetic
+actually used by the producer; **c.2b** delivers the complete authenticated
+two-pass component. Shared arithmetic must consume compact measurements, not
+raw telemetry histories or a running engine. Genuine incomplete inputs remain
+inconclusive after all available evidence is checked; malformed proof/content
+is an error. Complete assessment still requires all 96 units and 144 points.
+The first component accepts grid-only prefixes/negative seals and explicitly
+rejects selected activity until its exact inventory is wired in the later
+selected integration; no silent non-grid exemption or public-builder change.
+The reviewed c.1 enumeration corrects the earlier unproved 8064 relevant-event
+estimate to 8099, including 40 derived control summaries. Its 4850 intended branch
+slots and 1602 checkpoint slots describe future selected/replay integration;
+the operational branch cap remains 4096 until emission conformance is established.
 Bindings have bounded ordered `failures` (one base failure OR up to four T
 failures), retaining actual partial roles. Use existing summary-branch framing
 and real global append positions. Reconstruct KC vectors/drive from linked
@@ -760,6 +775,17 @@ call data is error/inconclusive, never a fabricated scientific negative. This is
 a design bound, not measured capacity. Test the prefix/seal grid component
 directly; public sealed-only freezing and arithmetic-fixture migration stay in
 7B4f with selected evidence from d/e. Do not fabricate contexts/frozen objects.
+
+- [x] c.1 capture/declarations/grammar: independent spec/quality review without
+  Critical/Important/Minor findings. Worker focus 462 passed, one sandbox junction
+  skip in 277.75 s. Root ordinary acceptance **1,693 passed, four declared opt-in
+  skips in 1,119.95 s**, no failures/errors; compiler and junction tests passed.
+  Three actual fullgraph cases passed separately in **18.79 s**, without skips.
+  The ordinary skips are all8 and those graph cases; no fresh all8, complete native
+  grid, formal qualification or capacity claim. Frozen reviewed hashes matched.
+- [ ] c.2a compact producer arithmetic and independent numerical regression review.
+- [ ] c.2b authenticated two-pass reconstruction and genuine prefix/seal tests.
+  Parent c/cap activation and public freeze integration remain unfinished.
 
 **7B4d — caller-owned selected native execution.** Own `assay.py`, qualification
 integration and producer tests. Extract `_produce_cohorts(engine_factory,

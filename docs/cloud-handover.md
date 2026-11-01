@@ -49,6 +49,10 @@ orienting the next session; they do not replace missing native evidence files.
   without anchors; confirmation/pilot retain their prior zero/one factory policy.
   Engine-free consumers receive independent decoded copies. This authenticates
   maps and existing black replays, not upstream training or scientific support.
+- Exact grid occurrence/observation bindings, actual per-role acquisition clocks,
+  explicit aligned schedules and incremental failed-route prefixes. Structural
+  recorder/schema checks do not authenticate metrics or scientific ownership;
+  engine-free reconstruction remains the next task.
 - All eight controlled cohorts are produced in one authentic tiny-native pilot:
   40 trainings, 24 interventions, 768 responses, 128 anchors, 67 checkpoints,
   14,048 events. It remains **unsupported with 136 negative gates**; complete
@@ -131,6 +135,30 @@ Context snapshot model-source identity:
 The schema and checkpoint codec hashes are unchanged from Task7B4a. Actual
 grid reconstruction, selected evidence and public freeze integration remain open.
 
+Task7B4c.1's later grid-capture snapshot passed independent spec/quality review
+without Critical, Important or Minor findings. Root ordinary Windows acceptance:
+**1,693 passed, four declared opt-in skips in 1,119.95 s**, no failures/errors.
+The three actual MaleCNS tests passed separately in **18.79 s**, without skips;
+ordinary skips are those graph cases and the all-eight matrix. That matrix was
+not repeated for this capture slice; its Task8 evidence remains historical.
+The ordinary run also passed the compiler and Windows junction tests. The
+worker's earlier focused sandbox run had one junction-permission skip, which
+does not replace the later host result. Reviewed file bytes matched after tests.
+
+Capture now links actual checkpoint names/hashes/origins/sequences/ticks and all
+completed raw calls, including black intervals, across partial failed routes.
+All four acquisitions explicitly use aligned control schedules and record their
+own association clocks. No grid metric reconstruction, upstream training replay,
+successful qualification, production config or capacity approval follows.
+
+Capture snapshot model-source identity:
+`ddeae343045809654511dc5f1558739c9e4b09d301be13a2456e62bbadeb8dc0`.
+Schema SHA256:
+`c56a64f91bf08b2f3c379a4720d4be3a5c2d1743c1c09394d2483f23d61af115`.
+Closed future integration roles enumerate 4850 branches, 1602 checkpoints and
+8099 relevant events, correcting the unproved 8064 estimate. Operational branch
+cap remains 4096; actual selected/replay conformance and capacity are unfinished.
+
 ## Actual next work
 
 Use these live TODOs together with the plan; do not restart historical completed
@@ -156,8 +184,12 @@ RED/GREEN steps because an old procedural checkbox is unchecked.
   ordinary acceptance and separate actual fullgraph tests.
 - [x] Complete Task7B4b's verifier-issued map context, object-bound native proof,
   current-source checks, independent review and real-MaleCNS compatibility tests.
-- [ ] Task7B4c.1: exact grid bindings, declarations, multiple failed-T prefixes and
-  closed grammar. Task7B4c.2: authenticated, bounded grid metric reconstruction.
+- [x] Task7B4c.1: exact grid bindings, declarations, multiple failed-T prefixes,
+  closed intended grammar, independent review and ordinary/scoped graph acceptance.
+- [ ] Task7B4c.2a: extract compact pure arithmetic actually used by the producer;
+  preserve native-valid results, float32 semantics and deterministic selection.
+- [ ] Task7B4c.2b: implement authenticated bounded two-pass grid reconstruction,
+  checking all candidates and available prefixes without inventing missing data.
   Public qualification/freeze integration still belongs to Task7B4f.
 - [ ] Finish source-bearing tasks, independently review and run full acceptance;
   only then perform Task 9 source freeze and formal fullgraph qualification.

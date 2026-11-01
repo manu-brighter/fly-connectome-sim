@@ -12,6 +12,7 @@ import numpy as np
 
 from .engine import FlyEngine, _rgb_input_sha256
 from .experiment.qualification import (
+    CONFIRMATION_SEEDS,
     CURRENT_MV,
     GRID,
     PULSE_DURATION_MS,
@@ -35,12 +36,25 @@ def _qualification_metadata(identity: dict) -> dict:
         all_hashes.update(frames.values())
     black = _rgb_input_sha256(np.zeros((32, 32, 3), dtype=np.uint8))
     all_hashes.add(black)
+    confirmation_inputs = {
+        str(seed): {**{name: _rgb_input_sha256(AssayStimuli(seed, "confirmation").frame(name))
+                      for name in ("A", "B", "C")}, "black": black}
+        for seed in CONFIRMATION_SEEDS
+    }
+    from .experiment.analysis import AGGREGATION, QUALIFICATION_VERSION
+
     return {
         "engine_identity": identity,
         "protocol_version": "qualification/v1",
         "stimulus_version": "associative-stimuli/v1",
         "family": "qualification",
         "seeds": list(QUALIFICATION_SEEDS),
+        "qualification_version": QUALIFICATION_VERSION,
+        "aggregation": AGGREGATION,
+        "exclusions": [],
+        "mbon11_population_size": len(identity["neural_groups"]["mbon11"]),
+        "candidate_identity": "kc-mbon11-ppl101/v1",
+        "confirmation_input_sha256": confirmation_inputs,
         "configuration": {
             "pulse_duration_ms": PULSE_DURATION_MS,
             "external_dan_current_mv": CURRENT_MV,

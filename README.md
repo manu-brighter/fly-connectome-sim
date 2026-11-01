@@ -30,7 +30,7 @@ left/right preference.
 | Data | Checksum-locked MaleCNS v1.0 sources; prepared graph verified at **166,700 cells** and **25,582,938 directed edges** | Formal assay qualification and confirmation on the full graph |
 | Native model | C++17 kernel; explicit PAM11/PPL101 stimulation; KC, MBON07, MBON11 and DNa02 telemetry | Physiological validity beyond the declared model |
 | Experiment state | Checkpoint restore, complete-state hashes, reset determinism, candidate-memory interventions and authenticated native map/schema context | A qualified production frozen configuration |
-| Assay evidence | Complete eight-cohort tiny-native production, independent A/B/C trials, two retention times, provenance-bound reports and native replay verification | Selected qualification evidence, fullgraph held-out confirmation and the `assay` CLI |
+| Assay evidence | Complete eight-cohort tiny-native production, independent A/B/C trials, exact grid checkpoint/observation capture, two retention times, provenance-bound reports and native replay verification | Authenticated grid metric reconstruction, selected qualification evidence, fullgraph held-out confirmation and the `assay` CLI |
 | Resource pilots | Fullgraph components and trained 10-/70-second one-anchor pilots with isolated native replay | Complete grid/assay capacity and a tested cloud/Linux environment |
 | Product | Optional, separately labelled motor-only readout | Motor validation, offline 3D replay and LLM event planning |
 

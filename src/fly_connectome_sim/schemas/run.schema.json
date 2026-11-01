@@ -69,6 +69,284 @@
     }}}
   }],
   "$defs": {
+    "qualification_grid_failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "stage", "condition", "stimulus", "retention_ms", "reason"],
+      "properties": {
+        "scope": {"enum": ["base", "retention"]},
+        "stage": {"enum": ["pre", "pre_replay", "training", "base_validation", "retention_timing", "retention", "post", "measurement"]},
+        "condition": {"enum": ["paired", "matched_reference", "frozen_plasticity", "paired_replay", null]},
+        "stimulus": {"enum": ["A", "B", "C", null]},
+        "retention_ms": {"type": ["integer", "null"], "enum": [10000, 20000, 30000, 60000, null]},
+        "reason": {"type": "string", "minLength": 1, "pattern": "\\S"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"scope": {"const": "base"}}},
+          "then": {
+            "properties": {"stage": {"enum": ["pre", "pre_replay", "training", "base_validation"]}, "retention_ms": {"type": "null"}},
+            "if": {"properties": {"stage": {"const": "training"}}},
+            "then": {"properties": {"condition": {"enum": ["paired", "matched_reference", "frozen_plasticity", "paired_replay"]}}},
+            "else": {"properties": {"condition": {"type": "null"}}}
+          },
+          "else": {
+            "properties": {
+              "stage": {"enum": ["retention_timing", "retention", "post", "measurement"]},
+              "retention_ms": {"type": "integer", "enum": [10000, 20000, 30000, 60000]}
+            },
+            "if": {"properties": {"stage": {"enum": ["retention", "post"]}}},
+            "then": {"properties": {"condition": {"enum": ["paired", "frozen_plasticity", "matched_reference"]}}},
+            "else": {"properties": {"condition": {"type": "null"}}}
+          }
+        }
+      ]
+    },
+    "grid_retained_occurrences": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "paired": {"$ref": "#/$defs/source_occurrence"},
+        "frozen_plasticity": {"$ref": "#/$defs/source_occurrence"},
+        "matched_reference": {"$ref": "#/$defs/source_occurrence"}
+      }
+    },
+    "grid_retention_sequences": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "paired": {"type": "array", "maxItems": 120, "uniqueItems": true, "items": {"$ref": "#/$defs/tick"}},
+        "frozen_plasticity": {"type": "array", "maxItems": 120, "uniqueItems": true, "items": {"$ref": "#/$defs/tick"}},
+        "matched_reference": {"type": "array", "maxItems": 120, "uniqueItems": true, "items": {"$ref": "#/$defs/tick"}}
+      }
+    },
+    "grid_post_sequences": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "paired": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {
+            "A": {"type": "array", "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/tick"}},
+            "B": {"type": "array", "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/tick"}},
+            "C": {"type": "array", "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/tick"}}
+          }
+        },
+        "frozen_plasticity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {
+            "A": {"type": "array", "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/tick"}},
+            "B": {"type": "array", "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/tick"}}
+          }
+        },
+        "matched_reference": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {
+            "A": {"type": "array", "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/tick"}},
+            "B": {"type": "array", "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/tick"}}
+          }
+        }
+      }
+    },
+    "qualification_grid_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "binding_version",
+        "grid_evidence_id",
+        "grid_index",
+        "seed",
+        "paired_identity",
+        "presentation_order",
+        "baseline_occurrence",
+        "training_occurrences",
+        "retained_occurrences",
+        "observation_sequences",
+        "failures",
+        "sequence",
+        "type",
+        "branch_id",
+        "sim_ms",
+        "run_metadata_sha256",
+        "previous_scientific_sha256",
+        "scientific_sha256"
+      ],
+      "properties": {
+        "binding_version": {"const": "qualification-grid-binding/v1"},
+        "grid_evidence_id": {"type": "string", "pattern": "^grid/(?:[0-9]|1[01])/(?:11|23)/[AB]/(?:AB|BA)$"},
+        "grid_index": {"type": "integer", "minimum": 0, "maximum": 11},
+        "seed": {"type": "integer", "enum": [11, 23]},
+        "paired_identity": {"enum": ["A", "B"]},
+        "presentation_order": {"enum": ["AB", "BA"]},
+        "baseline_occurrence": {"$ref": "#/$defs/source_occurrence"},
+        "training_occurrences": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {
+            "paired": {"$ref": "#/$defs/source_occurrence"},
+            "matched_reference": {"$ref": "#/$defs/source_occurrence"},
+            "frozen_plasticity": {"$ref": "#/$defs/source_occurrence"},
+            "paired_replay": {"$ref": "#/$defs/source_occurrence"}
+          }
+        },
+        "retained_occurrences": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {
+            "10000": {"$ref": "#/$defs/grid_retained_occurrences"},
+            "20000": {"$ref": "#/$defs/grid_retained_occurrences"},
+            "30000": {"$ref": "#/$defs/grid_retained_occurrences"},
+            "60000": {"$ref": "#/$defs/grid_retained_occurrences"}
+          }
+        },
+        "observation_sequences": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["pre", "training", "retention", "post"],
+          "properties": {
+            "pre": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [],
+              "properties": {
+                "A": {"type": "array", "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/tick"}},
+                "B": {"type": "array", "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/tick"}},
+                "C": {"type": "array", "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/tick"}}
+              }
+            },
+            "pre_replay": {"type": "array", "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/tick"}},
+            "training": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [],
+              "properties": {
+                "paired": {"type": "array", "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/tick"}},
+                "matched_reference": {"type": "array", "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/tick"}},
+                "frozen_plasticity": {"type": "array", "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/tick"}},
+                "paired_replay": {"type": "array", "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/tick"}}
+              }
+            },
+            "retention": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [],
+              "properties": {
+                "10000": {"$ref": "#/$defs/grid_retention_sequences"},
+                "20000": {"$ref": "#/$defs/grid_retention_sequences"},
+                "30000": {"$ref": "#/$defs/grid_retention_sequences"},
+                "60000": {"$ref": "#/$defs/grid_retention_sequences"}
+              }
+            },
+            "post": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [],
+              "properties": {
+                "10000": {"$ref": "#/$defs/grid_post_sequences"},
+                "20000": {"$ref": "#/$defs/grid_post_sequences"},
+                "30000": {"$ref": "#/$defs/grid_post_sequences"},
+                "60000": {"$ref": "#/$defs/grid_post_sequences"}
+              }
+            }
+          }
+        },
+        "failures": {
+          "oneOf": [
+            {"type": "array", "maxItems": 0},
+            {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 1,
+              "items": {"allOf": [{"$ref": "#/$defs/qualification_grid_failure"}, {"properties": {"scope": {"const": "base"}}}]}
+            },
+            {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 4,
+              "items": {"allOf": [{"$ref": "#/$defs/qualification_grid_failure"}, {"properties": {"scope": {"const": "retention"}}}]}
+            }
+          ]
+        },
+        "sequence": {"type": "integer", "minimum": 0},
+        "type": {"const": "qualification_grid_binding"},
+        "branch_id": {"type": "string", "minLength": 1},
+        "sim_ms": {"type": "number", "minimum": 0},
+        "run_metadata_sha256": {"$ref": "#/$defs/digest"},
+        "previous_scientific_sha256": {"$ref": "#/$defs/digest"},
+        "scientific_sha256": {"$ref": "#/$defs/digest"},
+        "parent_branch_id": {"type": "string", "minLength": 1},
+        "parent_checkpoint_sha256": {"$ref": "#/$defs/digest"},
+        "parent_checkpoint_name": {"$ref": "#/$defs/source_occurrence/properties/checkpoint_name"},
+        "parent_checkpoint_sequence": {"$ref": "#/$defs/tick"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"paired_identity": {"const": "A"}}},
+          "then": {
+            "properties": {
+              "observation_sequences": {
+                "properties": {
+                  "post": {
+                    "properties": {
+                      "10000": {
+                        "properties": {"frozen_plasticity": {"not": {"required": ["B"]}}, "matched_reference": {"not": {"required": ["B"]}}}
+                      },
+                      "20000": {
+                        "properties": {"frozen_plasticity": {"not": {"required": ["B"]}}, "matched_reference": {"not": {"required": ["B"]}}}
+                      },
+                      "30000": {
+                        "properties": {"frozen_plasticity": {"not": {"required": ["B"]}}, "matched_reference": {"not": {"required": ["B"]}}}
+                      },
+                      "60000": {
+                        "properties": {"frozen_plasticity": {"not": {"required": ["B"]}}, "matched_reference": {"not": {"required": ["B"]}}}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"paired_identity": {"const": "B"}}},
+          "then": {
+            "properties": {
+              "observation_sequences": {
+                "properties": {
+                  "post": {
+                    "properties": {
+                      "10000": {
+                        "properties": {"frozen_plasticity": {"not": {"required": ["A"]}}, "matched_reference": {"not": {"required": ["A"]}}}
+                      },
+                      "20000": {
+                        "properties": {"frozen_plasticity": {"not": {"required": ["A"]}}, "matched_reference": {"not": {"required": ["A"]}}}
+                      },
+                      "30000": {
+                        "properties": {"frozen_plasticity": {"not": {"required": ["A"]}}, "matched_reference": {"not": {"required": ["A"]}}}
+                      },
+                      "60000": {
+                        "properties": {"frozen_plasticity": {"not": {"required": ["A"]}}, "matched_reference": {"not": {"required": ["A"]}}}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
     "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "tick": {"type": "integer", "minimum": 0, "maximum": 9223372036854775789},
     "identifier": {"type": "string", "minLength": 1},
@@ -295,7 +573,7 @@
       },
       "additionalProperties": true,
       "not": {"required": ["parent_checkpoint_sha256", "parent_state_anchor_sha256"]},
-      "allOf": [{
+      "allOf": [{"if": {"properties": {"type": {"const": "qualification_grid_binding"}}, "required": ["type"]}, "then": {"$ref": "#/$defs/qualification_grid_binding"}}, {
         "if": {"properties": {"type": {}}, "required": ["parent_state_anchor_sha256"]},
         "then": {"not": {"anyOf": [
             {"required": ["parent_checkpoint_sha256"]}, {"required": ["parent_checkpoint_name"]},

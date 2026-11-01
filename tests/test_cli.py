@@ -8,6 +8,27 @@ from fly_connectome_sim.cli import main
 from fly_connectome_sim.experiment.recorder import verify_run
 
 
+def test_qualification_metadata_declares_real_population_and_heldout_pixels():
+    from fly_connectome_sim.cli import _qualification_metadata
+    from fly_connectome_sim.engine import _rgb_input_sha256
+    from fly_connectome_sim.experiment.stimuli import AssayStimuli
+    import numpy as np
+
+    identity = {"version": "tiny/v1", "neural_groups": {"mbon11": [8, 9]}}
+    metadata = _qualification_metadata(identity)
+    assert metadata["qualification_version"] == "mbon11-qualification/v1"
+    assert metadata["aggregation"] == "raw-bin-mean-rate/v1"
+    assert metadata["exclusions"] == []
+    assert metadata["mbon11_population_size"] == 2
+    assert metadata["candidate_identity"] == "kc-mbon11-ppl101/v1"
+    black = _rgb_input_sha256(np.zeros((32, 32, 3), dtype=np.uint8))
+    assert metadata["confirmation_input_sha256"] == {
+        str(seed): {**{name: _rgb_input_sha256(AssayStimuli(seed, "confirmation").frame(name))
+                      for name in ("A", "B", "C")}, "black": black}
+        for seed in (101, 113)
+    }
+
+
 def test_verify_run_cli_fails_closed(tmp_path, capsys):
     assert main(["verify-run", str(tmp_path / "missing")]) != 0
     output = capsys.readouterr()
@@ -20,7 +41,7 @@ def test_qualify_cli_uses_fixed_declaration_and_refuses_overwrite(tmp_path, monk
 
     class FakeEngine:
         def identity(self):
-            return {"version": "tiny/v1", "sha256": "tiny-engine"}
+            return {"version": "tiny/v1", "sha256": "tiny-engine", "neural_groups": {"mbon11": [8]}}
 
     def fake_qualify(factory, recorder, *, seeds, family):
         assert seeds == (11, 23) and family == "qualification"

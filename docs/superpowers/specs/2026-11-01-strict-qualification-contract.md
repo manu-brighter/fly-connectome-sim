@@ -173,9 +173,15 @@ reject orphans and drain the whole stream rather than hiding discarded data.
 Conservative no-skip accounting, not measured execution: grid branches
 `12*8*(4+4+4*(3+5))=3840`, selected600, response replays408, shared2: total4850.
 With one shared baseline/before occurrence and final checkpoint, the snapshot
-bound is1602; conservative relevant-event accounting is8064. Raw observation
-bytes/counts require separate accounting. Tests must enumerate the actual grammar
-and fail closed if these bounds or completeness assumptions change.
+bound is 1602. Closed role enumeration corrects the earlier unproved 8064 estimate
+to **8099 relevant events**: 4848 first-branch events, 1602 checkpoints, 96 grid
+bindings, 144 points, 40 trainings, 24 interventions, 128 anchors, 768 responses,
+408 response-repeat diagnostics, 40 derived control summaries and one terminal.
+The shared baseline/summary first events are already counted. Raw observation
+bytes/counts require separate accounting. These are intended integration roles;
+the capture-only implementation leaves the operational 4096 branch cap unchanged.
+Selected production must prove conformance before qualification-only 5120 is
+enabled. Tests must fail closed if these bounds or completeness assumptions change.
 
 Measure the integrated grid path with its actual diagnostic flags, snapshot I/O,
 archive reduction and both native verifications before formal source freeze.

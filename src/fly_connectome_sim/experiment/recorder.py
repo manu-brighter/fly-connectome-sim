@@ -249,6 +249,125 @@ def _check_qualification_result(event: dict, metadata: dict) -> None:
         raise RunArtifactError("Unsupported qualification cannot have a selection")
 
 
+def _check_grid_binding(event: dict, checkpoints: dict, seen: set[str], count: int) -> str:
+    """Structural/prior-occurrence intake; scientific ownership belongs to grid reduction."""
+    fields = {"binding_version", "grid_evidence_id", "grid_index", "seed", "paired_identity",
+              "presentation_order", "baseline_occurrence", "training_occurrences",
+              "retained_occurrences", "observation_sequences", "failures"}
+    framing = OWNED | {"type", "branch_id", "sim_ms", "parent_branch_id",
+                       "parent_checkpoint_sha256", "parent_checkpoint_name", "parent_checkpoint_sequence"}
+    training = {"paired", "matched_reference", "frozen_plasticity", "paired_replay"}
+    retained = training - {"paired_replay"}
+    times = {"10000", "20000", "30000", "60000"}
+
+    def invalid():
+        raise RunArtifactError("Invalid qualification grid binding")
+
+    def mapping(value, keys):
+        if not isinstance(value, dict) or not value.keys() <= keys:
+            invalid()
+
+    def occurrence(value):
+        required = {"checkpoint_name", "checkpoint_sha256", "origin_branch_id",
+                    "checkpoint_sequence", "sim_tick"}
+        if not isinstance(value, dict) or value.keys() != required:
+            invalid()
+        name = _safe_name(value["checkpoint_name"])
+        data = checkpoints.get(name)
+        if type(value["checkpoint_sequence"]) is not int or not 0 <= value["checkpoint_sequence"] < count \
+                or type(value["sim_tick"]) is not int or not 0 <= value["sim_tick"] <= 9223372036854775789 \
+                or name not in seen or data is None \
+                or value["checkpoint_sha256"] != data["sha256"] \
+                or value["origin_branch_id"] != data["origin_branch_id"] \
+                or value["checkpoint_sequence"] != data["checkpoint_sequence"]:
+            invalid()
+        from .replay import _clock
+        try:
+            _clock(data["sim_ms"], value["sim_tick"])
+        except ValueError:
+            invalid()
+        if "sim_tick" in data and data["sim_tick"] != value["sim_tick"]:
+            invalid()
+
+    def sequences(value, limit):
+        if not isinstance(value, list) or len(value) > limit \
+                or any(type(item) is not int or not 0 <= item < count for item in value) \
+                or any(a >= b for a, b in zip(value, value[1:])):
+            invalid()
+
+    if not fields <= event.keys() or not event.keys() <= fields | framing \
+            or event["binding_version"] != "qualification-grid-binding/v1" \
+            or type(event["grid_index"]) is not int or not 0 <= event["grid_index"] < 12 \
+            or type(event["seed"]) is not int or event["seed"] not in (11, 23) \
+            or event["paired_identity"] not in ("A", "B") \
+            or event["presentation_order"] not in ("AB", "BA"):
+        invalid()
+    identifier = f"grid/{event['grid_index']}/{event['seed']}/{event['paired_identity']}/{event['presentation_order']}"
+    if event["grid_evidence_id"] != identifier:
+        invalid()
+    occurrence(event["baseline_occurrence"])
+    mapping(event["training_occurrences"], training)
+    for value in event["training_occurrences"].values():
+        occurrence(value)
+    mapping(event["retained_occurrences"], times)
+    for roles in event["retained_occurrences"].values():
+        mapping(roles, retained)
+        for value in roles.values():
+            occurrence(value)
+    observations = event["observation_sequences"]
+    mapping(observations, {"pre", "pre_replay", "training", "retention", "post"})
+    if not {"pre", "training", "retention", "post"} <= observations.keys():
+        invalid()
+    mapping(observations["pre"], {"A", "B", "C"})
+    for value in observations["pre"].values():
+        sequences(value, 4)
+    if "pre_replay" in observations:
+        sequences(observations["pre_replay"], 4)
+    mapping(observations["training"], training)
+    for value in observations["training"].values():
+        sequences(value, 64)
+    mapping(observations["retention"], times)
+    for roles in observations["retention"].values():
+        mapping(roles, retained)
+        for value in roles.values():
+            sequences(value, 120)
+    mapping(observations["post"], times)
+    for roles in observations["post"].values():
+        mapping(roles, retained)
+        for role, trials in roles.items():
+            mapping(trials, {"A", "B", "C"} if role == "paired" else {event["paired_identity"]})
+            for value in trials.values():
+                sequences(value, 4)
+    failures = event["failures"]
+    if not isinstance(failures, list) or len(failures) > 4:
+        invalid()
+    previous_t = 0
+    for failure in failures:
+        if not isinstance(failure, dict) or failure.keys() != {
+            "scope", "stage", "condition", "stimulus", "retention_ms", "reason",
+        } or not isinstance(failure["reason"], str) or not failure["reason"].strip() \
+                or failure["stimulus"] not in ("A", "B", "C", None):
+            invalid()
+        stage, condition = failure["stage"], failure["condition"]
+        if type(stage) is not str or (condition is not None and type(condition) is not str):
+            invalid()
+        if failure["scope"] == "base":
+            if len(failures) != 1 or failure["retention_ms"] is not None \
+                    or stage not in {"pre", "pre_replay", "training", "base_validation"} \
+                    or (condition not in training if stage == "training" else condition is not None):
+                invalid()
+        elif failure["scope"] == "retention":
+            value = failure["retention_ms"]
+            if type(value) is not int or str(value) not in times or value <= previous_t \
+                    or stage not in {"retention_timing", "retention", "post", "measurement"} \
+                    or (condition not in retained if stage in {"retention", "post"} else condition is not None):
+                invalid()
+            previous_t = value
+        else:
+            invalid()
+    return identifier
+
+
 def _check_assay_result(event: dict, metadata: dict) -> None:
     required = {"result_version", "analysis_version", "frozen_config_sha256",
                 "status", "reasons", "report", "report_sha256",
@@ -292,6 +411,7 @@ class _Chain:
         self.count = 0
         self.previous = GENESIS
         self.result_seen = False
+        self.grid_ids: set[str] = set()
         self.metadata_digest = _metadata_digest(run_kind, root, metadata)
 
     def _parent(self, event: dict) -> tuple | None:
@@ -394,6 +514,13 @@ class _Chain:
             raise RunArtifactError("Qualification result in a non-qualification run")
         if event["type"] == "assay_result" and self.run_kind != "confirmation":
             raise RunArtifactError("Assay result in a non-confirmation run")
+        grid_id = None
+        if event["type"] == "qualification_grid_binding":
+            if self.run_kind != "qualification":
+                raise RunArtifactError("Grid binding in a non-qualification run")
+            grid_id = _check_grid_binding(event, self.checkpoints, self.seen_checkpoints, self.count)
+            if grid_id in self.grid_ids or len(self.grid_ids) >= 96:
+                raise RunArtifactError("Duplicate or excessive qualification grid binding")
         branch = event["branch_id"]
         clock = event.get("sim_ms")
         if isinstance(clock, bool) or not isinstance(clock, (int, float)) or clock < 0:
@@ -484,6 +611,8 @@ class _Chain:
         if self.projection is not None:
             self.projection.accept(event)
         self.branches[branch] = branch_state
+        if grid_id is not None:
+            self.grid_ids.add(grid_id)
         if checkpoint_name is not None:
             self.checkpoints[checkpoint_name]["sim_ms"] = wire_clock_value
             self.checkpoints[checkpoint_name]["checkpoint_sequence"] = self.count
@@ -501,6 +630,11 @@ class _Chain:
 
 class RunRecorder:
     """Own one new directory; append is flushed per event, fsync at flush/close."""
+
+    @property
+    def next_sequence(self) -> int:
+        """Next global append position under this recorder's single writer."""
+        return self._chain.count
 
     def __init__(self, path: str | Path, *, run_kind: str, metadata: dict,
                  root_branch_id: str):

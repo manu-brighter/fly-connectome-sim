@@ -28,6 +28,286 @@ from fly_connectome_sim.experiment.qualification import (
     qualify,
 )
 from fly_connectome_sim.experiment.stimuli import AssayStimuli
+from replay_helpers import engine_factory
+
+
+def test_native_checkpoint_capture_uses_global_position_and_survives_scratch_reuse(engine_factory, tmp_path):
+    """Real bounded native capture, not complete grid qualification."""
+    from fly_connectome_sim.cli import _qualification_metadata
+    from fly_connectome_sim.experiment.recorder import RunRecorder
+
+    engine = engine_factory()
+    recorder = RunRecorder(tmp_path / "native-capture", run_kind="qualification",
+                           metadata=_qualification_metadata(engine.identity()),
+                           root_branch_id="qualification/baseline")
+    recorder.append({"type": "prefix", "branch_id": "qualification/baseline", "sim_ms": 0.0})
+    run = _Run(engine, recorder, engine.identity())
+    path = tmp_path / "baseline.npz"
+    before = run.checkpoint(path)
+    assert before == {"checkpoint_name": "brain-before.npz",
+                      "checkpoint_sha256": run.checkpoints[path][1],
+                      "origin_branch_id": "qualification/baseline",
+                      "checkpoint_sequence": 1, "sim_tick": 0}
+    run.observe(np.zeros((32, 32, 3), dtype=np.uint8), 0.1)
+    after = run.checkpoint(path)
+    assert after["checkpoint_sequence"] == 3
+    assert after["sim_tick"] == 1
+    assert before["checkpoint_name"] == "brain-before.npz" and before["sim_tick"] == 0
+    events = list(recorder.validate_prefix().iter_events())
+    assert events[3]["sim_tick"] == 1
+    assert events[2]["start_tick"] == 0 and events[2]["end_tick"] == 1
+    recorder._stream.close()
+
+
+def test_closed_future_qualification_role_grammar_is_finite_and_selected_t_specific():
+    import fly_connectome_sim.experiment.qualification as module
+
+    roles = module._qualification_role_slots(10000)
+    assert len(roles["branches"]) == 4850
+    assert len(roles["checkpoints"]) == 1602
+    # Explicit restore-first/summary accounting corrects the earlier proposed 8064.
+    assert sum(roles["relevant_events"].values()) == 8099
+    assert roles["branch_categories"] == {"grid": 3840, "selected": 600, "replay": 408, "shared": 2}
+    assert roles["relevant_events"] == {
+        "branch_first": 4848, "checkpoint": 1602, "grid_binding": 96, "point": 144,
+        "training": 40, "intervention": 24, "anchor": 128, "response": 768,
+        "response_replay": 408, "control_summary": 40, "terminal": 1,
+    }
+    assert roles["raw_observation_upper_bound"] == 100108
+    assert ("grid", 0, 11, "A", "AB", "post", 10000, "paired", "C") in roles["branches"]
+    assert ("grid", 12, 11, "A", "AB", "training", "paired") not in roles["branches"]
+    assert ("grid", 0, 11, "A", "AB", "retention", 10000, "paired_replay") not in roles["branches"]
+    assert ("selected", 11, "A", "AB", "post", "paired", 70000, "A") in roles["branches"]
+    assert ("selected", 11, "A", "AB", "post", "paired", 20000, "A") not in roles["branches"]
+    assert roles["branches"] != module._qualification_role_slots(20000)["branches"]
+    for invalid in (True, 15000, "10000", None):
+        with pytest.raises(ValueError):
+            module._qualification_role_slots(invalid)
+
+
+@pytest.mark.parametrize("index,paired,t0,end", [(0, "A", 10900, 11100), (5, "B", 10700, 20600)])
+def test_native_grid_unit_captures_all_roles_and_actual_calls(engine_factory, tmp_path, index, paired, t0, end):
+    """One real native unit at one T; no full qualification or native replay claim."""
+    import fly_connectome_sim.experiment.qualification as module
+    from fly_connectome_sim.cli import _qualification_metadata
+    from fly_connectome_sim.experiment.recorder import RunRecorder
+
+    engine = engine_factory()
+    recorder = RunRecorder(tmp_path / "native-unit", run_kind="qualification",
+                           metadata=_qualification_metadata(engine.identity()),
+                           root_branch_id="qualification/baseline")
+    recorder.append({"type": "prefix", "branch_id": "qualification/baseline", "sim_ms": 0.0})
+    run = _Run(engine, recorder, engine.identity())
+    baseline = tmp_path / "baseline.npz"
+    run.checkpoint(baseline)
+    frames = {name: AssayStimuli(11, "qualification").frame(name) for name in ("A", "B", "C")}
+    run.begin_grid(baseline, index, 11, paired, "AB")
+    base = module._replicate_base(run, tmp_path, baseline, GRID[index], 11, paired, "AB", frames)
+    module._retained_tests(run, tmp_path, base, GRID[index], frames, paired, 10000)
+    run.finish_grid(baseline)
+    events = list(recorder.validate_prefix().iter_events())
+    binding = events[-1]
+    assert binding["grid_evidence_id"] == f"grid/{index}/11/{paired}/AB"
+    assert binding["binding_version"] == "qualification-grid-binding/v1"
+    assert binding["baseline_occurrence"]["checkpoint_sequence"] == 1
+    assert binding["failures"] == []
+    assert set(binding["training_occurrences"]) == {"paired", "matched_reference", "frozen_plasticity", "paired_replay"}
+    assert set(binding["retained_occurrences"]["10000"]) == {"paired", "frozen_plasticity", "matched_reference"}
+    observations = binding["observation_sequences"]
+    assert set(observations["pre"]) == {"A", "B", "C"}
+    assert len(observations["pre_replay"]) == 3
+    assert observations["post"]["10000"].keys() == {"paired", "frozen_plasticity", "matched_reference"}
+    assert set(observations["post"]["10000"]["paired"]) == {"A", "B", "C"}
+    assert set(observations["post"]["10000"]["frozen_plasticity"]) == {paired}
+    assert set(observations["post"]["10000"]["matched_reference"]) == {paired}
+
+    def sequences(value):
+        if isinstance(value, list):
+            return value
+        return [sequence for item in value.values() for sequence in sequences(item)]
+
+    captured = sequences(observations)
+    assert len(captured) == len(set(captured))
+    assert sorted(captured) == [item["sequence"] for item in events if item["type"] == "qualification_observation"]
+    for occurrence in [binding["baseline_occurrence"], *binding["training_occurrences"].values(),
+                       *binding["retained_occurrences"]["10000"].values()]:
+        recorded = events[occurrence["checkpoint_sequence"]]
+        assert recorded["checkpoint_name"] == occurrence["checkpoint_name"]
+        assert recorded["branch_id"] == occurrence["origin_branch_id"]
+        assert recorded["sim_tick"] == occurrence["sim_tick"]
+    assert base["training_t0_ms"] == t0 and base["training_end_ms"] == end
+    assert {item["sim_tick"] for item in binding["training_occurrences"].values()} == {end * 10}
+    for condition, occurrence in binding["training_occurrences"].items():
+        checkpoint_event = events[occurrence["checkpoint_sequence"]]
+        assert checkpoint_event["training_start_tick"] == 0
+        expected_t0 = 106000 if index == 5 and condition == "matched_reference" else t0 * 10
+        assert checkpoint_event["association_t0_tick"] == expected_t0
+        assert checkpoint_event["training_end_tick"] == end * 10
+    if index == 5:
+        assert observations["retention"]["10000"] == {
+            "paired": [], "frozen_plasticity": [], "matched_reference": [],
+        }
+        assert {item["sim_tick"] for item in binding["retained_occurrences"]["10000"].values()} == {206000}
+    assert all(item["duration_ms"] <= 500 for item in events if item["type"] == "qualification_observation")
+    recorder._stream.close()
+
+
+def test_synthetic_orchestration_binding_preserves_multiple_t_failures_and_measured_prefix(tmp_path, monkeypatch):
+    """Fault-injected mechanics only; synthetic telemetry cannot issue native context."""
+    import fly_connectome_sim.experiment.qualification as module
+    from fly_connectome_sim.experiment.recorder import RunRecorder
+
+    monkeypatch.setattr(module, "GRID", GRID[:1])
+    engine = TinyEngine(fault="no_learning")
+    metadata = {"engine_identity": engine.identity(), "protocol_version": "qualification/v1",
+                "stimulus_version": "associative-stimuli/v1", "family": "qualification",
+                "seeds": [11, 23], "factors": {}, "input_sha256": ["a" * 64]}
+    recorder = RunRecorder(tmp_path / "partial-roles", run_kind="qualification", metadata=metadata,
+                           root_branch_id="qualification/baseline")
+    observe = module._Run.observe
+    calls = {}
+
+    def failing(run, *args, **kwargs):
+        branch = run.branch_id
+        calls[branch] = calls.get(branch, 0) + 1
+        if (branch == "grid0/seed11/pairedA/orderAB/paired/T10000/test/B" and calls[branch] == 2
+                or branch == "grid0/seed11/pairedA/orderAB/frozen_plasticity/T20000/retention"):
+            # The call is never appended; only completed calls can become references.
+            run.capture_stimulus = kwargs.get("stimulus")
+            raise module._GateFailure("native data unavailable")
+        return observe(run, *args, **kwargs)
+
+    monkeypatch.setattr(module._Run, "observe", failing)
+    measurement = module._measurement
+
+    def unavailable_measurement(run, *args, **kwargs):
+        if run.grid_capture["grid_evidence_id"] == "grid/0/11/A/AB" and run.capture_retention == 30000:
+            raise module._GateFailure("measurement unavailable")
+        return measurement(run, *args, **kwargs)
+
+    monkeypatch.setattr(module, "_measurement", unavailable_measurement)
+    result = module.qualify(lambda: engine, recorder, seeds=(11, 23), family="qualification")
+    recorder.close()
+    events = list(__import__("fly_connectome_sim.experiment.recorder", fromlist=["verify_run"]).verify_run(recorder.path).iter_events())
+    bindings = [item for item in events if item["type"] == "qualification_grid_binding"]
+    assert len(bindings) == 8
+    first = bindings[0]
+    assert first["failures"] == [
+        {"scope": "retention", "stage": "post", "condition": "paired", "stimulus": "B",
+         "retention_ms": 10000, "reason": "native data unavailable"},
+        {"scope": "retention", "stage": "retention", "condition": "frozen_plasticity", "stimulus": None,
+         "retention_ms": 20000, "reason": "native data unavailable"},
+        {"scope": "retention", "stage": "measurement", "condition": None, "stimulus": None,
+         "retention_ms": 30000, "reason": "measurement unavailable"},
+    ]
+    assert len(first["observation_sequences"]["post"]["10000"]["paired"]["B"]) == 1
+    assert set(first["retained_occurrences"]["10000"]) == {"paired"}
+    assert first["observation_sequences"]["retention"]["20000"]["frozen_plasticity"] == []
+    assert "frozen_plasticity" not in first["retained_occurrences"]["20000"]
+    assert set(first["retained_occurrences"]["60000"]) == {"paired", "frozen_plasticity", "matched_reference"}
+    for point in result.points:
+        assert point.replicates[0].grid_evidence_id == "grid/0/11/A/AB"
+    failed = result.points[0].replicates[0]
+    assert failed.pre_mbon11 == (200.0, 100.0, 50.0)
+    assert failed.post_mbon11 == (200.0, None, None)
+    assert failed.delta_hz is None
+    assert failed.state_shift == 0.0 and failed.state_replay_resolution == 0.0
+    assert failed.training_memory_w == (0.0, 0.0)
+    assert failed.matched_memory_w == (0.0, 0.0)
+    assert failed.replay_memory_w == (0.0, 0.0)
+    assert all(item["sequence"] < first["sequence"] for item in events
+               if item["type"] == "qualification_observation" and item["branch_id"].startswith("grid0/seed11/pairedA/orderAB/"))
+
+
+@pytest.mark.parametrize("failure_stage", ["pre", "pre_replay", "training", "retention_timing"])
+def test_synthetic_capture_failure_stages_omit_unentered_roles(tmp_path, failure_stage):
+    """Bounded synthetic failure mechanics; no native/qualification claim."""
+    import fly_connectome_sim.experiment.qualification as module
+    from fly_connectome_sim.experiment.recorder import RunRecorder
+
+    engine = TinyEngine()
+    metadata = {"engine_identity": engine.identity(), "protocol_version": "qualification/v1",
+                "stimulus_version": "associative-stimuli/v1", "family": "qualification",
+                "seeds": [11, 23], "factors": {}, "input_sha256": ["a" * 64]}
+    recorder = RunRecorder(tmp_path / "partial-base", run_kind="qualification", metadata=metadata,
+                           root_branch_id="qualification/baseline")
+    run = _Run(engine, recorder, engine.identity())
+    baseline = tmp_path / "baseline.npz"
+    run.checkpoint(baseline)
+    configuration = GRID[1] if failure_stage == "retention_timing" else GRID[0]
+    index = 1 if failure_stage == "retention_timing" else 0
+    run.begin_grid(baseline, index, 11, "B", "AB")
+    frames = {name: AssayStimuli(11, "qualification").frame(name) for name in ("A", "B", "C")}
+    observe = engine.observe
+    failures = {"pre": "/pre/B", "pre_replay": "/pre_replay/B", "training": "/matched_reference/training"}
+
+    def unavailable(*args, **kwargs):
+        if failure_stage in failures and run.branch_id.endswith(failures[failure_stage]):
+            raise ValueError("native nonfinite diagnostic")
+        return observe(*args, **kwargs)
+
+    engine.observe = unavailable
+    with pytest.raises(module._GateFailure) as raised:
+        base = module._replicate_base(run, tmp_path, baseline, configuration, 11, "B", "AB", frames)
+        module._retained_tests(run, tmp_path, base, configuration, frames, "B", 10000)
+    run.grid_failure(raised.value.reason)
+    run.finish_grid(baseline)
+    events = list(recorder.validate_prefix().iter_events())
+    binding = events[-1]
+    failure = binding["failures"][0]
+    assert failure["stage"] == failure_stage
+    if failure_stage == "pre":
+        assert set(binding["observation_sequences"]["pre"]) == {"A", "B"}
+        assert binding["observation_sequences"]["pre"]["B"] == []
+        assert "pre_replay" not in binding["observation_sequences"]
+    if failure_stage == "pre_replay":
+        assert binding["observation_sequences"]["pre_replay"] == []
+    if failure_stage == "training":
+        assert failure["condition"] == "matched_reference"
+        assert binding["observation_sequences"]["training"]["matched_reference"] == []
+        assert set(binding["training_occurrences"]) == {"paired"}
+    else:
+        assert failure["condition"] is None
+    assert binding["retained_occurrences"] == {}
+    assert binding["observation_sequences"]["retention"] == {}
+    if failure_stage == "retention_timing":
+        assert failure["retention_ms"] == 10000
+        assert failure["scope"] == "retention" and failure["stimulus"] is None
+        assert base["training_t0_ms"] + 10000 - 100 - base["training_end_ms"] == -100
+        assert not any("/T10000/" in item["branch_id"] for item in events)
+    recorder._stream.close()
+
+
+def test_grid_capture_propagates_failed_writer_without_binding_or_failure_measurement(tmp_path):
+    """Recorder I/O failure is operational failure, not a scientific negative."""
+    from fly_connectome_sim.experiment.recorder import RunArtifactError, RunRecorder
+    engine = TinyEngine()
+    metadata = {"engine_identity": engine.identity(), "protocol_version": "qualification/v1",
+                "stimulus_version": "associative-stimuli/v1", "family": "qualification",
+                "seeds": [11, 23], "factors": {}, "input_sha256": ["a" * 64]}
+    recorder = RunRecorder(tmp_path / "writer-failure", run_kind="qualification", metadata=metadata,
+                           root_branch_id="qualification/baseline")
+    run = _Run(engine, recorder, engine.identity())
+    baseline = tmp_path / "baseline.npz"
+    run.checkpoint(baseline)
+    run.begin_grid(baseline, 0, 11, "A", "AB")
+    run.enter_grid_role("pre", ("pre", "A"), stimulus="A")
+    stream = recorder._stream
+
+    class FailedWriter:
+        def write(self, value):
+            raise OSError("disk unavailable")
+
+    recorder._stream = FailedWriter()
+    with pytest.raises(RunArtifactError, match="Event append failed"):
+        run.observe(np.zeros((32, 32, 3), dtype=np.uint8), 100.0)
+    assert recorder._failed is True
+    assert run.grid_capture["observation_sequences"]["pre"]["A"] == []
+    assert run.grid_capture["failures"] == []
+    with pytest.raises(RunArtifactError, match="failed"):
+        run.finish_grid(baseline)
+    assert len((recorder.path / "events.jsonl").read_bytes().splitlines()) == 1
+    stream.close()
 
 
 def test_declared_grid_order_and_windows_are_fixed():
@@ -242,7 +522,7 @@ class TinyBrain:
 
 
 class TinyEngine:
-    """Small deterministic boundary with the actual telemetry/checkpoint shape."""
+    """Synthetic math/schedule double; JSON checkpoints are not native evidence."""
 
     def __init__(self, *, fault=None):
         self.brain = TinyBrain()
@@ -418,6 +698,7 @@ class PointRecorder:
 
 
 def test_qualification_runs_fixed_grid_replicates_and_freezes_selection():
+    """Synthetic selection arithmetic/orchestration only, without artifact proof."""
     engine = TinyEngine()
     recorder = PointRecorder()
 
@@ -458,14 +739,16 @@ def test_qualification_runs_fixed_grid_replicates_and_freezes_selection():
     assert first.matched_mbon07_lower_bound_hits == 0
     assert first.matched_mbon07_upper_bound_hits == 0
     assert first.matched_mbon07_bound_hit_fraction == 0.0
-    assert first.training_t0_ms == 900.0
-    assert first.test_cs_onset_ms == 10900.0
+    assert first.training_t0_ms == 10900.0
+    assert first.test_cs_onset_ms == 20900.0
     assert all(
         item.test_cs_onset_ms - item.training_t0_ms == point.retention_ms
         for point in result.points for item in point.replicates
         if item.test_cs_onset_ms is not None
     )
     assert len(recorder.points) == len(result.points)
+    assert recorder.kinds.get("qualification_grid_binding", 0) == 0
+    assert all(item.grid_evidence_id is None for point in result.points for item in point.replicates)
     assert len(result.controls) == 2 * 2 * 2 * 5
     assert all(item.elapsed_ms >= 20000.0 for item in result.controls)
     assert {item.unpaired_nearest_cs_boundary_ms for item in result.controls
@@ -519,8 +802,8 @@ def test_qualification_runs_fixed_grid_replicates_and_freezes_selection():
     paired_last = next(item for item in later.replicates
                        if (item.seed, item.paired_identity, item.presentation_order)
                        == (11, "A", "BA"))
-    assert paired_last.training_t0_ms == 600.0
-    assert paired_last.test_cs_onset_ms == 20600.0
+    assert paired_last.training_t0_ms == 10600.0
+    assert paired_last.test_cs_onset_ms == 30600.0
     observation = recorder.samples["qualification_observation"]
     assert observation["branch_id"] and observation["end_ms"] > observation["start_ms"]
     assert observation["telemetry"]["bins"][0]["group_spikes"]["mbon11"] >= 0
@@ -848,7 +1131,12 @@ def test_tiny_qualification_stream_seals_with_checkpoint_ancestry(
             if "pattern" in rule:
                 assert re.fullmatch(rule["pattern"], item[key])
             elif "$ref" in rule:
-                assert re.fullmatch("[0-9a-f]{64}", item[key])
+                if rule["$ref"] == "#/$defs/tick":
+                    assert type(item[key]) is int and 0 <= item[key] <= 9223372036854775789
+                elif rule["$ref"] == "#/$defs/source_occurrence/properties/checkpoint_name":
+                    assert re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*\.npz", item[key])
+                else:
+                    assert re.fullmatch("[0-9a-f]{64}", item[key])
     root_events = [item for item in events if item["branch_id"] == "qualification/baseline"]
     assert all("parent_checkpoint_sha256" not in item and "parent_branch_id" not in item
                for item in root_events)
