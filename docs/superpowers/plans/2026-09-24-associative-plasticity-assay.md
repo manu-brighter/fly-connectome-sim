@@ -36,8 +36,11 @@ Fresh local runtime locks pass; recorder/replay/projection baseline is
 380 passed and one permission-limited Windows junction skip (57.23 seconds).
 Task7B3k's longer-retention measurement and independent review are complete.
 Task8's motor-only implementation passed independent scoped review and complete
-opt-in acceptance, including the genuine all-factor and both fullgraph tests. The next
-source slice is the shared checkpoint reader in Task7B4a. The cloud setup item below applies
+opt-in acceptance, including the genuine all-factor and both fullgraph tests.
+Task7B4a's shared checkpoint reader is also reviewed and accepted: 1,556 passed
+with three declared opt-in skips in the ordinary suite, then both actual
+fullgraph tests passed separately. The next source slice is Task7B4b's native
+map context. The cloud setup item below applies
 only when moving to a fresh cloud checkout, not as a gate on local continuation.
 
 - [ ] Establish/verify the cloud toolchain and regenerate ignored runtime before
@@ -682,11 +685,25 @@ checkpoint tests. Produce `read_checkpoint(path, expected, schema, n)`;
 `schema` maps each array name to its exact dtype string and shape. Existing
 `load_checkpoint(path, expected, templates, n)` keeps writable-destination
 checks and delegates to that single decoder, without changing NPZ/preimages.
-- [ ] RED: read valid archives through a schema without writable live arrays;
+- [x] RED: read valid archives through a schema without writable live arrays;
   preserve rejection of malformed metadata, zip/schema/shape/dtype/finite/queue
   state and all existing destination/nonmutation behavior.
-- [ ] GREEN: factor the existing codec; run focused checkpoint guards, review
+- [x] GREEN: factor the existing codec; run focused checkpoint guards, review
   and complete ordinary acceptance before the bounded feature checkpoint.
+
+Accepted on 2026-11-01 after independent spec/quality review and two scoped fix
+rounds: the NPZ-only entry boundary and malformed-header error normalization are
+covered by genuine guarded regressions. Complete checkpoint focus: 484 passed
+in 36.06 s. Root ordinary suite: **1,556 passed, three declared opt-in skips in
+1,045.08 s**; separate actual fullgraph suite: **two passed in 10.91 s**, no
+skips/errors. The ordinary skips are the all-factor case and both graph cases;
+only the graph cases were subsequently run. All-factor Task8 evidence remains
+historical on its own source revision; repeat the full matrix at selected
+producer integration/final source-bearing acceptance. Final review has no
+Critical, Important or Minor findings. NPZ writing, native core and hash formats
+are unchanged. Lossy structured/subarray dtype templates are explicitly rejected;
+the locked NumPy private header API preserves NPY1/2/3 support. This codec issues
+no native map context or scientific proof.
 
 **7B4b — authentic qualification map context.** Own recorder/replay helpers and
 native tests. Extend private attestation with optional immutable
@@ -695,6 +712,9 @@ using actual rehashed maps/schema/initial weights before the first restore.
 Preserve the current reused-engine loop: qualification uses exactly one fresh
 factory for zero/one/multiple anchors. Confirmation stays zero for no anchors,
 one otherwise; the builder creates no engine.
+Private issuance binds the exact result owner and artifact bytes; source-freshness
+checks recompute the current full package fingerprint without creating an engine.
+Preserve existing nonempty named groups and genuine empty candidate selections.
 - [ ] RED: wrong equal-length candidate/KC/DAN maps, swapped compartment maps,
   stale/transplanted/missing contexts, mutation after proof and ordinary objects
   claiming context. Prove zero-anchor native context and zero builder factories.

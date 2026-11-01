@@ -5,8 +5,11 @@ import json
 import math
 from pathlib import Path
 import struct
+import zipfile
+import zlib
 
 import numpy as np
+from numpy.lib import _format_impl as npy_format
 
 
 STATE_HASH_DOMAIN = b"fly-connectome-checkpoint-state/v1\0"
@@ -363,28 +366,129 @@ def validate_native_state(arrays, n, cursor):
             raise ValueError(f"Checkpoint {name} is outside elapsed neural time")
 
 
-def load_checkpoint(path, expected, templates, n):
-    """Read once and validate everything before the caller commits any state."""
-    with np.load(path, allow_pickle=False) as archive:
-        fields = {"metadata", *templates}
-        if set(archive.files) != fields or len(archive.files) != len(fields):
-            raise ValueError("Checkpoint array fields mismatch")
-        encoded = archive["metadata"]
-        if encoded.shape != () or encoded.dtype.kind != "U":
-            raise ValueError("Checkpoint metadata must be a JSON string scalar")
-        metadata = _strict_metadata_json(encoded.item())
-        validate_metadata(metadata, expected)
-        arrays = {}
-        for name, target in templates.items():
-            value = archive[name]
-            if value.shape != target.shape or value.dtype != target.dtype:
-                raise ValueError(f"Checkpoint array mismatch: {name}")
-            if value.dtype.kind == "f":
-                for chunk in _array_chunks(value, HASH_CHUNK_BYTES):
-                    if not np.isfinite(chunk).all():
-                        raise ValueError(f"Nonfinite checkpoint state: {name}")
-            if not target.flags.writeable:
-                raise ValueError(f"Checkpoint destination is read-only: {name}")
-            arrays[name] = value
-        validate_native_state(arrays, n, metadata["cursor"])
+def _checkpoint_schema(schema):
+    if type(schema) is not dict or not schema:
+        raise ValueError("Checkpoint schema must be a nonempty object")
+    result = {}
+    for name, entry in schema.items():
+        if (type(name) is not str or name in {"metadata", "metadata.npy"}
+                or type(entry) is not dict or set(entry) != {"dtype", "shape"}
+                or type(entry["dtype"]) is not str
+                or type(entry["shape"]) not in (tuple, list)
+                or any(type(dim) is not int or dim < 0 for dim in entry["shape"])):
+            raise ValueError("Invalid checkpoint schema entry")
+        try:
+            dtype = np.dtype(entry["dtype"])
+        except (TypeError, ValueError) as error:
+            raise ValueError(f"Invalid checkpoint dtype: {name}") from error
+        if (dtype.hasobject or dtype.fields is not None or dtype.subdtype is not None
+                or dtype.str != entry["dtype"]):
+            raise ValueError(f"Unsupported checkpoint dtype: {name}")
+        result[name] = (dtype, tuple(entry["shape"]))
+    return result
+
+
+def _read_checkpoint_array(archive, member, descriptor=None):
+    """Check bounded NPY framing before NumPy allocates the declared payload."""
+    with archive.open(member) as stream:
+        version = np.lib.format.read_magic(stream)
+        framing = {(1, 0): ("<H", 1), (2, 0): ("<I", 1), (3, 0): ("<I", 4)}
+        if version not in framing:
+            raise ValueError(f"Unsupported checkpoint NPY version: {version}")
+        length_type, character_bytes = framing[version]
+        start = stream.tell()
+        length_bytes = stream.read(struct.calcsize(length_type))
+        if len(length_bytes) != struct.calcsize(length_type):
+            raise ValueError("Truncated checkpoint NPY header length")
+        # NumPy checks decoded characters only after reading the declared bytes.
+        # UTF-8 v3 can use four bytes per character; v1/v2 use Latin-1.
+        header_length = struct.unpack(length_type, length_bytes)[0]
+        if header_length > npy_format._MAX_HEADER_SIZE * character_bytes:
+            raise ValueError("Checkpoint NPY header exceeds the safe size limit")
+        stream.seek(start)
+        # NumPy 2.4.6 is locked; its public header helpers omit NPY v3 support.
+        try:
+            shape, _, dtype = npy_format._read_array_header(stream, version)
+        except (TypeError, IndexError) as error:
+            # NumPy can sort mixed-type keys or index malformed dtype tuples;
+            # keep this conversion confined to the untrusted parser call.
+            raise ValueError(f"Invalid checkpoint NPY header: {member}") from error
+        if (dtype.hasobject
+                or any(type(dim) is not int or dim < 0 for dim in shape)):
+            raise ValueError("Invalid checkpoint NPY dtype or shape")
+        if descriptor is None:
+            if shape != () or dtype.kind != "U":
+                raise ValueError("Checkpoint metadata must be a JSON string scalar")
+        elif (dtype, shape) != descriptor:
+            raise ValueError(f"Checkpoint array mismatch: {member}")
+        count = math.prod(shape)
+        nbytes = count * dtype.itemsize
+        if (any(dim > np.iinfo(np.intp).max for dim in shape)
+                or count > np.iinfo(np.intp).max
+                or nbytes > archive.getinfo(member).file_size - stream.tell()):
+            raise ValueError(f"Invalid checkpoint payload size: {member}")
+        if descriptor is None:
+            # Metadata has no caller-bound string width. Check actual bytes too,
+            # without trusting a forged ZIP size or allocating its Unicode dtype.
+            remaining = nbytes
+            while remaining:
+                chunk = stream.read(min(remaining, HASH_CHUNK_BYTES))
+                if not chunk:
+                    raise ValueError("Truncated checkpoint metadata payload")
+                remaining -= len(chunk)
+        stream.seek(0)
+        return np.lib.format.read_array(stream, allow_pickle=False)
+
+
+def read_checkpoint(path, expected, schema, n):
+    """Decode validated owned state using descriptors, without an engine or proof.
+
+    Caller-supplied provenance/schema describe compatibility; this function does
+    not authenticate their origin or issue artifact/native attestations.
+    """
+    schema = _checkpoint_schema(schema)
+    if type(expected) is not dict:
+        raise ValueError("Invalid checkpoint provenance")
+    try:
+        # Open a container only: np.load would decode top-level NPY input before
+        # any checkpoint header/schema checks. Keep this same ZIP handle below.
+        with zipfile.ZipFile(path, "r") as archive:
+            fields = {"metadata", *schema}
+            names = archive.namelist()
+            logical_names = [name.removesuffix(".npy") for name in names]
+            if set(logical_names) != fields or len(logical_names) != len(fields):
+                raise ValueError("Checkpoint array fields mismatch")
+            members = dict(zip(logical_names, names))
+            encoded = _read_checkpoint_array(archive, members["metadata"])
+            metadata = _strict_metadata_json(encoded.item())
+            validate_metadata(metadata, expected)
+            arrays = {}
+            for name, descriptor in schema.items():
+                value = _read_checkpoint_array(archive, members[name], descriptor)
+                if value.dtype.kind == "f":
+                    for chunk in _array_chunks(value, HASH_CHUNK_BYTES):
+                        if not np.isfinite(chunk).all():
+                            raise ValueError(f"Nonfinite checkpoint state: {name}")
+                arrays[name] = value
+            try:
+                validate_native_state(arrays, n, metadata["cursor"])
+            except (KeyError, IndexError, TypeError, OverflowError, ZeroDivisionError) as error:
+                raise ValueError("Invalid checkpoint native state schema") from error
+    except (zipfile.BadZipFile, EOFError, zlib.error) as error:
+        raise ValueError("Invalid or corrupt checkpoint NPZ container") from error
     return metadata, arrays
+
+
+def load_checkpoint(path, expected, templates, n):
+    """Validate writable destinations, then decode before any caller state copy."""
+    if type(templates) is not dict:
+        raise ValueError("Checkpoint destinations must be an object")
+    schema = {}
+    for name, target in templates.items():
+        if (not isinstance(target, np.ndarray) or target.dtype.fields is not None
+                or target.dtype.subdtype is not None):
+            raise ValueError(f"Invalid checkpoint destination: {name}")
+        if not target.flags.writeable:
+            raise ValueError(f"Checkpoint destination is read-only: {name}")
+        schema[name] = {"dtype": target.dtype.str, "shape": target.shape}
+    return read_checkpoint(path, expected, schema, n)

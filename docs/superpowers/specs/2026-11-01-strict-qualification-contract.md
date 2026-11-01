@@ -1,7 +1,8 @@
 # Strict Qualification Evidence Contract
 
-**Status:** Technical direction for the remaining Task7B4; not implemented or
-formal qualification approval. **Date:** 2026-11-01.
+**Status:** Integration in progress. The shared checkpoint reader (Task7B4a) is
+implemented; the remaining contract is pending, without formal qualification
+approval. **Date:** 2026-11-01.
 
 Refines the [assay design](2026-09-24-associative-plasticity-pivot-design.md),
 [replay contract](2026-10-02-replay-anchor-contract.md) and existing
@@ -67,10 +68,25 @@ subclasses supplying synthetic proof, stale/transplanted contexts, serialized
 flags and caller registration cannot issue this context. Prefix and sealed
 verification construct separate contexts; do not promote a prefix proof to a seal.
 
+Bind private native-proof issuance to the exact result object as well as its
+artifact bytes, using an unissued-by-default private capability and owner weak
+reference. Ordinary construction, subclasses, copies and proof transplantation
+cannot issue a new native proof. Apply the shared issuance check to existing
+native-proof accessors too; no caller registration or persisted trust registry.
+At final context issuance and each engine-free context intake, recompute and
+compare the full current packaged source fingerprint, in addition to existing
+schema/event/checkpoint bindings. Do not rebuild the DLL to consume context.
+Existing named engine groups stay nonempty; authentic zero-candidate selections
+stay empty, without relaxing engine contracts or inventing candidate indices.
+
 Factor `checkpoint.read_checkpoint(path, expected, schema, n)` from the existing
 codec, preserving NPZ format and all metadata/shape/finite/native-state checks.
 `load_checkpoint` keeps its destination-writability checks and delegates to this
 single decoder. No ndarray-shaped placeholder allocations or second decoder.
+Descriptors contain the exact lossless `dtype.str` and a nonnegative integer
+shape. Structured/subarray templates that cannot be represented losslessly are
+rejected; actual native formats and the NPZ writer remain unchanged. The locked
+NumPy header parser covers NPY1/2/3, behind a bounded NPZ-only input boundary.
 Grid reduction reads one authenticated archive at a time with this context,
 checks actual candidate arrays/bounds/weight consistency and recomputes state
 metrics. Historical KC/window counts come from bound raw bins, not checkpoint

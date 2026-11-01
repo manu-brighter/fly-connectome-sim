@@ -40,6 +40,10 @@ orienting the next session; they do not replace missing native evidence files.
   `engineered_unvalidated_motor_readout`. Decisions use only the measured lateral
   rates, retain legacy v1 readability and cannot change the primary MBON11 report.
   The display threshold is engineered, not behaviorally calibrated.
+- Shared schema-only checkpoint reader without a running engine or placeholder
+  arrays. It preserves native NPZ/hash formats and legacy writable-destination
+  checks, validates bounded headers before array allocation and rejects malformed
+  containers consistently. It issues no qualification/native proof.
 - All eight controlled cohorts are produced in one authentic tiny-native pilot:
   40 trainings, 24 interventions, 768 responses, 128 anchors, 67 checkpoints,
   14,048 events. It remains **unsupported with 136 negative gates**; complete
@@ -91,6 +95,22 @@ schema SHA256 is
 Later source-bearing integration will change this identity again; it is not a
 formal source freeze.
 
+The later Task7B4a reader snapshot passed independent spec/quality review after
+two scoped fix rounds. Root ordinary Windows acceptance: **1,556 passed, three
+declared opt-in skips in 1,045.08 s**. Both actual fullgraph tests then passed
+separately in **10.91 s**, with no skips/errors. The original three skips were
+the all-factor case and both graph cases; all-factor acceptance was not repeated
+for this codec slice. The Task8 all-factor result above belongs to its earlier
+source. Repeat the complete matrix at selected-producer integration/final
+source-bearing acceptance before formal qualification.
+
+Reader snapshot model-source identity:
+`ad4fae1adfaeb19afaba6d27128e0d623be6f8b33e9377b67ba59401148fa202`.
+Schema remains `767dc2bfed78ecc5f6a935b031e257ff44789fb7fb1a005a4bd827a7054ea4f1`.
+NumPy remains locked to 2.4.6; its private header parser supports NPY1/2/3.
+Structured/subarray extension templates with lossy `dtype.str` are explicitly
+rejected. Native array formats, writer and numerical core are unchanged.
+
 ## Actual next work
 
 Use these live TODOs together with the plan; do not restart historical completed
@@ -112,9 +132,10 @@ RED/GREEN steps because an old procedural checkbox is unchecked.
   measurements and review. Black-retention replay does not prove training history.
 - [x] Implement and independently review Task 8's labelled motor-only adapter,
   preserve old v1 readability and complete opt-in acceptance.
-- [ ] Start Task7B4a: factor the schema-only checkpoint reader from the existing
-  codec with bounded header checks before allocation; then follow the reviewed
-  strict qualification contract through authenticated maps and selected evidence.
+- [x] Complete Task7B4a's shared schema-only checkpoint reader, independent review,
+  ordinary acceptance and separate actual fullgraph tests.
+- [ ] Implement Task7B4b's genuine verifier-issued map context, object-bound native
+  proof and current-source checks, then the remaining selected evidence contract.
 - [ ] Finish source-bearing tasks, independently review and run full acceptance;
   only then perform Task 9 source freeze and formal fullgraph qualification.
 - [ ] Before that source freeze, pin LF checkout handling for packaged Python/C++

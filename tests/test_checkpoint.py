@@ -2,10 +2,13 @@
 
 import json
 import hashlib
+from io import BytesIO
 import struct
 from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
 import shutil
+import zipfile
+import zlib
 
 import numpy as np
 import pytest
@@ -988,8 +991,37 @@ def write_checkpoint(saved):
     return path
 
 
-def assert_rejected_without_mutation(brain, path):
+def checkpoint_schema(arrays):
+    return {
+        name: {"dtype": value.dtype.str, "shape": value.shape}
+        for name, value in arrays.items()
+    }
+
+
+def test_read_checkpoint_from_schema_without_destinations(brain, saved):
+    path, expected_arrays, expected_metadata = saved
+    schema = checkpoint_schema(expected_arrays)
     before = state_bytes(brain)
+    read = getattr(checkpoint, "read_checkpoint", None)
+    assert callable(read), "Missing schema-only checkpoint reader"
+    metadata, arrays = read(path, brain.model_provenance(), schema, brain.n)
+    assert metadata == expected_metadata
+    assert set(arrays) == set(expected_arrays)
+    for name, expected in expected_arrays.items():
+        assert arrays[name].dtype == expected.dtype
+        np.testing.assert_array_equal(arrays[name], expected)
+        assert not np.shares_memory(arrays[name], getattr(brain, name))
+    assert state_bytes(brain) == before
+
+
+def assert_rejected_without_mutation(brain, path, *, read_schema=True):
+    before = state_bytes(brain)
+    if read_schema:
+        arrays = {name: getattr(brain, name) for name in ["weight", *brain.fields]}
+        with pytest.raises(ValueError):
+            checkpoint.read_checkpoint(
+                path, brain.model_provenance(), checkpoint_schema(arrays), brain.n,
+            )
     with pytest.raises(ValueError):
         brain.restore(path)
     assert state_bytes(brain) == before
@@ -1243,7 +1275,7 @@ def test_exact_metadata_fields_are_required(brain, saved, change):
 def test_read_only_destination_does_not_partially_commit(brain, saved):
     brain.adaptation.flags.writeable = False
     try:
-        assert_rejected_without_mutation(brain, saved[0])
+        assert_rejected_without_mutation(brain, saved[0], read_schema=False)
     finally:
         brain.adaptation.flags.writeable = True
 
@@ -1768,3 +1800,404 @@ def test_archive_metadata_is_strict_json_before_transactional_restore(brain, sav
         encoded = encoded.replace('"eta": 0.001', '"eta": ' + ("NaN" if change == "nan" else "1e999"))
     np.savez(path, metadata=encoded, **arrays)
     assert_rejected_without_mutation(brain, path)
+
+
+@pytest.mark.parametrize("evolved", [False, True])
+@pytest.mark.parametrize("compressed", [False, True])
+def test_schema_reader_matches_live_and_legacy_complete_state(brain, tmp_path, evolved, compressed):
+    if evolved:
+        brain.step(np.ones(1, dtype=np.float32), 10.0, learning=True)
+    metadata, arrays = brain._checkpoint_payload()
+    before = state_bytes(brain)
+    expected_hash = brain.checkpoint_state_sha256()
+    path = tmp_path / "state.npz"
+    writer = np.savez_compressed if compressed else np.savez
+    writer(path, metadata=json.dumps(metadata), **arrays)
+    for read in (
+        lambda: checkpoint.read_checkpoint(
+            path, brain.model_provenance(), checkpoint_schema(arrays), brain.n,
+        ),
+        lambda: checkpoint.load_checkpoint(path, brain.model_provenance(), arrays, brain.n),
+    ):
+        loaded_metadata, loaded_arrays = read()
+        assert loaded_metadata == metadata
+        for name, expected in arrays.items():
+            np.testing.assert_array_equal(loaded_arrays[name], expected)
+        assert checkpoint.checkpoint_state_sha256(loaded_metadata, loaded_arrays) == expected_hash
+    assert state_bytes(brain) == before
+
+
+def test_schema_reader_accepts_readonly_sources_and_list_shapes(brain, saved):
+    path, arrays, metadata = saved
+    schema = {
+        name: {"dtype": value.dtype.str, "shape": list(value.shape)}
+        for name, value in arrays.items()
+    }
+    brain.adaptation.flags.writeable = False
+    try:
+        loaded_metadata, loaded = checkpoint.read_checkpoint(
+            path, brain.model_provenance(), schema, brain.n,
+        )
+        assert loaded_metadata == metadata
+        np.testing.assert_array_equal(loaded["adaptation"], arrays["adaptation"])
+        with pytest.raises(ValueError, match="read-only"):
+            checkpoint.load_checkpoint(
+                path, brain.model_provenance(),
+                {name: getattr(brain, name) for name in arrays}, brain.n,
+            )
+    finally:
+        brain.adaptation.flags.writeable = True
+
+
+@pytest.mark.parametrize("change", [
+    "none", "empty", "list", "nonstring-name", "metadata", "metadata.npy",
+    "entry-none", "entry-list", "missing-dtype", "missing-shape", "extra-key",
+    "dtype-object", "dtype-invalid", "dtype-not-string", "dtype-alias",
+    "shape-none", "shape-number", "negative", "boolean", "numpy-int", "float",
+])
+def test_schema_reader_rejects_malformed_descriptors(brain, saved, change):
+    schema = checkpoint_schema(saved[1])
+    entry = schema["v"]
+    if change == "none": schema = None
+    elif change == "empty": schema = {}
+    elif change == "list": schema = list(schema.items())
+    elif change == "nonstring-name": schema[1] = schema.pop("v")
+    elif change in {"metadata", "metadata.npy"}: schema[change] = schema.pop("v")
+    elif change == "entry-none": schema["v"] = None
+    elif change == "entry-list": schema["v"] = list(entry.items())
+    elif change == "missing-dtype": del entry["dtype"]
+    elif change == "missing-shape": del entry["shape"]
+    elif change == "extra-key": entry["unknown"] = None
+    elif change == "dtype-object": entry["dtype"] = "|O"
+    elif change == "dtype-invalid": entry["dtype"] = "invalid"
+    elif change == "dtype-not-string": entry["dtype"] = np.dtype("f4")
+    elif change == "dtype-alias": entry["dtype"] = "float32"
+    elif change == "shape-none": entry["shape"] = None
+    elif change == "shape-number": entry["shape"] = 4
+    else:
+        entry["shape"] = [{"negative": -1, "boolean": True, "numpy-int": np.int64(4), "float": 4.0}[change]]
+    before = state_bytes(brain)
+    with pytest.raises(ValueError):
+        checkpoint.read_checkpoint(saved[0], brain.model_provenance(), schema, brain.n)
+    assert state_bytes(brain) == before
+
+
+@pytest.mark.parametrize("change", ["shape", "dtype", "extra", "missing"])
+def test_schema_reader_requires_exact_declared_arrays(brain, saved, change):
+    schema = checkpoint_schema(saved[1])
+    if change == "shape": schema["v"]["shape"] = (3,)
+    elif change == "dtype": schema["v"]["dtype"] = np.dtype("f8").str
+    elif change == "extra": schema["unknown"] = {"dtype": "<f4", "shape": (1,)}
+    else: del schema["v"]
+    with pytest.raises(ValueError):
+        checkpoint.read_checkpoint(saved[0], brain.model_provenance(), schema, brain.n)
+
+
+@pytest.mark.parametrize("change", [
+    "missing-native", "empty-active-count", "float-active", "float-count",
+    "empty-queue-count", "scalar-active-count", "bad-population", "bad-expected",
+])
+def test_schema_reader_reports_malformed_native_inputs_as_value_error(brain, saved, change):
+    path, arrays, metadata = saved
+    n, expected = brain.n, brain.model_provenance()
+    if change == "missing-native": del arrays["queue"]
+    elif change == "empty-active-count": arrays["nactive"] = np.array([], dtype=np.int32)
+    elif change == "float-active": arrays["active"] = arrays["active"].astype(np.float32)
+    elif change == "float-count": arrays["queue_count"] = arrays["queue_count"].astype(np.float32)
+    elif change == "empty-queue-count": arrays["queue_count"] = np.array([], dtype=np.int32)
+    elif change == "scalar-active-count": arrays["nactive"] = np.array(1, dtype=np.int32)
+    elif change == "bad-population": n = None
+    else: expected = None
+    write_checkpoint(saved)
+    with pytest.raises(ValueError):
+        checkpoint.read_checkpoint(path, expected, checkpoint_schema(arrays), n)
+
+
+def replace_checkpoint_member(path, member, content):
+    with zipfile.ZipFile(path) as archive:
+        members = [(name, archive.read(name)) for name in archive.namelist()]
+    with zipfile.ZipFile(path, "w") as archive:
+        for name, data in members:
+            archive.writestr(name, content if name == member else data)
+
+
+@pytest.mark.parametrize("member", ["metadata.npy", "v.npy"])
+def test_schema_reader_rejects_duplicate_npz_entries(brain, saved, member):
+    path = saved[0]
+    with zipfile.ZipFile(path, "a") as archive:
+        content = archive.read(member)
+        with pytest.warns(UserWarning, match="Duplicate name"):
+            archive.writestr(member, content)
+    assert_rejected_without_mutation(brain, path)
+
+
+@pytest.mark.parametrize("field", ["metadata", "v"])
+@pytest.mark.parametrize("change", ["shape", "dtype", "truncated", "header-length"])
+def test_schema_reader_rejects_unsafe_header_before_payload_decode(brain, saved, monkeypatch, field, change):
+    # These tiny headers would request enormous allocations in NumPy's ZIP reader.
+    path, arrays, metadata = saved
+    dtype = "<U4" if field == "metadata" else arrays[field].dtype.str
+    shape = () if field == "metadata" else arrays[field].shape
+    if change == "shape": shape = (2**50,)
+    elif change == "dtype": dtype = "<U100000000" if field == "metadata" else "<f8"
+    header = repr({"descr": dtype, "fortran_order": False, "shape": shape}).encode("ascii") + b"\n"
+    content = b"\x93NUMPY\x02\x00" + struct.pack("<I", len(header)) + header
+    if change == "header-length":
+        content = b"\x93NUMPY\x02\x00" + struct.pack("<I", 2**32 - 1)
+    replace_checkpoint_member(path, field + ".npy", content)
+    original = np.lib.format.read_array
+
+    def guarded_read(stream, *args, **kwargs):
+        if getattr(stream, "name", None) == field + ".npy":
+            pytest.fail("Unsafe member reached the NumPy payload decoder")
+        return original(stream, *args, **kwargs)
+
+    monkeypatch.setattr(np.lib.format, "read_array", guarded_read)
+    assert_rejected_without_mutation(brain, path)
+
+
+@pytest.mark.parametrize("version", [(1, 0), (2, 0), (3, 0)])
+@pytest.mark.parametrize("layout", ["C", "F", "strided", "big-endian"])
+def test_schema_reader_preserves_npy_versions_and_layout(brain, saved, version, layout):
+    path, arrays, metadata = saved
+    value = np.array([[1.25, -2.5], [3.75, 4.5]], dtype=np.float32)
+    if layout == "F": value = np.asfortranarray(value)
+    elif layout == "strided": value = value[:, ::-1]
+    elif layout == "big-endian": value = value.astype(">f4")
+    arrays["extension"] = value
+    arrays["empty_extension"] = np.empty((0, 2), dtype=np.int16)
+    with zipfile.ZipFile(path, "w") as archive:
+        for name, array in {"metadata": np.array(json.dumps(metadata)), **arrays}.items():
+            stream = BytesIO()
+            np.lib.format.write_array(stream, array, version=version, allow_pickle=False)
+            archive.writestr(name + ".npy", stream.getvalue())
+    loaded_metadata, loaded = checkpoint.read_checkpoint(
+        path, brain.model_provenance(), checkpoint_schema(arrays), brain.n,
+    )
+    assert loaded_metadata == metadata
+    for name, expected in arrays.items():
+        assert loaded[name].dtype == expected.dtype
+        np.testing.assert_array_equal(loaded[name], expected)
+    assert loaded["extension"].flags.f_contiguous == value.flags.f_contiguous
+    assert checkpoint.checkpoint_state_sha256(loaded_metadata, loaded) == (
+        checkpoint.checkpoint_state_sha256(metadata, arrays)
+    )
+
+
+@pytest.mark.parametrize("dtype", ["f2", "c8", "bool", "S2", "U2", "V2", "m8[ns]", np.dtype(np.longdouble).str])
+def test_schema_reader_preserves_nonobject_extension_dtypes(brain, saved, dtype):
+    path, arrays, metadata = saved
+    arrays["extension"] = np.zeros((), dtype=dtype)
+    write_checkpoint(saved)
+    for result in (
+        checkpoint.read_checkpoint(path, brain.model_provenance(), checkpoint_schema(arrays), brain.n),
+        checkpoint.load_checkpoint(path, brain.model_provenance(), arrays, brain.n),
+    ):
+        assert result[0] == metadata
+        assert result[1]["extension"].dtype == arrays["extension"].dtype
+        np.testing.assert_array_equal(result[1]["extension"], arrays["extension"])
+
+
+def test_legacy_reader_rejects_lossy_structured_template_without_mutation(brain, saved):
+    path, arrays, metadata = saved
+    arrays["extension"] = np.zeros(1, dtype=[("a", "i4"), ("b", "i4")])
+    write_checkpoint(saved)
+    before = {name: value.tobytes() for name, value in arrays.items()}
+    with pytest.raises(ValueError):
+        checkpoint.load_checkpoint(path, brain.model_provenance(), arrays, brain.n)
+    assert {name: value.tobytes() for name, value in arrays.items()} == before
+
+
+@pytest.mark.parametrize("encoded", [
+    np.array(["{}"]), np.array(b"{}"), np.array(1), np.array("{}", dtype=object),
+])
+def test_schema_reader_requires_unicode_scalar_metadata_before_unpickling(brain, saved, encoded):
+    np.savez(saved[0], metadata=encoded, **saved[1])
+    assert_rejected_without_mutation(brain, saved[0])
+
+
+def test_schema_reader_rejects_normalized_duplicate_npz_names(brain, saved):
+    with zipfile.ZipFile(saved[0], "a") as archive:
+        archive.writestr("v", archive.read("v.npy"))
+    assert_rejected_without_mutation(brain, saved[0])
+
+
+def test_schema_reader_rechecks_actual_metadata_bytes_with_forged_zip_size(brain, saved, monkeypatch):
+    header = b"{'descr': '<U100000000', 'fortran_order': False, 'shape': ()}\n"
+    content = b"\x93NUMPY\x02\x00" + struct.pack("<I", len(header)) + header
+    replace_checkpoint_member(saved[0], "metadata.npy", content)
+    data = bytearray(saved[0].read_bytes())
+    directory = data.index(b"PK\x01\x02")
+    assert data[directory + 46:directory + 58] == b"metadata.npy"
+    struct.pack_into("<I", data, directory + 24, 400000000 + len(content))
+    saved[0].write_bytes(data)
+    original = np.lib.format.read_array
+
+    def guarded_read(stream, *args, **kwargs):
+        if getattr(stream, "name", None) == "metadata.npy":
+            pytest.fail("Forged metadata size reached the NumPy payload decoder")
+        return original(stream, *args, **kwargs)
+
+    monkeypatch.setattr(np.lib.format, "read_array", guarded_read)
+    assert_rejected_without_mutation(brain, saved[0])
+
+
+def test_schema_reader_preserves_v3_unicode_header_character_limit(brain, saved):
+    # Accepted by NumPy: fewer than 10000 UTF-8 characters, over 10000 bytes.
+    value = saved[1]["v"]
+    header = repr({"descr": value.dtype.str, "fortran_order": False, "shape": value.shape})
+    header = (header + " # " + "\U0001f340" * 3000 + "\n").encode("utf-8")
+    content = b"\x93NUMPY\x03\x00" + struct.pack("<I", len(header)) + header + value.tobytes()
+    replace_checkpoint_member(saved[0], "v.npy", content)
+    for loaded in (
+        checkpoint.read_checkpoint(saved[0], brain.model_provenance(), checkpoint_schema(saved[1]), brain.n),
+        checkpoint.load_checkpoint(saved[0], brain.model_provenance(), saved[1], brain.n),
+    ):
+        np.testing.assert_array_equal(loaded[1]["v"], value)
+
+
+@pytest.mark.parametrize("field", ["metadata", "v"])
+def test_schema_reader_preserves_trailing_member_bytes(brain, saved, field):
+    with zipfile.ZipFile(saved[0]) as archive:
+        content = archive.read(field + ".npy") + b"ignored trailing bytes"
+    replace_checkpoint_member(saved[0], field + ".npy", content)
+    loaded_metadata, loaded = checkpoint.read_checkpoint(
+        saved[0], brain.model_provenance(), checkpoint_schema(saved[1]), brain.n,
+    )
+    assert loaded_metadata == saved[2]
+    np.testing.assert_array_equal(loaded["v"], saved[1]["v"])
+
+
+def test_schema_reader_rejects_object_array_without_mutating_destinations(brain, saved):
+    saved[1]["v"] = saved[1]["v"].astype(object)
+    write_checkpoint(saved)
+    assert_rejected_without_mutation(brain, saved[0])
+
+
+@pytest.mark.parametrize("n", [np.int64(4), 4.0])
+def test_schema_reader_preserves_compatible_legacy_population_scalars(brain, saved, n):
+    metadata, arrays = checkpoint.read_checkpoint(
+        saved[0], brain.model_provenance(), checkpoint_schema(saved[1]), n,
+    )
+    assert metadata == saved[2]
+    np.testing.assert_array_equal(arrays["active"], saved[1]["active"])
+
+
+@pytest.mark.parametrize("version", [(1, 0), (2, 0), (3, 0)])
+def test_schema_reader_retains_numpy_header_character_limit(brain, saved, version):
+    header = b"{'descr': '<f4', 'fortran_order': False, 'shape': (4,)} #" + b"x" * 10000 + b"\n"
+    length_type = "<H" if version == (1, 0) else "<I"
+    content = b"\x93NUMPY" + bytes(version) + struct.pack(length_type, len(header)) + header
+    replace_checkpoint_member(saved[0], "v.npy", content)
+    assert_rejected_without_mutation(brain, saved[0])
+
+
+@pytest.mark.parametrize("huge", [False, True])
+@pytest.mark.parametrize("entrypoint", ["read", "load"])
+def test_checkpoint_rejects_top_level_npy_before_numpy_materialization(brain, saved, monkeypatch, huge, entrypoint):
+    from numpy.lib import _npyio_impl
+
+    path, arrays, metadata = saved
+    if huge:
+        header = b"{'descr': '<f8', 'fortran_order': False, 'shape': (1125899906842624,)}\n"
+        content = b"\x93NUMPY\x02\x00" + struct.pack("<I", len(header)) + header
+    else:
+        stream = BytesIO()
+        np.lib.format.write_array(stream, np.array([1.0], dtype=np.float64), allow_pickle=False)
+        content = stream.getvalue()
+    path.write_bytes(content)
+
+    def unexpected_payload(*args, **kwargs):
+        pytest.fail("Top-level NPY reached NumPy materialization")
+
+    # np.load dispatches through this installed binding; guard it explicitly,
+    # as well as the checkpoint member decoder, before presenting the huge NPY.
+    monkeypatch.setattr(_npyio_impl.format, "read_array", unexpected_payload)
+    monkeypatch.setattr(np.lib.format, "read_array", unexpected_payload)
+    before = state_bytes(brain)
+    destinations = {name: getattr(brain, name) for name in arrays}
+    read = checkpoint.read_checkpoint if entrypoint == "read" else checkpoint.load_checkpoint
+    descriptions = checkpoint_schema(arrays) if entrypoint == "read" else destinations
+    with pytest.raises(ValueError):
+        read(path, brain.model_provenance(), descriptions, brain.n)
+    assert state_bytes(brain) == before
+
+
+@pytest.mark.parametrize("entrypoint", ["read", "load"])
+@pytest.mark.parametrize("corruption", [
+    "mixed-key-header", "stored-crc", "deflate", "local-header",
+    "truncated-directory", "empty", "noncontainer",
+])
+def test_checkpoint_normalizes_real_structural_corruption(brain, saved, corruption, entrypoint):
+    path, arrays, metadata = saved
+    expected_cause = zipfile.BadZipFile
+    if corruption == "mixed-key-header":
+        expected_cause = TypeError
+        header = repr({
+            "descr": arrays["v"].dtype.str, "fortran_order": False,
+            "shape": arrays["v"].shape, 0: 0,
+        }).encode("ascii") + b"\n"
+        content = b"\x93NUMPY\x02\x00" + struct.pack("<I", len(header)) + header + arrays["v"].tobytes()
+        replace_checkpoint_member(path, "v.npy", content)
+    elif corruption in {"stored-crc", "deflate", "local-header"}:
+        if corruption == "stored-crc":
+            write_checkpoint(saved)
+        with zipfile.ZipFile(path) as archive:
+            member = archive.getinfo("v.npy")
+        data = bytearray(path.read_bytes())
+        if corruption == "local-header":
+            data[member.header_offset:member.header_offset + 4] = b"bad!"
+        else:
+            name_size, extra_size = struct.unpack_from("<HH", data, member.header_offset + 26)
+            payload = member.header_offset + 30 + name_size + extra_size
+            if corruption == "stored-crc":
+                assert member.compress_type == zipfile.ZIP_STORED
+                data[payload + member.compress_size - 1] ^= 1
+            else:
+                assert member.compress_type == zipfile.ZIP_DEFLATED
+                expected_cause = zlib.error
+                # Deflate BTYPE=3 is reserved and must fail in decompression.
+                data[payload] |= 0b110
+        path.write_bytes(data)
+    elif corruption == "truncated-directory":
+        path.write_bytes(path.read_bytes()[:-12])
+    else:
+        path.write_bytes(b"" if corruption == "empty" else b"not a checkpoint container")
+    before = state_bytes(brain)
+    destinations = {name: getattr(brain, name) for name in arrays}
+    read = checkpoint.read_checkpoint if entrypoint == "read" else checkpoint.load_checkpoint
+    descriptions = checkpoint_schema(arrays) if entrypoint == "read" else destinations
+    with pytest.raises(ValueError) as caught:
+        read(path, brain.model_provenance(), descriptions, brain.n)
+    assert isinstance(caught.value.__cause__, expected_cause)
+    assert state_bytes(brain) == before
+
+
+def test_schema_reader_accepts_existing_open_container_stream(brain, saved):
+    stream = BytesIO(saved[0].read_bytes())
+    metadata, arrays = checkpoint.read_checkpoint(
+        stream, brain.model_provenance(), checkpoint_schema(saved[1]), brain.n,
+    )
+    assert metadata == saved[2]
+    for name, expected in saved[1].items():
+        np.testing.assert_array_equal(arrays[name], expected)
+    assert not stream.closed
+
+
+@pytest.mark.parametrize("entrypoint", ["read", "load"])
+@pytest.mark.parametrize("descriptor", [(), ("<f4",), [("nested", ())]])
+def test_checkpoint_normalizes_malformed_tuple_descriptors(brain, saved, descriptor, entrypoint):
+    path, arrays, metadata = saved
+    header = repr({
+        "descr": descriptor, "fortran_order": False, "shape": (4,),
+    }).encode("ascii") + b"\n"
+    content = b"\x93NUMPY\x02\x00" + struct.pack("<I", len(header)) + header
+    replace_checkpoint_member(path, "v.npy", content)
+    destinations = {name: getattr(brain, name) for name in arrays}
+    before = state_bytes(brain)
+    read = checkpoint.read_checkpoint if entrypoint == "read" else checkpoint.load_checkpoint
+    descriptions = checkpoint_schema(arrays) if entrypoint == "read" else destinations
+    with pytest.raises(ValueError) as caught:
+        read(path, brain.model_provenance(), descriptions, brain.n)
+    assert isinstance(caught.value.__cause__, IndexError)
+    assert state_bytes(brain) == before
