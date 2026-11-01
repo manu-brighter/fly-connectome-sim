@@ -39,8 +39,10 @@ Task8's motor-only implementation passed independent scoped review and complete
 opt-in acceptance, including the genuine all-factor and both fullgraph tests.
 Task7B4a's shared checkpoint reader is also reviewed and accepted: 1,556 passed
 with three declared opt-in skips in the ordinary suite, then both actual
-fullgraph tests passed separately. The next source slice is Task7B4b's native
-map context. The cloud setup item below applies
+fullgraph tests passed separately. Task7B4b's native map context passed Astra
+review, three actual graph cases and ordinary acceptance (1,627 passed, four
+declared opt-in skips). The next source slice is Task7B4c.1's grid capture and
+grammar, followed by Task7B4c.2's authenticated reduction. The cloud setup item below applies
 only when moving to a fresh cloud checkout, not as a gate on local continuation.
 
 - [ ] Establish/verify the cloud toolchain and regenerate ignored runtime before
@@ -715,11 +717,20 @@ one otherwise; the builder creates no engine.
 Private issuance binds the exact result owner and artifact bytes; source-freshness
 checks recompute the current full package fingerprint without creating an engine.
 Preserve existing nonempty named groups and genuine empty candidate selections.
-- [ ] RED: wrong equal-length candidate/KC/DAN maps, swapped compartment maps,
+- [x] RED: wrong equal-length candidate/KC/DAN maps, swapped compartment maps,
   stale/transplanted/missing contexts, mutation after proof and ordinary objects
   claiming context. Prove zero-anchor native context and zero builder factories.
-- [ ] GREEN: artifact-bound native context with decoded-copy access only;
+- [x] GREEN: artifact-bound native context with decoded-copy access only;
   unchanged checkpoint format and confirmation replay regression coverage.
+
+Accepted on 2026-11-01: fresh independent Astra spec/quality/integrity review,
+no Critical/Important/Minor findings. Root actual fullgraph suite **three passed
+in 24.46 s**, including the new incomplete zero-anchor map-prefix case (10.621 s)
+and both existing graph tests. One verifier factory, actual maps/schema and
+engine-free intake were checked; no scientific terminal/seal/config was created
+by the map-prefix case. Root ordinary suite **1,627 passed, four opt-in skips in
+1,155.74 s**, no failures/errors; those skips are all8 and the three separately
+passed graph cases. No new all-factor result or scientific qualification follows.
 
 **7B4c — declared, authenticated grid and bounded history.** Own qualification,
 CLI metadata, analysis grid reduction, recorder/schema and their tests. Add the
@@ -734,6 +745,21 @@ Use explicit `controls=True` grid schedules; do not copy later raw effects.
 - [ ] GREEN: closed qualification-only 5120 branches (bound4850), unchanged
   2048 snapshots/10000 relevant events; reject orphans, retain/drain all history.
   Static CP/event bounds1602/8064 are not execution/capacity measurements.
+
+Implement this as two sequential reviewed slices: **7B4c.1** owns capture,
+declarations, binding schema, recorder position and closed grammar; **7B4c.2**
+owns the authenticated reducer and minimal shared pure arithmetic extraction.
+Bindings have bounded ordered `failures` (one base failure OR up to four T
+failures), retaining actual partial roles. Use existing summary-branch framing
+and real global append positions. Reconstruct KC vectors/drive from linked
+call-level pathway fields as well as response/bound bins and real archives.
+Two complete stream passes and sequential archive projection retain at most one
+configuration's eight compact unit projections, not the raw stream. A negative
+remaining retention gap is independently schedule-infeasible; unavailable failed
+call data is error/inconclusive, never a fabricated scientific negative. This is
+a design bound, not measured capacity. Test the prefix/seal grid component
+directly; public sealed-only freezing and arithmetic-fixture migration stay in
+7B4f with selected evidence from d/e. Do not fabricate contexts/frozen objects.
 
 **7B4d — caller-owned selected native execution.** Own `assay.py`, qualification
 integration and producer tests. Extract `_produce_cohorts(engine_factory,

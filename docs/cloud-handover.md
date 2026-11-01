@@ -44,6 +44,11 @@ orienting the next session; they do not replace missing native evidence files.
   arrays. It preserves native NPZ/hash formats and legacy writable-destination
   checks, validates bounded headers before array allocation and rejects malformed
   containers consistently. It issues no qualification/native proof.
+- Verifier-issued native map/schema context, bound to the exact result owner,
+  current source and artifact bytes. Qualification checks one fresh engine even
+  without anchors; confirmation/pilot retain their prior zero/one factory policy.
+  Engine-free consumers receive independent decoded copies. This authenticates
+  maps and existing black replays, not upstream training or scientific support.
 - All eight controlled cohorts are produced in one authentic tiny-native pilot:
   40 trainings, 24 interventions, 768 responses, 128 anchors, 67 checkpoints,
   14,048 events. It remains **unsupported with 136 negative gates**; complete
@@ -111,6 +116,21 @@ NumPy remains locked to 2.4.6; its private header parser supports NPY1/2/3.
 Structured/subarray extension templates with lossy `dtype.str` are explicitly
 rejected. Native array formats, writer and numerical core are unchanged.
 
+Task7B4b's later native context snapshot passed an independent Astra source/
+integrity review without Critical, Important or Minor findings. Root actual
+MaleCNS tests: **three passed in 24.46 s**, including a genuine zero-anchor
+qualification prefix with one verifier factory and both existing graph cases.
+The prefix is incomplete, with no scientific terminal, seal or configuration.
+Root ordinary Windows suite: **1,627 passed, four declared opt-in skips in
+1,155.74 s**, no failures/errors. The skips are the all-factor case and the
+three separately passed graph cases. All-factor evidence remains historical;
+no new full-matrix or formal qualification result is claimed.
+
+Context snapshot model-source identity:
+`62fdc90c0893228c3be4345d83dddaec2ed7eb1f36564e6be2fbbc7b2eecb4ea`.
+The schema and checkpoint codec hashes are unchanged from Task7B4a. Actual
+grid reconstruction, selected evidence and public freeze integration remain open.
+
 ## Actual next work
 
 Use these live TODOs together with the plan; do not restart historical completed
@@ -134,8 +154,11 @@ RED/GREEN steps because an old procedural checkbox is unchecked.
   preserve old v1 readability and complete opt-in acceptance.
 - [x] Complete Task7B4a's shared schema-only checkpoint reader, independent review,
   ordinary acceptance and separate actual fullgraph tests.
-- [ ] Implement Task7B4b's genuine verifier-issued map context, object-bound native
-  proof and current-source checks, then the remaining selected evidence contract.
+- [x] Complete Task7B4b's verifier-issued map context, object-bound native proof,
+  current-source checks, independent review and real-MaleCNS compatibility tests.
+- [ ] Task7B4c.1: exact grid bindings, declarations, multiple failed-T prefixes and
+  closed grammar. Task7B4c.2: authenticated, bounded grid metric reconstruction.
+  Public qualification/freeze integration still belongs to Task7B4f.
 - [ ] Finish source-bearing tasks, independently review and run full acceptance;
   only then perform Task 9 source freeze and formal fullgraph qualification.
 - [ ] Before that source freeze, pin LF checkout handling for packaged Python/C++

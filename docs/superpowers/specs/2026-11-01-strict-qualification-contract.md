@@ -1,7 +1,8 @@
 # Strict Qualification Evidence Contract
 
-**Status:** Integration in progress. The shared checkpoint reader (Task7B4a) is
-implemented; the remaining contract is pending, without formal qualification
+**Status:** Integration in progress. The shared checkpoint reader and native
+map context (Tasks7B4a/b) are implemented; grid reconstruction, selected evidence
+and public freeze integration remain pending, without formal qualification
 approval. **Date:** 2026-11-01.
 
 Refines the [assay design](2026-09-24-associative-plasticity-pivot-design.md),
@@ -24,6 +25,11 @@ and binds one of the 96 grid/seed/identity/order combinations: `grid_evidence_id
 three retained-state paths, with T-specific raw trials. Every point replicate
 names its `grid_evidence_id`; failed routes record only their actually completed
 prefix and explicit reason, never invented snapshots.
+
+Use bounded ordered `failures`: one base failure OR up to one failure per fixed
+T, never both. Later T routes can continue after an earlier failure. Omit
+unentered roles and retain actually completed partial calls; a successful
+zero-duration retention has an empty observation list and a real checkpoint.
 
 An occurrence is the existing five-field checkpoint name/hash/origin/sequence/tick
 object, not a digest-only alias. Obtain sequence from the real recorder position.
@@ -89,8 +95,19 @@ rejected; actual native formats and the NPZ writer remain unchanged. The locked
 NumPy header parser covers NPY1/2/3, behind a bounded NPZ-only input boundary.
 Grid reduction reads one authenticated archive at a time with this context,
 checks actual candidate arrays/bounds/weight consistency and recomputes state
-metrics. Historical KC/window counts come from bound raw bins, not checkpoint
-state. This proves map/content consistency, not independent training execution.
+metrics. Response rates and historical bound diagnostics come from linked raw
+bins. KC vectors require linked call-level pathway counts for whole driven calls
+inside the window; modeled drive sums the absolute drive means of the first
+driven call. Neither can be recovered from archives/context or group bins alone.
+Validate their actual index/source order and recompute summaries. This proves
+map/content consistency, not independent training execution.
+
+The grid component uses two complete event passes and sequential archive reads,
+retaining bounded references, one decoded archive, one raw observation and at most
+one configuration's eight compact unit projections. This is a design bound,
+not measured capacity. Test it on genuine prefix/seal context independently;
+public sealed-only freeze enforcement and arithmetic-fixture migration land
+with the shared lifecycle in Task7B4f, without synthetic context fallbacks.
 
 ## Shared native selected execution and measured resolution
 
@@ -138,6 +155,13 @@ reconstructed anchors; report the separate native map check explicitly.
 Missing/malformed evidence, unavailable runtime or verification failure cannot
 be turned into an authenticated scientific negative or a confirmation config.
 Pure arithmetic fixtures remain separate from artifact/native trust tests.
+
+The specific pre-call negative remaining retention gap is independently
+schedule-infeasible only when actual training clocks and the declared timeline
+prove `target_onset - 100 ms - training_end < 0`. Unmeasured values stay null;
+no failed-call observation or retained checkpoint is invented. Other unavailable
+native/clock/ingest evidence cannot become a scientific negative from its reason
+label. Genuine complete measurements still use the unchanged scientific gates.
 
 ## Closed bounds and capacity gate
 

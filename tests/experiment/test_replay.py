@@ -4,13 +4,676 @@ from copy import deepcopy
 from hashlib import sha256
 import importlib
 import json
+import os
 import struct
+from pathlib import Path
 
 import numpy as np
 import pytest
 
 from fly_connectome_sim.engine import _rgb_input_sha256
 from replay_helpers import engine_factory
+
+
+@pytest.fixture
+def map_engine_factory(tmp_path):
+    """Real native topology with distinguishable, equal-length compartment maps."""
+    from fly_connectome_sim.engine import FlyEngine, NeuralGroups
+    from fly_connectome_sim.neural.brain import MemoryBrain
+    from fly_connectome_sim.neural.visual import VisualMemoryBrain
+
+    graph = tmp_path / "map-graph.npz"
+    np.savez(graph, ids=np.array([101, 202, 303, 404, 505, 606, 707, 808], dtype=np.int64),
+             ptr=np.array([0, 2, 4, 5, 6, 6, 6, 6, 6], dtype=np.int64),
+             post=np.array([4, 5, 4, 5, 4, 5], dtype=np.int32),
+             weight=np.array([0.125, 0.25, 0.375, 0.5, 0.625, 0.75], dtype=np.float32),
+             retina=np.array([0], dtype=np.int32), uv=np.array([[0.5, 0.5]], dtype=np.float32),
+             lamina=np.array([], dtype=np.int32), sugar=np.array([], dtype=np.int32),
+             superclass=np.zeros(8, dtype=np.uint8))
+
+    class MapBrain(VisualMemoryBrain):
+        def __init__(self, index_dtype):
+            MemoryBrain.__init__(self, path=graph, circuit={
+                "kc": np.array([0, 1], dtype=index_dtype),
+                "dan": np.array([3, 2], dtype=index_dtype),
+                "edges": np.array([3, 0, 2, 1], dtype=np.int64),
+                "pre": np.array([1, 0, 1, 0], dtype=np.int32),
+                "gain": np.array([[1, 0.125, 0.25, 0.5], [0.5, 0.25, 0.125, 1]], dtype=np.float32),
+                "kc_mask": np.array([1, 1, 0, 0, 0, 0, 0, 0], dtype=np.uint8),
+                "dan_index": np.array([-1, -1, 1, 0, -1, -1, -1, -1], dtype=np.int8),
+            }, modulation_mask=np.array([0, 0, 1, 1, 0, 0, 0, 0], dtype=np.uint8))
+            self.r8 = np.array([0], dtype=np.int32)
+            self.r8_uv = np.array([[0.5, 0.5]], dtype=np.float32)
+            self.r8_channel = np.array([2], dtype=np.int32)
+            self.corrected_edges = np.array([], dtype=np.int64)
+            self.r8_light = np.zeros(1, dtype=np.float32)
+            self.fields.append("r8_light")
+            self.initial["r8_light"] = self.r8_light.copy()
+
+    def factory(*, empty=0, index_dtype=np.int32, overlap=False):
+        groups = {"pam11": [3] if overlap else [2], "ppl101": [3], "kc": [0, 1],
+                  "mbon07": [6] if empty == 2 else [4], "mbon11": [6 if empty == 1 else 7] if empty else [5],
+                  "motor_left": [6], "motor_right": [7]}
+        return FlyEngine(brain=MapBrain(index_dtype), groups=NeuralGroups(**{
+            name: np.array(indices, dtype=index_dtype) for name, indices in groups.items()}))
+    return factory
+
+
+def map_recording(factory, tmp_path, *, run_kind="qualification", anchors=0):
+    """Native map/replay artifact, never a complete scientific qualification."""
+    from fly_connectome_sim.experiment.recorder import RunRecorder
+
+    engine = factory()
+    black = {"generator": "black-rgb/v1", "input_shape": [2, 3, 3], "input_dtype": "uint8",
+             "input_sha256": _rgb_input_sha256(np.zeros((2, 3, 3), dtype=np.uint8))}
+    metadata = {"engine_identity": engine.identity(), "protocol_version": f"{run_kind}/v1",
+                "stimulus_version": "associative-stimuli/v1", "family": run_kind,
+                "seeds": [11, 23] if run_kind == "qualification" else [101], "factors": {},
+                "input_sha256": [black["input_sha256"]], "black_input": black}
+    if run_kind == "confirmation":
+        # Declared route-test contract only, not purported qualification evidence.
+        metadata.update(frozen_config_sha256=sha256(b"declared route contract").hexdigest(),
+                        assay_contract={"analysis_version": "mbon11-causal-analysis/v1"})
+    recorder = RunRecorder(tmp_path / "map-run", run_kind=run_kind,
+                           metadata=metadata, root_branch_id="training")
+    source = tmp_path / "map-source.npz"
+    engine.brain.checkpoint(source)
+    recorder.ingest_checkpoint("brain-before.npz", source, origin_branch_id="training")
+    recorder.append({"type": "checkpoint", "branch_id": "training", "sim_ms": 0.0,
+                     "sim_tick": 0, "checkpoint_name": "brain-before.npz"})
+    if anchors:
+        engine.observe(np.full((2, 3, 3), 80, dtype=np.uint8), 0.3, learning=True)
+        engine.brain.weights_frozen = True
+        engine.brain.checkpoint(source)
+        digest = recorder.ingest_checkpoint("source.npz", source, origin_branch_id="training")
+        recorder.append({"type": "checkpoint", "branch_id": "training", "sim_ms": 0.3,
+                         "sim_tick": 3, "checkpoint_name": "source.npz"})
+        api = replay_module()
+        for number in range(anchors):
+            engine.brain.restore(recorder.path / "checkpoints" / "source.npz")
+            branch = f"retained-{number}"
+            recorder.append({"type": "fork", "branch_id": branch, "sim_ms": 0.3, "sim_tick": 3,
+                             "operation_version": api.OPERATION_VERSION, "parent_branch_id": "training",
+                             "parent_checkpoint_name": "source.npz", "parent_checkpoint_sequence": 1,
+                             "parent_checkpoint_sha256": digest})
+            recorder.append({"type": "replay_thaw", "branch_id": branch, "sim_ms": 0.3, "sim_tick": 3,
+                             "operation_version": api.OPERATION_VERSION,
+                             "before_weights_frozen": True, "after_weights_frozen": False})
+            engine.brain.weights_frozen = False
+            telemetry = engine.observe(np.zeros((2, 3, 3), dtype=np.uint8), 0.2,
+                                       current_mv=19.5, qualification_detail=True)
+            recorder.append({"type": "neutral_gap_chunk", "branch_id": branch, **black,
+                             "operation_version": api.OPERATION_VERSION, "start_tick": 3, "end_tick": 5,
+                             "duration_ticks": 2, "duration_ms": 0.2, "sim_ms": 0.5,
+                             "stimulation": None, "learning": False, "current_mv": 19.5,
+                             "pathway_detail": False, "qualification_detail": True, "telemetry": telemetry})
+            prefix = recorder.validate_prefix()
+            recipe = api.build_black_retention_recipe(prefix.iter_events(), source_occurrence={
+                "checkpoint_name": "source.npz", "checkpoint_sha256": digest,
+                "origin_branch_id": "training", "checkpoint_sequence": 1, "sim_tick": 3},
+                origin_branch_id=branch, target_tick=5, engine_identity=engine.identity(),
+                run_metadata_sha256=prefix.manifest["run_metadata_sha256"], black_input=black,
+                scientific_prefix=prefix.scientific_prefix)
+            recorder.append_state_anchor(api.build_state_anchor(anchor_id=branch, recipe=recipe,
+                complete_state_sha256=engine.brain.checkpoint_state_sha256()))
+    return recorder, engine
+
+
+def seal_map_recording(recorder, engine, tmp_path):
+    """Close a real recorder with an explicitly non-supporting terminal."""
+    source = tmp_path / "map-after.npz"
+    engine.brain.checkpoint(source)
+    recorder.ingest_checkpoint("brain-after.npz", source, origin_branch_id="training")
+    recorder.append({"type": "checkpoint", "branch_id": "training", "sim_ms": engine.brain.cursor / 10,
+                     "sim_tick": engine.brain.cursor, "checkpoint_name": "brain-after.npz"})
+    if recorder.run_kind == "qualification":
+        prefix = recorder.validate_prefix()
+        recorder.append({"type": "qualification_result", "branch_id": "training",
+            "sim_ms": engine.brain.cursor / 10, "status": "unsupported", "family": "qualification",
+            "seeds": recorder.metadata["seeds"], "selected_configuration": None,
+            "selected_window": None, "selected_retention_ms": None, "observed_effect_sign": None,
+            "benchmark": {"simulated_seconds": engine.brain.sim_ms / 1000,
+                          "event_count": prefix.manifest["event_count"],
+                          "checkpoint_bytes": sum(row["size"] for row in prefix.manifest["checkpoints"].values()),
+                          "peak_event_buffer_bytes": 0}, "compute_seconds": 0.0})
+    elif recorder.run_kind == "confirmation":
+        prefix = recorder.validate_prefix()
+        report = {"status": "inconclusive", "values": {}, "reasons": ["map_fixture_only"]}
+        recorder.append({"type": "assay_result", "branch_id": "training",
+            "sim_ms": engine.brain.cursor / 10, "result_version": "mbon11-assay-result/v1",
+            "analysis_version": "mbon11-causal-analysis/v1",
+            "frozen_config_sha256": recorder.metadata["frozen_config_sha256"], **report,
+            "report": report, "report_sha256": sha256(canonical(report)).hexdigest(),
+            "evidence_event_count": prefix.manifest["event_count"],
+            "evidence_final_scientific_sha256": prefix.manifest["final_scientific_sha256"]})
+    recorder.close()
+
+
+@pytest.mark.parametrize("anchors", [0, 1, 2])
+def test_native_qualification_context_maps_and_single_factory(map_engine_factory, tmp_path, anchors):
+    from fly_connectome_sim.experiment import recorder as recording
+
+    recorder, producer = map_recording(map_engine_factory, tmp_path, anchors=anchors)
+    before = producer.brain.checkpoint_state_sha256()
+    created, restores = [], []
+    def factory():
+        engine = map_engine_factory()
+        restore = engine.brain.restore
+        def traced(path):
+            restores.append(Path(path).name)
+            restore(path)
+        engine.brain.restore = traced
+        created.append(engine)
+        return engine
+    ordinary = recorder.validate_prefix()
+    prefix = recording.verify_replay_prefix(ordinary, engine_factory=factory)
+    context = recording._verified_qualification_context(prefix)
+    assert len(created) == 1 and restores == ["source.npz"] * anchors
+    assert set(context) == {"context_version", "engine_identity", "n", "checkpoint_schema",
+                            "candidate_maps", "dan_indices", "dan_source_ids"}
+    assert context["context_version"] == "qualification-map-context/v1"
+    assert context["engine_identity"] == producer.identity()
+    assert context["n"] == 8
+    assert context["dan_indices"] == [3, 2] and context["dan_source_ids"] == ["404", "303"]
+    common = {"candidate_kc_indices": [0, 1], "candidate_kc_source_ids": ["101", "202"]}
+    assert context["candidate_maps"] == {
+        "mbon11": {**common, "target_indices": [5], "candidate_positions": [0, 3],
+                   "candidate_edge_indices": [3, 1], "candidate_edge_pre_source_ids": ["202", "101"],
+                   "candidate_edge_post_source_ids": ["606", "606"], "baseline_plastic": [0.5, 0.25]},
+        "mbon07": {**common, "target_indices": [4], "candidate_positions": [1, 2],
+                   "candidate_edge_indices": [0, 2], "candidate_edge_pre_source_ids": ["101", "202"],
+                   "candidate_edge_post_source_ids": ["505", "505"], "baseline_plastic": [0.125, 0.375]},
+    }
+    arrays = {name: getattr(producer.brain, name) for name in ["weight", *producer.brain.fields]}
+    assert context["checkpoint_schema"] == {name: {"dtype": value.dtype.str, "shape": list(value.shape)}
+                                             for name, value in arrays.items()}
+    assert context["checkpoint_schema"]["r8_light"] == {"dtype": "<f4", "shape": [1]}
+    assert producer.brain.checkpoint_state_sha256() == before
+    with pytest.raises(recording.RunArtifactError):
+        recording._verified_qualification_context(ordinary)
+    seal_map_recording(recorder, producer, tmp_path)
+    assert recording._verified_qualification_context(prefix) == context  # Later prefix tail is allowed.
+    created.clear()
+    restores.clear()
+    sealed = recording.verify_replay_run(recorder.path, engine_factory=factory)
+    assert len(created) == 1 and restores == ["source.npz"] * anchors
+    assert recording._verified_qualification_context(sealed) == context
+    assert prefix._attestation is not sealed._attestation
+    context["candidate_maps"]["mbon11"]["baseline_plastic"].clear()
+    assert recording._verified_qualification_context(sealed)["candidate_maps"]["mbon11"]["baseline_plastic"] == [0.5, 0.25]
+
+
+@pytest.mark.parametrize("run_kind", ["pilot", "confirmation"])
+@pytest.mark.parametrize("anchors", [0, 2])
+def test_nonqualification_factory_counts_and_no_context(map_engine_factory, tmp_path, run_kind, anchors):
+    from fly_connectome_sim.experiment import recorder as recording
+
+    recorder, engine = map_recording(map_engine_factory, tmp_path, run_kind=run_kind, anchors=anchors)
+    created = []
+    def factory():
+        result = map_engine_factory()
+        created.append(result)
+        return result
+    prefix = recording.verify_replay_prefix(recorder.validate_prefix(), engine_factory=factory)
+    assert len(created) == (1 if anchors else 0)
+    assert prefix.verification_mode == "native-replay"
+    assert prefix._attestation.qualification_context_bytes is None
+    with pytest.raises(recording.RunArtifactError):
+        recording._verified_qualification_context(prefix)
+    seal_map_recording(recorder, engine, tmp_path)
+    created.clear()
+    sealed = recording.verify_replay_run(recorder.path, engine_factory=factory)
+    assert len(created) == (1 if anchors else 0)
+    assert sealed._attestation.qualification_context_bytes is None
+    with pytest.raises(recording.RunArtifactError):
+        recording._verified_qualification_context(sealed)
+
+
+@pytest.mark.parametrize("empty", [1, 2])
+@pytest.mark.parametrize("wide_overlap", [False, True])
+def test_qualification_context_preserves_genuine_empty_maps_and_layouts(
+    map_engine_factory, tmp_path, empty, wide_overlap,
+):
+    from fly_connectome_sim.experiment import recorder as recording
+
+    def factory():
+        return map_engine_factory(empty=empty, index_dtype=np.int64 if wide_overlap else np.int32,
+                                  overlap=wide_overlap)
+    recorder, engine = map_recording(factory, tmp_path)
+    prefix = recording.verify_replay_prefix(recorder.validate_prefix(), engine_factory=factory)
+    context = recording._verified_qualification_context(prefix)
+    for name in (["mbon11"] if empty == 1 else ["mbon07", "mbon11"]):
+        assert context["candidate_maps"][name] == {
+            "target_indices": [6 if name == "mbon07" or empty == 1 else 7],
+            **{key: [] for key in ("candidate_positions", "candidate_edge_indices",
+                "candidate_edge_pre_source_ids", "candidate_edge_post_source_ids", "candidate_kc_indices",
+                "candidate_kc_source_ids", "baseline_plastic")},
+        }
+    assert context["dan_indices"] == [3, 2]
+    seal_map_recording(recorder, engine, tmp_path)
+
+
+@pytest.mark.parametrize("sealed", [False, True])
+@pytest.mark.parametrize("run_kind", ["qualification", "pilot", "confirmation"])
+def test_native_proof_issuance_is_bound_to_exact_owner(map_engine_factory, tmp_path, sealed, run_kind):
+    from copy import copy
+    from dataclasses import replace
+    from fly_connectome_sim.experiment import recorder as recording
+
+    recorder, engine = map_recording(map_engine_factory, tmp_path, run_kind=run_kind)
+    ordinary = recorder.validate_prefix()
+    if sealed:
+        seal_map_recording(recorder, engine, tmp_path)
+        ordinary = recording.verify_run(recorder.path)
+        genuine = recording.verify_replay_run(recorder.path, engine_factory=map_engine_factory)
+    else:
+        genuine = recording.verify_replay_prefix(ordinary, engine_factory=map_engine_factory)
+    assert genuine.verification_mode == "native-replay"
+    binding = genuine._manifest_bytes if sealed else genuine._attestation_binding()
+    constructed = recording._ReplayAttestation(binding, ())
+    if run_kind == "qualification":
+        object.__setattr__(constructed, "qualification_context_bytes", genuine._attestation.qualification_context_bytes)
+    for proof in (constructed, genuine._attestation):
+        object.__setattr__(ordinary, "_attestation", proof)
+        with pytest.raises(recording.RunArtifactError):
+            ordinary.replay_attested_state_anchors
+        with pytest.raises(recording.RunArtifactError):
+            ordinary.verification_mode
+        with pytest.raises(recording.RunArtifactError):
+            recording._verified_qualification_context(ordinary)
+    for duplicate in (copy(genuine), replace(genuine)):
+        # replace deliberately leaves init=False fields unissued.
+        if duplicate._attestation is not None:
+            with pytest.raises(recording.RunArtifactError):
+                duplicate.verification_mode
+        with pytest.raises(recording.RunArtifactError):
+            recording._verified_qualification_context(duplicate)
+    class Synthetic(type(genuine)):
+        @property
+        def verification_mode(self):
+            return "native-replay"
+        @property
+        def replay_attested_state_anchors(self):
+            return frozenset()
+    fields = ({"path": genuine.path, "_manifest_bytes": genuine._manifest_bytes} if sealed else
+              {key: getattr(genuine, key) for key in ("path", "_context_bytes", "_byte_length", "_raw_sha256", "_directory_ids")})
+    synthetic = Synthetic(**fields)
+    object.__setattr__(synthetic, "_attestation", genuine._attestation)
+    with pytest.raises(recording.RunArtifactError):
+        recording._verified_qualification_context(synthetic)
+    if not sealed:
+        seal_map_recording(recorder, engine, tmp_path)
+
+
+def source_copy(monkeypatch, tmp_path):
+    """Redirect only the current-source lookup to an actual byte-for-byte copy."""
+    from fly_connectome_sim.neural import checkpoint
+
+    package = Path(checkpoint.__file__).parents[1]
+    copied = tmp_path / "package-source"
+    actual = checkpoint.model_fingerprint
+    for name in actual()["sources_sha256"]:
+        target = copied / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes((package / name).read_bytes())
+    assert actual(root=copied) == actual()
+    monkeypatch.setattr(checkpoint, "model_fingerprint", lambda root=None: actual(copied if root is None else root))
+    return copied / "experiment" / "recorder.py"
+
+
+@pytest.mark.parametrize("sealed", [False, True])
+def test_qualification_context_intake_rehashes_current_sources_without_engine(
+    map_engine_factory, tmp_path, monkeypatch, sealed,
+):
+    from fly_connectome_sim.experiment import recorder as recording
+    from fly_connectome_sim.engine import FlyEngine
+    from fly_connectome_sim.neural import native
+
+    recorder, engine = map_recording(map_engine_factory, tmp_path)
+    prefix = recording.verify_replay_prefix(recorder.validate_prefix(), engine_factory=map_engine_factory)
+    value = prefix
+    if sealed:
+        seal_map_recording(recorder, engine, tmp_path)
+        value = recording.verify_replay_run(recorder.path, engine_factory=map_engine_factory)
+    copied_source = source_copy(monkeypatch, tmp_path)
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Context intake must not construct or rebuild native runtime")
+    monkeypatch.setattr(FlyEngine, "__init__", forbidden)
+    monkeypatch.setattr(native, "build_native", forbidden)
+    assert recording._verified_qualification_context(value)["n"] == 8
+    copied_source.write_bytes(copied_source.read_bytes() + b"\n# changed source bytes\n")
+    with pytest.raises(recording.RunArtifactError, match="source|fingerprint"):
+        recording._verified_qualification_context(value)
+    if not sealed:
+        seal_map_recording(recorder, engine, tmp_path)
+
+
+def test_qualification_final_issuance_rehashes_source_after_replay(map_engine_factory, tmp_path, monkeypatch):
+    from fly_connectome_sim.experiment import recorder as recording
+
+    recorder, engine = map_recording(map_engine_factory, tmp_path, anchors=1)
+    copied_source = source_copy(monkeypatch, tmp_path)
+    ordinary = recorder.validate_prefix()
+    issued = []
+    original = recording._replay_verified
+    def trace(value, **kwargs):
+        issued.append(value)
+        return original(value, **kwargs)
+    monkeypatch.setattr(recording, "_replay_verified", trace)
+    def factory():
+        fresh = map_engine_factory()
+        observe = fresh.observe
+        def changed(*args, **kwargs):
+            result = observe(*args, **kwargs)
+            copied_source.write_bytes(copied_source.read_bytes() + b"\n# changed during replay\n")
+            return result
+        fresh.observe = changed
+        return fresh
+    with pytest.raises(recording.RunArtifactError, match="source|fingerprint"):
+        recording.verify_replay_prefix(ordinary, engine_factory=factory)
+    assert len(issued) == 1 and issued[0]._attestation is None
+    seal_map_recording(recorder, engine, tmp_path)
+
+
+@pytest.mark.parametrize("mutation", ["pre", "edges", "post", "ids", "dan", "gain", "groups"])
+def test_qualification_rehashes_live_maps_even_with_cached_identity(map_engine_factory, tmp_path, mutation):
+    from fly_connectome_sim.experiment import recorder as recording
+
+    recorder, engine = map_recording(map_engine_factory, tmp_path)
+    def factory():
+        fresh = map_engine_factory()
+        fresh.identity()
+        value = (fresh.brain.circuit[mutation] if mutation in {"pre", "edges", "dan", "gain"}
+                 else fresh.groups.mbon11 if mutation == "groups" else getattr(fresh.brain, mutation))
+        value.flags.writeable = True
+        if mutation == "gain":
+            value[:] = value[::-1]
+        else:
+            value[:2] = value[:2][::-1] if len(value) > 1 else [4]
+        value.flags.writeable = False  # Cheap lock checks alone cannot see these same-object edits.
+        return fresh
+    with pytest.raises(recording.RunArtifactError):
+        recording.verify_replay_prefix(recorder.validate_prefix(), engine_factory=factory)
+    seal_map_recording(recorder, engine, tmp_path)
+
+
+@pytest.mark.parametrize("mutation", ["csr", "post_range", "pre", "duplicate_edge", "kc_mask", "kc_group",
+    "dan_inverse", "dan_sentinel", "duplicate_dan", "gain_shape", "ptr_dtype", "pre_dtype", "gain_stride",
+    "initial_weight", "baseline", "native_registration", "visual_registration", "clock", "counter", "frozen",
+    "modulation_mask_shape", "rest_stride", "dan_baseline_shape"])
+def test_qualification_rejects_self_consistent_but_invalid_native_maps(map_engine_factory, tmp_path, mutation):
+    from fly_connectome_sim.experiment import recorder as recording
+
+    def factory():
+        fresh = map_engine_factory()
+        brain, circuit = fresh.brain, fresh.brain.circuit
+        if mutation == "csr":
+            brain.ptr[1] = 5
+        elif mutation == "post_range":
+            brain.post[0] = brain.n
+        elif mutation == "pre":
+            circuit["pre"][:] = [0, 1, 0, 1]
+        elif mutation == "duplicate_edge":
+            circuit["edges"][0] = circuit["edges"][1]
+        elif mutation == "kc_mask":
+            circuit["kc_mask"][7] = 1
+        elif mutation == "kc_group":
+            circuit["kc"] = np.array([0, 7], dtype=np.int64)
+        elif mutation == "dan_inverse":
+            circuit["dan_index"][2:4] = [0, 1]
+        elif mutation == "dan_sentinel":
+            circuit["dan_index"][7] = 0
+        elif mutation == "duplicate_dan":
+            circuit["dan"][:] = [3, 3]
+        elif mutation == "gain_shape":
+            circuit["gain"] = np.ones((4, 2), dtype=np.float32)
+        elif mutation == "ptr_dtype":
+            brain.ptr = brain.ptr.astype(np.int32)
+        elif mutation == "pre_dtype":
+            circuit["pre"] = circuit["pre"].astype(np.int64)
+        elif mutation == "gain_stride":
+            circuit["gain"] = circuit["gain"][:, ::-1]
+        elif mutation == "initial_weight":
+            brain.weight[0] += 0.125
+        elif mutation == "baseline":
+            brain.baseline_plastic[0] += 0.125
+        elif mutation in {"native_registration", "visual_registration"}:
+            name = "memory_u" if mutation == "native_registration" else "r8_light"
+            brain.fields.remove(name)
+            brain.initial.pop(name)
+        elif mutation == "clock":
+            brain.cursor = 1
+            brain.sim_ms = 0.1
+        elif mutation == "counter":
+            brain.total_spikes = 1
+        elif mutation == "modulation_mask_shape":
+            brain.modulation_mask = brain.modulation_mask[:-1].copy()
+        elif mutation == "rest_stride":
+            brain.rest = np.repeat(brain.rest, 2)[::2]
+        elif mutation == "dan_baseline_shape":
+            brain.dan_baseline_hz = brain.dan_baseline_hz[:-1].copy()
+        else:
+            brain.weights_frozen = True
+        return fresh
+    # These archives and declarations are real but do not make malformed live
+    # maps safe. Neither producer nor verifier may execute them natively.
+    recorder, engine = map_recording(factory, tmp_path)
+    prefix = recorder.validate_prefix()
+    with pytest.raises(recording.RunArtifactError):
+        recording.verify_replay_prefix(prefix, engine_factory=factory)
+    seal_map_recording(recorder, engine, tmp_path)
+
+
+@pytest.mark.parametrize("sealed", [False, True])
+@pytest.mark.parametrize("mutation", ["events", "checkpoint", "schema", "artifact"])
+def test_qualification_context_intake_rechecks_bound_artifact(
+    map_engine_factory, tmp_path, monkeypatch, sealed, mutation,
+):
+    from fly_connectome_sim.experiment import recorder as recording
+
+    recorder, engine = map_recording(map_engine_factory, tmp_path)
+    value = recording.verify_replay_prefix(recorder.validate_prefix(), engine_factory=map_engine_factory)
+    seal_map_recording(recorder, engine, tmp_path)
+    if sealed:
+        value = recording.verify_replay_run(recorder.path, engine_factory=map_engine_factory)
+    if mutation == "events":
+        target = recorder.path / "events.jsonl"
+        target.write_bytes(target.read_bytes().replace(b'"sim_ms":0.0', b'"sim_ms":0.1', 1))
+    elif mutation == "checkpoint":
+        target = recorder.path / "checkpoints" / "brain-before.npz"
+        target.write_bytes(target.read_bytes() + b"changed")
+    elif mutation == "schema":
+        from importlib.resources import files
+        schema = tmp_path / "run.schema.json"
+        schema.write_bytes(files("fly_connectome_sim.schemas").joinpath("run.schema.json").read_bytes() + b"\n")
+        monkeypatch.setattr(recording, "_schema_digest", lambda: sha256(schema.read_bytes()).hexdigest())
+    elif sealed:
+        target = recorder.path / "run.json"
+        target.write_bytes(target.read_bytes() + b" ")
+    else:
+        # Transplant a genuine proof onto a distinct, ordinary owner for identical bytes.
+        from dataclasses import replace
+        other = replace(value)
+        object.__setattr__(other, "_attestation", value._attestation)
+        value = other
+    with pytest.raises(recording.RunArtifactError):
+        recording._verified_qualification_context(value)
+
+
+@pytest.mark.parametrize("mutation", ["missing", "version", "canonical", "identity", "schema", "candidate", "dan"])
+def test_qualification_context_rejects_missing_or_malformed_private_payload(
+    map_engine_factory, tmp_path, mutation,
+):
+    from fly_connectome_sim.experiment import recorder as recording
+
+    recorder, engine = map_recording(map_engine_factory, tmp_path)
+    value = recording.verify_replay_prefix(recorder.validate_prefix(), engine_factory=map_engine_factory)
+    context = recording._verified_qualification_context(value)
+    if mutation == "version":
+        context["context_version"] = "unknown/v1"
+    elif mutation == "identity":
+        context["engine_identity"]["neural_groups"]["mbon11"] = [4]
+    elif mutation == "schema":
+        context["checkpoint_schema"]["weight"]["shape"] = [-1]
+    elif mutation == "candidate":
+        context["candidate_maps"]["mbon11"]["candidate_edge_indices"].pop()
+    elif mutation == "dan":
+        context["dan_source_ids"].pop()
+    payload = None if mutation == "missing" else canonical(context) + (b" " if mutation == "canonical" else b"")
+    # Deliberate private-state corruption checks malformed-payload failure;
+    # arbitrary Python forging all private issuance state is not the threat model.
+    object.__setattr__(value._attestation, "qualification_context_bytes", payload)
+    with pytest.raises(recording.RunArtifactError):
+        recording._verified_qualification_context(value)
+    seal_map_recording(recorder, engine, tmp_path)
+
+
+@pytest.mark.parametrize("mutation", ["provenance", "configuration", "native_entrypoint"])
+def test_qualification_context_rejects_python_replacements_of_native_inputs(map_engine_factory, tmp_path, mutation):
+    from fly_connectome_sim.experiment import recorder as recording
+
+    recorder, engine = map_recording(map_engine_factory, tmp_path)
+    def factory():
+        fresh = map_engine_factory()
+        provenance = fresh.identity()["model_provenance"]
+        if mutation == "provenance":
+            fresh.brain.ids.flags.writeable = True
+            fresh.brain.ids[:2] = fresh.brain.ids[:2][::-1]
+            fresh.brain.ids.flags.writeable = False
+            fresh.brain.model_provenance = lambda: deepcopy(provenance)
+        elif mutation == "configuration":
+            fresh.brain.circuit["gain"].flags.writeable = True
+            fresh.brain.circuit["gain"][:] = fresh.brain.circuit["gain"][::-1]
+            fresh.brain.circuit["gain"].flags.writeable = False
+            fresh.brain.configuration_signature = lambda: deepcopy(provenance["configuration_sha256"])
+        else:
+            fresh.brain.advance = lambda *args: None
+        return fresh
+    with pytest.raises(recording.RunArtifactError):
+        recording.verify_replay_prefix(recorder.validate_prefix(), engine_factory=factory)
+    seal_map_recording(recorder, engine, tmp_path)
+
+
+def test_native_context_schema_reads_real_registered_extension_without_engine(map_engine_factory, tmp_path):
+    from fly_connectome_sim.experiment import recorder as recording
+    from fly_connectome_sim.neural.checkpoint import read_checkpoint
+
+    def factory():
+        engine = map_engine_factory()
+        engine.brain.registered_extension = np.arange(6, dtype=np.float64).reshape(2, 3)
+        engine.brain.fields.append("registered_extension")
+        engine.brain.initial["registered_extension"] = engine.brain.registered_extension.copy()
+        engine.brain.registered_extension.flags.writeable = False
+        return engine
+    recorder, engine = map_recording(factory, tmp_path)
+    value = recording.verify_replay_prefix(recorder.validate_prefix(), engine_factory=factory)
+    context = recording._verified_qualification_context(value)
+    assert context["checkpoint_schema"]["registered_extension"] == {"dtype": "<f8", "shape": [2, 3]}
+    metadata, arrays = read_checkpoint(recorder.path / "checkpoints" / "brain-before.npz",
+        context["engine_identity"]["model_provenance"], context["checkpoint_schema"], context["n"])
+    assert metadata["cursor"] == 0
+    np.testing.assert_array_equal(arrays["registered_extension"], [[0, 1, 2], [3, 4, 5]])
+    seal_map_recording(recorder, engine, tmp_path)
+
+
+@pytest.mark.parametrize("name", ["metadata", "metadata.npy"])
+def test_qualification_context_rejects_reserved_checkpoint_schema_alias(map_engine_factory, tmp_path, name):
+    from fly_connectome_sim.experiment import recorder as recording
+
+    recorder, engine = map_recording(map_engine_factory, tmp_path)
+    def factory():
+        fresh = map_engine_factory()
+        value = np.zeros(1, dtype=np.float32)
+        setattr(fresh.brain, name, value)
+        fresh.brain.fields.append(name)
+        fresh.brain.initial[name] = value.copy()
+        return fresh
+    with pytest.raises(recording.RunArtifactError):
+        recording.verify_replay_prefix(recorder.validate_prefix(), engine_factory=factory)
+    seal_map_recording(recorder, engine, tmp_path)
+
+
+@pytest.mark.skipif(os.getenv("FLY_CONNECTOME_SIM_FULL_TEST") != "1",
+                    reason="full MaleCNS native map-context integration is opt-in")
+def test_fullgraph_zero_anchor_qualification_context(tmp_path, monkeypatch):
+    """Map compatibility only: no training, scientific terminal, seal or config."""
+    import gc
+    import weakref
+    from fly_connectome_sim.engine import FlyEngine
+    from fly_connectome_sim.experiment import recorder as recording
+    from fly_connectome_sim.neural import native
+
+    producer = FlyEngine.from_prepared_graph()
+    assert producer.brain.n == 166_700 and len(producer.brain.post) == 25_582_938
+    identity = producer.identity()
+    expected_schema = {name: {"dtype": getattr(producer.brain, name).dtype.str,
+                              "shape": list(getattr(producer.brain, name).shape)}
+                       for name in ["weight", *producer.brain.fields]}
+    expected_maps = {}
+    for name in ("mbon11", "mbon07"):
+        target = getattr(producer.groups, name)
+        positions = np.flatnonzero(np.isin(producer.brain.post[producer.brain.circuit["edges"]], target))
+        selected = producer.brain.circuit["edges"][positions]
+        pre = producer.brain.circuit["pre"][positions]
+        kcs = np.unique(pre)
+        expected_maps[name] = {
+            "target_indices": target.tolist(), "candidate_positions": positions.tolist(),
+            "candidate_edge_indices": selected.tolist(),
+            "candidate_edge_pre_source_ids": [str(value) for value in producer.brain.ids[pre]],
+            "candidate_edge_post_source_ids": [str(value) for value in producer.brain.ids[producer.brain.post[selected]]],
+            "candidate_kc_indices": kcs.tolist(), "candidate_kc_source_ids": [str(value) for value in producer.brain.ids[kcs]],
+            "baseline_plastic": producer.brain.baseline_plastic[positions].tolist(),
+        }
+    expected_dan = producer.brain.circuit["dan"].tolist()
+    expected_dan_sources = [str(value) for value in producer.brain.ids[producer.brain.circuit["dan"]]]
+    black = {"generator": "black-rgb/v1", "input_shape": [32, 32, 3], "input_dtype": "uint8",
+             "input_sha256": _rgb_input_sha256(np.zeros((32, 32, 3), dtype=np.uint8))}
+    metadata = {"engine_identity": identity, "protocol_version": "qualification/v1",
+                "stimulus_version": "associative-stimuli/v1", "family": "qualification", "seeds": [11, 23],
+                "factors": {}, "input_sha256": [black["input_sha256"]], "black_input": black}
+    recorder = recording.RunRecorder(tmp_path / "fullgraph-map-prefix", run_kind="qualification",
+                                     metadata=metadata, root_branch_id="baseline")
+    try:
+        source = tmp_path / "fullgraph-before.npz"
+        producer.brain.checkpoint(source)
+        recorder.ingest_checkpoint("brain-before.npz", source, origin_branch_id="baseline")
+        recorder.append({"type": "checkpoint", "branch_id": "baseline", "sim_tick": 0,
+                         "sim_ms": 0.0, "checkpoint_name": "brain-before.npz"})
+        prefix = recorder.validate_prefix()
+        producer_ref = weakref.ref(producer)
+        del producer, target, positions, selected, pre, kcs
+        gc.collect()
+        assert producer_ref() is None
+        factories = 0
+        verifier_ref = None
+        def factory():
+            nonlocal factories, verifier_ref
+            assert producer_ref() is None
+            factories += 1
+            engine = FlyEngine.from_prepared_graph()
+            assert engine.brain.n == 166_700 and len(engine.brain.post) == 25_582_938
+            verifier_ref = weakref.ref(engine)
+            return engine
+        value = recording.verify_replay_prefix(prefix, engine_factory=factory)
+        gc.collect()
+        assert factories == 1 and verifier_ref() is None
+        assert value.replay_attested_state_anchors == frozenset()
+        def forbidden(*args, **kwargs):
+            pytest.fail("Decoded native context must not create/build an engine")
+        monkeypatch.setattr(FlyEngine, "from_prepared_graph", forbidden)
+        monkeypatch.setattr(native, "build_native", forbidden)
+        context = recording._verified_qualification_context(value)
+        assert context["n"] == 166_700
+        assert context["checkpoint_schema"]["weight"] == {"dtype": "<f4", "shape": [25_582_938]}
+        assert context["engine_identity"] == identity
+        assert context["checkpoint_schema"] == expected_schema
+        assert context["candidate_maps"] == expected_maps
+        assert context["dan_indices"] == expected_dan and context["dan_source_ids"] == expected_dan_sources
+        context["dan_indices"].clear()
+        assert recording._verified_qualification_context(value)["dan_indices"] == expected_dan
+        assert factories == 1 and not (recorder.path / "run.json").exists()
+    finally:
+        recorder._stream.close()  # Deliberately leave a prefix, never invent a terminal.
 
 
 def replay_module():

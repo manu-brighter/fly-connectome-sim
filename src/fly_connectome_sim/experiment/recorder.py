@@ -12,6 +12,7 @@ from pathlib import Path
 import re
 import tempfile
 from typing import Callable, Iterator
+import weakref
 
 
 FORMAT_VERSION = "run-artifact/v1"
@@ -868,6 +869,222 @@ def _scan(path: Path, manifest: dict) -> Iterator[dict]:
 class _ReplayAttestation:
     artifact_bytes: bytes
     occurrences: tuple[str, ...]
+    qualification_context_bytes: bytes | None = field(default=None, init=False, repr=False)
+    _issuer: object = field(default=None, init=False, repr=False, compare=False)
+    _owner: weakref.ReferenceType | None = field(default=None, init=False, repr=False, compare=False)
+
+
+_NATIVE_ISSUER = object()
+
+
+def _issued_attestation(value) -> _ReplayAttestation:
+    """Supported-API issuance belongs to this exact result, never equal bytes alone."""
+    if type(value) not in (VerifiedRun, ValidatedPrefix):
+        raise RunArtifactError("Native proof requires a genuine result object")
+    proof = value._attestation
+    if (type(proof) is not _ReplayAttestation or proof._issuer is not _NATIVE_ISSUER
+            or type(proof._owner) is not weakref.ReferenceType or proof._owner() is not value):
+        raise RunArtifactError("Native proof was not issued for this result object")
+    return proof
+
+
+def _qualification_context(engine, metadata: dict) -> bytes:
+    """Capture checked native maps before any source restore, retaining only bytes."""
+    import ctypes
+    import numpy as np
+    from ..engine import FlyEngine
+    from ..neural.brain import MemoryBrain
+    from ..neural.visual import VisualMemoryBrain
+    from ..neural import checkpoint
+    from .replay import _identity
+
+    if not isinstance(engine, FlyEngine) or not isinstance(engine.brain, VisualMemoryBrain):
+        raise RunArtifactError("Qualification requires a compatible isolated native visual FlyEngine")
+    brain = engine.brain
+    if (not isinstance(brain.library, ctypes.CDLL) or not isinstance(brain.advance, ctypes._CFuncPtr)
+            or brain.advance is not brain.library.memory_advance):
+        raise RunArtifactError("Qualification requires the real native memory entrypoint")
+    identity = _identity(engine.identity())
+    if _canonical(identity) != _canonical(metadata["engine_identity"]):
+        raise RunArtifactError("Qualification engine identity mismatch")
+    brain.assert_model_provenance_locked()
+    # Recompute from the native implementations, not a producer's overridden
+    # method returning cached declarations. Real visual subclasses/extensions
+    # remain supported; their declared additional configuration is preserved.
+    provenance = MemoryBrain.model_provenance(brain)
+    configuration = VisualMemoryBrain.configuration_signature(brain)
+    if (_canonical(provenance) != _canonical(identity["model_provenance"])
+            or any(_canonical(value) != _canonical(provenance["configuration_sha256"].get(name))
+                   for name, value in configuration.items())):
+        raise RunArtifactError("Qualification live model provenance mismatch")
+    n = brain.n
+    if (type(n) is not int or n <= 0 or n != brain._native_population_size
+            or n != brain._locked_population_size or type(brain.dt) is not float or brain.dt != 0.1):
+        raise RunArtifactError("Qualification native population/dt mismatch")
+
+    def array(value, name, shape, dtype=None):
+        if (type(value) is not np.ndarray or value.shape != shape
+                or (dtype is not None and (value.dtype != np.dtype(dtype) or not value.flags.c_contiguous))):
+            raise RunArtifactError(f"Qualification native array mismatch: {name}")
+        return value
+
+    def indices(value, name, limit):
+        array(value, name, (len(value),))
+        if (value.dtype.kind not in "iu" or value.dtype.itemsize not in (1, 2, 4, 8)
+                or np.any(value < 0) or np.any(value >= limit) or len(np.unique(value)) != len(value)):
+            raise RunArtifactError(f"Qualification index map mismatch: {name}")
+        return value
+
+    ids = array(brain.ids, "ids", (n,), np.int64)
+    ptr = array(brain.ptr, "ptr", (n + 1,), np.int64)
+    post = array(brain.post, "post", (len(brain.post),), np.int32)
+    weight = array(brain.weight, "weight", post.shape, np.float32)
+    if (ptr[0] != 0 or ptr[-1] != len(post) or np.any(ptr[1:] < ptr[:-1])
+            or np.any(post < 0) or np.any(post >= n)):
+        raise RunArtifactError("Qualification CSR map mismatch")
+    groups = vars(engine.groups)
+    if set(groups) != set(identity["neural_groups"]):
+        raise RunArtifactError("Qualification neural group names mismatch")
+    for name, values in groups.items():
+        indices(values, name, n)
+        if not len(values) or values.tolist() != identity["neural_groups"][name]:
+            raise RunArtifactError("Qualification live neural groups mismatch")
+
+    circuit = brain.circuit
+    edges = array(circuit["edges"], "edges", (len(circuit["edges"]),), np.int64)
+    indices(edges, "edges", len(post))
+    pre = array(circuit["pre"], "pre", edges.shape, np.int32)
+    if not np.array_equal(pre, np.searchsorted(ptr, edges, side="right") - 1):
+        raise RunArtifactError("Qualification circuit pre differs from CSR ordering")
+    kc = indices(circuit["kc"], "kc", n)
+    kc_mask = array(circuit["kc_mask"], "kc_mask", (n,), np.uint8)
+    if (np.any(kc_mask > 1) or not np.array_equal(np.flatnonzero(kc_mask), np.sort(kc))
+            or not np.array_equal(np.sort(kc), np.sort(groups["kc"])) or not np.isin(pre, kc).all()):
+        raise RunArtifactError("Qualification KC group/mask/pre mismatch")
+    dan = indices(circuit["dan"], "dan", n)
+    inverse = array(circuit["dan_index"], "dan_index", (n,), np.int8)
+    if (len(dan) > 128 or np.any(inverse < -1)
+            or not np.array_equal(np.flatnonzero(inverse != -1), np.sort(dan))
+            or not np.array_equal(inverse[dan], np.arange(len(dan)))
+            or not np.isin(groups["pam11"], dan).all() or not np.isin(groups["ppl101"], dan).all()):
+        raise RunArtifactError("Qualification ordered DAN inverse/sentinel mismatch")
+    gain = array(circuit["gain"], "gain", (len(dan), len(edges)), np.float32)
+    if not np.isfinite(gain).all():
+        raise RunArtifactError("Qualification nonfinite DAN gains")
+    modulation_mask = array(brain.modulation_mask, "modulation_mask", (n,), np.uint8)
+    if np.any(modulation_mask > 1):
+        raise RunArtifactError("Qualification modulation mask mismatch")
+    for name, shape, dtype in (("rest", (n,), np.float32), ("tonic", (n,), np.float32),
+                               ("dan_baseline_hz", dan.shape, np.float64)):
+        if not np.isfinite(array(getattr(brain, name), name, shape, dtype)).all():
+            raise RunArtifactError(f"Qualification nonfinite static array: {name}")
+    baseline = array(brain.baseline_plastic, "baseline_plastic", edges.shape, np.float32)
+    brain._validate_candidate_checkpoint_registration()
+    arrays = {name: getattr(brain, name) for name in ["weight", *brain.fields]}
+    # The independent native descriptors protect pointer arrays even if both
+    # public registration containers were edited. Registered extensions keep
+    # their real layouts, without invented destination/placeholder arrays.
+    for name, shape, dtype in brain._native_checkpoint_schema:
+        array(arrays[name], name, shape, dtype)
+    for name in ("memory_u", "memory_w", "rate_kc"):
+        array(arrays[name], name, edges.shape, np.float64)
+    array(arrays["rate_dan"], "rate_dan", dan.shape, np.float64)
+    checkpoint._validate_numeric_arrays(arrays, checkpoint.HASH_CHUNK_BYTES)
+    if (type(brain.cursor) is not int or brain.cursor != 0
+            or type(brain.total_spikes) is not int or brain.total_spikes != 0
+            or type(brain.sim_ms) not in (int, float) or brain.sim_ms != 0
+            or type(brain.weights_frozen) is not bool or brain.weights_frozen):
+        raise RunArtifactError("Qualification context requires fresh initial clock/counters")
+    checkpoint.validate_native_state(arrays, n, brain.cursor)
+    if (any(np.any(arrays[name] != 0) for name in
+            ("memory_u", "memory_w", "rate_kc", "rate_dan", "counts", "queue_count"))
+            or checkpoint.raw_array_sha256(weight) != identity["model_provenance"]["configuration_sha256"]["initial_weight"]
+            or not np.array_equal(baseline, weight[edges])):
+        raise RunArtifactError("Qualification initial weights/memory/baseline mismatch")
+    maps = {}
+    for name in ("mbon11", "mbon07"):
+        target = groups[name]
+        positions = np.flatnonzero(np.isin(post[edges], target))
+        selected = edges[positions]
+        candidate_kc = np.unique(pre[positions])
+        maps[name] = {
+            "target_indices": target.tolist(), "candidate_positions": positions.tolist(),
+            "candidate_edge_indices": selected.tolist(),
+            "candidate_edge_pre_source_ids": [str(value) for value in ids[pre[positions]]],
+            "candidate_edge_post_source_ids": [str(value) for value in ids[post[selected]]],
+            "candidate_kc_indices": candidate_kc.tolist(),
+            "candidate_kc_source_ids": [str(value) for value in ids[candidate_kc]],
+            "baseline_plastic": baseline[positions].tolist(),
+        }
+    brain.assert_model_provenance_locked()
+    schema = {name: {"dtype": value.dtype.str, "shape": list(value.shape)} for name, value in arrays.items()}
+    checkpoint._checkpoint_schema(schema)
+    return _canonical({
+        "context_version": "qualification-map-context/v1", "engine_identity": identity, "n": n,
+        "checkpoint_schema": schema,
+        "candidate_maps": maps, "dan_indices": dan.tolist(), "dan_source_ids": [str(value) for value in ids[dan]],
+    })
+
+
+def _qualification_source_binding(context: dict) -> None:
+    from ..neural import checkpoint
+
+    if _canonical(checkpoint.model_fingerprint()) != _canonical(context["engine_identity"]["model_provenance"]["model_fingerprint"]):
+        raise RunArtifactError("Qualification context packaged source fingerprint changed")
+
+
+def _verified_qualification_context(value) -> dict:
+    """Engine-free intake of immutable, owner-bound native map evidence."""
+    proof = _issued_attestation(value)
+    # Explicit concrete accessors preserve their different prefix/seal policies.
+    if type(value) is ValidatedPrefix:
+        ValidatedPrefix.replay_attested_state_anchors.fget(value)
+        manifest = ValidatedPrefix.manifest.fget(value)
+    else:
+        VerifiedRun.replay_attested_state_anchors.fget(value)
+        manifest = VerifiedRun.manifest.fget(value)
+    if manifest["run_kind"] != "qualification" or type(proof.qualification_context_bytes) is not bytes:
+        raise RunArtifactError("Native qualification context is unavailable")
+    context = _strict_load(proof.qualification_context_bytes)
+    required = {"context_version", "engine_identity", "n", "checkpoint_schema", "candidate_maps",
+                "dan_indices", "dan_source_ids"}
+    if (type(context) is not dict or set(context) != required
+            or context["context_version"] != "qualification-map-context/v1"
+            or type(context["n"]) is not int or context["n"] <= 0
+            or _canonical(context) != proof.qualification_context_bytes
+            or _canonical(context["engine_identity"]) != _canonical(manifest["metadata"]["engine_identity"])):
+        raise RunArtifactError("Invalid qualification context identity/shape")
+    from ..neural.checkpoint import _checkpoint_schema
+
+    try:
+        _checkpoint_schema(context["checkpoint_schema"])
+    except (TypeError, ValueError) as error:
+        raise RunArtifactError("Invalid qualification checkpoint schema") from error
+    if "weight" not in context["checkpoint_schema"] or type(context["candidate_maps"]) is not dict \
+            or set(context["candidate_maps"]) != {"mbon11", "mbon07"}:
+        raise RunArtifactError("Invalid qualification map/schema names")
+    map_keys = {"target_indices", "candidate_positions", "candidate_edge_indices", "candidate_edge_pre_source_ids",
+                "candidate_edge_post_source_ids", "candidate_kc_indices", "candidate_kc_source_ids", "baseline_plastic"}
+    for name, mapping in context["candidate_maps"].items():
+        if (type(mapping) is not dict or set(mapping) != map_keys
+                or any(type(item) is not list for item in mapping.values())
+                or mapping["target_indices"] != context["engine_identity"]["neural_groups"][name]
+                or any(type(index) is not int or index < 0 for key in
+                    ("target_indices", "candidate_positions", "candidate_edge_indices", "candidate_kc_indices") for index in mapping[key])
+                or any(type(source) is not str for key in ("candidate_edge_pre_source_ids", "candidate_edge_post_source_ids",
+                    "candidate_kc_source_ids") for source in mapping[key])
+                or any(not _finite_number(weight, allow_negative=True) for weight in mapping["baseline_plastic"])
+                or len({len(mapping[key]) for key in ("candidate_positions", "candidate_edge_indices",
+                    "candidate_edge_pre_source_ids", "candidate_edge_post_source_ids", "baseline_plastic")}) != 1
+                or len(mapping["candidate_kc_indices"]) != len(mapping["candidate_kc_source_ids"])):
+            raise RunArtifactError("Invalid qualification candidate map shape")
+    dan, sources = context["dan_indices"], context["dan_source_ids"]
+    if (type(dan) is not list or type(sources) is not list or len(dan) != len(sources)
+            or any(type(index) is not int or not 0 <= index < context["n"] for index in dan)
+            or len(set(dan)) != len(dan) or any(type(source) is not str for source in sources)):
+        raise RunArtifactError("Invalid qualification DAN map shape")
+    _qualification_source_binding(context)
+    return context
 
 
 @dataclass(frozen=True)
@@ -920,6 +1137,7 @@ class ValidatedPrefix:
     def replay_attested_state_anchors(self) -> frozenset[str]:
         if self._attestation is None:
             return frozenset()
+        _issued_attestation(self)
         self._check_binding()
         if self._attestation.artifact_bytes != self._attestation_binding():
             raise RunArtifactError("Replay attestation does not bind prefix")
@@ -1006,6 +1224,7 @@ class VerifiedRun:
     def replay_attested_state_anchors(self) -> frozenset[str]:
         if self._attestation is None:
             return frozenset()
+        _issued_attestation(self)
         manifest, raw = _read_manifest(self.path)
         if raw != self._manifest_bytes or self._attestation.artifact_bytes != raw:
             raise RunArtifactError("Manifest changed since replay verification")
@@ -1051,8 +1270,13 @@ def _replay_verified(value: VerifiedRun | ValidatedPrefix, *, engine_factory: Ca
     from .replay import _replay_black_retention
 
     engine = None
-    anchors = value.manifest["state_anchors"]
+    context_bytes = None
+    manifest = value.manifest
+    anchors = manifest["state_anchors"]
     try:
+        if manifest["run_kind"] == "qualification":
+            engine = engine_factory()
+            context_bytes = _qualification_context(engine, manifest["metadata"])
         for entry in anchors.values():
             anchor = {key: item for key, item in entry.items() if key != "event_sequence"}
             # Fully restore each occurrence, even when state content digests agree.
@@ -1061,10 +1285,16 @@ def _replay_verified(value: VerifiedRun | ValidatedPrefix, *, engine_factory: Ca
                 engine_factory=engine_factory, engine=engine)
         for _ in value.iter_events():
             pass
-    except (ValueError, OSError) as error:
+        if context_bytes is not None:
+            _qualification_source_binding(_strict_load(context_bytes))
+    except (ValueError, OSError, RuntimeError, TypeError, AttributeError, IndexError, KeyError) as error:
         raise RunArtifactError(f"Actual anchor replay verification failed: {error}") from error
     binding = value._manifest_bytes if isinstance(value, VerifiedRun) else value._attestation_binding()
-    object.__setattr__(value, "_attestation", _ReplayAttestation(binding, tuple(sorted(anchors))))
+    proof = _ReplayAttestation(binding, tuple(sorted(anchors)))
+    object.__setattr__(proof, "qualification_context_bytes", context_bytes)
+    object.__setattr__(proof, "_owner", weakref.ref(value))
+    object.__setattr__(proof, "_issuer", _NATIVE_ISSUER)
+    object.__setattr__(value, "_attestation", proof)
 
 
 def verify_replay_run(path: str | Path, *, engine_factory: Callable) -> VerifiedRun:
