@@ -17,7 +17,7 @@ verification contract is defined in
 **Candidate-state refinement:** Production candidate/noncandidate content digests
 follow [`2026-10-03-candidate-state-digest-contract.md`](../specs/2026-10-03-candidate-state-digest-contract.md).
 
-## Current checkpoint and live remaining work — 2026-10-09
+## Current checkpoint and live remaining work — 2026-11-01
 
 The early task-level RED/GREEN boxes are historical execution instructions, not
 the current backlog. Tasks 1–6 and strict analysis 7A are implemented; native
@@ -26,9 +26,18 @@ The complete tiny-native pilot is still unsupported (136 negative gates), not
 formal fullgraph qualification. Historical unchanged-source Windows acceptance
 is 1,299 passes; do not present it as a newly executed cloud suite.
 
+Continuation is back on the original Windows workstation, not the cloud.
+Fresh local runtime locks pass; recorder/replay/projection baseline is
+380 passed and one permission-limited Windows junction skip (57.23 seconds).
+The next bounded resource slice is Task7B3k; source-bearing work waits until its
+measurement and independent review finish. The cloud setup item below applies
+only when moving to a fresh cloud checkout, not as a gate on local continuation.
+
 - [ ] Establish/verify the cloud toolchain and regenerate ignored runtime before
   any actual fullgraph work; see [tracked handover](../../cloud-handover.md).
-- [ ] Measure a separately bounded longer-retention fullgraph anchor/replay pilot.
+- [x] Measure a separately bounded longer-retention fullgraph anchor/replay pilot.
+- [ ] After integration, measure the actual detail-enabled grid path and bound
+  complete qualification storage/events/verification costs before formal freeze.
 - [ ] Complete strict selected qualification controls/interventions, frozen-config
   integration and the real assay CLI; current CLI lacks `assay`.
 - [ ] Resolve discarded-grid training ancestry without mistaking black-retention
@@ -616,6 +625,43 @@ tracked cloud handover/TODOs and repository instructions, without changing the
 measured source or raw artifacts. This sample does not
 qualify settings, demonstrate learning or establish full-assay capacity; a
 longer retained endpoint remains a separate bounded resource gate.
+
+#### Task7B3k: bounded longer-retention fullgraph recorder/replay costs
+
+**Files:** Create `docs/experiments/2026-11-01-fullgraph-retention-pilot.md`;
+update status only. Preserve package source, schema, dependencies and prior
+measurement bytes. This is a resource gate, not a qualified timing selection.
+
+- [x] Execute the same actual fresh paired-A/order-AB, qualification-family
+  seed11 schedule and retain genuine source111000 versus reference109000 ticks.
+  Resource horizon70000ms puts anchor808000 and CS onset809000, requiring
+  69700ms of explicit reward-free black:139 calls500ms plus one200ms call.
+- [x] Produce one genuine169-event prefix recipe/anchor and two independent
+  A/B siblings with existing prelude/CS/tail, ending812000. Require179 sealed
+  events, three durable checkpoints, six sequential factories and452 actual
+  observations including both140-call isolated native replay passes.
+- [x] Record current source/native/input/state/recipe/file bindings, actual
+  observation/checking/recording/verification costs and scoped memory/disk.
+  Preserve negative/qualification boundaries and no whole-assay ETA claim.
+- [x] Independently validate artifacts/arithmetic and obtain a fresh scoped
+  scientific-integrity/resource review before the feature-only checkpoint.
+  Continue the remaining source-bearing work afterward; no automatic pause.
+
+Measured on `460f5b046e4e18df2d147c18ba73899ac660032a`: one primary completed
+452 actual observations, 179 sealed events, three durable checkpoints and one
+anchor across six sequential fullgraph factories. Actual source-to-anchor time
+was 69,700 ms; prefix/sealed native verification took 683.137087/732.934150 s
+and attested the same singleton. All 140 original/prefix/sealed black telemetry
+payloads match canonically excluding only the two timing fields. Observed
+process lifetime peak through the final sample was 1,315,819,520 bytes;
+dedicated file-boundary maximum was 56,872,704 bytes. Root independently checked
+all 460 output files, source/schema hashes, rebuilt recipe/envelope, actual
+checkpoint states, clocks and arithmetic. See the
+[result report](../../experiments/2026-11-01-fullgraph-retention-pilot.md).
+Fresh independent SPEC/QUALITY review passed with no Critical, Important or
+Minor findings. This is assay-style False/False
+detail flags, not the legacy qualifier's detail-enabled cost, whole-assay
+capacity, scientific support or formal qualification. No new complete suite ran.
 
 ### Task 8: Add a motor-only adapter without a behavioral claim
 

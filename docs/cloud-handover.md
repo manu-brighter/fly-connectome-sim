@@ -1,9 +1,14 @@
-# Cloud continuation handover — 2026-10-09
+# Continuation and cloud handover — 2026-11-01
 
 This is the tracked entry point for continuing from a fresh checkout. Use remote
 `origin` of `manu-brighter/fly-connectome-sim`, branch
 `feat/connectome-experiment-core`; use its latest pushed commit, not `main`.
 No pull request or merge is requested. The repository is still a WIP, not v1.
+
+Work resumed on the original Windows workstation. The cloud setup below remains
+available for a future fresh checkout; it is not required to continue locally.
+The latest request is continuous autonomous execution, including feature commits
+and pushes, without pausing at each checkpoint. No PR/merge is authorized.
 
 ## Read first
 
@@ -13,7 +18,8 @@ No pull request or merge is requested. The repository is still a WIP, not v1.
 4. [Current plan and remaining work](superpowers/plans/2026-09-24-associative-plasticity-assay.md).
 5. [Replay contract](superpowers/specs/2026-10-02-replay-anchor-contract.md) and
    [candidate-state digest contract](superpowers/specs/2026-10-03-candidate-state-digest-contract.md).
-6. [Latest fullgraph resource report](experiments/2026-10-08-fullgraph-anchor-pilot.md).
+6. [Latest longer-retention report](experiments/2026-11-01-fullgraph-retention-pilot.md)
+   and [earlier short-retention report](experiments/2026-10-08-fullgraph-anchor-pilot.md).
 
 The older connectome-experiment-core plan is background, not the next task list.
 The private local SDD ledger, scripts, raw results and agent conversations do
@@ -41,9 +47,15 @@ orienting the next session; they do not replace missing native evidence files.
   A/B siblings, six sequential fullgraph factories, 92 calls and 59 sealed
   events. Both genuine isolated native replay passes reproduced one retained
   black endpoint. This is resource-only, not learning/configuration approval.
+- The 70-second resource sample on `460f5b0` completed six factories, 452 calls,
+  179 events and one anchor. Both genuine native replay passes reached the same
+  retained state; root independently checked all 460 files, recipe/state/timing
+  bindings and canonical three-pass black telemetry. This remains one sample,
+  not a whole-assay capacity or scientific qualification certificate.
 
-The measurement source was `ec6474b3693beb49a9dde28c0e02c3cca9987dad`; this
-handover changes documentation only. The public report retains exact raw,
+The 10-second measurement source was `ec6474b3693beb49a9dde28c0e02c3cca9987dad`;
+the 70-second source was `460f5b046e4e18df2d147c18ba73899ac660032a`. Both
+resource slices change documentation only. The public reports retain exact raw,
 source/schema, native, checkpoint, recipe and event bindings. The underlying
 raw run is local-only: a cloud session cannot claim to have reverified it unless
 those exact bytes are separately made available. On a new compiler/platform,
@@ -56,6 +68,11 @@ also occurred. No complete suite or fullgraph simulation was repeated for this
 documentation-only handover. The independent measurement review passed without
 Critical, Important or Minor findings; its private report is not cloud evidence.
 
+Fresh local recorder/replay/projection baseline on 2026-11-01: 380 passed and
+one Windows junction-permission skip in 57.23 s. Runtime locks verified the
+actual fullgraph. The longer native pilot is separate from that focused suite;
+no new complete/all-factor suite or Linux execution is claimed.
+
 ## Actual next work
 
 Use these live TODOs together with the plan; do not restart historical completed
@@ -63,9 +80,10 @@ RED/GREEN steps because an old procedural checkbox is unchecked.
 
 - [ ] Establish the fresh cloud environment and collect focused tests; record
   compiler/platform identity and missing data explicitly.
-- [ ] After runtime preparation, measure a bounded longer-retention fullgraph
-  one-anchor pilot, including both genuine replay passes, before escalating to
-  a whole assay. Retained-state cost is not the earlier short-state component cost.
+- [x] Measure a bounded longer-retention fullgraph one-anchor pilot, including
+  both genuine replay passes. One 70-second Windows sample is now recorded.
+- [ ] Before formal execution, benchmark the actual integrated grid path with
+  diagnostic detail flags and bound complete storage/stream/verification costs.
 - [ ] Complete selected qualification control/intervention evidence at T and T+60,
   strict artifact/config integration and the actual `assay --config --output-dir`
   CLI. Current CLI has only `qualify` and `verify-run`; planning text describing

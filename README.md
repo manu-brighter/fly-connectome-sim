@@ -31,7 +31,7 @@ left/right preference.
 | Native model | C++17 kernel; explicit PAM11/PPL101 stimulation; KC, MBON07, MBON11 and DNa02 telemetry | Physiological validity beyond the declared model |
 | Experiment state | Checkpoint restore, complete-state hashes, reset determinism and candidate-memory interventions | A qualified production frozen configuration |
 | Assay evidence | Complete eight-cohort tiny-native production, independent A/B/C trials, two retention times, provenance-bound reports and native replay verification | Selected qualification evidence, fullgraph held-out confirmation and the `assay` CLI |
-| Resource pilots | Bounded fullgraph components and an actual trained one-anchor pilot with isolated native replay | Longer-retention costs, whole-assay capacity and a tested cloud/Linux environment |
+| Resource pilots | Fullgraph components and trained 10-/70-second one-anchor pilots with isolated native replay | Complete grid/assay capacity and a tested cloud/Linux environment |
 | Product | Scientific foundation for the event-planning experiment | Separately labelled motor readout, offline 3D replay and LLM event planning |
 
 Implementation and verification details live in the
