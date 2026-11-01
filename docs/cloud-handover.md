@@ -159,6 +159,28 @@ Closed future integration roles enumerate 4850 branches, 1602 checkpoints and
 8099 relevant events, correcting the unproved 8064 estimate. Operational branch
 cap remains 4096; actual selected/replay conformance and capacity are unfinished.
 
+Task7B4c.2a's compact producer arithmetic passed independent Astra numerical/
+integrity review without new Critical, Important or Minor findings. The producer
+uses shared pure state, response, point and selection functions over compact
+measurements; response windows reject gaps, overlaps and reordered bins. Existing
+native-valid arithmetic, float32 behavior and earliest-T/tie rules are preserved.
+Worker qualification module: **119 passed in 259.59 s**, no skips/errors/failures.
+Root qualification/analysis/replay/CLI acceptance: **470 passed, one declared
+opt-in skip in 349.63 s**, no errors/failures. The skipped actual fullgraph context
+case and the full all-eight matrix were not repeated. Frozen hashes matched.
+
+Arithmetic snapshot model-source identity:
+`ce4e59df80c14ec6ee12af94e071aabb6a010bfadc6dc58a63296dcbd776709b`.
+Schema is unchanged from c.1. This is still not authenticated grid reduction,
+formal qualification, support, a frozen config or capacity approval.
+
+The review separately identified inherited one-spike rounding: for population 3
+and 100 ms, exactly one spike can compare below its floor. It is intentionally
+preserved by this equivalence refactor and requires the separate fix below.
+The reviewed fix design uses actual integer C/replay/washout counts, subtracts
+counts before Hz conversion and preserves qualification's inclusive C floor
+versus confirmation's strict floor. It introduces no ad hoc tolerance.
+
 ## Actual next work
 
 Use these live TODOs together with the plan; do not restart historical completed
@@ -186,8 +208,12 @@ RED/GREEN steps because an old procedural checkbox is unchecked.
   current-source checks, independent review and real-MaleCNS compatibility tests.
 - [x] Task7B4c.1: exact grid bindings, declarations, multiple failed-T prefixes,
   closed intended grammar, independent review and ordinary/scoped graph acceptance.
-- [ ] Task7B4c.2a: extract compact pure arithmetic actually used by the producer;
-  preserve native-valid results, float32 semantics and deterministic selection.
+- [x] Task7B4c.2a: compact pure producer arithmetic, independent numerical review
+  and targeted qualification/analysis/replay/CLI acceptance.
+- [ ] Resolve the inherited one-spike/C-floor and washout-equality rounding
+  boundary before the strict consumer/source freeze. Preserve qualification's
+  inclusive floor versus confirmation's strict floor; use a reviewed exact
+  numerical convention, never an ad hoc tolerance to obtain a positive gate.
 - [ ] Task7B4c.2b: implement authenticated bounded two-pass grid reconstruction,
   checking all candidates and available prefixes without inventing missing data.
   Public qualification/freeze integration still belongs to Task7B4f.

@@ -125,6 +125,29 @@ class QualificationPoint:
 
 
 @dataclass(frozen=True)
+class _ReplicateSummary:
+    """Selection inputs without candidate vectors or raw observations."""
+    seed: int
+    paired_identity: str
+    presentation_order: str
+    delta_hz: float | None
+    reasons: tuple[str, ...]
+    washout_hz: float | None
+    washout_threshold_hz: float | None
+
+
+@dataclass(frozen=True)
+class _PointSummary:
+    configuration: GridConfiguration
+    response_window: ResponseWindow
+    retention_ms: float
+    mean_delta_hz: float | None
+    reasons: tuple[str, ...]
+    complete_factors: bool
+    washout_eligible: bool
+
+
+@dataclass(frozen=True)
 class ControlMeasurement:
     seed: int
     paired_identity: str
@@ -411,7 +434,7 @@ def _aggregate_window(
     start = _ticks(cs_onset_ms + window.start_ms)
     end = _ticks(cs_onset_ms + window.end_ms)
     spikes = 0
-    covered = 0
+    cursor = start
     for telemetry in telemetries:
         for bin_record in telemetry["bins"]:
             bin_end = _ticks(float(bin_record["end_ms"]))
@@ -420,18 +443,53 @@ def _aggregate_window(
             if bin_start < end and bin_end > start:
                 if bin_start < start or bin_end > end:
                     raise ValueError("Response bin crosses a half-open window boundary")
+                if duration <= 0 or bin_start != cursor:
+                    raise ValueError("Response window bins are not ordered and contiguous")
                 spikes += int(bin_record["group_spikes"][population])
-                covered += duration
-    if covered != end - start:
+                cursor = bin_end
+    if cursor != end:
         raise ValueError("Response window has missing bins")
-    return spikes / (group_size * (covered / 10000.0))
+    return _response_rate(spikes, end - start, group_size)
 
 
-def _select_points(
-    points: tuple[QualificationPoint, ...] | list[QualificationPoint],
-) -> tuple[GridConfiguration, ResponseWindow, float, int] | None:
+def _response_rate(spikes: int, duration_ticks: int, population: int) -> float:
+    """Pure rate arithmetic after the extraction layer proves tick coverage."""
+    if population <= 0 or duration_ticks <= 0:
+        raise ValueError("Missing population or response duration")
+    return spikes / (population * (duration_ticks / 10000.0))
+
+
+def _replicate_summary(item: ReplicateMeasurement) -> _ReplicateSummary:
+    return _ReplicateSummary(item.seed, item.paired_identity, item.presentation_order,
+                             item.delta_hz, item.reasons, item.washout_hz,
+                             item.washout_threshold_hz)
+
+
+def _summarize_point(configuration: GridConfiguration, window: ResponseWindow,
+                     retention_ms: float, replicates: tuple[_ReplicateSummary, ...]) -> _PointSummary:
+    reasons = tuple(dict.fromkeys(reason for item in replicates for reason in item.reasons))
+    mean = (sum(item.delta_hz for item in replicates) / len(replicates)
+            if not reasons and len(replicates) == 8 else None)
+    if mean == 0:
+        reasons += ("zero_mean_delta",)
+        mean = None
+    return _selection_summary(configuration, window, retention_ms, replicates, mean, reasons)
+
+
+def _selection_summary(configuration: GridConfiguration, window: ResponseWindow,
+                       retention_ms: float, replicates: tuple[_ReplicateSummary, ...],
+                       mean: float | None, reasons: tuple[str, ...]) -> _PointSummary:
     expected = {(seed, paired, order) for seed in QUALIFICATION_SEEDS
                 for paired in ("A", "B") for order in ("AB", "BA")}
+    keys = {(item.seed, item.paired_identity, item.presentation_order) for item in replicates}
+    complete = keys == expected and len(replicates) == len(expected)
+    washout = not any(item.washout_hz is None or item.washout_threshold_hz is None
+                      or item.washout_hz > item.washout_threshold_hz for item in replicates)
+    return _PointSummary(configuration, window, retention_ms, mean, reasons, complete, washout)
+
+
+def _select_compact_points(points: tuple[_PointSummary, ...] | list[_PointSummary]) -> tuple | None:
+    """Select from scalar point summaries; no observation/vector payload survives."""
     best = None
     for configuration in GRID:
         for window in RESPONSE_WINDOWS:
@@ -441,15 +499,7 @@ def _select_points(
                               if point.configuration == configuration
                               and point.response_window == window
                               and point.retention_ms == retention), None)
-                if point is None:
-                    continue
-                keys = {(item.seed, item.paired_identity, item.presentation_order)
-                        for item in point.replicates}
-                if keys != expected or len(point.replicates) != len(expected):
-                    continue
-                if any(item.washout_hz is None or item.washout_threshold_hz is None
-                       or item.washout_hz > item.washout_threshold_hz
-                       for item in point.replicates):
+                if point is None or not point.complete_factors or not point.washout_eligible:
                     continue
                 chosen = point
                 break
@@ -459,12 +509,21 @@ def _select_points(
                 best = chosen
     if best is None:
         return None
-    return (
-        best.configuration,
-        best.response_window,
-        best.retention_ms,
-        1 if best.mean_delta_hz > 0 else -1,
-    )
+    return (best.configuration, best.response_window, best.retention_ms,
+            1 if best.mean_delta_hz > 0 else -1)
+
+
+def _select_points(
+    points: tuple[QualificationPoint, ...] | list[QualificationPoint],
+) -> tuple[GridConfiguration, ResponseWindow, float, int] | None:
+    compact = []
+    for point in points:
+        compact.append(_selection_summary(
+            point.configuration, point.response_window, point.retention_ms,
+            tuple(_replicate_summary(item) for item in point.replicates),
+            point.mean_delta_hz, point.reasons,
+        ))
+    return _select_compact_points(compact)
 
 
 def benchmark(
@@ -823,15 +882,22 @@ def _mbon07_state(run: _Run) -> tuple | None:
         state = run.engine.brain.candidate_memory(run.engine.groups.mbon07)
     except (AttributeError, ValueError):
         return None
-    edges = tuple(int(value) for value in state.edge_indices)
-    u = np.asarray(state.memory_u, dtype=np.float64)
-    w = np.asarray(state.memory_w, dtype=np.float64)
+    rule = run.engine.brain.rule_parameters
+    return _mbon07_projection(tuple(int(value) for value in state.edge_indices),
+                              state.memory_u, state.memory_w,
+                              rule["minimum_fraction"], rule["maximum_fraction"])
+
+
+def _mbon07_projection(edges: tuple[int, ...], memory_u: np.ndarray, memory_w: np.ndarray,
+                       minimum_fraction: float, maximum_fraction: float) -> tuple | None:
+    """Pure MBON07 snapshot projection using its own selected edges and rule bounds."""
+    u = np.asarray(memory_u, dtype=np.float64)
+    w = np.asarray(memory_w, dtype=np.float64)
     if not edges or u.shape != w.shape or len(edges) != len(w) \
             or not np.isfinite(u).all() or not np.isfinite(w).all():
         return None
-    rule = run.engine.brain.rule_parameters
-    lower = float(rule["minimum_fraction"]) - 1.0
-    upper = float(rule["maximum_fraction"]) - 1.0
+    lower = float(minimum_fraction) - 1.0
+    upper = float(maximum_fraction) - 1.0
     if not math.isfinite(lower) or not math.isfinite(upper):
         return None
     lower_mask = (u <= lower) | (w <= lower)
@@ -853,6 +919,50 @@ def _state_difference(first: np.ndarray, second: np.ndarray) -> float:
             or not np.isfinite(second).all():
         raise ValueError("Missing or nonfinite candidate state")
     return float(np.abs(first - second).mean())
+
+
+def _state_assessment(state: dict) -> tuple[float | None, float | None, tuple[str, ...]]:
+    """Pure candidate projection arithmetic; preserve NumPy dtype until after mean."""
+    state_shift = state_resolution = None
+    errors = []
+    if len(state) != 4:
+        raise _GateFailure("missing_mbon11_observability")
+    try:
+        edge_order = state["paired"][0]
+        if any(value[0] != edge_order or not np.isfinite(value[1]).all()
+               for value in state.values()):
+            raise ValueError("Candidate edge order changed")
+        state_shift = _state_difference(state["paired"][1],
+                                        state["matched_reference"][1])
+        state_resolution = _state_difference(state["paired"][1],
+                                             state["paired_replay"][1])
+        if state_resolution > 0:
+            errors.append("checkpoint_replay")
+        if state_resolution > state_shift or state_shift <= 5 * state_resolution:
+            errors.append("candidate_state_shift")
+    except ValueError:
+        errors.append("checkpoint_replay")
+    return state_shift, state_resolution, tuple(errors)
+
+
+def _base_assessment(state: dict, paths: dict, maximum_bound: float,
+                      initial_reasons: tuple[str, ...]) -> tuple:
+    """Pure base gates over four state projections and three compact pre pathways."""
+    shift, resolution, state_reasons = _state_assessment(state)
+    errors = [*initial_reasons, *state_reasons]
+    if maximum_bound > 0.01:
+        errors.append("candidate_saturation")
+    if "A" in paths and "B" in paths \
+            and paths["A"][1] != paths["B"][1]:
+        errors.append("pathway_order")
+    for value in paths.values():
+        if not math.isfinite(value[0]) or value[0] <= 0:
+            errors.append("modeled_drive")
+        if state and value[3] != state["paired"][0]:
+            errors.append("pathway_order")
+    if paths and len({value[4] for value in paths.values()}) != 1:
+        errors.append("pathway_order")
+    return shift, resolution, tuple(dict.fromkeys(errors))
 
 
 def _pathway(records: tuple[dict, ...], identity: str,
@@ -987,41 +1097,14 @@ def _replicate_base(run: _Run, root: Path, baseline: Path,
             run.grid_capture["training_occurrences"][condition] = occurrence
         checkpoints[condition] = path
     run.enter_grid_role("base_validation")
-    state_shift = state_resolution = None
-    if len(state) != 4:
-        raise _GateFailure("missing_mbon11_observability")
-    try:
-        edge_order = state["paired"][0]
-        if any(value[0] != edge_order or not np.isfinite(value[1]).all()
-               for value in state.values()):
-            raise ValueError("Candidate edge order changed")
-        state_shift = _state_difference(state["paired"][1],
-                                        state["matched_reference"][1])
-        state_resolution = _state_difference(state["paired"][1],
-                                             state["paired_replay"][1])
-        if state_resolution > 0:
-            errors.append("checkpoint_replay")
-        if state_resolution > state_shift or state_shift <= 5 * state_resolution:
-            errors.append("candidate_state_shift")
-    except ValueError:
-        errors.append("checkpoint_replay")
     maximum_bound = max(
         *(_max_bound(records) for records in training.values()),
         *(_max_bound(trial[0]) for trial in pre.values()),
         _max_bound(pre_replay[0]),
     )
-    if maximum_bound > 0.01:
-        errors.append("candidate_saturation")
-    if "A" in pre_paths and "B" in pre_paths \
-            and pre_paths["A"][1] != pre_paths["B"][1]:
-        errors.append("pathway_order")
-    for value in pre_paths.values():
-        if not math.isfinite(value[0]) or value[0] <= 0:
-            errors.append("modeled_drive")
-        if state and value[3] != state["paired"][0]:
-            errors.append("pathway_order")
-    if pre_paths and len({value[4] for value in pre_paths.values()}) != 1:
-        errors.append("pathway_order")
+    state_shift, state_resolution, base_errors = _base_assessment(
+        state, pre_paths, maximum_bound, tuple(errors),
+    )
     return {
         "pre": pre, "pre_paths": pre_paths, "pre_replay": pre_replay,
         "training": training, "state_shift": state_shift,
@@ -1031,7 +1114,7 @@ def _replicate_base(run: _Run, root: Path, baseline: Path,
         "training_end_ms": training_end_ms,
         "prefix": prefix,
         "state_resolution": state_resolution, "maximum_bound": maximum_bound,
-        "checkpoints": checkpoints, "errors": tuple(dict.fromkeys(errors)),
+        "checkpoints": checkpoints, "errors": base_errors,
     }
 
 
@@ -1076,42 +1159,37 @@ def _retained_tests(run: _Run, root: Path, base: dict,
     return result, maximum_bound, target_onset_tick / 10
 
 
-def _measurement(run: _Run, base: dict, retained: dict,
-                 retention_bound: float, test_onset_ms: float,
-                 configuration: GridConfiguration, window: ResponseWindow,
-                 seed: int, paired: str, order: str) -> ReplicateMeasurement:
-    reasons = list(base["errors"])
-    one_spike = 1000.0 / (len(run.engine.groups.mbon11)
-                          * (window.end_ms - window.start_ms))
-    pre11 = [None, None, None]
-    post11 = [None, None, None]
-    pre07 = [None, None, None]
-    post07 = [None, None, None]
+def _one_spike_rate(population: int, window: ResponseWindow) -> float | None:
+    return (1000.0 / (population * (window.end_ms - window.start_ms))
+            if population else None)
+
+
+def _measurement_from_compact(
+    compact: ReplicateMeasurement, *, replay_pre_hz: float | None = None,
+    frozen_post_hz: float | None = None, reference_post_hz: float | None = None,
+    pathway_orders: tuple[tuple[int, ...], ...] = (), failure_reason: str | None = None,
+) -> ReplicateMeasurement:
+    """Pure gates from independently obtained scalars/vectors, never raw telemetry.
+
+    ReplicateMeasurement is also the compact projection carrier. Derived response
+    fields are overwritten here; callers supply actual rates, state projections,
+    window KC counts, first drive, bounds, trace and orders. A failed prefix keeps
+    its existing availability exactly and does not evaluate unavailable gates.
+    """
+    if failure_reason is not None:
+        return replace(compact, reasons=(failure_reason,))
+    reasons = list(compact.reasons)
+    pre11, post11 = compact.pre_mbon11, compact.post_mbon11
+    pre07, post07 = compact.pre_mbon07, compact.post_mbon07
+    one_spike = compact.one_spike_rate_hz
     replay_resolution = washout = threshold = delta = None
     try:
-        for i, identity in enumerate(("A", "B", "C")):
-            for target, trial in ((pre11, base["pre"][identity]),
-                                  (post11, retained["paired"][identity])):
-                target[i] = _aggregate_window(trial[0], trial[1], window,
-                                              "mbon11", len(run.engine.groups.mbon11))
-            for target, trial in ((pre07, base["pre"][identity]),
-                                  (post07, retained["paired"][identity])):
-                target[i] = _aggregate_window(trial[0], trial[1], window,
-                                              "mbon07", len(run.engine.groups.mbon07))
-        replay_resolution = abs(pre11[("A", "B", "C").index(paired)] -
-                                _aggregate_window(base["pre_replay"][0],
-                                                  base["pre_replay"][1], window,
-                                                  "mbon11", len(run.engine.groups.mbon11)))
+        replay_resolution = abs(pre11[("A", "B", "C").index(compact.paired_identity)] - replay_pre_hz)
         if replay_resolution > 0:
             reasons.append("checkpoint_replay")
-        frozen = retained["frozen_plasticity"][paired]
-        unstimulated = retained["matched_reference"][paired]
-        washout = abs(_aggregate_window(frozen[0], frozen[1], window, "mbon11",
-                                        len(run.engine.groups.mbon11)) -
-                      _aggregate_window(unstimulated[0], unstimulated[1], window,
-                                        "mbon11", len(run.engine.groups.mbon11)))
+        washout = abs(frozen_post_hz - reference_post_hz)
         threshold = max(5 * replay_resolution, one_spike)
-        plus = 0 if paired == "A" else 1
+        plus = 0 if compact.paired_identity == "A" else 1
         minus = 1 - plus
         delta = (post11[plus] - post11[minus]) - (pre11[plus] - pre11[minus])
         if pre11[2] < one_spike or post11[2] < one_spike:
@@ -1127,6 +1205,58 @@ def _measurement(run: _Run, base: dict, retained: dict,
             reasons.append("nonfinite")
     except (KeyError, TypeError, ValueError, IndexError, ZeroDivisionError):
         reasons.append("missing_mbon11_observability")
+    try:
+        if len(pathway_orders) != 4:
+            raise ValueError("Missing window pathway projections")
+        if len(set(pathway_orders)) != 1:
+            reasons.append("pathway_order")
+        vectors = (*compact.candidate_kc_vectors, *compact.post_candidate_kc_vectors)
+        if any(sum(vector) == 0 for vector in vectors):
+            reasons.append("missing_kc_activity")
+        if (compact.candidate_kc_vectors[0] == compact.candidate_kc_vectors[1]
+                or compact.post_candidate_kc_vectors[0] == compact.post_candidate_kc_vectors[1]):
+            reasons.append("kc_vector_distinctness")
+    except (KeyError, TypeError, ValueError, IndexError):
+        reasons.append("pathway_order")
+    if compact.maximum_bound_hit_fraction > 0.01:
+        reasons.append("candidate_saturation")
+    return replace(compact, delta_hz=delta, response_replay_resolution_hz=replay_resolution,
+                   washout_hz=washout, washout_threshold_hz=threshold,
+                   reasons=tuple(dict.fromkeys(reasons)))
+
+
+def _measurement(run: _Run, base: dict, retained: dict,
+                 retention_bound: float, test_onset_ms: float,
+                 configuration: GridConfiguration, window: ResponseWindow,
+                 seed: int, paired: str, order: str) -> ReplicateMeasurement:
+    """Producer extraction adapter; the shared arithmetic accepts only projections."""
+    one_spike = _one_spike_rate(len(run.engine.groups.mbon11), window)
+    pre11 = [None, None, None]
+    post11 = [None, None, None]
+    pre07 = [None, None, None]
+    post07 = [None, None, None]
+    replay_pre = frozen_post = reference_post = None
+    pathway_orders = ()
+    try:
+        for i, identity in enumerate(("A", "B", "C")):
+            for target, trial in ((pre11, base["pre"][identity]),
+                                  (post11, retained["paired"][identity])):
+                target[i] = _aggregate_window(trial[0], trial[1], window,
+                                              "mbon11", len(run.engine.groups.mbon11))
+            for target, trial in ((pre07, base["pre"][identity]),
+                                  (post07, retained["paired"][identity])):
+                target[i] = _aggregate_window(trial[0], trial[1], window,
+                                              "mbon07", len(run.engine.groups.mbon07))
+        replay_pre = _aggregate_window(base["pre_replay"][0], base["pre_replay"][1], window,
+                                       "mbon11", len(run.engine.groups.mbon11))
+        frozen = retained["frozen_plasticity"][paired]
+        unstimulated = retained["matched_reference"][paired]
+        frozen_post = _aggregate_window(frozen[0], frozen[1], window, "mbon11",
+                                        len(run.engine.groups.mbon11))
+        reference_post = _aggregate_window(unstimulated[0], unstimulated[1], window,
+                                           "mbon11", len(run.engine.groups.mbon11))
+    except (KeyError, TypeError, ValueError, IndexError, ZeroDivisionError):
+        pass
     window_pre = ((), ())
     window_post = ((), ())
     try:
@@ -1142,19 +1272,12 @@ def _measurement(run: _Run, base: dict, retained: dict,
         ]
         window_pre = (pre_paths[0][2], pre_paths[1][2])
         window_post = (post_paths[0][2], post_paths[1][2])
-        if len({path[1] for path in (*pre_paths, *post_paths)}) != 1:
-            reasons.append("pathway_order")
-        if any(sum(vector) == 0 for vector in (*window_pre, *window_post)):
-            reasons.append("missing_kc_activity")
-        if window_pre[0] == window_pre[1] or window_post[0] == window_post[1]:
-            reasons.append("kc_vector_distinctness")
+        pathway_orders = tuple(path[1] for path in (*pre_paths, *post_paths))
     except (KeyError, TypeError, ValueError, IndexError):
-        reasons.append("pathway_order")
+        pass
     maximum_bound = max(base["maximum_bound"], retention_bound,
                         *(_max_bound(trial[0]) for branch in retained.values()
                           for trial in branch.values()))
-    if maximum_bound > 0.01:
-        reasons.append("candidate_saturation")
     paths = base["pre_paths"]
     first = paths.get("A")
     second = paths.get("B")
@@ -1167,16 +1290,16 @@ def _measurement(run: _Run, base: dict, retained: dict,
         if trained07 and matched07 and trained07[0] == matched07[0] else None
     )
     final_trace = base["training"]["paired"][-1]["bins"][-1]["qualification_detail"]
-    return ReplicateMeasurement(
+    compact = ReplicateMeasurement(
         seed, paired, order, tuple(pre11), tuple(post11), tuple(pre07), tuple(post07),
-        delta, one_spike, replay_resolution, base["state_resolution"],
-        base["state_shift"], washout, threshold, maximum_bound, drives,
+        None, one_spike, None, base["state_resolution"],
+        base["state_shift"], None, None, maximum_bound, drives,
         window_pre,
         first[1] if first else (), first[3] if first else (),
         first[4] if first else (),
         tuple(float(value) for value in final_trace["rate_kc"]),
         tuple(float(value) for value in final_trace["rate_dan"]),
-        tuple(dict.fromkeys(reasons)),
+        tuple(base["errors"]),
         training_memory_w=tuple(float(value) for value in state["paired"][1]),
         matched_memory_w=tuple(float(value) for value in state["matched_reference"][1]),
         replay_memory_w=tuple(float(value) for value in state["paired_replay"][1]),
@@ -1204,14 +1327,16 @@ def _measurement(run: _Run, base: dict, retained: dict,
         matched_mbon07_bound_hit_fraction=matched07[5] if matched07 else None,
     )
 
+    return _measurement_from_compact(compact, replay_pre_hz=replay_pre,
+                                     frozen_post_hz=frozen_post, reference_post_hz=reference_post,
+                                     pathway_orders=pathway_orders)
+
 
 def _failed_measurement(run: _Run, window: ResponseWindow,
                         seed: int, paired: str, order: str,
                         reason: str, base: dict | None = None,
                         retained: dict | None = None) -> ReplicateMeasurement:
-    group_size = len(run.engine.groups.mbon11)
-    one_spike = (1000.0 / (group_size * (window.end_ms - window.start_ms))
-                 if group_size else None)
+    one_spike = _one_spike_rate(len(run.engine.groups.mbon11), window)
     absent = (None, None, None)
     result = ReplicateMeasurement(
         seed, paired, order, absent, absent, absent, absent,
@@ -1273,7 +1398,8 @@ def _failed_measurement(run: _Run, window: ResponseWindow,
         known.update(matched_mbon07_memory_u=matched07[1], matched_mbon07_memory_w=matched07[2],
                      matched_mbon07_lower_bound_hits=matched07[3], matched_mbon07_upper_bound_hits=matched07[4],
                      matched_mbon07_bound_hit_fraction=matched07[5])
-    return replace(result, **rates, **memories, **known)
+    return _measurement_from_compact(replace(result, **rates, **memories, **known),
+                                     failure_reason=reason)
 
 
 def _selected_controls(run: _Run, baseline: Path, configuration: GridConfiguration,
@@ -1484,15 +1610,10 @@ def qualify(engine_factory, recorder, *, seeds, family) -> QualificationResult:
             for window in RESPONSE_WINDOWS:
                 for retention in RETENTION_CANDIDATES_MS:
                     replicates = tuple(measurements[(window, retention)])
-                    reasons = tuple(dict.fromkeys(reason for item in replicates
-                                                   for reason in item.reasons))
-                    mean = (sum(item.delta_hz for item in replicates) / len(replicates)
-                            if not reasons and len(replicates) == 8 else None)
-                    if mean == 0:
-                        reasons += ("zero_mean_delta",)
-                        mean = None
+                    summary = _summarize_point(configuration, window, retention,
+                                               tuple(_replicate_summary(item) for item in replicates))
                     point = QualificationPoint(configuration, window, retention,
-                                               replicates, mean, reasons)
+                                               replicates, summary.mean_delta_hz, summary.reasons)
                     points.append(point)
                     run.emit({
                         "type": "qualification_point", "branch_id": "qualification/summary",

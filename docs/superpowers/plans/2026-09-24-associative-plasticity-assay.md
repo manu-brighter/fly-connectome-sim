@@ -43,8 +43,10 @@ fullgraph tests passed separately. Task7B4b's native map context passed Astra
 review, three actual graph cases and ordinary acceptance (1,627 passed, four
 declared opt-in skips). Task7B4c.1's grid capture passed independent review,
 ordinary acceptance (1,693 passed, four opt-in skips) and three separate actual
-graph tests. Next are c.2a's shared compact arithmetic and c.2b's authenticated
-reduction. The cloud setup item below applies
+graph tests. Task7B4c.2a's compact arithmetic passed Astra numerical review and
+targeted acceptance (470 passed, one opt-in skip). Next is the separately reviewed
+inherited numerical boundary fix, then c.2b's authenticated reduction.
+The cloud setup item below applies
 only when moving to a fresh cloud checkout, not as a gate on local continuation.
 
 - [ ] Establish/verify the cloud toolchain and regenerate ignored runtime before
@@ -783,7 +785,21 @@ directly; public sealed-only freezing and arithmetic-fixture migration stay in
   Three actual fullgraph cases passed separately in **18.79 s**, without skips.
   The ordinary skips are all8 and those graph cases; no fresh all8, complete native
   grid, formal qualification or capacity claim. Frozen reviewed hashes matched.
-- [ ] c.2a compact producer arithmetic and independent numerical regression review.
+- [x] c.2a compact producer arithmetic: independent Astra numerical/integrity
+  review without new Critical/Important/Minor findings. Worker module 119 passed
+  in 259.59 s; root qualification/analysis/replay/CLI acceptance **470 passed,
+  one declared opt-in skip in 349.63 s**, no failures/errors. The fullgraph context
+  case is the sole skip; fullgraph/all8 were not repeated. Reviewed hashes matched.
+  No authenticated consumer, formal qualification or new scientific support.
+- [ ] Before c.2b/source freeze, separately resolve the inherited one-spike/C-floor
+  and washout-equality rounding boundary. Preserve qualification's `<` and
+  confirmation's `<=` rejection rules; establish exact shared arithmetic with
+  zero/exact-one/above-one and threshold-equality tests, without ad hoc tolerance.
+  Astra's closed recommendation uses actual integer counts for C/replay/washout,
+  subtracts before Hz conversion and converts the integer threshold directly.
+  Share canonical count-to-rate conversion with the consumer and assay emitter;
+  never infer counts from arbitrary declared scalar rates. Keep raw formats and
+  intended inequalities; source fingerprints distinguish the corrected execution.
 - [ ] c.2b authenticated two-pass reconstruction and genuine prefix/seal tests.
   Parent c/cap activation and public freeze integration remain unfinished.
 

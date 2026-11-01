@@ -1,6 +1,6 @@
 """Bounded exploratory qualification contracts."""
 
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from importlib.resources import files
 import json
 import math
@@ -29,6 +29,155 @@ from fly_connectome_sim.experiment.qualification import (
 )
 from fly_connectome_sim.experiment.stimuli import AssayStimuli
 from replay_helpers import engine_factory
+
+
+@pytest.mark.parametrize("intervals", [
+    ((0, 40), (30, 60), (70, 100)),  # Same total duration conceals overlap plus gap.
+    ((50, 100), (0, 50)),
+    ((0, 50), (0, 50)),
+    ((0, 40), (50, 100)),
+])
+def test_response_window_rejects_noncontiguous_or_reordered_bins(intervals):
+    records = [{"bins": [{"end_ms": stop, "duration_ms": stop - start,
+                          "group_spikes": {"mbon11": 1}} for start, stop in intervals]}]
+    with pytest.raises(ValueError):
+        _aggregate_window(records, 0.0, RESPONSE_WINDOWS[0], "mbon11", 2)
+
+
+def test_compact_measurement_uses_independent_rates_and_preserves_gate_order():
+    import fly_connectome_sim.experiment.qualification as module
+
+    compact = replace(_measurement(), pre_mbon11=(30.0, 10.0, 5.0),
+                      post_mbon11=(60.0, 20.0, 5.0), pre_mbon07=(2.0, 3.0, 4.0),
+                      post_mbon07=(4.0, 6.0, 8.0), delta_hz=None,
+                      post_candidate_kc_vectors=((2, 0), (0, 2)),
+                      response_replay_resolution_hz=None, washout_hz=None, washout_threshold_hz=None)
+    result = module._measurement_from_compact(
+        compact, replay_pre_hz=30.0, frozen_post_hz=30.0, reference_post_hz=25.0,
+        pathway_orders=((4, 5),) * 4,
+    )
+    assert result.delta_hz == 20.0
+    assert result.response_replay_resolution_hz == 0.0
+    assert result.washout_hz == result.washout_threshold_hz == 5.0
+    assert result.pre_mbon07 == (2.0, 3.0, 4.0)
+    assert result.reasons == ()
+    bad = replace(compact, pre_mbon11=(30.0, 30.0, 0.0), post_mbon11=(30.0, 30.0, 0.0),
+                  reasons=("modeled_drive", "candidate_saturation"),
+                  candidate_kc_vectors=((0, 0), (0, 0)), post_candidate_kc_vectors=((0, 0), (0, 0)),
+                  maximum_bound_hit_fraction=0.02)
+    result = module._measurement_from_compact(
+        bad, replay_pre_hz=29.0, frozen_post_hz=30.0, reference_post_hz=20.0,
+        pathway_orders=((4, 5), (5, 4), (4, 5), (4, 5)),
+    )
+    assert result.reasons == (
+        "modeled_drive", "candidate_saturation", "checkpoint_replay", "c_below_floor",
+        "mbon11_dynamic_range", "washout", "pathway_order", "missing_kc_activity", "kc_vector_distinctness",
+    )
+    prefix = replace(compact, post_mbon11=(60.0, None, None), test_cs_onset_ms=None)
+    assert module._measurement_from_compact(prefix, failure_reason="unavailable") == replace(prefix, reasons=("unavailable",))
+
+
+def test_compact_state_projection_preserves_float32_subtraction_and_mean():
+    import fly_connectome_sim.experiment.qualification as module
+
+    # float32 computes (0.1 + 0.2)/2 with a different rounding than Python float.
+    trained = np.array([0.1, 0.2], dtype=np.float32)
+    reference = np.array([0.0, 0.0], dtype=np.float32)
+    states = {"paired": ((7, 2), trained), "matched_reference": ((7, 2), reference),
+              "frozen_plasticity": ((7, 2), reference.copy()), "paired_replay": ((7, 2), trained.copy())}
+    shift, resolution, reasons = module._state_assessment(states)
+    assert shift == 0.15000000596046448
+    assert resolution == 0.0 and reasons == ()
+    assert shift != (float(trained[0]) + float(trained[1])) / 2
+    states["paired"] = ((7, 2), np.array([1.0, 1.0], dtype=np.float32))
+    states["paired_replay"] = ((7, 2), np.array([0.5, 0.5], dtype=np.float32))
+    assert module._state_assessment(states) == (1.0, 0.5, ("checkpoint_replay", "candidate_state_shift"))
+
+
+def test_compact_rate_helpers_keep_native_rate_and_one_spike_rounding():
+    import fly_connectome_sim.experiment.qualification as module
+
+    # Preserve the two existing operation orders, despite mathematical equivalence.
+    assert module._response_rate(1, 1000, 3) == 3.333333333333333
+    assert module._one_spike_rate(3, RESPONSE_WINDOWS[0]) == 3.3333333333333335
+    assert module._one_spike_rate(0, RESPONSE_WINDOWS[0]) is None
+
+
+def test_compact_base_and_mbon07_projections_preserve_gates_and_own_bounds():
+    import fly_connectome_sim.experiment.qualification as module
+
+    states = {role: ((7, 2), np.array([0.0, 0.0], dtype=np.float32)) for role in (
+        "paired", "matched_reference", "frozen_plasticity", "paired_replay",
+    )}
+    paths = {"A": (0.0, (4, 5), (2, 0), (7, 2), (1,)),
+             "B": (1.0, (5, 4), (0, 2), (7, 2), (2,))}
+    shift, resolution, reasons = module._base_assessment(states, paths, 0.02, ("pathway_order",))
+    assert shift == resolution == 0.0
+    assert reasons == ("pathway_order", "candidate_state_shift", "candidate_saturation", "modeled_drive")
+    projection = module._mbon07_projection(
+        (19, 3, 11), np.array([-0.9, 0.0, 0.1]), np.array([0.0, 1.0, -0.9]), 0.1, 2.0,
+    )
+    assert projection == ((19, 3, 11), (-0.9, 0.0, 0.1), (0.0, 1.0, -0.9), 2, 1, 1.0, -0.9, 1.0)
+
+
+def test_producer_extraction_keeps_first_drive_driven_counts_and_final_passive_trace(tmp_path):
+    """Synthetic telemetry mechanics only, with independently tagged call values."""
+    import fly_connectome_sim.experiment.qualification as module
+
+    engine = TinyEngine()
+    run = _Run(engine, PointRecorder(), engine.identity())
+    baseline = tmp_path / "baseline.npz"
+    run.checkpoint(baseline)
+    frames = {name: AssayStimuli(11, "qualification").frame(name) for name in ("A", "B", "C")}
+    original = engine.observe
+
+    def tagged(*args, **kwargs):
+        record = original(*args, **kwargs)
+        if engine.brain.baseline_restores == 4:
+            record["bins"][0]["qualification_detail"]["bound_hit_fraction"] = 0.03
+        return record
+
+    engine.observe = tagged
+    base = module._replicate_base(run, tmp_path, baseline, GRID[6], 11, "A", "AB", frames)
+    assert base["maximum_bound"] == 0.03 and "candidate_saturation" in base["errors"]
+    records, onset = base["pre"]["A"]
+    visual = [item for item in records if item["pathway_detail"]["modeled_visual_drive"]["r1_r6"]["mean"]]
+    assert len(visual) == 2
+    visual[0]["pathway_detail"]["modeled_visual_drive"] = {"r1_r6": {"mean": -2.0}, "r8": {"mean": 0.5}}
+    visual[1]["pathway_detail"]["modeled_visual_drive"] = {"r1_r6": {"mean": 100.0}, "r8": {"mean": 10.0}}
+    visual[0]["pathway_detail"]["candidate_kc_spike_counts"] = [2, 0]
+    visual[1]["pathway_detail"]["candidate_kc_spike_counts"] = [3, 0]
+    for record in records:
+        if record not in visual:
+            record["pathway_detail"]["candidate_kc_spike_counts"] = [99, 99]
+    path = module._pathway(records, "A", RESPONSE_WINDOWS[1], onset)
+    assert path[0] == 2.5 and path[2] == (5, 0)
+    late = module._pathway(records, "A", RESPONSE_WINDOWS[2], onset)
+    assert late[2] == (3, 0)
+    # Final paired trace must come from the passive last bin, not a visual bin.
+    final = base["training"]["paired"][-1]["bins"][-1]["qualification_detail"]
+    final["rate_kc"], final["rate_dan"] = [123.0, 456.0], [7.0, 8.0]
+    retained, maximum, test_onset = module._retained_tests(run, tmp_path, base, GRID[6], frames, "A", 10000)
+    measured = module._measurement(run, base, retained, maximum, test_onset, GRID[6], RESPONSE_WINDOWS[0], 11, "A", "AB")
+    assert measured.rate_kc == (123.0, 456.0) and measured.rate_dan == (7.0, 8.0)
+
+
+def test_compact_point_summary_and_selector_need_no_measurement_vectors():
+    import fly_connectome_sim.experiment.qualification as module
+
+    items = tuple(module._ReplicateSummary(seed, paired, order, 2.0, (), 0.0, 5.0)
+                  for seed in (11, 23) for paired in ("A", "B") for order in ("AB", "BA"))
+    first = module._summarize_point(GRID[0], RESPONSE_WINDOWS[0], 10000.0, items)
+    assert first.mean_delta_hz == 2.0 and first.reasons == () and first.complete_factors
+    assert module._select_compact_points((first,)) == (GRID[0], RESPONSE_WINDOWS[0], 10000.0, 1)
+    zero = tuple(replace(item, delta_hz=0.0) for item in items)
+    earliest = module._summarize_point(GRID[0], RESPONSE_WINDOWS[0], 10000.0, zero)
+    later = module._summarize_point(GRID[0], RESPONSE_WINDOWS[0], 20000.0, items)
+    assert earliest.mean_delta_hz is None and earliest.reasons == ("zero_mean_delta",)
+    assert module._select_compact_points((earliest, later)) is None
+    duplicate = module._summarize_point(GRID[0], RESPONSE_WINDOWS[0], 10000.0, items[:7] + items[:1])
+    assert not duplicate.complete_factors
+    assert module._select_compact_points((duplicate,)) is None
 
 
 def test_native_checkpoint_capture_uses_global_position_and_survives_scratch_reuse(engine_factory, tmp_path):
@@ -86,7 +235,7 @@ def test_closed_future_qualification_role_grammar_is_finite_and_selected_t_speci
 
 
 @pytest.mark.parametrize("index,paired,t0,end", [(0, "A", 10900, 11100), (5, "B", 10700, 20600)])
-def test_native_grid_unit_captures_all_roles_and_actual_calls(engine_factory, tmp_path, index, paired, t0, end):
+def test_native_grid_unit_captures_all_roles_and_actual_calls(engine_factory, tmp_path, monkeypatch, index, paired, t0, end):
     """One real native unit at one T; no full qualification or native replay claim."""
     import fly_connectome_sim.experiment.qualification as module
     from fly_connectome_sim.cli import _qualification_metadata
@@ -103,7 +252,22 @@ def test_native_grid_unit_captures_all_roles_and_actual_calls(engine_factory, tm
     frames = {name: AssayStimuli(11, "qualification").frame(name) for name in ("A", "B", "C")}
     run.begin_grid(baseline, index, 11, paired, "AB")
     base = module._replicate_base(run, tmp_path, baseline, GRID[index], 11, paired, "AB", frames)
-    module._retained_tests(run, tmp_path, base, GRID[index], frames, paired, 10000)
+    retained, maximum, test_onset = module._retained_tests(run, tmp_path, base, GRID[index], frames, paired, 10000)
+    compact_calls = []
+    evaluate = module._measurement_from_compact
+
+    def check_compact(compact, **kwargs):
+        assert isinstance(compact, ReplicateMeasurement)
+        assert not any(isinstance(item, dict) for item in asdict(compact).values())
+        compact_calls.append(compact)
+        return evaluate(compact, **kwargs)
+
+    monkeypatch.setattr(module, "_measurement_from_compact", check_compact)
+    measured = module._measurement(run, base, retained, maximum, test_onset, GRID[index], RESPONSE_WINDOWS[0], 11, paired, "AB")
+    assert len(compact_calls) == 1
+    assert measured.pre_mbon11 == measured.post_mbon11 == (0.0, 0.0, 0.0)
+    assert measured.delta_hz == measured.response_replay_resolution_hz == 0.0
+    assert measured.one_spike_rate_hz == 10.0
     run.finish_grid(baseline)
     events = list(recorder.validate_prefix().iter_events())
     binding = events[-1]
