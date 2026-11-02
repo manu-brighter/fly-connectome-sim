@@ -1,9 +1,10 @@
 # Strict Qualification Evidence Contract
 
 **Status:** Integration in progress. The shared checkpoint reader and native
-map context (Tasks7B4a/b) are implemented; grid reconstruction, selected evidence
-and public freeze integration remain pending, without formal qualification
-approval. **Date:** 2026-11-01.
+map context (Tasks7B4a/b) and authenticated grid reconstruction (Task7B4c.2b)
+are implemented and accepted; selected evidence and public freeze integration
+remain pending, without formal qualification approval. **Date:** 2026-11-01.
+**Updated:** 2026-11-02.
 
 Refines the [assay design](2026-09-24-associative-plasticity-pivot-design.md),
 [replay contract](2026-10-02-replay-anchor-contract.md) and existing
@@ -109,6 +110,62 @@ not measured capacity. Test it on genuine prefix/seal context independently;
 public sealed-only freeze enforcement and arithmetic-fixture migration land
 with the shared lifecycle in Task7B4f, without synthetic context fallbacks.
 
+### Initial private grid component and incomplete evidence
+
+The initial reader lives in `experiment/qualification_grid.py`, reached through
+the private analysis wrapper. It accepts genuine current-source native-verified
+prefixes or seals, creates no engine, and returns plain assessment data rather
+than proof or configuration. Selected activity is explicitly outside this initial
+component; public freezing and the selected lifecycle remain Task7B4f.
+
+A fixed prefix may end before baseline, between complete units/point records, or
+inside exactly the next expected unbound unit. Validate all available calls,
+restores and archives before returning inconclusive with no selection. An
+unbound tail may include only the producer's exact forward failed-T recovery
+edges, which remain unresolved until its actual binding. Later-unit activity,
+points or final framing cannot hide an omitted interior binding. A fresh prefix
+still rejects ingested checkpoints without their checkpoint event; an older
+fixed prefix ignores permitted later appends outside its captured boundary.
+
+The initial sealed grammar follows actual grid-only `qualify`: final checkpoint
+or result before all 96 bindings/all 144 points is an error, even at an otherwise
+closed unit boundary. No manual early-seal/abort protocol is introduced. A seal
+never admits an unbound tail; full inventory with genuinely unavailable data may
+still be inconclusive. The final `brain-after.npz` belongs to the actual last
+physical branch/ancestry/clock, not a guessed maximum-T branch or last binding.
+
+`unit_count` counts distinct durably evidenced units, including the permitted
+tail, not an invisible in-memory `begin_grid`. Keep errors as bounded reason
+strings while draining valid framing, avoiding retained exception tracebacks.
+Walk point fields without copying all vector-bearing replicas. Compare the twelve
+points before releasing the current configuration's at most eight projections;
+retain only bounded references and finished scalar summaries across grids.
+
+Raw memory bounds use the actual float64 U/W rule clamp and engine hit masks;
+float32 synaptic weights retain their existing consistency tolerance. DAN traces
+may be signed because the declared model subtracts a baseline; KC traces/counts
+remain nonnegative. Candidate KC counts are each bounded by call ticks, and the
+group-minus-candidate integer count must fit the authenticated noncandidate KC
+complement. Full candidate coverage requires equal totals. These are necessary
+recorded-data constraints, not upstream native training attestation.
+Summary counts are nonnegative integers. Empty arrays require null extrema/mean
+and the SHA256 of empty bytes; a singleton requires numerically equal minimum,
+mean and maximum. Do not infer general array contents or unseen visual-map
+dimensions from aggregate summaries.
+
+Authentic empty primary positions/edges/KCs are known absence only after complete
+available base roles/archives and their exact base-validation failure agree.
+Preserve the actual null/empty representation; do not generalize this exception
+to unknown runtime failures or manufacture candidate state. An incomplete prefix
+with known absence remains inconclusive because its inventory is incomplete.
+
+The current native measurement helper has no reachable `_GateFailure` path,
+although synthetic orchestration can inject a later-window failure without
+recording its first failed window. This initial reader rejects inconsistent
+mixed-window declarations rather than deriving ownership from trusted summaries.
+It does not claim generic later-window failure support. A future source change
+making that failure reachable must settle its wire ownership before acceptance.
+
 ## Shared native selected execution and measured resolution
 
 The inherited one-spike boundary is corrected before strict grid consumption.
@@ -127,11 +184,32 @@ It does not supply native history proof or complete the public freeze lifecycle.
 
 Extract the current producer body as private
 `_produce_cohorts(engine_factory, recorder, *, execution, cohorts, conditions,
-baseline_occurrence, namespace, measure_replay=False)`.
+baseline_occurrence, namespace, measure_replay=False,
+confirmation_replay_resolution_hz=None)`.
 `execution` is validated plain declarations: family, seeds, engine identity,
 MBON11 population, candidate identity, selected timing/window, two retention
 times and per-seed A/B/C/black input hashes. It contains no purported artifact
 hashes, trusted flags, effect floor or synthetic frozen-config digest.
+
+For the intermediate production-only component, reject `measure_replay` unless
+exactly False. Qualification omits unavailable response resolution/replay fields
+until actual repeats are implemented; no zero or borrowed frozen tolerance is
+substituted. The separate confirmation-only scalar is extracted by the existing
+wrapper after genuine frozen validation, preserving its legacy emitted field;
+qualification forbids a supplied value.
+
+The caller recorder must declare actual `black_input` before creation, matching
+the generated black RGB and per-seed hashes. Add that descriptor to the CLI owner
+metadata before selected integration; never mutate a populated recorder's
+metadata. Require paired in every canonical conditions subset, matched_reference
+for necessity/sufficiency, and exactly one cohort for namespace=False. Preserve
+confirmation names and use a reserved selected namespace for qualification.
+Validate all requested names/cohorts and the caller's exact baseline occurrence/
+event/native state before the component's first mutation. Use actual global
+append positions; anchors append globally too. Training-source authentication
+streams the complete prefix with bounded exact occurrence/descriptor lookup,
+preserving post-factory byte/clock/digest checks without retaining raw history.
+No persistent trust cache or skipped EOF validation is introduced.
 
 Confirmation wrappers keep genuine frozen validation and lifecycle ownership.
 Qualification supplies its own open recorder/baseline and qualification inputs;
@@ -199,6 +277,10 @@ enabled. Tests must fail closed if these bounds or completeness assumptions chan
 
 Measure the integrated grid path with its actual diagnostic flags, snapshot I/O,
 archive reduction and both native verifications before formal source freeze.
+An earlier bounded actual MaleCNS first-training-prefix sample after the grid
+reader is accepted should expose immediate detail-on line/memory/I/O costs before
+selected integration. It remains incomplete and cannot replace this integrated
+gate or certify later configurations, retentions, repeats or whole-assay capacity.
 The 70-second resource pilot used False/False detail flags, not legacy grid detail.
 Sample checkpoint size times1602 is not an upper bound; no whole-assay runtime
 or storage approval follows from it. A capacity failure is reported, never solved

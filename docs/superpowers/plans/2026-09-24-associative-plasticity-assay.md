@@ -21,7 +21,7 @@ follow [`2026-10-03-candidate-state-digest-contract.md`](../specs/2026-10-03-can
 [`2026-11-01-strict-qualification-contract.md`](../specs/2026-11-01-strict-qualification-contract.md).
 It is not implemented or a source-freeze/qualification approval.
 
-## Current checkpoint and live remaining work — 2026-11-01
+## Current checkpoint and live remaining work — 2026-11-02
 
 The early task-level RED/GREEN boxes are historical execution instructions, not
 the current backlog. Tasks 1–6 and strict analysis 7A are implemented; native
@@ -46,8 +46,11 @@ ordinary acceptance (1,693 passed, four opt-in skips) and three separate actual
 graph tests. Task7B4c.2a's compact arithmetic passed Astra numerical review and
 targeted acceptance (470 passed, one opt-in skip). The separate integer-boundary
 correction also passed fresh Astra review, ordinary acceptance (2,230 passed,
-four opt-in skips) and three actual graph tests. Next is c.2b's authenticated
-reduction, with no production configuration or formal qualification established.
+four opt-in skips) and three actual graph tests. The authenticated c.2b reader
+also passed independent review, ordinary acceptance (2,286 passed, six opt-in
+skips), four actual graph cases and the complete96 tiny-native prefix/seal test.
+Next is the bounded detail-on fullgraph resource sample before selected native
+production. No production configuration or formal qualification is established.
 The cloud setup item below applies
 only when moving to a fresh cloud checkout, not as a gate on local continuation.
 
@@ -56,6 +59,8 @@ only when moving to a fresh cloud checkout, not as a gate on local continuation.
 - [x] Measure a separately bounded longer-retention fullgraph anchor/replay pilot.
 - [ ] After integration, measure the actual detail-enabled grid path and bound
   complete qualification storage/events/verification costs before formal freeze.
+- [ ] After c.2b acceptance, first measure one bounded actual MaleCNS detailed
+  training prefix before d/e/f, as described below. This does not replace g.
 - [ ] Complete strict selected qualification controls/interventions, frozen-config
   integration and the real assay CLI; current CLI lacks `assay`.
 - [ ] Resolve discarded-grid training ancestry without mistaking black-retention
@@ -804,15 +809,84 @@ directly; public sealed-only freezing and arithmetic-fixture migration stay in
   in 1,064.83 s**, no failures/errors; actual graph cases **three passed in 18.03 s**.
   Ordinary skips are all8 and those graph cases; all8 was not repeated. Reviewed
   hashes matched. No formal qualification, support or capacity approval.
-- [ ] c.2b authenticated two-pass reconstruction and genuine prefix/seal tests.
+- [x] c.2b authenticated two-pass reconstruction and genuine prefix/seal tests.
+  The private component has passed independent source/integrity review and
+  ordinary Windows acceptance: **2,286 passed, six declared opt-in skips in
+  1,703.31 s**, no failures/errors. The four actual MaleCNS compatibility cases
+  passed separately in **25.42 s**. Ordinary skips are those graph cases, the
+  all-eight matrix and the exact96 integration. The latter passed separately:
+  **one test in 5,124.53 s**, no skips/errors/failures. Actual qualify produced
+  all96 units/144 points; genuine prefix/sealed map contexts and engine-free
+  reductions agree on the complete negative tiny-model assessment. It contains
+  89,831 events, 1,478 checkpoints and 3,594,389,820 event bytes. There are zero
+  anchors: this is native map/content authentication, not training-history replay.
+  Expanded available-prefix, recovery, source-tamper and lifetime cases passed in
+  the ordinary suite. All-eight assay acceptance was not repeated.
+  Accepted Windows source identity:
+  `64041111c7cf3edfaf51128e071b79d939875937f810790c00d1425458c6e60e`.
   Parent c/cap activation and public freeze integration remain unfinished.
 
+  Measured tiny-native full-grid phases, one Windows sample on this source:
+
+  | Phase | Wall seconds |
+  | --- | ---: |
+  | Actual grid production | 1,588.87 |
+  | Prefix validation and native context check | 1,312.07 |
+  | Prefix grid reduction | 787.02 |
+  | Sealed validation and native context check | 656.29 |
+  | Sealed grid reduction | 779.41 |
+
+  Checkpoints total 13,786,929 bytes, largest 9,384 bytes. Actual aggregate
+  simulated duration is 385,844,000 ticks across restored branches, not one
+  continuous animal trajectory. These measurements are not fullgraph capacity.
+
+**Early detail-on resource sample after c.2b.** Before d/e/f source edits, measure
+the first canonical grid0/seed11/pairedA/orderAB prefix through its first paired
+training checkpoint: actual baseline, A/B/C pre-trials, pre-replay and training,
+including detailed 500-ms calls. Preserve every scheduled interval and stop as
+an unbound incomplete prefix; no binding, terminal or seal is invented. Release
+producer/verifier engines in sequence, obtain fresh native context, and reduce
+all available data. A successful diagnostic result stays inconclusive.
+Measure actual candidate/KC/DAN vector dimensions, canonical line/file and NPZ
+bytes, phase CPU/wall and process memory, with declared stop criteria and timer/
+sampling limitations. Predeclare stops at 30 minutes wall time, 8 GiB of dedicated
+output/scratch, or 4 GiB process working set/lifetime peak. Before native imports,
+require at least 20 GiB free disk and 8 GiB available host RAM, with working OS
+memory monitoring. Check budgets at quiescent boundaries; individual allocations,
+native calls and scans cannot be interrupted by those checks. Preserve partial
+artifacts on a stop and do not relax limits automatically.
+This exposes immediate capture/format/reader costs early;
+it does not establish complete grid/assay capacity, native training replay or
+scientific support. A measured failure requires its own bounded design review;
+do not drop ancestry, controls or gates. Integrated g remains mandatory.
+- [ ] Execute, independently review and publish this bounded Windows sample
+  after the accepted c.2b checkpoint; keep its source identity explicit.
+
 **7B4d — caller-owned selected native execution.** Own `assay.py`, qualification
-integration and producer tests. Extract `_produce_cohorts(engine_factory,
+owner metadata and producer tests. Extract `_produce_cohorts(engine_factory,
 recorder, *, execution, cohorts, conditions, baseline_occurrence, namespace,
-measure_replay=False)`; execution declares family/seeds/identity/population/
+measure_replay=False, confirmation_replay_resolution_hz=None)`;
+execution declares family/seeds/identity/population/
 candidate/timing/window/two retentions/per-seed A/B/C/black hash mapping only.
 Outer confirmation wrapper retains genuine frozen validation and lifecycle.
+The separate confirmation-only scalar comes from that genuine validated config;
+qualification forbids it and omits unavailable resolution/replay fields until e.
+Reject `measure_replay` unless exactly False before e; do not fabricate zero.
+Add only the actual `black_input` descriptor to CLI qualification metadata and
+its focused test, before recorder creation. Require it against actual black RGB
+and input hashes; never retrofit metadata on a populated recorder. Keep the
+intermediate emitter separate from legacy `qualify`/public evaluator wiring.
+Require paired in every canonical conditions subset, matched_reference for
+necessity/sufficiency, and one cohort for namespace=False. Preserve confirmation
+names; qualification uses an explicit selected namespace, reserving all requested
+names against the existing inventory before writes. Use actual global recorder
+positions, including anchors. Authenticate the caller's exact baseline event/
+occurrence and native state, preserving legitimate nonzero factory baselines.
+Replace source authentication's whole-prefix list with bounded streaming lookup
+and complete EOF drain, retaining exact occurrence/descriptor and post-factory
+byte/state checks. No persistent trust cache or omitted discarded history.
+The returned last paired engine is production data; f owns final physical
+branch/clock framing, and e owns actual repeated response measurements.
 - [ ] RED: real native qualification seed11 cannot use the confirmation-only
   wrapper; reject late source/clock/input/family errors before creating output.
 - [ ] GREEN: one qualification cohort's five sources, three interventions and

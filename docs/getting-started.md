@@ -83,6 +83,11 @@ $env:FLY_CONNECTOME_SIM_FULL_TEST='1'
 ```
 
 On Linux/macOS: `FLY_CONNECTOME_SIM_FULL_TEST=1 .venv/bin/python -m pytest tests/test_full_graph_engine.py`.
+The same flag also enables the complete eight-cohort native assay test and the
+96-unit/144-point native grid prefix/seal test. Running all of pytest with this
+flag includes those long integrations as well as the graph cases. They use
+declared tiny native fixtures where stated; passing them is not formal MaleCNS
+qualification or a whole-assay capacity measurement.
 Local chat notes and visual references remain outside Git.
 
 ## Experiment commands

@@ -12,51 +12,7 @@ import numpy as np
 import pytest
 
 from fly_connectome_sim.engine import _rgb_input_sha256
-from replay_helpers import engine_factory
-
-
-@pytest.fixture
-def map_engine_factory(tmp_path):
-    """Real native topology with distinguishable, equal-length compartment maps."""
-    from fly_connectome_sim.engine import FlyEngine, NeuralGroups
-    from fly_connectome_sim.neural.brain import MemoryBrain
-    from fly_connectome_sim.neural.visual import VisualMemoryBrain
-
-    graph = tmp_path / "map-graph.npz"
-    np.savez(graph, ids=np.array([101, 202, 303, 404, 505, 606, 707, 808], dtype=np.int64),
-             ptr=np.array([0, 2, 4, 5, 6, 6, 6, 6, 6], dtype=np.int64),
-             post=np.array([4, 5, 4, 5, 4, 5], dtype=np.int32),
-             weight=np.array([0.125, 0.25, 0.375, 0.5, 0.625, 0.75], dtype=np.float32),
-             retina=np.array([0], dtype=np.int32), uv=np.array([[0.5, 0.5]], dtype=np.float32),
-             lamina=np.array([], dtype=np.int32), sugar=np.array([], dtype=np.int32),
-             superclass=np.zeros(8, dtype=np.uint8))
-
-    class MapBrain(VisualMemoryBrain):
-        def __init__(self, index_dtype):
-            MemoryBrain.__init__(self, path=graph, circuit={
-                "kc": np.array([0, 1], dtype=index_dtype),
-                "dan": np.array([3, 2], dtype=index_dtype),
-                "edges": np.array([3, 0, 2, 1], dtype=np.int64),
-                "pre": np.array([1, 0, 1, 0], dtype=np.int32),
-                "gain": np.array([[1, 0.125, 0.25, 0.5], [0.5, 0.25, 0.125, 1]], dtype=np.float32),
-                "kc_mask": np.array([1, 1, 0, 0, 0, 0, 0, 0], dtype=np.uint8),
-                "dan_index": np.array([-1, -1, 1, 0, -1, -1, -1, -1], dtype=np.int8),
-            }, modulation_mask=np.array([0, 0, 1, 1, 0, 0, 0, 0], dtype=np.uint8))
-            self.r8 = np.array([0], dtype=np.int32)
-            self.r8_uv = np.array([[0.5, 0.5]], dtype=np.float32)
-            self.r8_channel = np.array([2], dtype=np.int32)
-            self.corrected_edges = np.array([], dtype=np.int64)
-            self.r8_light = np.zeros(1, dtype=np.float32)
-            self.fields.append("r8_light")
-            self.initial["r8_light"] = self.r8_light.copy()
-
-    def factory(*, empty=0, index_dtype=np.int32, overlap=False):
-        groups = {"pam11": [3] if overlap else [2], "ppl101": [3], "kc": [0, 1],
-                  "mbon07": [6] if empty == 2 else [4], "mbon11": [6 if empty == 1 else 7] if empty else [5],
-                  "motor_left": [6], "motor_right": [7]}
-        return FlyEngine(brain=MapBrain(index_dtype), groups=NeuralGroups(**{
-            name: np.array(indices, dtype=index_dtype) for name, indices in groups.items()}))
-    return factory
+from replay_helpers import engine_factory, map_engine_factory
 
 
 def map_recording(factory, tmp_path, *, run_kind="qualification", anchors=0):

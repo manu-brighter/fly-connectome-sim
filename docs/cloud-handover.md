@@ -1,264 +1,161 @@
-# Continuation and cloud handover — 2026-11-01
+# Continuation and cloud handover — 2026-11-02
 
-This is the tracked entry point for continuing from a fresh checkout. Use remote
-`origin` of `manu-brighter/fly-connectome-sim`, branch
-`feat/connectome-experiment-core`; use its latest pushed commit, not `main`.
-No pull request or merge is requested. The repository is still a WIP, not v1.
+Use `origin` of `manu-brighter/fly-connectome-sim`, branch
+`feat/connectome-experiment-core`, latest pushed feature commit. The latest
+reviewed checkpoint is Task7B4c.2b, the authenticated grid reader. The project
+remains WIP, not v1.
 
-Work resumed on the original Windows workstation. The cloud setup below remains
-available for a future fresh checkout; it is not required to continue locally.
-The latest request is continuous autonomous execution, including feature commits
-and pushes, without pausing at each checkpoint. No PR/merge is authorized.
+Continue autonomously on the original Windows workstation, including reviewed
+feature commits and explicit feature pushes, without pausing at each checkpoint.
+No PR, merge or deployment is authorized. Cloud setup is for a future fresh
+checkout, not a gate on current local work. Never push main/master/develop.
 
 ## Read first
 
-1. [Repository instructions](../AGENTS.md) and [README](../README.md).
-2. [Product scope](specs/fly-event-planner.md).
-3. [Approved assay design](superpowers/specs/2026-09-24-associative-plasticity-pivot-design.md).
-4. [Current plan and remaining work](superpowers/plans/2026-09-24-associative-plasticity-assay.md).
-5. [Replay contract](superpowers/specs/2026-10-02-replay-anchor-contract.md) and
+1. [AGENTS.md](../AGENTS.md), [README](../README.md) and
+   [product scope](specs/fly-event-planner.md).
+2. [Approved assay design](superpowers/specs/2026-09-24-associative-plasticity-pivot-design.md)
+   and [current plan/live task details](superpowers/plans/2026-09-24-associative-plasticity-assay.md).
+3. [Strict qualification integration contract](superpowers/specs/2026-11-01-strict-qualification-contract.md).
+4. [Replay contract](superpowers/specs/2026-10-02-replay-anchor-contract.md) and
    [candidate-state digest contract](superpowers/specs/2026-10-03-candidate-state-digest-contract.md).
-6. [Latest longer-retention report](experiments/2026-11-01-fullgraph-retention-pilot.md)
+5. [70-second resource report](experiments/2026-11-01-fullgraph-retention-pilot.md)
    and [earlier short-retention report](experiments/2026-10-08-fullgraph-anchor-pilot.md).
-7. [Strict qualification integration contract](superpowers/specs/2026-11-01-strict-qualification-contract.md).
 
-The older connectome-experiment-core plan is background, not the next task list.
-The private local SDD ledger, scripts, raw results and agent conversations do
-not travel through Git. This document and the public plan replace their role in
-orienting the next session; they do not replace missing native evidence files.
+The older connectome-core plan is background. This tracked handover and current
+plan orient a fresh checkout; private local SDD notes/chats/scripts are not
+required and do not travel through Git. Local raw evidence is not replaced by
+this document. Do not claim to reverify unavailable bytes.
 
-## Completed foundation
+## Scientific and provenance boundaries
 
-- Official MaleCNS v1.0 input checksums and prepared-array locks; native graph
-  166,700 cells, 25,582,938 directed edges, 124,177,617 synaptic contacts.
-- Audited MIT-derived Python/C++ core; explicit PAM11/PPL101 stimulation and
-  KC/MBON07/MBON11/DNa02 telemetry. Checkpoint restore/reset determinism.
-- Independent stimulus/schedule factors, exact neutral-gap execution, pathway
-  telemetry, candidate-memory interventions, recorder/integrity/replay contracts
-  and strict analysis primitives.
-- Optional `LateralMotorAdapter` and recorder-validated
-  `engineered_unvalidated_motor_readout`. Decisions use only the measured lateral
-  rates, retain legacy v1 readability and cannot change the primary MBON11 report.
-  The display threshold is engineered, not behaviorally calibrated.
-- Shared schema-only checkpoint reader without a running engine or placeholder
-  arrays. It preserves native NPZ/hash formats and legacy writable-destination
-  checks, validates bounded headers before array allocation and rejects malformed
-  containers consistently. It issues no qualification/native proof.
-- Verifier-issued native map/schema context, bound to the exact result owner,
-  current source and artifact bytes. Qualification checks one fresh engine even
-  without anchors; confirmation/pilot retain their prior zero/one factory policy.
-  Engine-free consumers receive independent decoded copies. This authenticates
-  maps and existing black replays, not upstream training or scientific support.
-- Exact grid occurrence/observation bindings, actual per-role acquisition clocks,
-  explicit aligned schedules and incremental failed-route prefixes. Structural
-  recorder/schema checks do not authenticate metrics or scientific ownership;
-  engine-free reconstruction remains the next task.
-- All eight controlled cohorts are produced in one authentic tiny-native pilot:
-  40 trainings, 24 interventions, 768 responses, 128 anchors, 67 checkpoints,
-  14,048 events. It remains **unsupported with 136 negative gates**; complete
-  production is not a positive scientific result or fullgraph qualification.
-- Proof-preserving validation performance work shipped in `5aaffb7`.
-  Historical Windows complete acceptance: **1,299 passed in 2,646.14 s**, no
-  failure/error/skip; the genuine all-factor case took 1,701.331 s.
-- Short-source fullgraph components shipped in `ec6474b`. The newer one-anchor
-  report measures an actually executed paired training schedule, two independent
-  A/B siblings, six sequential fullgraph factories, 92 calls and 59 sealed
-  events. Both genuine isolated native replay passes reproduced one retained
-  black endpoint. This is resource-only, not learning/configuration approval.
-- The 70-second resource sample on `460f5b0` completed six factories, 452 calls,
-  179 events and one anchor. Both genuine native replay passes reached the same
-  retained state; root independently checked all 460 files, recipe/state/timing
-  bindings and canonical three-pass black telemetry. This remains one sample,
-  not a whole-assay capacity or scientific qualification certificate.
+- Locked MaleCNS v1.0 graph: 166,700 cells, 25,582,938 directed edges and
+  124,177,617 synaptic contacts. Preserve source/prepared locks and upstream MIT notice.
+- Primary endpoint is MBON11 under the declared PPL101-modulated KC-to-MBON11
+  model. PAM11/MBON07 is exploratory and cannot rescue a failed primary gate.
+- Artifact integrity and map/content authentication do not attest upstream native
+  training. Existing native anchor replay proves its declared black retention.
+  No consciousness, semantic understanding, dopamine concentration, receptor
+  activity, biological learning or validated motor behavior is established.
+  Scientific support remains unproved; the motor-only display policy is unvalidated.
+- Advance every interval, including explicit black RGB uint8 frames. Calls are
+  <=500 ms; reward-free tests/retention have no external DAN, learning=False and
+  normal passive decay. Keep association-reference and training-end clocks distinct.
+- No formal qualification, production frozen config or held-out fullgraph
+  confirmation exists. Missing evidence is not an authenticated scientific negative.
+  Never fabricate successful gates/configuration to continue a negative run.
 
-The 10-second measurement source was `ec6474b3693beb49a9dde28c0e02c3cca9987dad`;
-the 70-second source was `460f5b046e4e18df2d147c18ba73899ac660032a`. Both
-resource slices change documentation only. The public reports retain exact raw,
-source/schema, native, checkpoint, recipe and event bindings. The underlying
-raw run is local-only: a cloud session cannot claim to have reverified it unless
-those exact bytes are separately made available. On a new compiler/platform,
-generate new evidence; do not relabel a Windows identity as a cloud identity.
-The later motor-readout changes alter package/schema identities. Reverification
-of either historical resource artifact requires its matching source revision.
+## Implemented foundation and latest reviewed checkpoint
 
-Final handover-focused Windows check on 2026-10-09: protocol, recorder and replay
-tests **502 passed, 1 skipped in 39.08 s**. The skip was a Windows junction test
-because junction creation was denied; a pytest cache-write permission warning
-also occurred. No complete suite or fullgraph simulation was repeated for this
-documentation-only handover. The independent measurement review passed without
-Critical, Important or Minor findings; its private report is not cloud evidence.
+Completed reviewed source slices provide native checkpoint restore/reset,
+candidate-only interventions, complete/candidate/noncandidate hashes, bounded
+schema-only NPZ reading, owner/artifact/current-source-bound native map context,
+exact grid occurrence/raw-call capture and compact shared producer arithmetic.
+The integer C/replay/washout correction is accepted: qualification rejects C<1,
+confirmation C<=1, washout w>max(5*r,1), using actual counts before canonical Hz
+conversion. Unavailable counts stay unavailable; no gate tolerance was added.
+NumPy 2.4.6's private header API supports NPY1/2/3; lossy structured/subarray
+extension templates are rejected. Protocol/raw formats and native core remain.
 
-Fresh Task8 Windows complete opt-in acceptance on 2026-11-01: **1,449 passed in
-3,237.62 s**, no failures, errors, skips or deselections. It includes the genuine
-all-factor case (2,134.180 s), actual recorder/analyzer roundtrip and both
-fullgraph tests. The all-factor report remains unsupported with 136 negative
-gates and the same 40/24/768/128/67/14,048 training/intervention/response/anchor/
-checkpoint/event counts. No Linux execution or formal qualification is claimed.
-Independent scoped Task8 review passed without Critical, Important or Minor
-findings. Reviewed file hashes and model/schema identities matched after testing.
+**Task7B4c.2b passed independent source review and Windows runtime acceptance.**
+The private engine-free grid component reconstructs authenticated grid-only
+prefix/seal evidence; public freezing and selected-evidence integration remain
+unfinished. Incomplete available evidence stays inconclusive; malformed content
+is an error. Selected activity is explicitly outside this initial component.
+The exact contract, including fail-closed later-window and physical final-branch
+ownership limits, is in the tracked strict contract above.
 
-The completed Task8 working-source identity is
-`3c712e0b6b30dc83e3048db2bab18a12f8918c87b5723a52c17bceb73a88faa9`;
-schema SHA256 is
-`767dc2bfed78ecc5f6a935b031e257ff44789fb7fb1a005a4bd827a7054ea4f1`.
-Later source-bearing integration will change this identity again; it is not a
-formal source freeze.
-
-The later Task7B4a reader snapshot passed independent spec/quality review after
-two scoped fix rounds. Root ordinary Windows acceptance: **1,556 passed, three
-declared opt-in skips in 1,045.08 s**. Both actual fullgraph tests then passed
-separately in **10.91 s**, with no skips/errors. The original three skips were
-the all-factor case and both graph cases; all-factor acceptance was not repeated
-for this codec slice. The Task8 all-factor result above belongs to its earlier
-source. Repeat the complete matrix at selected-producer integration/final
-source-bearing acceptance before formal qualification.
-
-Reader snapshot model-source identity:
-`ad4fae1adfaeb19afaba6d27128e0d623be6f8b33e9377b67ba59401148fa202`.
-Schema remains `767dc2bfed78ecc5f6a935b031e257ff44789fb7fb1a005a4bd827a7054ea4f1`.
-NumPy remains locked to 2.4.6; its private header parser supports NPY1/2/3.
-Structured/subarray extension templates with lossy `dtype.str` are explicitly
-rejected. Native array formats, writer and numerical core are unchanged.
-
-Task7B4b's later native context snapshot passed an independent Astra source/
-integrity review without Critical, Important or Minor findings. Root actual
-MaleCNS tests: **three passed in 24.46 s**, including a genuine zero-anchor
-qualification prefix with one verifier factory and both existing graph cases.
-The prefix is incomplete, with no scientific terminal, seal or configuration.
-Root ordinary Windows suite: **1,627 passed, four declared opt-in skips in
-1,155.74 s**, no failures/errors. The skips are the all-factor case and the
-three separately passed graph cases. All-factor evidence remains historical;
-no new full-matrix or formal qualification result is claimed.
-
-Context snapshot model-source identity:
-`62fdc90c0893228c3be4345d83dddaec2ed7eb1f36564e6be2fbbc7b2eecb4ea`.
-The schema and checkpoint codec hashes are unchanged from Task7B4a. Actual
-grid reconstruction, selected evidence and public freeze integration remain open.
-
-Task7B4c.1's later grid-capture snapshot passed independent spec/quality review
-without Critical, Important or Minor findings. Root ordinary Windows acceptance:
-**1,693 passed, four declared opt-in skips in 1,119.95 s**, no failures/errors.
-The three actual MaleCNS tests passed separately in **18.79 s**, without skips;
-ordinary skips are those graph cases and the all-eight matrix. That matrix was
-not repeated for this capture slice; its Task8 evidence remains historical.
-The ordinary run also passed the compiler and Windows junction tests. The
-worker's earlier focused sandbox run had one junction-permission skip, which
-does not replace the later host result. Reviewed file bytes matched after tests.
-
-Capture now links actual checkpoint names/hashes/origins/sequences/ticks and all
-completed raw calls, including black intervals, across partial failed routes.
-All four acquisitions explicitly use aligned control schedules and record their
-own association clocks. No grid metric reconstruction, upstream training replay,
-successful qualification, production config or capacity approval follows.
-
-Capture snapshot model-source identity:
-`ddeae343045809654511dc5f1558739c9e4b09d301be13a2456e62bbadeb8dc0`.
-Schema SHA256:
+Accepted checkpoint's Windows model-source identity:
+`64041111c7cf3edfaf51128e071b79d939875937f810790c00d1425458c6e60e`.
+Schema SHA256 remains
 `c56a64f91bf08b2f3c379a4720d4be3a5c2d1743c1c09394d2483f23d61af115`.
-Closed future integration roles enumerate 4850 branches, 1602 checkpoints and
-8099 relevant events, correcting the unproved 8064 estimate. Operational branch
-cap remains 4096; actual selected/replay conformance and capacity are unfinished.
+The corrected source passed independent review without Critical/Important/Minor
+findings. A final formatting-only cleanup was independently checked for exact
+single-LF removal and unchanged AST before runtime acceptance. This is not the formal source freeze.
 
-Task7B4c.2a's compact producer arithmetic passed independent Astra numerical/
-integrity review without new Critical, Important or Minor findings. The producer
-uses shared pure state, response, point and selection functions over compact
-measurements; response windows reject gaps, overlaps and reordered bins. Existing
-native-valid arithmetic, float32 behavior and earliest-T/tie rules are preserved.
-Worker qualification module: **119 passed in 259.59 s**, no skips/errors/failures.
-Root qualification/analysis/replay/CLI acceptance: **470 passed, one declared
-opt-in skip in 349.63 s**, no errors/failures. The skipped actual fullgraph context
-case and the full all-eight matrix were not repeated. Frozen hashes matched.
+Actual acceptance on unchanged reviewed bytes:
 
-Arithmetic snapshot model-source identity:
-`ce4e59df80c14ec6ee12af94e071aabb6a010bfadc6dc58a63296dcbd776709b`.
-Schema is unchanged from c.1. This is still not authenticated grid reduction,
-formal qualification, support, a frozen config or capacity approval.
+- Actual MaleCNS graph tests: **4 passed in 25.42 s**.
+- Ordinary suite: **2,286 passed, six declared opt-in skips in 1,703.31 s**,
+  no failures/errors. The skips are the four separately passed graph cases,
+  the all-eight matrix and the exact96 case. All-eight was not repeated.
+- Complete tiny-native grid prefix/seal test: **1 passed in 5,124.53 s**, no
+  skips/errors/failures. All 96 units/144 points reconstruct identically from
+  separately native-verified prefix and seal, with the expected negative outcome.
+  The actual artifact has 89,831 events, 1,478 checkpoints and 3,594,389,820 event
+  bytes. Its zero-anchor verifications check genuine maps/context; they do not
+  independently replay training.
 
-That review separately identified inherited one-spike rounding, deliberately
-preserved by the equivalence refactor. The following correction addresses it.
+The ordinary suite includes the expanded one-unit/all-T and eight-factor/12-point
+prefix tests, discarded-source attacks and lifetime/drain checks. A development
+grid run on an earlier source was deliberately interrupted and is never counted
+as acceptance. No fullgraph qualification, config or whole-assay capacity follows
+from this tiny-native grid or the four graph compatibility cases.
 
-The separate boundary correction passed a fresh independent Astra numerical/
-integrity review without Critical, Important or Minor findings. C/replay/washout
-gates now use actual integer counts, subtract before converting to Hz, and convert
-the integer washout threshold directly. Qualification rejects C counts `<1`;
-confirmation rejects `<=1`; washout rejects `w > max(5*r,1)`. Producer, analyzer,
-config/floor validation and assay emission share the canonical conversion.
-No ad hoc tolerance or change to those mathematical inequalities was introduced.
-Some reported scalar bits and formerly incorrect boundary outcomes intentionally
-change; c.2a's prior exact-equivalence statement belongs to its earlier snapshot.
+## Historical evidence — not current-source acceptance
 
-Worker final coverage: **774 qualification/analysis tests in 315.52 s**, plus
-**two targeted native tests in 39.55 s**, no skips/errors/failures. Root complete
-ordinary Windows suite: **2,230 passed, four declared opt-in skips in 1,064.83 s**,
-no failures/errors. The three actual MaleCNS compatibility cases passed separately
-in **18.03 s**. Ordinary skips are those graph cases and the all-eight matrix;
-that matrix was not repeated. Source/schema hashes matched after acceptance.
-The native emitter fixture uses an explicitly declared three-cell group on a
-four-node test graph, not anatomical MBON annotation or fullgraph qualification.
+- Task8 complete Windows opt-in acceptance: **1,449 passed in 3,237.62 s**,
+  no skips/errors/failures, including the genuine all-eight case. Source identity:
+  `3c712e0b6b30dc83e3048db2bab18a12f8918c87b5723a52c17bceb73a88faa9`.
+  Its tiny-native matrix had 40 trainings, 24 interventions, 768 responses,
+  128 anchors, 67 checkpoints and 14,048 events: **unsupported, 136 negative gates**.
+- Last accepted boundary-correction source before c.2b:
+  `aa2ffb172d9694e1d727199f533eaf2ec59432c3445cf758cccfd4ed5a6c5b29`.
+  Ordinary Windows: **2,230 passed, four declared opt-in skips in 1,064.83 s**;
+  the three graph cases passed separately in **18.03 s**. All-eight was not repeated.
+  Earlier per-slice commands/counts remain in the current plan and repository history.
+- The linked 10-second pilot used source
+  `ec6474b3693beb49a9dde28c0e02c3cca9987dad`; the 70-second pilot used
+  `460f5b046e4e18df2d147c18ba73899ac660032a`. The latter measured six factories,
+  452 calls, 179 events and one anchor, with both genuine black replay passes.
+  These are bounded resource samples, not learning or whole-assay capacity.
 
-Boundary-correction model-source identity:
-`aa2ffb172d9694e1d727199f533eaf2ec59432c3445cf758cccfd4ed5a6c5b29`.
-Schema/formats/versions and native core are unchanged. No production configuration,
-formal qualification, upstream training attestation or capacity approval follows.
+Reports retain exact source/schema/native/checkpoint/recipe bindings. Their raw
+artifacts are local-only; use matching source bytes to reverify them. On a new
+compiler/platform generate new evidence, never relabel Windows identity as Linux.
+Repeat the complete all-factor matrix at selected-producer integration/final
+source-bearing acceptance; historical unsupported results cannot satisfy that gate.
 
-## Actual next work
+## Live remaining work
 
-Use these live TODOs together with the plan; do not restart historical completed
-RED/GREEN steps because an old procedural checkbox is unchecked.
+- [x] Complete c.2b source review, ordinary/actual graph/full tiny-native grid
+  acceptance and exact reviewed-source checks.
+- [ ] Before d/e/f, measure one bounded actual MaleCNS detail-on first-training
+  prefix through fresh context verification and reduction. See the plan for the
+  exact workload/limits; this complements the later integrated capacity gate.
+- [ ] 7B4d: caller-owned selected native execution with exact baseline/occurrence
+  authentication; preserve confirmation wrappers and native transfer checks.
+- [ ] 7B4e: measure all 408 physical response repeats and actual state resolution;
+  bind exact independent parents/raw bins. Never borrow frozen tolerance or invent 0.
+- [ ] 7B4f: integrate selected inventory with authenticated grid assessment, one
+  evidence-bound terminal and independently checked seal; sealed-only engine-free
+  public freezing. Complete valid negatives never create a production config.
+- [ ] 7B4g: actual assay CLI/fresh-factory routing and integrated detail-enabled
+  grid/archive/stream/two-verification capacity. Current CLI lacks `assay`.
+- [ ] Prove selected/replay emissions fit the intended 4850 branches/1602
+  checkpoints/8099 relevant events before enabling qualification-only cap 5120.
+  Operational cap 4096 and limits of 2048 checkpoints/10000 relevant events
+  remain; raw calls/bytes need separate accounting.
+- [ ] Finish source-bearing work, independent review and final complete acceptance.
+  Pin LF checkout for packaged Python/C++, normalize once and verify exact identity.
+- [ ] Only then Task9: clean source freeze and formal fullgraph qualification.
+  If all gates pass, review/commit a genuine production config before reading
+  held-out confirmation; otherwise publish the honest negative/inconclusive result.
+- [ ] Execute/independently verify frozen confirmation and reproducibility.
+  Viewer/LLM work remains later, after assay/artifact gates and their review.
 
-- [ ] Establish the fresh cloud environment and collect focused tests; record
-  compiler/platform identity and missing data explicitly.
-- [x] Measure a bounded longer-retention fullgraph one-anchor pilot, including
-  both genuine replay passes. One 70-second Windows sample is now recorded.
-- [ ] Before formal execution, benchmark the actual integrated grid path with
-  diagnostic detail flags and bound complete storage/stream/verification costs.
-- [ ] Complete selected qualification control/intervention evidence at T and T+60,
-  strict artifact/config integration and the actual `assay --config --output-dir`
-  CLI. Current CLI has only `qualify` and `verify-run`; planning text describing
-  the future `assay` invocation does not mean it exists.
-- [ ] Implement exact bindings for all durable grid snapshots, including
-  discarded candidates, and authenticate maps in the real native verifier.
-  Preserve the existing grid ancestry; any later storage redesign needs separate
-  measurements and review. Black-retention replay does not prove training history.
-- [x] Implement and independently review Task 8's labelled motor-only adapter,
-  preserve old v1 readability and complete opt-in acceptance.
-- [x] Complete Task7B4a's shared schema-only checkpoint reader, independent review,
-  ordinary acceptance and separate actual fullgraph tests.
-- [x] Complete Task7B4b's verifier-issued map context, object-bound native proof,
-  current-source checks, independent review and real-MaleCNS compatibility tests.
-- [x] Task7B4c.1: exact grid bindings, declarations, multiple failed-T prefixes,
-  closed intended grammar, independent review and ordinary/scoped graph acceptance.
-- [x] Task7B4c.2a: compact pure producer arithmetic, independent numerical review
-  and targeted qualification/analysis/replay/CLI acceptance.
-- [x] Correct inherited one-spike/C-floor and washout-equality boundaries with
-  actual integer counts, independent Astra review and complete ordinary acceptance.
-- [ ] Task7B4c.2b: implement authenticated bounded two-pass grid reconstruction,
-  checking all candidates and available prefixes without inventing missing data.
-  Public qualification/freeze integration still belongs to Task7B4f.
-- [ ] Finish source-bearing tasks, independently review and run full acceptance;
-  only then perform Task 9 source freeze and formal fullgraph qualification.
-- [ ] Before that source freeze, pin LF checkout handling for packaged Python/C++
-  sources, normalize once and verify the resulting exact source identity.
-  The present mixed line endings and local `core.autocrlf` are not a portable lock.
-- [ ] If every qualification gate passes, build/review/commit the production
-  frozen config before reading held-out confirmation. If gates fail, publish
-  an honest negative report, without manufacturing a configuration.
-- [ ] Execute and independently verify frozen confirmation/reproducibility.
-  Offline 3D replay of genuine measurements and LLM event planning are later
-  product phases, not work to begin while the scientific/artifact gates are open.
-
-No production `configs/assay.synthetic.json`, successful formal qualification,
-held-out fullgraph confirmation, viewer or LLM planner has been established.
+Any packaged .py/.cpp change invalidates formal qualification/config/confirmation
+identities and restarts the source-freeze gate. Content hashes are not proof of
+training history. No sample checkpoint-size multiplication establishes capacity.
 
 ## Fresh Linux/cloud checkout
 
-Local `.venv`, Windows Zig/DLL, graph data, prepared arrays, checkpoints, runs
-and `.tools` probes are intentionally absent. Python 3.12, uv, Node.js and a
-C++17 compiler exposing `c++` are prerequisites. The Unix build path exists but
-has not been exercised by this Windows handover. Do not claim cloud readiness
-means a tested Linux simulation or an installed cloud environment.
-
-From the repository root, inspect versions and install locked dependencies:
+Local .venv, Windows Zig/DLL, graph data, prepared arrays, checkpoints, runs and
+.tools probes are intentionally absent. Prerequisites: Python 3.12.14, uv, Node.js
+and a C++17 compiler exposing c++. The exercised Windows versions are uv 0.12.15,
+Zig 0.16.0 and Node 25.9.0; Unix compiler/platform execution is not yet locally
+verified or pinned. See [Getting started](getting-started.md) for platform setup.
+These are instructions, not new Linux results; record actual versions/limitations.
 
 ```sh
 git branch --show-current
@@ -267,22 +164,22 @@ git remote -v
 uv --version
 node --version
 c++ --version
+export UV_PYTHON_INSTALL_DIR="$PWD/.tools/python"
 uv python install 3.12.14 --no-bin --cache-dir .tools/uv-cache
 uv sync --locked --extra test --cache-dir .tools/uv-cache --python 3.12.14
 .venv/bin/python -m pytest tests/experiment/test_protocol.py -q
 .venv/bin/python -m pytest tests/experiment/test_recorder.py tests/experiment/test_replay.py -q
 ```
 
-The first test command exercises stimulus/protocol logic; the second includes
-small native fixtures and therefore needs the compiler, not the released graph.
-These commands are instructions, not new Linux results. Follow
-[Getting started](getting-started.md) for the complete platform-specific setup.
-Network/package/compiler permissions depend on the selected cloud environment;
-if blocked, report the exact limitation rather than changing locks or skipping
-checks under a passing label.
+The latter uses tiny native fixtures and needs the compiler, not released graph
+inputs. Ordinary full pytest does need downloaded/prepared data and native builds.
+Report unavailable dependencies/permissions honestly; do not weaken locks or
+hide skips behind a passing label.
 
-For actual fullgraph work, allow the 1.1 GB download **plus** derived outputs and
-runtime/workspace resources. The downloader and data commands are already tracked:
+For fullgraph work allow the 1.1 GB source download plus derived/runtime space.
+Staging uses hard links: source/runtime must share a filesystem. Set
+FLY_CONNECTOME_SIM_DATA before imports when relocating runtime and retain it
+through staging/preparation/verification. Raw/downloaded/runtime files stay out of Git.
 
 ```sh
 node scripts/download-connectome.mjs
@@ -292,28 +189,9 @@ node scripts/download-connectome.mjs
 .venv/bin/python -m fly_connectome_sim.neural.prepare
 .venv/bin/python -m fly_connectome_sim.data verify-prepared
 .venv/bin/python -m pytest -q
-```
-
-Staging requires source/runtime on the same filesystem for hard links. Set
-`FLY_CONNECTOME_SIM_DATA` before imports if relocating runtime. Ordinary full
-pytest already includes downloaded-data checks and native compilation; it is
-not a data-free smoke suite. After preparation, complete opt-in acceptance is:
-
-```sh
 FLY_CONNECTOME_SIM_FULL_TEST=1 .venv/bin/python -m pytest -q
 ```
 
-That opt-in includes the costly genuine all-factor case and fullgraph tests.
-Do not launch duplicate complete runs or silently treat timeout as success.
-Do not run formal `qualify` yet: selected-control evidence/source-freeze gates
-are still open. Do not change frozen thresholds based on confirmation outputs.
-
-## Continuation instructions
-
-Work autonomously on the next bounded task, preserve scientific and provenance
-gates, use TDD for source changes and independent review before shipping. Prefer
-Astra for difficult scientific/integrity reviews and Sol for routine implementation
-when those models are available; surface unavailable review capabilities.
-Update this handover/plan after a reviewed checkpoint, commit explicit first-party
-paths using the repository convention and push only the named feature branch.
-Then give a short German status. Do not add raw artifacts to make a handover work.
+Coordinate costly opt-in/full runs; do not duplicate an active acceptance run or
+call interruption success. Do not run formal qualify yet or change frozen gates
+from confirmation output. A cloud checkout requires its own evidence, not private notes.

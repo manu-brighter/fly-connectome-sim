@@ -1280,12 +1280,10 @@ def _verified(run: VerifiedRun) -> tuple[dict, Iterable[dict]]:
         raise AnalysisError("verified_run_changed") from error
 
 
-def _qualification_manifest(manifest: dict) -> dict:
+def _qualification_declarations(manifest: dict) -> dict:
     try:
         metadata = manifest["metadata"]
         if (manifest["run_kind"] != "qualification"
-                or manifest["format_version"] != "run-artifact/v1"
-                or manifest["schema_version"] != "run-schema/v1"
                 or metadata["family"] != "qualification"
                 or metadata["seeds"] != list(QUALIFICATION_SEEDS)
                 or metadata["protocol_version"] != "qualification/v1"
@@ -1302,9 +1300,6 @@ def _qualification_manifest(manifest: dict) -> dict:
                 or not _int(metadata["mbon11_population_size"], minimum=1)
                 or not isinstance(metadata["candidate_identity"], str)):
             raise AnalysisError("qualification_declaration")
-        for field in ARTIFACT_FIELDS:
-            if not _digest(manifest[field]):
-                raise AnalysisError("qualification_artifact_hashes")
         if (not _valid_engine_identity(metadata["engine_identity"],
                                        metadata["mbon11_population_size"])
                 or not isinstance(metadata["input_sha256"], list)
@@ -1333,6 +1328,24 @@ def _qualification_manifest(manifest: dict) -> dict:
             raise
         raise AnalysisError("qualification_manifest") from error
     return metadata
+
+
+def _qualification_manifest(manifest: dict) -> dict:
+    """Existing sealed-only contract; prefixes use common declarations separately."""
+    metadata = _qualification_declarations(manifest)
+    if (manifest.get("format_version") != "run-artifact/v1"
+            or manifest.get("schema_version") != "run-schema/v1"):
+        raise AnalysisError("qualification_declaration")
+    if any(not _digest(manifest.get(field)) for field in ARTIFACT_FIELDS):
+        raise AnalysisError("qualification_artifact_hashes")
+    return metadata
+
+
+def _reduce_qualification_grid(value: ValidatedPrefix | VerifiedRun):
+    """Private authenticated grid assessment, without public freezing authority."""
+    from .qualification_grid import _reduce_qualification_grid as reduce_grid
+
+    return reduce_grid(value)
 
 
 def _selected_point(events: Iterable[dict], result: dict) -> dict:
