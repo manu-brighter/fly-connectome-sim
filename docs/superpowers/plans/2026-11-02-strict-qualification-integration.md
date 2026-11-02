@@ -10,7 +10,7 @@
 
 **Spec:** [Strict qualification contract](../specs/2026-11-01-strict-qualification-contract.md), alongside the [current assay plan](2026-09-24-associative-plasticity-assay.md) and [continuation record](../../cloud-handover.md).
 
-**Status:** f.3a is accepted on source `b8f0fcee7115f387f34a13d8e9651064290dc70626ed649f8f8bed32cce62ebb`, schema unchanged. f.2's17e784…, f.1's73994… and e.3 acceptance remain historical/source-specific. f.3b's API is ratified planning, NOT released source; f.3c–f.3d/f.4–f.6/g/formal gates remain future. Unchecked commands are planned checks.
+**Status:** f.3b is accepted on source `89c7b75442ae8c74fe731d178f54cc03349a81eb58cb5c23f208260fbe502a1b`, schema unchanged. f.3a'sb8f0…, f.2's17e784…, f.1's73994… and e.3 acceptance remain historical/source-specific. f.3c preparation is NOT a ratified API/source release; f.3d/f.4–f.6/g/formal gates remain future. Unchecked commands are planned checks.
 
 ## Global Constraints
 
@@ -125,9 +125,9 @@ Historical corrected f.2 source17e784…: focus118/117.82 s overlaps full378/242
 
 ### f.3a–f.3d: Sequential Composition
 
-These are bounded sequential slices, not a monolithic release. f.3a is accepted;
-f.3b's planned API is ratified below, source unreleased. Later component APIs need
-bounded briefs. No framework or trusted selection shortcut.
+These are bounded sequential slices, not a monolithic release. f.3a/f.3b are
+accepted; f.3c preparation needs design ratification before source release.
+Later component APIs need bounded briefs. No framework or trusted selection shortcut.
 
 #### f.3a: Composable Grid Ownership
 
@@ -137,7 +137,7 @@ bounded briefs. No framework or trusted selection shortcut.
 - [x] Preserve genuine `_reduce_qualification_grid` as owner of two exhausted passes, intake/final context checks and all-checkpoint/grid-final/legacy-terminal policies. Measurement finish returns a plain summary, not an EOF certificate. No skip/ignore flags or filtered manifest; unknown/selected component events reject.
 - [x] RED/GREEN exact two exhausted passes, identical negative/inconclusive summaries, discarded-unit validation and eight-unit projection lifetime; use genuine partial/unit tests. No callback framework or context issuer.
 
-Source review and bounded acceptance passed: focused68/three deselected/118.12 s;
+Historical f.3a source b8f0… review and bounded acceptance passed: focused68/three deselected/118.12 s;
 normal-host recorder/replay622/one graph skip/43.44 s; separate actual MaleCNS
 context/grid-baseline2/16.71 s; one-configuration1/588.35 s, all exit0/zero failures/
 errors with exact two-file/all30/schema identities. One of twelve configurations
@@ -145,13 +145,14 @@ produced eight bindings/twelve points,129 checkpoints/1,204,732 bytes and7585 ev
 303,809,000 bytes; unsealed/inconclusive. Original-file audit reissues no proof.
 Graph/configuration overlap makes these functional durations, not capacity data.
 Complete96, current408/whole-project/full MaleCNS assay, positive native lifecycle,
-formal freeze/configuration and support remain unclaimed.
+formal freeze/configuration and support remain unclaimed. This grid/configuration
+runtime evidence is not upgraded to current f.3b source.
 
 #### f.3b: Sequence-Preserving Declared Accumulator
 
 **Ownership:** `src/fly_connectome_sim/experiment/analysis.py`, `tests/experiment/test_analysis.py`.
 
-Ratified planned interface; no f.3b source release:
+Accepted bounded interface:
 
 ```text
 _DeclaredEvidenceAccumulator(declarations, *, event_type, attested_state_anchors=())
@@ -159,12 +160,22 @@ consume(sequence, event) -> None
 finish() -> EvidenceReduction
 ```
 
-- [ ] Move declaration validation/state initialization, intake arithmetic and final reconciliation once. Preserve all seven result fields, validators/equations, copy depth and public/declaration wrapper signatures. Invalid declarations reject before iterator access; digest sets confer no proof. Borrow inputs read-only during their lifetime; no raw-history retention or new mutation guarantee.
-- [ ] Require exact non-bool integer explicit indices, nonnegative and strictly increasing; first index may exceed zero and gaps cost no event budget. Optional `event['sequence']` remains ignored as arithmetic framing, including existing fixtures. The unchanged wrapper supplies `enumerate(events)`; future authenticated composition supplies actual global indices before filtering, never renumbered. No new framing parser or trust flag.
-- [ ] Preserve causal delivery: only genuinely irrelevant records may occupy skipped gaps within the component's scope. First-seen branches and any `checkpoint_name` remain relevant regardless of type. No type-only prefilter or second relevance model; f.3c/d own selected/global routing completeness.
-- [ ] Check closed lifecycle before consume/finish. Finish marks closed BEFORE reconciliation, returns existing EvidenceReduction once, and cannot retry on failure. Invalid open-intake sequence raises `invalid_reducer_sequence` before state changes; closed reuse raises `invalid_reducer_lifecycle`. Unexpected intake errors propagate and require discard. No cached result/failure framework. Semantic reasons and caps continue intake; wrapper finishes only after normal EOF, propagating late iterator errors. Direct finish certifies no EOF.
-- [ ] Keep relevant10000/branch4096/checkpoint2048, terminal exclusion and neutral index advancement unchanged. Preserve current dictionary ownership/copy depth; no post-finish mutation through accumulator methods. No source-skip switch, evaluator or cap activation.
-- [ ] RED/GREEN independently frozen expected outputs/all seven fields for both families, wrapper equivalence, explicit gaps/ancestry including neutral-first-branch causality, missing/conflicting embedded framing, invalid sequence atomicity, lifecycle precedence/failed finish, cap edges, late semantic/EOF failures and input nonmutation. Dense/sparse parity uses genuinely neutral gaps without new branches/checkpoints. Complete analysis plus bounded recorder/replay acceptance on frozen bytes; no new native matrix claim.
+- [x] Move declaration validation/state initialization, intake arithmetic and final reconciliation once. Preserve all seven result fields, validators/equations, copy depth and public/declaration wrapper signatures. Invalid declarations reject before iterator access; digest sets confer no proof. Borrow inputs read-only during their lifetime; no raw-history retention or new mutation guarantee.
+- [x] Require exact non-bool integer explicit indices, nonnegative and strictly increasing; first index may exceed zero and gaps cost no event budget. Optional `event['sequence']` remains ignored as arithmetic framing, including existing fixtures. The unchanged wrapper supplies `enumerate(events)`; future authenticated composition supplies actual global indices before filtering, never renumbered. No new framing parser or trust flag.
+- [x] Preserve causal delivery: only genuinely irrelevant records may occupy skipped gaps within the component's scope. First-seen branches and any `checkpoint_name` remain relevant regardless of type. No type-only prefilter or second relevance model; f.3c/d own selected/global routing completeness.
+- [x] Check closed lifecycle before consume/finish. Finish marks closed BEFORE reconciliation, returns existing EvidenceReduction once, and cannot retry on failure. Invalid open-intake sequence raises `invalid_reducer_sequence` before state changes; closed reuse raises `invalid_reducer_lifecycle`. Unexpected intake errors propagate and require discard. No cached result/failure framework. Semantic reasons and caps continue intake; wrapper finishes only after normal EOF, propagating late iterator errors. Direct finish certifies no EOF.
+- [x] Keep relevant10000/branch4096/checkpoint2048, terminal exclusion and neutral index advancement unchanged. Preserve current dictionary ownership/copy depth; no post-finish mutation through accumulator methods. No source-skip switch, evaluator or cap activation.
+- [x] RED/GREEN independently frozen expected outputs/all seven fields for both families, wrapper equivalence, explicit gaps/ancestry including neutral-first-branch causality, missing/conflicting embedded framing, invalid sequence atomicity, lifecycle precedence/failed finish, cap edges, late semantic/EOF failures and input nonmutation. Dense/sparse parity uses genuinely neutral gaps without new branches/checkpoints. Complete analysis plus bounded recorder/replay acceptance on frozen bytes; no new native matrix claim.
+
+Independent pre-extraction14/all-seven-field cases passed1.48 s. API RED40failed/
+14passed/5.30 s, real exit1; no production arithmetic fix. Structural comparison
+preserved constructor/intake/reconciliation and prefix/suffix. Full432/249.14 s
+and focused86/5.04 s passed (overlap), normal-host recorder/replay622+one graph
+skip/45.16 s and actual MaleCNS zero-anchor context1/8.35 s separately passed.
+All exit0/no failures/errors, exact frozen two-file/all30/schema identities.
+Source review passed before full completion; final acceptance independently
+checked the completed result/XML/after identities. No current grid configuration/
+96/408/full MaleCNS assay/whole-project/positive lifecycle or capacity acceptance.
 
 #### f.3c: Selected Component
 

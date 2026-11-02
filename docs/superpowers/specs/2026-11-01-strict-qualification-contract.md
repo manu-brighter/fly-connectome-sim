@@ -12,11 +12,12 @@ The private e.3 True producer passed source review, actual 9/51/408-pair
 tiny-native checks and assay-module compatibility. Parent e implementation
 acceptance is complete; production global reconciliation/public assessment/freeze
 integration remains open. f.1 declaration arithmetic, corrected f.2 bounded
-checker/EOF adapter and f.3a standalone grid composition are accepted; current
-model-source is `b8f0fcee7115f387f34a13d8e9651064290dc70626ed649f8f8bed32cce62ebb`,
-schema unchanged. f.2's17e784…, f.1's73994… and earlier e.3 evidence remain
-source-specific history. f.3b–f.3d/f.4–f.6, CLI/capacity (g) and formal qualification
-remain planned. f.3b's ratified API is not a source release.
+checker/EOF adapter, f.3a standalone grid composition and f.3b declared accumulator
+are accepted; current model-source is
+`89c7b75442ae8c74fe731d178f54cc03349a81eb58cb5c23f208260fbe502a1b`,
+schema unchanged. f.3a'sb8f0…, f.2's17e784…, f.1's73994… and earlier e.3 evidence
+remain source-specific history. f.3c–f.3d/f.4–f.6, CLI/capacity (g) and formal
+qualification remain open. f.3c is preparation only, with no ratified API/source release.
 This is no source-freeze or scientific approval. **Date:** 2026-11-01.
 **Updated:** 2026-11-02.
 
@@ -24,7 +25,7 @@ Refines the [assay design](2026-09-24-associative-plasticity-pivot-design.md),
 [replay contract](2026-10-02-replay-anchor-contract.md) and existing
 [implementation plan](../plans/2026-09-24-associative-plasticity-assay.md).
 The [six-slice integration plan](../plans/2026-11-02-strict-qualification-integration.md)
-defines f ownership/contracts; f.1/f.2/f.3a are accepted and later slices remain planned.
+defines f ownership/contracts; f.1/f.2/f.3a/f.3b are accepted and later slices remain planned.
 The endpoint, fixed grid, seeds, windows, current, floors, exclusions and
 scientific interpretation remain unchanged. No supported result is presumed.
 
@@ -551,23 +552,23 @@ inventory, context, metadata)`, `consume(event)`, `finish() -> _GridAssessment`
 is implemented and accepted. The genuine standalone driver retains two exhausted
 passes, intake/final context checks, all-checkpoint/grid-final/legacy-terminal
 policies, with no engine, issuer or ignore/skip switch. Finish returns plain data,
-not an EOF certificate. Focused68/118.12 s, recorder/replay622+one skip/43.44 s,
+not an EOF certificate. Historical f.3a source b8f0…: focused68/118.12 s, recorder/replay622+one skip/43.44 s,
 separate actual MaleCNS context/grid-baseline2/16.71 s and one-configuration1/588.35 s
 all passed with exact applicable two-file/all30/schema identities. The tiny-native
 configuration has eight bindings/twelve points and is unsealed/inconclusive;
 it covers one of twelve configurations, not complete96 or a full MaleCNS assay.
 Overlapping functional runs are not capacity evidence; original-file audits
-reissue no proof. Earlier f.2/f.1/e.3 runtime evidence stays historical.
+reissue no proof. These f.3a and earlier f.2/f.1/e.3 results are not current f.3b evidence.
 
-The linked plan separates accepted composable grid ownership/measurement (f.3a), a shared
-declared accumulator preserving actual global sequences (f.3b), selected role
+The linked plan separates accepted grid ownership/measurement (f.3a) and shared
+declared accumulator preserving actual global sequences (f.3b), then future selected role
 inventory/reduction using accepted f.2/f.3b (f.3c), then the genuine combined
 evaluator/report/final-role/cap proof (f.3d). Preserve standalone grid behavior
 and explicit final/terminal policies; compose in the SAME two EOF passes.
 Only f.3d may conditionally activate5120 after the closed4850/1602/8099 proof;
 confirmation4096 and all other limits remain unchanged meanwhile.
 
-Planned f.3b API is `_DeclaredEvidenceAccumulator(declarations, *, event_type,
+Accepted f.3b API is `_DeclaredEvidenceAccumulator(declarations, *, event_type,
 attested_state_anchors=())`, `consume(sequence, event) -> None`,
 `finish() -> EvidenceReduction`. One shared validation/arithmetic/reconciliation
 path preserves existing public/declaration wrappers and all fields/caps/copy depth.
@@ -580,7 +581,16 @@ No type-only filter or new framing parser is allowed. One-shot finish closes
 before reconciliation; failed finish cannot retry. Invalid open-intake sequence
 leaves state unchanged; closed lifecycle takes precedence. Semantic reasons/limits
 still drain, iterator/EOF errors propagate and prevent wrapper finish. Supplied
-anchor digests issue no proof. This API is ratified planning, not released source.
+anchor digests issue no proof. All three extracted blocks and prefix/suffix retain
+existing arithmetic. Independent pre-extraction14 cases pin all seven fields/both
+families; actual API RED40 failed/14 passed preceded extraction. Full analysis432/
+249.14 s passed, focused86/5.04 s overlaps it; recorder/replay622+one skip/45.16 s
+and separate actual MaleCNS zero-anchor context1/8.35 s passed. All exit0/zero
+failures/errors with exact two-file/all30/schema identities. Source review's
+then-pending full run was closed separately by final acceptance. No current grid
+configuration/96/408/full MaleCNS assay/whole-project or positive native lifecycle,
+history attestation, capacity/configuration/freeze claim follows. f.3c API/source
+authority requires separate design ratification and release.
 
 Historical complete96 negative prefix/seal evidence is not current native
 context. Use genuine partial/unit and native selected-component checks before

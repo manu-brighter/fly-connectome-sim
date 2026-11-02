@@ -1281,136 +1281,146 @@ def reduce_assay_evidence(
         event_type=event_type, attested_state_anchors=attested_state_anchors)
 
 
-def _reduce_declared_evidence(
-    events: Iterable[dict], declarations: dict, *, event_type: str,
-    attested_state_anchors: Iterable[str] = (),
-) -> EvidenceReduction:
-    """Pure declared arithmetic; supplied anchor hashes do not issue native proof.
+class _DeclaredEvidenceAccumulator:
+    """Declared arithmetic with caller-supplied occurrence indices, never proof.
 
-    One response per factor/condition/phase/stimulus is required. Each response
-    contains contiguous half-open ``bins`` with integer 0.1 ms tick bounds and
-    integer MBON11 spike counts. Intervention records are once per
-    seed/identity/order/condition and link both retention copies by ID.
+    Inputs are borrowed read-only for this instance's lifetime. A sparse caller
+    must deliver every causal record, including first branch and checkpoint
+    records regardless of type. Direct finish asserts no authenticated EOF.
     """
-    if type(event_type) is not str or event_type not in {"assay_response", "qualification_evidence"}:
-        raise AnalysisError("invalid_reducer_contract")
-    fields = _DECLARATION_FIELDS | ({"confirmation_input_sha256"} if event_type == "assay_response" else set())
-    if type(declarations) is not dict or set(declarations) != fields:
-        raise AnalysisError("invalid_reducer_declarations")
-    config = declarations
-    population, candidate = config["mbon11_population_size"], config["candidate_identity"]
-    if (not _int(population, minimum=1) or not _valid_engine_identity(config["engine_identity"], population)
-            or not isinstance(candidate, str) or not re.fullmatch(r"[a-z0-9-]+/v[1-9][0-9]*", candidate)):
-        raise AnalysisError("invalid_reducer_identity")
-    for name, choices, keys in (("selected_configuration", GRID, {"cs_duration_ms", "dan_onset_ms", "post_pair_gap_ms"}),
-                                ("response_window", RESPONSE_WINDOWS, {"start_ms", "end_ms"})):
-        value = config[name]
-        if (not isinstance(value, dict) or set(value) != keys or any(not _number(item) for item in value.values())
-                or value not in [vars(item) for item in choices]):
-            raise AnalysisError("invalid_reducer_schedule")
-    times = config["retention_times_ms"]
-    if (type(times) is not list or len(times) != 2 or any(not _int(time, minimum=10000) for time in times)
-            or times[0] not in RETENTION_CANDIDATES_MS or times[1] != times[0] + 60000):
-        raise AnalysisError("invalid_reducer_retention")
-    if event_type == "assay_response":
-        hashes, expected = config["confirmation_input_sha256"], _expected_inputs("confirmation")
-        if (type(hashes) is not dict or set(hashes) != set(expected)
-                or any(type(row) is not dict or set(row) != set(expected[seed])
-                       or any(not _digest(value) or value != expected[seed][name] for name, value in row.items())
-                       for seed, row in hashes.items())):
-            raise AnalysisError("invalid_reducer_inputs")
-    seeds = (QUALIFICATION_SEEDS if event_type == "qualification_evidence"
-             else CONFIRMATION_SEEDS)
-    reasons = []
-    responses = {}
-    interventions = {}
-    intervention_ids = set()
-    trainings = {}
-    training_keys = set()
-    checkpoints = {}
-    checkpoint_names = set()
-    checkpoint_count = 0
-    branches = {}
-    anchors = {}
-    anchor_ids = set()
-    attested = frozenset(attested_state_anchors)
-    if any(not _digest(item) for item in attested):
-        raise AnalysisError("invalid_replay_attestation")
-    relevant_count = 0
-    relevant_types = {event_type, "qualification_point", "qualification_control",
-                      "qualification_training", "qualification_result",
-                      "assay_training", "assay_intervention",
-                      "state_anchor", "branch_start"}
-    for sequence, event in enumerate(events):
+
+    def __init__(
+        self, declarations: dict, *, event_type: str,
+        attested_state_anchors: Iterable[str] = (),
+    ):
+        self._event_type = event_type
+        if type(self._event_type) is not str or self._event_type not in {"assay_response", "qualification_evidence"}:
+            raise AnalysisError("invalid_reducer_contract")
+        fields = _DECLARATION_FIELDS | ({"confirmation_input_sha256"} if self._event_type == "assay_response" else set())
+        if type(declarations) is not dict or set(declarations) != fields:
+            raise AnalysisError("invalid_reducer_declarations")
+        self._config = declarations
+        population, candidate = self._config["mbon11_population_size"], self._config["candidate_identity"]
+        if (not _int(population, minimum=1) or not _valid_engine_identity(self._config["engine_identity"], population)
+                or not isinstance(candidate, str) or not re.fullmatch(r"[a-z0-9-]+/v[1-9][0-9]*", candidate)):
+            raise AnalysisError("invalid_reducer_identity")
+        for name, choices, keys in (("selected_configuration", GRID, {"cs_duration_ms", "dan_onset_ms", "post_pair_gap_ms"}),
+                                    ("response_window", RESPONSE_WINDOWS, {"start_ms", "end_ms"})):
+            value = self._config[name]
+            if (not isinstance(value, dict) or set(value) != keys or any(not _number(item) for item in value.values())
+                    or value not in [vars(item) for item in choices]):
+                raise AnalysisError("invalid_reducer_schedule")
+        times = self._config["retention_times_ms"]
+        if (type(times) is not list or len(times) != 2 or any(not _int(time, minimum=10000) for time in times)
+                or times[0] not in RETENTION_CANDIDATES_MS or times[1] != times[0] + 60000):
+            raise AnalysisError("invalid_reducer_retention")
+        if self._event_type == "assay_response":
+            hashes, expected = self._config["confirmation_input_sha256"], _expected_inputs("confirmation")
+            if (type(hashes) is not dict or set(hashes) != set(expected)
+                    or any(type(row) is not dict or set(row) != set(expected[seed])
+                           or any(not _digest(value) or value != expected[seed][name] for name, value in row.items())
+                           for seed, row in hashes.items())):
+                raise AnalysisError("invalid_reducer_inputs")
+        self._seeds = (QUALIFICATION_SEEDS if self._event_type == "qualification_evidence"
+                 else CONFIRMATION_SEEDS)
+        self._reasons = []
+        self._responses = {}
+        self._interventions = {}
+        self._intervention_ids = set()
+        self._trainings = {}
+        self._training_keys = set()
+        self._checkpoints = {}
+        self._checkpoint_names = set()
+        self._checkpoint_count = 0
+        self._branches = {}
+        self._anchors = {}
+        self._anchor_ids = set()
+        self._attested = frozenset(attested_state_anchors)
+        if any(not _digest(item) for item in self._attested):
+            raise AnalysisError("invalid_replay_attestation")
+        self._relevant_count = 0
+        self._relevant_types = {self._event_type, "qualification_point", "qualification_control",
+                          "qualification_training", "qualification_result",
+                          "assay_training", "assay_intervention",
+                          "state_anchor", "branch_start"}
+        self._last_sequence = -1
+        self._finished = False
+
+    def consume(self, sequence: int, event: object) -> None:
+        if self._finished:
+            raise AnalysisError("invalid_reducer_lifecycle")
+        if type(sequence) is not int or sequence < 0 or sequence <= self._last_sequence:
+            raise AnalysisError("invalid_reducer_sequence")
+        self._last_sequence = sequence
         if not isinstance(event, dict):
-            relevant_count += 1
-            if relevant_count > 10000:
-                if relevant_count == 10001:
-                    reasons.append("evidence_event_limit")
-                continue
-            reasons.append("malformed_event")
-            continue
+            self._relevant_count += 1
+            if self._relevant_count > 10000:
+                if self._relevant_count == 10001:
+                    self._reasons.append("evidence_event_limit")
+                return
+            self._reasons.append("malformed_event")
+            return
         # Terminal framing is validated by the artifact stream, not scientific evidence.
         # Keep enumerating it so later events retain their original sequence indices.
         if event.get("type") == "assay_result":
-            continue
+            return
         branch = event.get("branch_id")
-        new_branch = isinstance(branch, str) and branch not in branches
-        if (event.get("type") not in relevant_types
+        new_branch = isinstance(branch, str) and branch not in self._branches
+        if (event.get("type") not in self._relevant_types
                 and "checkpoint_name" not in event and not new_branch):
-            continue
-        relevant_count += 1
-        if relevant_count > 10000:
-            if relevant_count == 10001:
-                reasons.append("evidence_event_limit")
-            continue
+            return
+        self._relevant_count += 1
+        if self._relevant_count > 10000:
+            if self._relevant_count == 10001:
+                self._reasons.append("evidence_event_limit")
+            return
         if new_branch:
-            if len(branches) >= 4096:
-                reasons.append("branch_limit")
+            if len(self._branches) >= 4096:
+                self._reasons.append("branch_limit")
             else:
-                branches[branch] = (event.get("parent_branch_id"),
+                self._branches[branch] = (event.get("parent_branch_id"),
                                     event.get("parent_checkpoint_sha256"))
         if "checkpoint_name" in event:
             digest = event.get("checkpoint_sha256")
             name = event.get("checkpoint_name")
             sim_tick = _checkpoint_tick(event.get("sim_ms"))
             if sim_tick is None:
-                reasons.append("invalid_checkpoint_clock")
+                self._reasons.append("invalid_checkpoint_clock")
             if (not _digest(digest) or not isinstance(name, str)
-                    or name in checkpoint_names or checkpoint_count >= 2048):
-                reasons.append("duplicate_or_invalid_checkpoint")
+                    or name in self._checkpoint_names or self._checkpoint_count >= 2048):
+                self._reasons.append("duplicate_or_invalid_checkpoint")
             else:
-                checkpoints.setdefault(digest, []).append({
+                self._checkpoints.setdefault(digest, []).append({
                     "name": name,
                     "branch_id": event.get("branch_id"),
                     "sim_tick": sim_tick,
-                    "parent_checkpoint_sha256": branches.get(branch, (None, None))[1],
-                    "parent_branch_id": branches.get(branch, (None, None))[0],
+                    "parent_checkpoint_sha256": self._branches.get(branch, (None, None))[1],
+                    "parent_branch_id": self._branches.get(branch, (None, None))[0],
                     "sequence": sequence,
                 })
-                checkpoint_names.add(name)
-                checkpoint_count += 1
-        if event.get("type") == ("qualification_training" if event_type == "qualification_evidence"
+                self._checkpoint_names.add(name)
+                self._checkpoint_count += 1
+        if event.get("type") == ("qualification_training" if self._event_type == "qualification_evidence"
                                  else "assay_training"):
             try:
-                _validate_training(event, config, seeds,
-                                   "qualification" if event_type == "qualification_evidence"
+                _validate_training(event, self._config, self._seeds,
+                                   "qualification" if self._event_type == "qualification_evidence"
                                    else "confirmation")
                 key = (event["seed"], event["paired_identity"],
                        event["presentation_order"], event["condition"])
-                if event["training_id"] in trainings or key in training_keys:
-                    reasons.append("duplicate_training:" + "/".join(map(str, key)))
+                if event["training_id"] in self._trainings or key in self._training_keys:
+                    self._reasons.append("duplicate_training:" + "/".join(map(str, key)))
                 else:
-                    trainings[event["training_id"]] = dict(event)
-                    training_keys.add(key)
+                    self._trainings[event["training_id"]] = dict(event)
+                    self._training_keys.add(key)
             except (KeyError, TypeError, ValueError, OverflowError) as error:
-                reasons.append(f"invalid_training:{error}")
-            continue
-        if event.get("type") == event_type:
+                self._reasons.append(f"invalid_training:{error}")
+            return
+        if event.get("type") == self._event_type:
             try:
-                rate, parent, spikes = _validate_response(event, config, seeds, event_type)
+                rate, parent, spikes = _validate_response(event, self._config, self._seeds, self._event_type)
                 if "parent_state_anchor_sha256" in event:
-                    anchor = anchors.get(parent)
+                    anchor = self._anchors.get(parent)
                     if anchor is None:
                         raise ValueError("missing_prior_state_anchor")
                     expected_clock = (event["retention_reference_tick"]
@@ -1423,10 +1433,10 @@ def _reduce_declared_evidence(
                             and event["parent_branch_id"] != anchor["origin_branch_id"]):
                         raise ValueError("state_anchor_origin")
                 key = _response_key(event)
-                if key in responses:
-                    reasons.append("duplicate_response:" + "/".join(map(str, key)))
+                if key in self._responses:
+                    self._reasons.append("duplicate_response:" + "/".join(map(str, key)))
                 else:
-                    responses[key] = {"rate_hz": rate, "spikes": spikes,
+                    self._responses[key] = {"rate_hz": rate, "spikes": spikes,
                                       "branch_id": event["branch_id"],
                                       "sequence": sequence,
                                       "training_id": event["training_id"],
@@ -1453,15 +1463,15 @@ def _reduce_declared_evidence(
                                       "response_replay_resolution_hz": event.get("response_replay_resolution_hz"),
                                       "one_spike_rate_hz": event.get("one_spike_rate_hz")}
             except (KeyError, TypeError, ValueError, OverflowError) as error:
-                reasons.append(f"invalid_response:{error}")
+                self._reasons.append(f"invalid_response:{error}")
         elif event.get("type") == "state_anchor":
             try:
-                _validate_anchor(event, config)
-                if (event["state_anchor_sha256"] in anchors
-                        or event["anchor_id"] in anchor_ids):
-                    reasons.append("duplicate_state_anchor:" + event["anchor_id"])
+                _validate_anchor(event, self._config)
+                if (event["state_anchor_sha256"] in self._anchors
+                        or event["anchor_id"] in self._anchor_ids):
+                    self._reasons.append("duplicate_state_anchor:" + event["anchor_id"])
                 else:
-                    anchors[event["state_anchor_sha256"]] = {
+                    self._anchors[event["state_anchor_sha256"]] = {
                         "anchor_id": event["anchor_id"],
                         "sim_tick": event["sim_tick"],
                         "origin_branch_id": event["origin_branch_id"],
@@ -1470,296 +1480,319 @@ def _reduce_declared_evidence(
                         "replay_recipe_sha256": event["replay_recipe_sha256"],
                         "sequence": sequence,
                     }
-                    anchor_ids.add(event["anchor_id"])
+                    self._anchor_ids.add(event["anchor_id"])
             except (KeyError, TypeError, ValueError) as error:
-                reasons.append(f"invalid_state_anchor:{error}")
+                self._reasons.append(f"invalid_state_anchor:{error}")
         elif event.get("type") == "assay_intervention":
             try:
-                _validate_intervention(event, config, seeds)
+                _validate_intervention(event, self._config, self._seeds)
                 key = (event["seed"], event["paired_identity"],
                        event["presentation_order"], event["condition"])
-                if key in interventions or event["intervention_id"] in intervention_ids:
-                    reasons.append("duplicate_intervention:" + "/".join(map(str, key)))
+                if key in self._interventions or event["intervention_id"] in self._intervention_ids:
+                    self._reasons.append("duplicate_intervention:" + "/".join(map(str, key)))
                 else:
-                    interventions[key] = {name: event[name] for name in INTERVENTION_FIELDS}
-                    interventions[key]["branch_id"] = event.get("branch_id")
-                    interventions[key]["sequence"] = sequence
-                    intervention_ids.add(event["intervention_id"])
+                    self._interventions[key] = {name: event[name] for name in INTERVENTION_FIELDS}
+                    self._interventions[key]["branch_id"] = event.get("branch_id")
+                    self._interventions[key]["sequence"] = sequence
+                    self._intervention_ids.add(event["intervention_id"])
             except (KeyError, TypeError, ValueError) as error:
-                reasons.append(f"invalid_intervention:{error}")
-    by_key = {(item["seed"], item["paired_identity"],
-               item["presentation_order"], item["condition"]): item
-              for item in trainings.values()}
-    for seed in seeds:
-        for identity in ("A", "B"):
-            for order in ("AB", "BA"):
-                for condition in ORDINARY_CONDITIONS:
-                    if (seed, identity, order, condition) not in by_key:
-                        reasons.append(f"missing_training:{seed}/{identity}/{order}/{condition}")
-    for key, intervention in interventions.items():
-        seed, identity, order, condition = key
-        donor_condition = "matched_reference" if condition == "necessity" else "paired"
-        recipient_condition = "matched_reference" if condition == "sufficiency" else "paired"
-        donor = by_key.get((seed, identity, order, donor_condition))
-        recipient = by_key.get((seed, identity, order, recipient_condition))
-        if (donor is None or recipient is None
-                or intervention["donor_training_id"] != donor["training_id"]
-                or intervention["recipient_training_id"] != recipient["training_id"]
-                or intervention["donor_checkpoint_sha256"]
-                != donor["training_end_checkpoint_sha256"]
-                or intervention["recipient_checkpoint_sha256"]
-                != recipient["training_end_checkpoint_sha256"]
-                or intervention["donor_candidate_memory_sha256"]
-                != donor["candidate_memory_sha256"]
-                or intervention["recipient_candidate_memory_before_sha256"]
-                != recipient["candidate_memory_sha256"]
-                or intervention["noncandidate_state_before_sha256"]
-                != recipient["noncandidate_state_sha256"]
-                or intervention["donor_training_end_tick"] != donor["training_end_tick"]
-                or intervention["recipient_training_end_tick"] != recipient["training_end_tick"]):
-            reasons.append("intervention_training:" + "/".join(map(str, key)))
-    rows = {}
-    for seed in seeds:
-        for identity in ("A", "B"):
-            for order in ("AB", "BA"):
-                for retention in config["retention_times_ms"]:
-                    for condition in CONDITIONS:
-                        row = {}
-                        for phase in ("pre", "post"):
-                            for stimulus in STIMULI:
-                                key = (seed, identity, order, retention, condition, phase, stimulus)
-                                if key not in responses:
-                                    reasons.append("missing_response:" + "/".join(map(str, key)))
-                                else:
-                                    row[f"{phase}_{stimulus}"] = responses[key]
+                self._reasons.append(f"invalid_intervention:{error}")
+
+    def finish(self) -> EvidenceReduction:
+        if self._finished:
+            raise AnalysisError("invalid_reducer_lifecycle")
+        self._finished = True
+        by_key = {(item["seed"], item["paired_identity"],
+                   item["presentation_order"], item["condition"]): item
+                  for item in self._trainings.values()}
+        for seed in self._seeds:
+            for identity in ("A", "B"):
+                for order in ("AB", "BA"):
+                    for condition in ORDINARY_CONDITIONS:
+                        if (seed, identity, order, condition) not in by_key:
+                            self._reasons.append(f"missing_training:{seed}/{identity}/{order}/{condition}")
+        for key, intervention in self._interventions.items():
+            seed, identity, order, condition = key
+            donor_condition = "matched_reference" if condition == "necessity" else "paired"
+            recipient_condition = "matched_reference" if condition == "sufficiency" else "paired"
+            donor = by_key.get((seed, identity, order, donor_condition))
+            recipient = by_key.get((seed, identity, order, recipient_condition))
+            if (donor is None or recipient is None
+                    or intervention["donor_training_id"] != donor["training_id"]
+                    or intervention["recipient_training_id"] != recipient["training_id"]
+                    or intervention["donor_checkpoint_sha256"]
+                    != donor["training_end_checkpoint_sha256"]
+                    or intervention["recipient_checkpoint_sha256"]
+                    != recipient["training_end_checkpoint_sha256"]
+                    or intervention["donor_candidate_memory_sha256"]
+                    != donor["candidate_memory_sha256"]
+                    or intervention["recipient_candidate_memory_before_sha256"]
+                    != recipient["candidate_memory_sha256"]
+                    or intervention["noncandidate_state_before_sha256"]
+                    != recipient["noncandidate_state_sha256"]
+                    or intervention["donor_training_end_tick"] != donor["training_end_tick"]
+                    or intervention["recipient_training_end_tick"] != recipient["training_end_tick"]):
+                self._reasons.append("intervention_training:" + "/".join(map(str, key)))
+        rows = {}
+        for seed in self._seeds:
+            for identity in ("A", "B"):
+                for order in ("AB", "BA"):
+                    for retention in self._config["retention_times_ms"]:
+                        for condition in CONDITIONS:
+                            row = {}
+                            for phase in ("pre", "post"):
+                                for stimulus in STIMULI:
+                                    key = (seed, identity, order, retention, condition, phase, stimulus)
+                                    if key not in self._responses:
+                                        self._reasons.append("missing_response:" + "/".join(map(str, key)))
+                                    else:
+                                        row[f"{phase}_{stimulus}"] = self._responses[key]
+                            row_key = _key(seed, identity, order, retention)
+                            rows.setdefault(row_key, {})[condition] = row
+                            recipient_condition = ("matched_reference" if condition == "sufficiency"
+                                                   else "paired" if condition in {"necessity", "sham"}
+                                                   else condition)
+                            training = by_key.get((seed, identity, order, recipient_condition))
+                            intervention = self._interventions.get((seed, identity, order, condition))
+                            for name, item in row.items():
+                                phase = "pre" if name.startswith("pre_") else "post"
+                                expected_source = (intervention["post_intervention_checkpoint_sha256"]
+                                                   if intervention is not None
+                                                   else training["training_end_checkpoint_sha256"]
+                                                   if training is not None else None)
+                                if (training is None or item["training_id"] != training["training_id"]
+                                        or item["training_end_checkpoint_sha256"]
+                                        != training["training_end_checkpoint_sha256"]
+                                        or item["retention_source_checkpoint_sha256"] != expected_source
+                                        or item["training_start_tick"] != training["training_start_tick"]
+                                        or item["association_t0_tick"] != training["association_t0_tick"]
+                                        or item["retention_reference_tick"]
+                                        != training["retention_reference_tick"]
+                                        or item["training_end_tick"] != training["training_end_tick"]
+                                        or item["last_visual_end_tick"] != training["last_visual_end_tick"]
+                                        or item["last_external_dan_end_tick"]
+                                        != training["last_external_dan_end_tick"]
+                                        or item["unpaired_nearest_cs_boundary_ticks"]
+                                        != training["unpaired_nearest_cs_boundary_ticks"]
+                                        or item["training_visual_exposure_ticks"]
+                                        != training["training_visual_exposure_ticks"]
+                                        or (phase == "pre" and (item["parent_sha256"]
+                                            != training["baseline_checkpoint_sha256"]
+                                            or item["cs_onset_tick"] != training["baseline_tick"] + 1000))
+                                        or (condition in INTERVENTIONS and (intervention is None
+                                            or item["intervention_id"] != intervention["intervention_id"]))):
+                                    self._reasons.append(f"response_training:{row_key}/{condition}/{name}")
+                            if len(row) != 6:
+                                continue
+                            common = {(item["training_start_tick"], item["association_t0_tick"],
+                                       item["retention_reference_tick"], item["training_id"],
+                                       item["training_end_tick"],
+                                       item["training_end_checkpoint_sha256"],
+                                       item["retention_source_checkpoint_sha256"],
+                                       item["passive_decay_ticks"], item["intervention_id"])
+                                      for item in row.values()}
+                            if len(common) != 1:
+                                self._reasons.append(f"row_provenance:{row_key}/{condition}")
+                            if len({_canonical(item["training_visual_exposure_ticks"])
+                                    for item in row.values()}) != 1:
+                                self._reasons.append(f"row_exposure:{row_key}/{condition}")
+                            for phase in ("pre", "post"):
+                                cells = [row[f"{phase}_{stimulus}"] for stimulus in STIMULI]
+                                if (len({cell["branch_id"] for cell in cells}) != len(STIMULI)
+                                        or len({cell["parent_sha256"] for cell in cells}) != 1):
+                                    self._reasons.append(f"stimulus_copy:{row_key}/{condition}/{phase}")
+                            if ({row[f"pre_{stimulus}"]["branch_id"] for stimulus in STIMULI}
+                                    & {row[f"post_{stimulus}"]["branch_id"] for stimulus in STIMULI}):
+                                self._reasons.append(f"pre_post_copy:{row_key}/{condition}")
+                            if condition in INTERVENTIONS:
+                                intervention = self._interventions.get((seed, identity, order, condition))
+                                if intervention is None:
+                                    self._reasons.append(f"missing_intervention:{seed}/{identity}/{order}/{condition}")
+                                elif (row["post_A"]["intervention_id"] != intervention["intervention_id"]
+                                      or row["post_A"]["training_end_tick"]
+                                      != intervention["recipient_training_end_tick"]
+                                      or row["post_A"]["training_end_checkpoint_sha256"]
+                                      != intervention["recipient_checkpoint_sha256"]):
+                                    self._reasons.append(f"intervention_link:{row_key}/{condition}")
+        for seed in self._seeds:
+            for identity in ("A", "B"):
+                for order in ("AB", "BA"):
+                    for condition in INTERVENTIONS:
+                        if (seed, identity, order, condition) not in self._interventions:
+                            self._reasons.append(f"missing_intervention:{seed}/{identity}/{order}/{condition}")
+                    for retention in self._config["retention_times_ms"]:
                         row_key = _key(seed, identity, order, retention)
-                        rows.setdefault(row_key, {})[condition] = row
-                        recipient_condition = ("matched_reference" if condition == "sufficiency"
-                                               else "paired" if condition in {"necessity", "sham"}
-                                               else condition)
-                        training = by_key.get((seed, identity, order, recipient_condition))
-                        intervention = interventions.get((seed, identity, order, condition))
-                        for name, item in row.items():
-                            phase = "pre" if name.startswith("pre_") else "post"
-                            expected_source = (intervention["post_intervention_checkpoint_sha256"]
-                                               if intervention is not None
-                                               else training["training_end_checkpoint_sha256"]
-                                               if training is not None else None)
-                            if (training is None or item["training_id"] != training["training_id"]
-                                    or item["training_end_checkpoint_sha256"]
-                                    != training["training_end_checkpoint_sha256"]
-                                    or item["retention_source_checkpoint_sha256"] != expected_source
-                                    or item["training_start_tick"] != training["training_start_tick"]
-                                    or item["association_t0_tick"] != training["association_t0_tick"]
-                                    or item["retention_reference_tick"]
-                                    != training["retention_reference_tick"]
-                                    or item["training_end_tick"] != training["training_end_tick"]
-                                    or item["last_visual_end_tick"] != training["last_visual_end_tick"]
-                                    or item["last_external_dan_end_tick"]
-                                    != training["last_external_dan_end_tick"]
-                                    or item["unpaired_nearest_cs_boundary_ticks"]
-                                    != training["unpaired_nearest_cs_boundary_ticks"]
-                                    or item["training_visual_exposure_ticks"]
-                                    != training["training_visual_exposure_ticks"]
-                                    or (phase == "pre" and (item["parent_sha256"]
-                                        != training["baseline_checkpoint_sha256"]
-                                        or item["cs_onset_tick"] != training["baseline_tick"] + 1000))
-                                    or (condition in INTERVENTIONS and (intervention is None
-                                        or item["intervention_id"] != intervention["intervention_id"]))):
-                                reasons.append(f"response_training:{row_key}/{condition}/{name}")
-                        if len(row) != 6:
+                        complete = rows.get(row_key, {})
+                        if (len(complete) == len(CONDITIONS)
+                                and all("pre_A" in row for row in complete.values())):
+                            declarations = {(
+                                row["pre_A"]["training_start_tick"],
+                                row["pre_A"]["retention_reference_tick"],
+                                row["pre_A"]["training_end_tick"],
+                                _canonical(row["pre_A"]["training_visual_exposure_ticks"]),
+                            ) for row in complete.values()}
+                            if len(declarations) != 1:
+                                self._reasons.append(f"matched_exposure:{row_key}")
+                    early = rows.get(_key(seed, identity, order, self._config["retention_times_ms"][0]), {})
+                    late = rows.get(_key(seed, identity, order, self._config["retention_times_ms"][1]), {})
+                    for condition in set(early) & set(late):
+                        for stimulus in STIMULI:
+                            if (f"post_{stimulus}" not in early[condition]
+                                    or f"post_{stimulus}" not in late[condition]):
+                                continue
+                            first = early[condition][f"post_{stimulus}"]
+                            second = late[condition][f"post_{stimulus}"]
+                            if (first["branch_id"] == second["branch_id"]
+                                    or first["training_start_tick"] != second["training_start_tick"]
+                                    or first["association_t0_tick"] != second["association_t0_tick"]
+                                    or first["retention_reference_tick"]
+                                    != second["retention_reference_tick"]
+                                    or first["training_end_tick"] != second["training_end_tick"]
+                                    or first["training_end_checkpoint_sha256"]
+                                    != second["training_end_checkpoint_sha256"]):
+                                self._reasons.append(f"retention_copy:{seed}/{identity}/{order}/{condition}/{stimulus}")
+        for seed in self._seeds:
+            for identity in ("A", "B"):
+                for order in ("AB", "BA"):
+                    common_baselines = None
+                    for condition in ORDINARY_CONDITIONS:
+                        training = by_key.get((seed, identity, order, condition))
+                        if training is None:
                             continue
-                        common = {(item["training_start_tick"], item["association_t0_tick"],
-                                   item["retention_reference_tick"], item["training_id"],
-                                   item["training_end_tick"],
-                                   item["training_end_checkpoint_sha256"],
-                                   item["retention_source_checkpoint_sha256"],
-                                   item["passive_decay_ticks"], item["intervention_id"])
-                                  for item in row.values()}
-                        if len(common) != 1:
-                            reasons.append(f"row_provenance:{row_key}/{condition}")
-                        if len({_canonical(item["training_visual_exposure_ticks"])
-                                for item in row.values()}) != 1:
-                            reasons.append(f"row_exposure:{row_key}/{condition}")
-                        for phase in ("pre", "post"):
-                            cells = [row[f"{phase}_{stimulus}"] for stimulus in STIMULI]
-                            if (len({cell["branch_id"] for cell in cells}) != len(STIMULI)
-                                    or len({cell["parent_sha256"] for cell in cells}) != 1):
-                                reasons.append(f"stimulus_copy:{row_key}/{condition}/{phase}")
-                        if ({row[f"pre_{stimulus}"]["branch_id"] for stimulus in STIMULI}
-                                & {row[f"post_{stimulus}"]["branch_id"] for stimulus in STIMULI}):
-                            reasons.append(f"pre_post_copy:{row_key}/{condition}")
-                        if condition in INTERVENTIONS:
-                            intervention = interventions.get((seed, identity, order, condition))
-                            if intervention is None:
-                                reasons.append(f"missing_intervention:{seed}/{identity}/{order}/{condition}")
-                            elif (row["post_A"]["intervention_id"] != intervention["intervention_id"]
-                                  or row["post_A"]["training_end_tick"]
-                                  != intervention["recipient_training_end_tick"]
-                                  or row["post_A"]["training_end_checkpoint_sha256"]
-                                  != intervention["recipient_checkpoint_sha256"]):
-                                reasons.append(f"intervention_link:{row_key}/{condition}")
-    for seed in seeds:
-        for identity in ("A", "B"):
-            for order in ("AB", "BA"):
-                for condition in INTERVENTIONS:
-                    if (seed, identity, order, condition) not in interventions:
-                        reasons.append(f"missing_intervention:{seed}/{identity}/{order}/{condition}")
-                for retention in config["retention_times_ms"]:
-                    row_key = _key(seed, identity, order, retention)
-                    complete = rows.get(row_key, {})
-                    if (len(complete) == len(CONDITIONS)
-                            and all("pre_A" in row for row in complete.values())):
-                        declarations = {(
-                            row["pre_A"]["training_start_tick"],
-                            row["pre_A"]["retention_reference_tick"],
-                            row["pre_A"]["training_end_tick"],
-                            _canonical(row["pre_A"]["training_visual_exposure_ticks"]),
-                        ) for row in complete.values()}
-                        if len(declarations) != 1:
-                            reasons.append(f"matched_exposure:{row_key}")
-                early = rows.get(_key(seed, identity, order, config["retention_times_ms"][0]), {})
-                late = rows.get(_key(seed, identity, order, config["retention_times_ms"][1]), {})
-                for condition in set(early) & set(late):
-                    for stimulus in STIMULI:
-                        if (f"post_{stimulus}" not in early[condition]
-                                or f"post_{stimulus}" not in late[condition]):
+                        digest = training["baseline_checkpoint_sha256"]
+                        candidates = {
+                            (digest, baseline["sequence"])
+                            for baseline in self._checkpoints.get(digest, ())
+                            if baseline["sim_tick"] == training["baseline_tick"]
+                            and any(
+                                end["branch_id"] == training["branch_id"]
+                                and end["parent_checkpoint_sha256"] == digest
+                                and end["parent_branch_id"] == baseline["branch_id"]
+                                and end["sequence"] > baseline["sequence"]
+                                for end in self._checkpoints.get(training["training_end_checkpoint_sha256"], ())
+                            )
+                        }
+                        common_baselines = (candidates if common_baselines is None
+                                            else common_baselines & candidates)
+                    for key, response in self._responses.items():
+                        if key[:3] != (seed, identity, order) or key[5] != "pre":
                             continue
-                        first = early[condition][f"post_{stimulus}"]
-                        second = late[condition][f"post_{stimulus}"]
-                        if (first["branch_id"] == second["branch_id"]
-                                or first["training_start_tick"] != second["training_start_tick"]
-                                or first["association_t0_tick"] != second["association_t0_tick"]
-                                or first["retention_reference_tick"]
-                                != second["retention_reference_tick"]
-                                or first["training_end_tick"] != second["training_end_tick"]
-                                or first["training_end_checkpoint_sha256"]
-                                != second["training_end_checkpoint_sha256"]):
-                            reasons.append(f"retention_copy:{seed}/{identity}/{order}/{condition}/{stimulus}")
-    for seed in seeds:
-        for identity in ("A", "B"):
-            for order in ("AB", "BA"):
-                common_baselines = None
-                for condition in ORDINARY_CONDITIONS:
-                    training = by_key.get((seed, identity, order, condition))
-                    if training is None:
-                        continue
-                    digest = training["baseline_checkpoint_sha256"]
-                    candidates = {
-                        (digest, baseline["sequence"])
-                        for baseline in checkpoints.get(digest, ())
-                        if baseline["sim_tick"] == training["baseline_tick"]
-                        and any(
-                            end["branch_id"] == training["branch_id"]
-                            and end["parent_checkpoint_sha256"] == digest
-                            and end["parent_branch_id"] == baseline["branch_id"]
-                            and end["sequence"] > baseline["sequence"]
-                            for end in checkpoints.get(training["training_end_checkpoint_sha256"], ())
-                        )
-                    }
-                    common_baselines = (candidates if common_baselines is None
-                                        else common_baselines & candidates)
-                for key, response in responses.items():
-                    if key[:3] != (seed, identity, order) or key[5] != "pre":
-                        continue
-                    digest = response["parent_sha256"]
-                    candidates = {
-                        (digest, baseline["sequence"])
-                        for baseline in checkpoints.get(digest, ())
-                        if response["parent_kind"] == "checkpoint"
-                        and response["parent_branch_id"] == baseline["branch_id"]
-                        and baseline["sequence"] < response["sequence"]
-                    }
-                    common_baselines = (candidates if common_baselines is None
-                                        else common_baselines & candidates)
-                if common_baselines is not None and not common_baselines:
-                    reasons.append(f"cohort_baseline:{seed}/{identity}/{order}")
-    for training in trainings.values():
-        baselines = checkpoints.get(training["baseline_checkpoint_sha256"], ())
-        ends = checkpoints.get(training["training_end_checkpoint_sha256"], ())
-        if not any(
-            baseline["sim_tick"] == training["baseline_tick"]
-            and end["sim_tick"] == training["training_end_tick"]
-            and end["branch_id"] == training["branch_id"]
-            and end["parent_checkpoint_sha256"] == training["baseline_checkpoint_sha256"]
-            and end["parent_branch_id"] == baseline["branch_id"]
-            and end["sequence"] > baseline["sequence"]
-            for baseline in baselines for end in ends
-        ):
-            reasons.append("training_ancestry:" + training["training_id"])
-    for key, intervention in interventions.items():
-        recipient = by_key.get((key[0], key[1], key[2],
-                                "matched_reference" if key[3] == "sufficiency"
-                                else "paired"))
-        posts = checkpoints.get(intervention["post_intervention_checkpoint_sha256"], ())
-        if (recipient is None or not any(
-                post["sim_tick"] == recipient["training_end_tick"]
-                and post["branch_id"] == intervention["branch_id"]
-                and post["parent_checkpoint_sha256"]
-                == recipient["training_end_checkpoint_sha256"]
-                and post["parent_branch_id"] == recipient["branch_id"]
-                for post in posts)):
-            reasons.append("intervention_ancestry:" + "/".join(map(str, key)))
-    for row_key, conditions in rows.items():
-        seed, identity, order, retention = row_key.split("/")
-        for condition, row in conditions.items():
-            recipient_condition = ("matched_reference" if condition == "sufficiency"
-                                   else "paired" if condition in {"necessity", "sham"}
-                                   else condition)
-            training = by_key.get((int(seed), identity, order, recipient_condition))
-            intervention = interventions.get((int(seed), identity, order, condition))
-            if training is None:
-                continue
-            source = (intervention["post_intervention_checkpoint_sha256"]
-                      if intervention is not None else training["training_end_checkpoint_sha256"])
-            for name, item in row.items():
-                phase = "pre" if name.startswith("pre_") else "post"
-                parents = ([anchors[item["parent_sha256"]]]
-                           if item["parent_kind"] == "anchor"
-                           and item["parent_sha256"] in anchors
-                           else checkpoints.get(item["parent_sha256"], ())
-                           if item["parent_kind"] == "checkpoint" else ())
-                if not parents:
-                    reasons.append(f"response_ancestry:{row_key}/{condition}/{name}")
+                        digest = response["parent_sha256"]
+                        candidates = {
+                            (digest, baseline["sequence"])
+                            for baseline in self._checkpoints.get(digest, ())
+                            if response["parent_kind"] == "checkpoint"
+                            and response["parent_branch_id"] == baseline["branch_id"]
+                            and baseline["sequence"] < response["sequence"]
+                        }
+                        common_baselines = (candidates if common_baselines is None
+                                            else common_baselines & candidates)
+                    if common_baselines is not None and not common_baselines:
+                        self._reasons.append(f"cohort_baseline:{seed}/{identity}/{order}")
+        for training in self._trainings.values():
+            baselines = self._checkpoints.get(training["baseline_checkpoint_sha256"], ())
+            ends = self._checkpoints.get(training["training_end_checkpoint_sha256"], ())
+            if not any(
+                baseline["sim_tick"] == training["baseline_tick"]
+                and end["sim_tick"] == training["training_end_tick"]
+                and end["branch_id"] == training["branch_id"]
+                and end["parent_checkpoint_sha256"] == training["baseline_checkpoint_sha256"]
+                and end["parent_branch_id"] == baseline["branch_id"]
+                and end["sequence"] > baseline["sequence"]
+                for baseline in baselines for end in ends
+            ):
+                self._reasons.append("training_ancestry:" + training["training_id"])
+        for key, intervention in self._interventions.items():
+            recipient = by_key.get((key[0], key[1], key[2],
+                                    "matched_reference" if key[3] == "sufficiency"
+                                    else "paired"))
+            posts = self._checkpoints.get(intervention["post_intervention_checkpoint_sha256"], ())
+            if (recipient is None or not any(
+                    post["sim_tick"] == recipient["training_end_tick"]
+                    and post["branch_id"] == intervention["branch_id"]
+                    and post["parent_checkpoint_sha256"]
+                    == recipient["training_end_checkpoint_sha256"]
+                    and post["parent_branch_id"] == recipient["branch_id"]
+                    for post in posts)):
+                self._reasons.append("intervention_ancestry:" + "/".join(map(str, key)))
+        for row_key, conditions in rows.items():
+            seed, identity, order, retention = row_key.split("/")
+            for condition, row in conditions.items():
+                recipient_condition = ("matched_reference" if condition == "sufficiency"
+                                       else "paired" if condition in {"necessity", "sham"}
+                                       else condition)
+                training = by_key.get((int(seed), identity, order, recipient_condition))
+                intervention = self._interventions.get((int(seed), identity, order, condition))
+                if training is None:
                     continue
-                if phase == "pre":
-                    valid = (item["parent_kind"] == "checkpoint"
-                             and item["parent_sha256"] == training["baseline_checkpoint_sha256"]
-                             and any(parent["sim_tick"] == training["baseline_tick"]
-                                     and item["parent_branch_id"] == parent["branch_id"]
-                                     and parent["sequence"] < item["sequence"]
-                                     for parent in parents))
-                else:
-                    clock = item["cs_onset_tick"] - 1000
-                    sources = checkpoints.get(source, ())
-                    if item["parent_kind"] == "checkpoint":
-                        valid = any(
-                            parent["sim_tick"] == clock
-                            and parent["parent_checkpoint_sha256"] == source
-                            and parent["parent_branch_id"] == source_record["branch_id"]
-                            and source_record["sequence"] < parent["sequence"]
-                            and item["parent_branch_id"] == parent["branch_id"]
-                            and parent["sequence"] < item["sequence"]
-                            for parent in parents for source_record in sources
-                        )
+                source = (intervention["post_intervention_checkpoint_sha256"]
+                          if intervention is not None else training["training_end_checkpoint_sha256"])
+                for name, item in row.items():
+                    phase = "pre" if name.startswith("pre_") else "post"
+                    parents = ([self._anchors[item["parent_sha256"]]]
+                               if item["parent_kind"] == "anchor"
+                               and item["parent_sha256"] in self._anchors
+                               else self._checkpoints.get(item["parent_sha256"], ())
+                               if item["parent_kind"] == "checkpoint" else ())
+                    if not parents:
+                        self._reasons.append(f"response_ancestry:{row_key}/{condition}/{name}")
+                        continue
+                    if phase == "pre":
+                        valid = (item["parent_kind"] == "checkpoint"
+                                 and item["parent_sha256"] == training["baseline_checkpoint_sha256"]
+                                 and any(parent["sim_tick"] == training["baseline_tick"]
+                                         and item["parent_branch_id"] == parent["branch_id"]
+                                         and parent["sequence"] < item["sequence"]
+                                         for parent in parents))
                     else:
-                        valid = any(
-                            item["parent_sha256"] in attested
-                            and parent["sim_tick"] == clock
-                            and parent["durable_ancestor_checkpoint_sha256"] == source
-                            and (origin := branches.get(parent["origin_branch_id"])) is not None
-                            and origin[1] == source
-                            and origin[0] == source_record["branch_id"]
-                            and source_record["sequence"] < parent["sequence"]
-                            and item["parent_branch_id"] == parent["origin_branch_id"]
-                            and parent["sequence"] < item["sequence"]
-                            for parent in parents for source_record in sources
-                        )
-                if not valid:
-                    reasons.append(f"response_ancestry:{row_key}/{condition}/{name}")
-    return EvidenceReduction("inconclusive" if reasons else "supported", rows,
-                             interventions, anchors, tuple(sorted(set(reasons))),
-                             trainings, checkpoints)
+                        clock = item["cs_onset_tick"] - 1000
+                        sources = self._checkpoints.get(source, ())
+                        if item["parent_kind"] == "checkpoint":
+                            valid = any(
+                                parent["sim_tick"] == clock
+                                and parent["parent_checkpoint_sha256"] == source
+                                and parent["parent_branch_id"] == source_record["branch_id"]
+                                and source_record["sequence"] < parent["sequence"]
+                                and item["parent_branch_id"] == parent["branch_id"]
+                                and parent["sequence"] < item["sequence"]
+                                for parent in parents for source_record in sources
+                            )
+                        else:
+                            valid = any(
+                                item["parent_sha256"] in self._attested
+                                and parent["sim_tick"] == clock
+                                and parent["durable_ancestor_checkpoint_sha256"] == source
+                                and (origin := self._branches.get(parent["origin_branch_id"])) is not None
+                                and origin[1] == source
+                                and origin[0] == source_record["branch_id"]
+                                and source_record["sequence"] < parent["sequence"]
+                                and item["parent_branch_id"] == parent["origin_branch_id"]
+                                and parent["sequence"] < item["sequence"]
+                                for parent in parents for source_record in sources
+                            )
+                    if not valid:
+                        self._reasons.append(f"response_ancestry:{row_key}/{condition}/{name}")
+        return EvidenceReduction("inconclusive" if self._reasons else "supported", rows,
+                                 self._interventions, self._anchors, tuple(sorted(set(self._reasons))),
+                                 self._trainings, self._checkpoints)
+
+
+def _reduce_declared_evidence(
+    events: Iterable[dict], declarations: dict, *, event_type: str,
+    attested_state_anchors: Iterable[str] = (),
+) -> EvidenceReduction:
+    """Pure declared arithmetic; supplied anchor hashes do not issue native proof.
+
+    One response per factor/condition/phase/stimulus is required. Each response
+    contains contiguous half-open ``bins`` with integer 0.1 ms tick bounds and
+    integer MBON11 spike counts. Intervention records are once per
+    seed/identity/order/condition and link both retention copies by ID.
+    """
+    accumulator = _DeclaredEvidenceAccumulator(declarations, event_type=event_type,
+        attested_state_anchors=attested_state_anchors)
+    for sequence, event in enumerate(events):
+        accumulator.consume(sequence, event)
+    return accumulator.finish()
 
 
 def _delta(row: dict, identity: str) -> float:

@@ -1118,6 +1118,345 @@ def _arithmetic_declarations(family):
     return result
 
 
+def _declared_accumulator_fixture(family, mutation):
+    """Declared arithmetic only; anchors and digests confer no native authority."""
+    events = _responses(family)
+    event_type = "qualification_evidence" if family == "qualification" else "assay_response"
+    response = next(event for event in events if event["type"] == event_type and event["phase"] == "post")
+    attested = ()
+    if mutation == "missing_checkpoint":
+        events = [event for event in events if event.get("checkpoint_sha256") != response["retention_source_checkpoint_sha256"]]
+    elif mutation == "malformed_ancestry":
+        next(event for event in events if event.get("checkpoint_sha256") == response["parent_checkpoint_sha256"])["parent_branch_id"] = "unrelated"
+    elif mutation == "duplicates":
+        events.extend(deepcopy([next(event for event in events if "checkpoint_name" in event),
+                                next(event for event in events if event["type"] == "assay_intervention"), response]))
+    elif mutation.startswith("anchor"):
+        targets = [event for event in events if event["type"] == event_type and event["phase"] == "post"
+                   and all(event[name] == response[name] for name in ("seed", "paired_identity", "presentation_order", "retention_ms", "condition"))]
+        parent = response["parent_checkpoint_sha256"]
+        for target in targets:
+            target.pop("parent_checkpoint_sha256")
+            target["parent_state_anchor_sha256"] = H["memory_after"]
+        anchor = {"type": "state_anchor", "anchor_version": "state-anchor/v1", "anchor_id": "declared-anchor",
+                  "state_anchor_sha256": H["memory_after"], "origin_branch_id": response["parent_branch_id"],
+                  "sim_tick": response["cs_onset_tick"] - 1000,
+                  "durable_ancestor_checkpoint_sha256": response["retention_source_checkpoint_sha256"],
+                  "replay_recipe_sha256": H["events"], "source_identity_sha256": _engine_identity()["sha256"]}
+        events.insert(next(index for index, event in enumerate(events) if event is response), anchor)
+        attested = (H["memory_after"],)
+        if mutation == "anchor_wrong_ancestor":
+            anchor["durable_ancestor_checkpoint_sha256"] = parent
+    elif mutation == "equal_hash":
+        checkpoint = next(event for event in events if "checkpoint_name" in event)
+        duplicate = {**checkpoint, "checkpoint_name": "equal-hash-distinct-occurrence.npz", "branch_id": "unrelated"}
+        events.insert(1, duplicate)
+    return events, event_type, attested
+
+
+def _declared_reduction_digests(reduction):
+    def normalized(value):
+        if isinstance(value, dict):
+            return [[repr(key), normalized(item)] for key, item in sorted(value.items(), key=lambda item: repr(item[0]))]
+        if isinstance(value, (list, tuple)):
+            return [normalized(item) for item in value]
+        return value
+    return tuple(sha256(json.dumps(normalized(value), ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()
+                 for value in vars(reduction).values())
+
+
+# Captured independently from the accepted f.3a reducer before extraction, in
+# EvidenceReduction field order: status, rows, interventions, anchors, reasons,
+# trainings, checkpoints. Every field is pinned, including malformed ancestry.
+_DECLARED_PRE_EXTRACTION_DIGESTS = {('qualification', 'valid'): ('b54ed9760f83ecc1e66b179535ad821d4cc4ba614075b4fa044729bc2862e83b',
+                              '24b5105520d5f6a91380247f6874e96fc5660584f75766ecf3ca481cc6a6e0b4',
+                              'e3047dfab32b8af897515d8aa0c8d6c97da9bf97006f75bde87cd6a1c1d15a88',
+                              '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945',
+                              '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945',
+                              'c3b2ac1e45bdc786298175e0fa3fe6f38e85cbe7ca8daf45f175e2e42be2167b',
+                              '8b0aef9d3a18fe474a6922995d749984b0f70e29bd16e8b9afb819749d667425'),
+ ('qualification', 'missing_checkpoint'): ('b33e98425fb438586ae42a50776673828fad24c921392395edff5b9405c2bd6c',
+                                           'ca57735316e7bb808b8db5602924ed5b365f12fec90c7473e63b8f8f199e85a5',
+                                           'd6d8b859db046c44a5b1259d789ca35da2c8820ea1ec8015368ce348b7ea4055',
+                                           '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945',
+                                           '4a627d0414f1951a272e05ad285264f0b5ad021dadb58c6a40d94825f440403f',
+                                           'c3b2ac1e45bdc786298175e0fa3fe6f38e85cbe7ca8daf45f175e2e42be2167b',
+                                           '556456e7179ec102589fbd94c00b8d3f8cd746d1c55b4845300f988cec208ade'),
+ ('qualification', 'malformed_ancestry'): ('b33e98425fb438586ae42a50776673828fad24c921392395edff5b9405c2bd6c',
+                                           '24b5105520d5f6a91380247f6874e96fc5660584f75766ecf3ca481cc6a6e0b4',
+                                           'e3047dfab32b8af897515d8aa0c8d6c97da9bf97006f75bde87cd6a1c1d15a88',
+                                           '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945',
+                                           '2abb21d4ffd00cc8c849a3348d1e42f3dfcdf1623125d8c1458ad935d382c81c',
+                                           'c3b2ac1e45bdc786298175e0fa3fe6f38e85cbe7ca8daf45f175e2e42be2167b',
+                                           '37f374503c7665aa244fae4e09bc0fc000895c9f34547e2bfa3c87d77032d2dd'),
+ ('qualification', 'duplicates'): ('b33e98425fb438586ae42a50776673828fad24c921392395edff5b9405c2bd6c',
+                                   '24b5105520d5f6a91380247f6874e96fc5660584f75766ecf3ca481cc6a6e0b4',
+                                   'e3047dfab32b8af897515d8aa0c8d6c97da9bf97006f75bde87cd6a1c1d15a88',
+                                   '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945',
+                                   'c95df726b38ef820750c3241ce4b203c0fc9146bba340831f8a15898058186a6',
+                                   'c3b2ac1e45bdc786298175e0fa3fe6f38e85cbe7ca8daf45f175e2e42be2167b',
+                                   '8b0aef9d3a18fe474a6922995d749984b0f70e29bd16e8b9afb819749d667425'),
+ ('qualification', 'anchor'): ('b54ed9760f83ecc1e66b179535ad821d4cc4ba614075b4fa044729bc2862e83b',
+                               '7fbfb18b3416513baf82044b68526ff45f348a74935523b783b19655749fd596',
+                               'e3bfaf7eca78aad89975f602b5b4f92be94e4938faadbc00c61e8ad0cc85f5d0',
+                               '906f718769436fd55cd824acb260d56e505cc4d24f76c6bd9260b66e83c084d7',
+                               '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945',
+                               'c3b2ac1e45bdc786298175e0fa3fe6f38e85cbe7ca8daf45f175e2e42be2167b',
+                               '4b5cd546c1c2d627e46359bad0eed1b6ad641bdac1ab11dcbb9f3dea46428811'),
+ ('qualification', 'anchor_wrong_ancestor'): ('b33e98425fb438586ae42a50776673828fad24c921392395edff5b9405c2bd6c',
+                                              '7fbfb18b3416513baf82044b68526ff45f348a74935523b783b19655749fd596',
+                                              'e3bfaf7eca78aad89975f602b5b4f92be94e4938faadbc00c61e8ad0cc85f5d0',
+                                              '1d92857c464d663d150f873cabd59483dfd1dd73074e920f1e3711674d77874e',
+                                              '2abb21d4ffd00cc8c849a3348d1e42f3dfcdf1623125d8c1458ad935d382c81c',
+                                              'c3b2ac1e45bdc786298175e0fa3fe6f38e85cbe7ca8daf45f175e2e42be2167b',
+                                              '4b5cd546c1c2d627e46359bad0eed1b6ad641bdac1ab11dcbb9f3dea46428811'),
+ ('qualification', 'equal_hash'): ('b54ed9760f83ecc1e66b179535ad821d4cc4ba614075b4fa044729bc2862e83b',
+                                   '5539972ddd639077701a912dde715c2fc0dd727dbf84e1907c6994b32c17b001',
+                                   '0cf113e07ddb97b4037d5d2a15f34d683686b46b8044eb5287c7e51218d617be',
+                                   '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945',
+                                   '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945',
+                                   'c3b2ac1e45bdc786298175e0fa3fe6f38e85cbe7ca8daf45f175e2e42be2167b',
+                                   '6e76670c2436655e408136eb6f03a2fccdc0047091837fe7dedd6d9619b9c85f'),
+ ('confirmation', 'valid'): ('b54ed9760f83ecc1e66b179535ad821d4cc4ba614075b4fa044729bc2862e83b',
+                             '938fbe3ef7fd35d3b8a33edde80aeac25bff85414c9f8c3607ac8e8952bfbfb1',
+                             '19a08bdbe8c31253bd4238c839495f79d9c9feb3174f2372bc660f729fe8b7e9',
+                             '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945',
+                             '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945',
+                             '7938438d7bc13a9f3d157df022199c769c01ce8d2c6b8391a43911bb41ba169c',
+                             'b2b43c85add645769d2fdf48e88389f56f694be6efc4ad0378edcc1ff6e375a8'),
+ ('confirmation', 'missing_checkpoint'): ('b33e98425fb438586ae42a50776673828fad24c921392395edff5b9405c2bd6c',
+                                          'df9b26b090c60c58742823b5ee84b011cffefe6acd4b4d720671b55139000ff3',
+                                          '47a5a7d0144b773f604c53e3f303893d4ec85bf55cbbad01eaaceeb3e0a8e3f5',
+                                          '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945',
+                                          'b9283db1248cf7700d9e5a72bf39d81d4d9c4131f48748c829c2cd38262ca2fb',
+                                          '7938438d7bc13a9f3d157df022199c769c01ce8d2c6b8391a43911bb41ba169c',
+                                          'b3e4d87463651bb1688ee9ee86a7da8d1aff03601bddaae8fee225ab0d043084'),
+ ('confirmation', 'malformed_ancestry'): ('b33e98425fb438586ae42a50776673828fad24c921392395edff5b9405c2bd6c',
+                                          '938fbe3ef7fd35d3b8a33edde80aeac25bff85414c9f8c3607ac8e8952bfbfb1',
+                                          '19a08bdbe8c31253bd4238c839495f79d9c9feb3174f2372bc660f729fe8b7e9',
+                                          '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945',
+                                          'b04f9c91ea052f1555a88f668aac7c36d3dad811ea61c59f9c4169c21b6a235d',
+                                          '7938438d7bc13a9f3d157df022199c769c01ce8d2c6b8391a43911bb41ba169c',
+                                          'b84087116f5ad01969a70b9244bfb31cd17bce7d9bd78de2c1bb68bbce95b284'),
+ ('confirmation', 'duplicates'): ('b33e98425fb438586ae42a50776673828fad24c921392395edff5b9405c2bd6c',
+                                  '938fbe3ef7fd35d3b8a33edde80aeac25bff85414c9f8c3607ac8e8952bfbfb1',
+                                  '19a08bdbe8c31253bd4238c839495f79d9c9feb3174f2372bc660f729fe8b7e9',
+                                  '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945',
+                                  'f154d38d8f3fb45191a0da5e567ab74d1e62c35f6c39a9c1566764d997efc469',
+                                  '7938438d7bc13a9f3d157df022199c769c01ce8d2c6b8391a43911bb41ba169c',
+                                  'b2b43c85add645769d2fdf48e88389f56f694be6efc4ad0378edcc1ff6e375a8'),
+ ('confirmation', 'anchor'): ('b54ed9760f83ecc1e66b179535ad821d4cc4ba614075b4fa044729bc2862e83b',
+                              'a59a917e48315b78de73ed499541530073b02190317bab66572442f4fe808429',
+                              '8efc9f9e80a2c69cf100a60552d8d576a01ee49f93804389d3ca99d3c79cd564',
+                              '312b1bf7977e173ad1bcae1bc28735429253e3628923cd2d17e729b1b267d3f0',
+                              '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945',
+                              '7938438d7bc13a9f3d157df022199c769c01ce8d2c6b8391a43911bb41ba169c',
+                              'f08315bded4bf07a2fdc29d1b732c85d2d8d411f98279539c81cbcaa69688270'),
+ ('confirmation', 'anchor_wrong_ancestor'): ('b33e98425fb438586ae42a50776673828fad24c921392395edff5b9405c2bd6c',
+                                             'a59a917e48315b78de73ed499541530073b02190317bab66572442f4fe808429',
+                                             '8efc9f9e80a2c69cf100a60552d8d576a01ee49f93804389d3ca99d3c79cd564',
+                                             '67b02dba353042fafe7408a8ee63537c83c14f750c4e1a48e63c0729a61cd265',
+                                             'b04f9c91ea052f1555a88f668aac7c36d3dad811ea61c59f9c4169c21b6a235d',
+                                             '7938438d7bc13a9f3d157df022199c769c01ce8d2c6b8391a43911bb41ba169c',
+                                             'f08315bded4bf07a2fdc29d1b732c85d2d8d411f98279539c81cbcaa69688270'),
+ ('confirmation', 'equal_hash'): ('b54ed9760f83ecc1e66b179535ad821d4cc4ba614075b4fa044729bc2862e83b',
+                                  '37744d3063ca5523638baad0fc6bfd501ef5c4f65e0df6461e74907d1679330c',
+                                  '62a88d4b5aeb525595763f7a3c1defcf779d7b3c50f6fc09a71243ff726aeedc',
+                                  '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945',
+                                  '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945',
+                                  '7938438d7bc13a9f3d157df022199c769c01ce8d2c6b8391a43911bb41ba169c',
+                                  '060d5012926389d3b701bf904d5729be6e388c183c834f0ea7113e506bd2c8df')}
+
+
+@pytest.mark.parametrize("family,mutation", _DECLARED_PRE_EXTRACTION_DIGESTS)
+def test_declared_accumulator_pre_extraction(family, mutation):
+    import fly_connectome_sim.experiment.analysis as analysis
+    events, event_type, attested = _declared_accumulator_fixture(family, mutation)
+    reduced = analysis._reduce_declared_evidence(events, _arithmetic_declarations(family),
+                                                event_type=event_type, attested_state_anchors=attested)
+    assert _declared_reduction_digests(reduced) == _DECLARED_PRE_EXTRACTION_DIGESTS[family, mutation]
+
+
+@pytest.mark.parametrize("family,mutation", _DECLARED_PRE_EXTRACTION_DIGESTS)
+def test_declared_accumulator_independent_expected_fields_and_input_purity(family, mutation):
+    import fly_connectome_sim.experiment.analysis as analysis
+    events, event_type, attested = _declared_accumulator_fixture(family, mutation)
+    declarations = _arithmetic_declarations(family)
+    before = deepcopy((events, declarations))
+    accumulator = analysis._DeclaredEvidenceAccumulator(declarations, event_type=event_type, attested_state_anchors=attested)
+    for sequence, event in enumerate(events):
+        accumulator.consume(sequence, event)
+    reduced = accumulator.finish()
+    assert _declared_reduction_digests(reduced) == _DECLARED_PRE_EXTRACTION_DIGESTS[family, mutation]
+    assert (events, declarations) == before
+    if mutation in {"valid", "anchor", "equal_hash"}:
+        assert reduced.status == "supported" and reduced.reasons == ()
+    else:
+        assert reduced.status == "inconclusive" and reduced.reasons
+
+
+@pytest.mark.parametrize("embedded", [None, True, -12, "conflicting"])
+def test_declared_accumulator_sparse_indices_preserve_occurrences_and_ignore_embedded_sequence(embedded):
+    import fly_connectome_sim.experiment.analysis as analysis
+    events, event_type, attested = _declared_accumulator_fixture("confirmation", "anchor")
+    accumulator = analysis._DeclaredEvidenceAccumulator(_arithmetic_declarations("confirmation"),
+        event_type=event_type, attested_state_anchors=attested)
+    dense = [{"type": "neutral"}] * 7
+    for sequence, event in enumerate(events):
+        if embedded is not None:
+            event["sequence"] = embedded
+        accumulator.consume(7 + 3 * sequence, event)
+        dense.extend([event, {"type": "neutral"}, {"type": "assay_result", "branch_id": "excluded-terminal"}])
+    actual = accumulator.finish()
+    expected = analysis._reduce_declared_evidence(dense, _arithmetic_declarations("confirmation"),
+        event_type=event_type, attested_state_anchors=attested)
+    assert actual == expected and actual.status == "supported"
+    checkpoints = [item for occurrences in actual.checkpoints.values() for item in occurrences]
+    assert min(item["sequence"] for item in checkpoints) == 7
+    assert all((item["sequence"] - 7) % 3 == 0 for item in checkpoints)
+    assert all((item["sequence"] - 7) % 3 == 0 for item in actual.anchors.values())
+    assert all((item["sequence"] - 7) % 3 == 0 for item in actual.interventions.values())
+    assert actual.rows["101/A/AB/10000"]["paired"]["post_A"]["sequence"] == 7 + 3 * next(
+        index for index, event in enumerate(events) if event["type"] == event_type and event["phase"] == "post")
+
+
+def test_declared_accumulator_neutral_first_branch_and_unfamiliar_checkpoint_are_causal():
+    import fly_connectome_sim.experiment.analysis as analysis
+    events = _responses("confirmation")
+    position = next(index for index, event in enumerate(events) if event.get("checkpoint_name")
+                    == "confirmation-101-A-AB-paired-10000-retained.npz")
+    retained = events[position]
+    retained["type"] = "unfamiliar-checkpoint-kind"
+    events.insert(position, {"type": "neutral", "branch_id": retained["branch_id"],
+        "parent_branch_id": retained.pop("parent_branch_id"),
+        "parent_checkpoint_sha256": retained.pop("parent_checkpoint_sha256")})
+    accumulator = analysis._DeclaredEvidenceAccumulator(_arithmetic_declarations("confirmation"), event_type="assay_response")
+    for index, event in enumerate(events):
+        accumulator.consume(100 + index * 2, event)
+    reduced = accumulator.finish()
+    assert reduced.status == "supported" and not reduced.reasons
+    occurrence = reduced.checkpoints[retained["checkpoint_sha256"]][0]
+    assert occurrence["sequence"] == 100 + (position + 1) * 2
+    assert occurrence["parent_branch_id"] == events[position]["parent_branch_id"]
+    assert occurrence["parent_checkpoint_sha256"] == events[position]["parent_checkpoint_sha256"]
+
+
+@pytest.mark.parametrize("sequence", [True, False, -1, 1.0, None, "6", np.int64(6), 5, 4])
+def test_declared_accumulator_invalid_sequence_does_not_mutate_state(sequence):
+    import fly_connectome_sim.experiment.analysis as analysis
+    accumulator = analysis._DeclaredEvidenceAccumulator(_arithmetic_declarations("confirmation"), event_type="assay_response")
+    accumulator.consume(5, {"type": "neutral"})
+    with pytest.raises(AnalysisError, match="^invalid_reducer_sequence$"):
+        accumulator.consume(sequence, {"type": "checkpoint", "checkpoint_name": "invalid-clock.npz"})
+    accumulator.consume(6, {"type": "neutral"})
+    actual = accumulator.finish()
+    expected = analysis._reduce_declared_evidence([], _arithmetic_declarations("confirmation"), event_type="assay_response")
+    assert actual == expected
+
+
+@pytest.mark.parametrize("mode", ["supported", "inconclusive", "failed"])
+def test_declared_accumulator_finish_closes_before_reconciliation_and_lifecycle_precedes_sequence(mode, monkeypatch):
+    import fly_connectome_sim.experiment.analysis as analysis
+    accumulator = analysis._DeclaredEvidenceAccumulator(_arithmetic_declarations("confirmation"), event_type="assay_response")
+    if mode == "supported":
+        for sequence, event in enumerate(_responses("confirmation")):
+            accumulator.consume(sequence, event)
+    if mode == "failed":
+        def failure(*args):
+            raise RuntimeError("reconciliation failed")
+        monkeypatch.setattr(analysis, "_key", failure)
+        with pytest.raises(RuntimeError, match="reconciliation failed"):
+            accumulator.finish()
+    else:
+        assert accumulator.finish().status == mode
+    with pytest.raises(AnalysisError, match="^invalid_reducer_lifecycle$"):
+        accumulator.consume(False, None)
+    with pytest.raises(AnalysisError, match="^invalid_reducer_lifecycle$"):
+        accumulator.finish()
+
+
+@pytest.mark.parametrize("late_error", [False, True])
+def test_declared_accumulator_wrapper_finishes_only_after_normal_eof(late_error, monkeypatch):
+    import fly_connectome_sim.experiment.analysis as analysis
+    completed, visited = [], []
+    finish = analysis._DeclaredEvidenceAccumulator.finish
+    def observed_finish(self):
+        completed.append("finish")
+        return finish(self)
+    monkeypatch.setattr(analysis._DeclaredEvidenceAccumulator, "finish", observed_finish)
+    def stream():
+        yield None
+        for _ in range(10002):
+            yield {"type": "branch_start", "branch_id": "repeated"}
+        visited.append("EOF")
+        if late_error:
+            raise ValueError("late iterator error")
+    if late_error:
+        with pytest.raises(ValueError, match="late iterator error"):
+            analysis._reduce_declared_evidence(stream(), _arithmetic_declarations("confirmation"), event_type="assay_response")
+        assert completed == []
+    else:
+        reduced = analysis._reduce_declared_evidence(stream(), _arithmetic_declarations("confirmation"), event_type="assay_response")
+        assert completed == ["finish"] and "malformed_event" in reduced.reasons and "evidence_event_limit" in reduced.reasons
+    assert visited == ["EOF"]
+
+
+@pytest.mark.parametrize("count", [10000, 10001])
+def test_declared_accumulator_exact_relevant_budget_ignores_index_magnitude_and_terminal(count):
+    import fly_connectome_sim.experiment.analysis as analysis
+    accumulator = analysis._DeclaredEvidenceAccumulator(_arithmetic_declarations("confirmation"), event_type="assay_response")
+    for index in range(count):
+        accumulator.consume(10**12 + 2 * index, {"type": "qualification_result"})
+        accumulator.consume(10**12 + 2 * index + 1, {"type": "assay_result", "branch_id": f"terminal-{index}"})
+    reduced = accumulator.finish()
+    assert ("evidence_event_limit" in reduced.reasons) is (count == 10001)
+    assert "branch_limit" not in reduced.reasons
+
+
+@pytest.mark.parametrize("count", [4096, 4097])
+def test_declared_accumulator_exact_branch_budget_counts_first_neutral_records(count):
+    import fly_connectome_sim.experiment.analysis as analysis
+    accumulator = analysis._DeclaredEvidenceAccumulator(_arithmetic_declarations("confirmation"), event_type="assay_response")
+    for index in range(count):
+        accumulator.consume(index, {"type": "neutral", "branch_id": str(index)})
+    assert ("branch_limit" in accumulator.finish().reasons) is (count == 4097)
+
+
+@pytest.mark.parametrize("count", [2048, 2049])
+def test_declared_accumulator_exact_checkpoint_budget_preserves_equal_hash_occurrences(count):
+    import fly_connectome_sim.experiment.analysis as analysis
+    accumulator = analysis._DeclaredEvidenceAccumulator(_arithmetic_declarations("confirmation"), event_type="assay_response")
+    for index in range(count):
+        accumulator.consume(index * 10, _checkpoint(f"{index}.npz", H["before"], index, "root"))
+    reduced = accumulator.finish()
+    assert len(reduced.checkpoints[H["before"]]) == min(count, 2048)
+    assert reduced.checkpoints[H["before"]][-1]["sequence"] == 20470
+    assert ("duplicate_or_invalid_checkpoint" in reduced.reasons) is (count == 2049)
+
+
+def test_declared_accumulator_copy_depth_and_unexpected_intake_exception(monkeypatch):
+    import fly_connectome_sim.experiment.analysis as analysis
+    events = _responses("confirmation")
+    accumulator = analysis._DeclaredEvidenceAccumulator(_arithmetic_declarations("confirmation"), event_type="assay_response")
+    for sequence, event in enumerate(events):
+        accumulator.consume(sequence, event)
+    reduced = accumulator.finish()
+    training = next(event for event in events if event["type"] == "assay_training")
+    assert reduced.trainings[training["training_id"]] is not training
+    assert reduced.trainings[training["training_id"]]["segments"] is training["segments"]
+    response = next(event for event in events if event["type"] == "assay_response")
+    cell = reduced.rows["101/A/AB/10000"]["paired"]["pre_A"]
+    assert cell["training_visual_exposure_ticks"] == response["training_visual_exposure_ticks"]
+    assert cell["training_visual_exposure_ticks"] is not response["training_visual_exposure_ticks"]
+    assert "bins" not in cell
+    def failure(*args):
+        raise RuntimeError("unexpected intake failure")
+    monkeypatch.setattr(analysis, "_validate_response", failure)
+    other = analysis._DeclaredEvidenceAccumulator(_arithmetic_declarations("confirmation"), event_type="assay_response")
+    with pytest.raises(RuntimeError, match="unexpected intake failure"):
+        other.consume(0, response)
+
+
 @pytest.mark.parametrize("family,event_type", [("qualification", "qualification_evidence"), ("confirmation", "assay_response")])
 def test_declared_reduction_matches_frozen_wrapper(family, event_type):
     import fly_connectome_sim.experiment.analysis as analysis

@@ -20,14 +20,38 @@ follow [`2026-10-03-candidate-state-digest-contract.md`](../specs/2026-10-03-can
 **Strict qualification refinement:** Remaining integration follows
 [`2026-11-01-strict-qualification-contract.md`](../specs/2026-11-01-strict-qualification-contract.md).
 The [six-slice f implementation plan](2026-11-02-strict-qualification-integration.md)
-records exact contracts and ownership. f.1/f.2/f.3a are accepted; f.3b–f.3d/f.4–f.6/g
-remain planned. f.3b's ratified API is not an implementation release or freeze approval.
+records exact contracts and ownership. f.1/f.2/f.3a/f.3b are accepted;
+f.3c–f.3d/f.4–f.6/g remain open. f.3c preparation is not a ratified API/source release.
 
 ## Current checkpoint and live remaining work — 2026-11-02
 
 The early task-level RED/GREEN boxes are historical execution instructions, not
 the current backlog. Tasks 1–6, strict analysis 7A, motor-only Task8 and source
-slices 7B4a–e/f.1/f.2/f.3a are implemented and accepted. Current f.3a source:
+slices 7B4a–e/f.1/f.2/f.3a/f.3b are implemented and accepted. Current f.3b source:
+`89c7b75442ae8c74fe731d178f54cc03349a81eb58cb5c23f208260fbe502a1b`;
+schema unchanged. One explicit-sequence accumulator preserves existing declaration
+validation/arithmetic/reconciliation, all seven fields, copy depth and caps.
+Wrappers still enumerate complete iterables and finish only at normal EOF;
+direct single-use finish closes before reconciliation and grants no EOF proof.
+Gaps are genuinely neutral only: first-seen branches/checkpoint-name records
+remain causal; optional embedded sequence framing gains no arithmetic authority.
+
+Full analysis: **432 passed in 249.14 s**; focused **86 passed in 5.04 s**
+overlaps full. Normal-host recorder/replay: **622 passed, one graph opt-in skip
+in 45.16 s**; separately actual MaleCNS zero-anchor context **passed in 8.35 s**.
+All actual exit0/no failures/errors, two-file/all30/schema before/after identities
+exact; final acceptance passed. Source review passed before full completion;
+the final result/XML/identities separately closed that pending runtime gate.
+Independent pre-extraction capture: **14 passed in 1.48 s**, all seven fields/both
+families; missing-API RED **40 failed/14 passed in 5.30 s**, real exit1.
+All three moved blocks/prefix/suffix preserved; no production arithmetic fix.
+
+Next ratify/review f.3c preparation before source release, then f.3d combined
+evaluation/final-role/cap proof. No new f.3c API, current grid configuration/96/408,
+whole-project/full MaleCNS assay, positive eligible-grid→selected lifecycle,
+history attestation, capacity/configuration or formal freeze is accepted here.
+
+Historical f.3a source:
 `b8f0fcee7115f387f34a13d8e9651064290dc70626ed649f8f8bed32cce62ebb`;
 schema `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
 Composable `_GridMeasurements` preserves the genuine standalone driver's two
@@ -50,10 +74,8 @@ Brief graph/configuration overlap means functional durations, not capacity evide
 Complete96 remains deferred to stable f.3d; no current whole-project/408/full
 MaleCNS assay, positive native lifecycle/configuration, formal freeze or capacity.
 
-f.3b's ratified accumulator API/explicit-index, genuinely neutral-gap and one-shot
-lifecycle rules are planned in the linked integration plan; source is unreleased.
-f.3c selected composition and f.3d genuine combined/final-role/cap proof remain
-future. Genuine component/native checks do not establish preceding eligibility;
+This f.3a configuration/grid evidence is historical, not current f.3b acceptance.
+Genuine component/native checks do not establish preceding eligibility;
 positive native eligible-grid→selected E2E remains unavailable.
 
 Historical corrected f.2 source:
@@ -76,7 +98,7 @@ four failures/two passes in 11.03 s, exit1; the two-clause correction and six
 regressions passed scoped source closure without remaining findings. First API
 RED's six failures retain log/XML, but no separate subprocess exit was retained.
 
-These f.2 results are source-specific history, not current f.3a acceptance.
+These f.2 results are source-specific history, not current f.3b acceptance.
 Keep genuine partial/native component checks distinct from declared internal
 dispatch/math fixtures; no synthetic proof or recorded eligible point is allowed.
 
@@ -100,7 +122,7 @@ schema before/after identities matched; stored final acceptance audit passed.
 Initial114 RED failures/23.92 s, first-GREEN81 fixture failures/22.28 s and
 R0 full-analysis eight hook failures/185.36 s remain failed development history.
 
-These f.1 results remain source-specific history, not current f.3a acceptance.
+These f.1 results remain source-specific history, not current f.3b acceptance.
 
 Historical e.3 source review and actual 9/51/408 tiny-native repeat acceptance:
 `2d07f37e85935f78b522bccb0a60d7f2b9f1d0e5a1475c8d306f12b995766da8`;
@@ -149,7 +171,7 @@ passed on the normal host; all frozen source/test/schema bytes matched before/
 after. Focused and compatibility counts overlap; no whole ordinary/all-eight/
 complete96 run was repeated on e.2 R1.
 That e.2 source kept True production unavailable/False-only; its results are
-historical, not current f.3a acceptance.
+historical, not current f.3b acceptance.
 
 Historical accepted e.1 helper source:
 `293c8a721f0a18ba9dcf0baf726437b8455133d67cf343bb9fb1c69ca617a060`;
@@ -183,10 +205,10 @@ attestation. Detailed actual inventories/hashes are in the
 The c.2b complete96 grid and reviewed detail-on fullgraph prefix sample remain
 historical on source
 `64041111c7cf3edfaf51128e071b79d939875937f810790c00d1425458c6e60e`.
-The costly96 case was not repeated for d/e.1/e.2/e.3/f.1/f.2/f.3a. Profiled durations require a controlled
+The costly96 case was not repeated for d/e.1/e.2/e.3/f.1/f.2/f.3a/f.3b. Profiled durations require a controlled
 unprofiled follow-up before runtime/capacity decisions. Continue on the original
-Windows workstation after f.3a acceptance, with planned unreleased
-f.3b–f.3d, then f.4–f.6/g. Earlier e/e.3 9/51/408 evidence stays source-specific.
+Windows workstation after f.3b acceptance, with planned unreleased
+f.3c–f.3d, then f.4–f.6/g. Earlier e/e.3 9/51/408 evidence stays source-specific.
 The actual True producer remains private; production global
 reconciliation/final lifecycle and integrated capacity remain unimplemented.
 This is no current whole-project/complete96-grid/full MaleCNS assay acceptance.
@@ -209,8 +231,9 @@ Cloud setup below applies only to a future fresh checkout, not local continuatio
 - [x] Share declaration arithmetic and explicit integer qualification/confirmation C gates (f.1).
 - [x] Implement/accept the corrected bounded pair checker and full-EOF adapter (f.2).
 - [x] Accept f.3a composable standalone grid measurements and bounded one-configuration check.
-- [ ] Release f.3b's ratified accumulator brief, then sequential f.3c/d briefs;
-  no monolithic f.3 release. Later component APIs remain future.
+- [x] Accept f.3b explicit-sequence accumulator and bounded analysis/related checks.
+- [ ] Review/ratify prepared f.3c design before source release, then f.3d brief;
+  no monolithic f.3 release or new component API is established.
 - [ ] Integrate public frozen-config lifecycle and implement the real assay CLI;
   current CLI lacks `assay` (f/g).
 - [ ] Resolve discarded-grid training ancestry without mistaking black-retention
@@ -838,9 +861,9 @@ capacity, scientific support or formal qualification. No new complete suite ran.
 
 #### Task7B4: strict qualification integration after Task8
 
-Keep the same plan/workspace. Source slices a–e and bounded f.1/f.2/f.3a are implemented
+Keep the same plan/workspace. Source slices a–e and bounded f.1/f.2/f.3a/f.3b are implemented
 and accepted. Earlier e.3 tiny-native 9/51/408 acceptance is source-specific;
-f.3b–f.3d/f.4–f.6/g remain future,
+f.3c–f.3d/f.4–f.6/g remain future,
 without permission to run formal qualification now. Preserve all existing confirmation
 routes and scientific gates. Concrete per-slice briefs must settle exact data
 shapes before implementation; do not bootstrap with a fabricated frozen object.
@@ -1119,11 +1142,11 @@ Follow the [six-slice integration plan](2026-11-02-strict-qualification-integrat
   intervention-checkpoint roles. Source review and bounded acceptance passed.
 - [x] f.3a: composable grid ownership/measurement; standalone two-pass behavior,
   explicit final/terminal ownership and bounded one-configuration acceptance.
-- [ ] f.3b: ratified planned `_DeclaredEvidenceAccumulator` with explicit actual
-  global sequences, genuinely neutral gaps and one-shot finish; source unreleased.
+- [x] f.3b: `_DeclaredEvidenceAccumulator` with explicit actual global sequences,
+  genuinely neutral gaps and one-shot finish; bounded source/runtime acceptance passed.
 - [ ] f.3c: selected component using f.2/f.3b, exact inventories/controls and late watches.
 - [ ] f.3d: genuine combined same-two-pass evaluator, archive/final binding and cap proof.
-  Remaining slices need sequential briefs; f.3b API ratification releases no source.
+  Remaining slices need sequential briefs; f.3c preparation is not ratified/source-released.
 - [ ] Independently reconcile all selected physical/logical references, sources,
   PRE reuse and EOF in the production shared evaluator; e's test oracle does not
   implement this f requirement.
