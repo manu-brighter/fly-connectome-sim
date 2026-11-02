@@ -11,13 +11,19 @@ focused/affected-file compatibility and separate actual MaleCNS context acceptan
 The private e.3 True producer passed source review, actual 9/51/408-pair
 tiny-native checks and assay-module compatibility. Parent e implementation
 acceptance is complete; production global reconciliation/public assessment/freeze
-integration (f), CLI/capacity (g) and formal qualification remain open.
+integration remains open. Bounded f.1 declaration arithmetic/integer C assessment
+passed source review and acceptance on source
+`73994df1e35e1bd51407d863f42733551b994b8d2dbc8503a60bda33597e35ef`;
+f.2–f.6, CLI/capacity (g)
+and formal qualification remain open. f.2 design is ratified, not released or implemented.
 This is no source-freeze or scientific approval. **Date:** 2026-11-01.
 **Updated:** 2026-11-02.
 
 Refines the [assay design](2026-09-24-associative-plasticity-pivot-design.md),
 [replay contract](2026-10-02-replay-anchor-contract.md) and existing
 [implementation plan](../plans/2026-09-24-associative-plasticity-assay.md).
+The [six-slice integration plan](../plans/2026-11-02-strict-qualification-integration.md)
+defines f ownership and exact future contracts; only f.1 is accepted.
 The endpoint, fixed grid, seeds, windows, current, floors, exclusions and
 scientific interpretation remain unchanged. No supported result is presumed.
 
@@ -460,6 +466,70 @@ final clock/complete-state hash to this owner before final checkpoint/terminal/s
 is no trust issuer. The 9/51/408 checks observed **21/130/1,033** production factories.
 Parent e implementation acceptance is complete; f/g/formal gates remain open.
 
+### f.1 declaration arithmetic — accepted bounded slice
+
+`_reduce_declared_evidence` owns the shared reduction body without requiring
+fabricated artifact fields; the public confirmation wrapper retains genuine
+Frozen validation and its signature. `_assess(..., strict_c=...)` requires an
+exact Boolean: False selects qualification's integer C failure at `<1`, True
+selects confirmation's `<=1`. Other equations and trust boundaries stay unchanged.
+This does not implement the future shared qualification evaluator or strict freeze.
+Earlier e.3 native-repeat evidence remains bound to its source revision recorded above.
+
+### f.2 checker extraction — ratified design, not released
+
+Use one extracted comparison kernel and preserve the existing local wrapper's
+signature and full-iterator behavior. Proposed private interface:
+
+```text
+_SelectedReplayChecker(physical_key, *, expected_anchor_sha256, metadata,
+ execution, expected_source_occurrence, expected_start, expected_maps, n,
+ memory_count, edge_count, lower, upper, prior_events=())
+consume(event) -> None
+finish(diagnostic) -> dict
+```
+
+Return exactly `{response_replay_resolution_hz,candidate_memory_w_resolution}`.
+
+`prior_events` is an exact tuple of at most five distinct actual unchanged event
+records: PRE baseline1; ordinary POST checkpoint/training/anchor3; intervention
+POST recipient checkpoint/training, intervention checkpoint/event and anchor5.
+Role aliases share one occurrence. Sequences are strictly increasing exact
+non-bool integers; permit gaps, never sort/renumber/deduplicate malformed input.
+Seeded records precede pair activity and use the ordinary collection path.
+They are plain data; f.3 authenticates actual artifact membership.
+
+`expected_anchor_sha256` is required: valid POST digest, exactly None for PRE.
+Select every matching-hash anchor regardless of branch/origin/source/clock,
+then validate it. A malformed matching anchor followed by a healthy one fails;
+canonical-route anchors with other hashes cannot replace it. The wrapper obtains
+this hash from its caller diagnostic without W decoding. Finish binds the actual
+diagnostic to it and to the caller's full diagnostic; no fake diagnostic/header.
+
+Retain at most twelve actual operations and sixteen PRE rows (one POST), in
+their actual global interleaving, preserving both window stops before rows and
+complete tails. Finish consumes the actual diagnostic exactly once instead of
+`consume` for that event, strictly after all captured activity; numeric decode
+follows map/model binding only then.
+Preserve exact references, bytes/signed zero, cumulative through-window PPL
+counts and existing scalar arithmetic. Release retained payload/vectors on
+success and semantic failure; repeated finish rejects. Keep bounded error strings,
+not exception/traceback objects. Callers still drain iterators after constructor
+or semantic failure; iterator/final-binding failures propagate.
+
+After finish retain only compact branch/training/intervention IDs, selected
+anchor hash and scalar result/error/closed state. Late matching routes fail even
+when branch/origin changes. Local EOF comparison rejects ANY later target event
+and withholds its result until clean EOF.
+Future global f.3 owns this watch after checker disposal and exactly ONE final
+ordinary `checkpoint` named `brain-after.npz` after full selected/control inventory, on the
+actual last repeat branch, bound to diagnostic/native owner/anchor ancestry/
+clock/independently decoded archive. This final framing is never fed into the
+discarded checker and is no arbitrary late-event exception. No global behavior,
+408 W-payload cache, repeated history scan, trust issuer or cap is implemented here.
+f.3 supplies the hash from its actual indexed prior anchor, reconciled with the
+compact diagnostic parent hash, without retaining full diagnostic W payloads.
+
 ## One truthful terminal and sealed-only freezing
 
 Use a shared pure qualification evaluator for real validated prefixes and seals,
@@ -506,7 +576,10 @@ Selected production must prove conformance before qualification-only 5120 is
 enabled. Tests must fail closed if these bounds or completeness assumptions change.
 
 Measure the integrated grid path with its actual diagnostic flags, snapshot I/O,
-archive reduction and both native verifications before formal source freeze.
+archive reduction and THREE native verification boundaries before formal source
+freeze: grid prefix before selected production, final prefix before terminal,
+and independently verified/reassessed seal after close. All three factories and
+resource costs belong in integrated evidence.
 An earlier bounded actual MaleCNS first-training-prefix sample after the grid
 reader is accepted should expose immediate detail-on line/memory/I/O costs before
 selected integration. It remains incomplete and cannot replace this integrated

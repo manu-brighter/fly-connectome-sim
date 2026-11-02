@@ -2,8 +2,8 @@
 
 Use `origin` of `manu-brighter/fly-connectome-sim`, branch
 `feat/connectome-experiment-core`, latest pushed feature commit. The latest
-source-reviewed work is Task7B4e.3, with complete 9/51/408-pair tiny-native
-implementation acceptance. Parent e is complete; f/g integration remains open.
+accepted work is Task7B4f.1, shared declaration arithmetic and integer C gates.
+Parent e is complete on its earlier source; f.2–f.6/g integration remains open.
 The project remains WIP, not v1.
 
 Continue autonomously on the original Windows workstation, including reviewed
@@ -17,7 +17,8 @@ checkout, not a gate on current local work. Never push main/master/develop.
    [product scope](specs/fly-event-planner.md).
 2. [Approved assay design](superpowers/specs/2026-09-24-associative-plasticity-pivot-design.md)
    and [current plan/live task details](superpowers/plans/2026-09-24-associative-plasticity-assay.md).
-3. [Strict qualification integration contract](superpowers/specs/2026-11-01-strict-qualification-contract.md).
+3. [Strict qualification integration contract](superpowers/specs/2026-11-01-strict-qualification-contract.md)
+   and [six-slice integration plan](superpowers/plans/2026-11-02-strict-qualification-integration.md).
 4. [Replay contract](superpowers/specs/2026-10-02-replay-anchor-contract.md) and
    [candidate-state digest contract](superpowers/specs/2026-10-03-candidate-state-digest-contract.md).
 5. [Detail-on first-training-prefix report](experiments/2026-11-02-fullgraph-detail-prefix-pilot.md),
@@ -59,14 +60,57 @@ conversion. Unavailable counts stay unavailable; no gate tolerance was added.
 NumPy 2.4.6's private header API supports NPY1/2/3; lossy structured/subarray
 extension templates are rejected. Protocol/raw formats and native core remain.
 
-**Task7B4e.3 and parent e implementation acceptance are complete.**
+**Task7B4f.1 passed bounded source review and implementation acceptance.**
+A declaration-based reducer now accepts plain scientific declarations; the
+existing confirmation wrapper still validates its Frozen config. `_assess` chooses integer C
+rules: qualification rejects counts below one; confirmation rejects counts at
+or below one. Other assessment equations, native core, schema and public trust
+boundaries are unchanged. Public strict freezing remains future f.5 work.
+
+Current model-source identity:
+`73994df1e35e1bd51407d863f42733551b994b8d2dbc8503a60bda33597e35ef`;
+schema `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
+The sole review finding was an old mutation hook not forwarding the new keyword;
+its two-line test-only correction retained all eight integrity oracles and passed
+independent closure review. R1 full analysis: **345 passed in 184.58 s**, exit0,
+no failures/errors/skips. The focused **130 passed in 37.26 s** and hook-only
+**eight passed in 14.41 s** overlap that full file and are not additive.
+
+Related-module R0 compatibility on identical package source: **1,305 passed,
+four skipped in 953.91 s**, exit0, no failures/errors. R1 changed only the two
+test-hook lines afterward. Skips were complete96, actual MaleCNS grid baseline,
+actual MaleCNS zero-anchor map context and a Windows-junction permission case.
+The latter three separately **passed on the normal host in 15.55 s**, exit0,
+no failures/errors/skips. Complete96 was not repeated. Each applicable run's two
+frozen paths, all 30 source members and schema matched before/after. Final stored
+acceptance audit passed; the full analysis process completion is externally
+reported and supported by its original log/XML/result and identity records.
+
+Development failures remain failures: initial RED had 114 failed/16 passed in
+23.92 s; first GREEN had 81 fixture failures in 22.28 s; R0 full analysis had
+337 passed/eight old-hook failures in 185.36 s. None is counted as acceptance.
+No current whole-project/all-eight/complete96/full MaleCNS assay pass, formal
+qualification/configuration, response-history proof or capacity is claimed.
+
+Only f.1 is complete. The linked plan carries ratified f.2 design, **not released
+implementation**: bounded actual prior records, POST's required hash-only anchor
+selector, once-only diagnostic finish and full late-event/EOF handling. f.3–f.6
+global reconciliation, terminal/seal/freezing and fresh qualification caller
+remain future. Integration requires THREE native verification boundaries:
+grid prefix before selected execution, final prefix, and independent seal.
+
+## Historical evidence — not current-source acceptance
+
+### Task7B4e.3 — complete repeats on earlier source
+
+**Task7B4e.3 and parent e implementation acceptance completed on this earlier source.**
 The private True-qualification producer now executes independent native pairs,
 measured window-stop response/W resolution, complete tails and exact diagnostic
 references. False/confirmation retains its existing owner and behavior; True
 returns the actual last successful repeat engine after diagnostic append and
 scratch cleanup. f still owns global reconciliation and final lifecycle.
 
-Current source:
+Historical e.3 source:
 `2d07f37e85935f78b522bccb0a60d7f2b9f1d0e5a1475c8d306f12b995766da8`;
 schema `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
 Independent source review closed the retained-snapshot/anchor mismatch finding.
@@ -122,8 +166,6 @@ The audit reissued no native proof. This completes e's tiny-native implementatio
 acceptance; f's production global reconciliation/final lifecycle and g's integrated
 capacity, LF/source-freeze and formal qualification gates remain open.
 
-## Historical evidence — not current-source acceptance
-
 ### Task7B4e.2 — accepted diagnostic foundation on earlier source
 
 **Task7B4e.2 R1 passed independent source review and bounded Windows acceptance.**
@@ -154,7 +196,7 @@ No whole ordinary/all-eight/complete96 run was repeated on this source.
 
 That e.2 source kept True production unavailable/False-only; current bounded
 producer work is reported separately above. It does not upgrade these older
-tests to the new source; current 408/768 repeat acceptance is recorded above.
+tests to the new source; e.3's source-specific 408/768 acceptance is recorded above.
 
 ### Task7B4e.1 — accepted reference foundation on earlier source
 
@@ -244,7 +286,7 @@ capacity follows from these matrices or the graph compatibility cases.
   Its complete96 tiny-native prefix/seal case passed in **5,124.53 s**:
   96 units/144 points, 89,831 events, 1,478 checkpoints and 3,594,389,820 event
   bytes; zero-anchor checks authenticated maps/context, not training replay.
-  This costly case was **not repeated on d, e.1, e.2 or e.3 source**.
+  This costly case was **not repeated on d, e.1, e.2, e.3 or f.1 source**.
 - The [detail-on fullgraph prefix sample](experiments/2026-11-02-fullgraph-detail-prefix-pilot.md)
   used that same c.2b source at commit `21f788342b276e1d8a323f572e37e248542948d6`.
   Its final sample was 630.546 s / 55,267,543 dedicated bytes /
@@ -295,11 +337,14 @@ Interrupted development runs are never counted as passes.
 - [x] 7B4e.3: source-reviewed True producer and actual tiny-native 9/51/408 checks;
   whole assay-module compatibility and separate complete repeat acceptance passed.
   No full MaleCNS assay, scientific outcome or capacity approval follows.
+- [x] 7B4f.1: shared declaration reduction and explicit integer C assessment;
+  bounded analysis/related-module/normal-host acceptance recorded above.
+- [ ] 7B4f.2: ratified bounded pair-checker design; not released or implemented.
 - [ ] 7B4f: integrate selected inventory with authenticated grid assessment, one
   evidence-bound terminal and independently checked seal; sealed-only engine-free
   public freezing. Complete valid negatives never create a production config.
 - [ ] 7B4g: actual assay CLI/fresh-factory routing and integrated detail-enabled
-  grid/archive/stream/two-verification capacity. Include controlled unprofiled
+  grid/archive/stream capacity with THREE verification boundaries. Include controlled unprofiled
   phase/resource measurement before runtime or capacity decisions; profiled pilot
   durations cannot establish throughput. Current CLI lacks `assay`.
 - [ ] Prove selected/replay emissions fit the intended 4850 branches/1602

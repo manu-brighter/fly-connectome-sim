@@ -1085,23 +1085,63 @@ def _validate_anchor(event: dict, config: dict) -> None:
         raise ValueError("state_anchor_source_identity")
 
 
+_DECLARATION_FIELDS = {"engine_identity", "mbon11_population_size", "candidate_identity",
+                       "selected_configuration", "response_window", "retention_times_ms"}
+
+
 def reduce_assay_evidence(
     events: Iterable[dict], frozen: FrozenAssayConfig, *,
     event_type: str = "assay_response",
     attested_state_anchors: Iterable[str] = (),
 ) -> EvidenceReduction:
-    """Pure pre-seal reducer for versioned raw response and intervention events.
+    """Preserve the public frozen contract while sharing declaration-only arithmetic."""
+    if (not isinstance(frozen, FrozenAssayConfig) or type(event_type) is not str
+            or event_type not in {"assay_response", "qualification_evidence"}):
+        raise AnalysisError("invalid_reducer_contract")
+    config = frozen.to_dict()
+    fields = _DECLARATION_FIELDS | ({"confirmation_input_sha256"} if event_type == "assay_response" else set())
+    return _reduce_declared_evidence(events, {name: config[name] for name in fields},
+        event_type=event_type, attested_state_anchors=attested_state_anchors)
+
+
+def _reduce_declared_evidence(
+    events: Iterable[dict], declarations: dict, *, event_type: str,
+    attested_state_anchors: Iterable[str] = (),
+) -> EvidenceReduction:
+    """Pure declared arithmetic; supplied anchor hashes do not issue native proof.
 
     One response per factor/condition/phase/stimulus is required. Each response
     contains contiguous half-open ``bins`` with integer 0.1 ms tick bounds and
     integer MBON11 spike counts. Intervention records are once per
     seed/identity/order/condition and link both retention copies by ID.
     """
-    if not isinstance(frozen, FrozenAssayConfig) or event_type not in {
-        "assay_response", "qualification_evidence",
-    }:
+    if type(event_type) is not str or event_type not in {"assay_response", "qualification_evidence"}:
         raise AnalysisError("invalid_reducer_contract")
-    config = frozen.to_dict()
+    fields = _DECLARATION_FIELDS | ({"confirmation_input_sha256"} if event_type == "assay_response" else set())
+    if type(declarations) is not dict or set(declarations) != fields:
+        raise AnalysisError("invalid_reducer_declarations")
+    config = declarations
+    population, candidate = config["mbon11_population_size"], config["candidate_identity"]
+    if (not _int(population, minimum=1) or not _valid_engine_identity(config["engine_identity"], population)
+            or not isinstance(candidate, str) or not re.fullmatch(r"[a-z0-9-]+/v[1-9][0-9]*", candidate)):
+        raise AnalysisError("invalid_reducer_identity")
+    for name, choices, keys in (("selected_configuration", GRID, {"cs_duration_ms", "dan_onset_ms", "post_pair_gap_ms"}),
+                                ("response_window", RESPONSE_WINDOWS, {"start_ms", "end_ms"})):
+        value = config[name]
+        if (not isinstance(value, dict) or set(value) != keys or any(not _number(item) for item in value.values())
+                or value not in [vars(item) for item in choices]):
+            raise AnalysisError("invalid_reducer_schedule")
+    times = config["retention_times_ms"]
+    if (type(times) is not list or len(times) != 2 or any(not _int(time, minimum=10000) for time in times)
+            or times[0] not in RETENTION_CANDIDATES_MS or times[1] != times[0] + 60000):
+        raise AnalysisError("invalid_reducer_retention")
+    if event_type == "assay_response":
+        hashes, expected = config["confirmation_input_sha256"], _expected_inputs("confirmation")
+        if (type(hashes) is not dict or set(hashes) != set(expected)
+                or any(type(row) is not dict or set(row) != set(expected[seed])
+                       or any(not _digest(value) or value != expected[seed][name] for name, value in row.items())
+                       for seed, row in hashes.items())):
+            raise AnalysisError("invalid_reducer_inputs")
     seeds = (QUALIFICATION_SEEDS if event_type == "qualification_evidence"
              else CONFIRMATION_SEEDS)
     reasons = []
@@ -1552,7 +1592,9 @@ def _delta(row: dict, identity: str) -> float:
 
 
 def _assess(reduction: EvidenceReduction, config: dict,
-            seeds: tuple[int, int]) -> AssayReport:
+            seeds: tuple[int, int], *, strict_c: bool) -> AssayReport:
+    if type(strict_c) is not bool:
+        raise AnalysisError("invalid_strict_c_flag")
     reasons = list(reduction.reasons)
     values = {"cells": {}, "effect_floor_hz": config["effect_floor_hz"],
               "replay_resolution_hz": config["replay_resolution_hz"],
@@ -1602,7 +1644,7 @@ def _assess(reduction: EvidenceReduction, config: dict,
                     c_boundary = _count_boundaries(
                         config["mbon11_population_size"],
                         int((config["response_window"]["end_ms"] - config["response_window"]["start_ms"]) * 10),
-                        pre_c=paired["pre_C"]["spikes"], post_c=paired["post_C"]["spikes"], strict_c=True,
+                        pre_c=paired["pre_C"]["spikes"], post_c=paired["post_C"]["spikes"], strict_c=strict_c,
                     )
                     if c_boundary.c_failed is None:
                         raise AnalysisError("response_counts_unavailable")
@@ -1665,7 +1707,7 @@ def assess_assay_evidence(events: Iterable[dict],
         raise AnalysisError("invalid_frozen_config")
     reduced = reduce_assay_evidence(events, frozen,
                                     attested_state_anchors=attested_state_anchors)
-    return _assess(reduced, frozen.to_dict(), CONFIRMATION_SEEDS)
+    return _assess(reduced, frozen.to_dict(), CONFIRMATION_SEEDS, strict_c=True)
 
 
 def _verified_events(run: VerifiedRun | ValidatedPrefix) -> Iterable[dict]:
@@ -2085,7 +2127,7 @@ def build_frozen_config(qualification: VerifiedRun) -> FrozenAssayConfig:
     payload["dynamic_range_hz"] = max(dynamic)
     payload["effect_floor_hz"] = max(5 * max(replay), 2 * max(control), 0.05 * max(dynamic))
     frozen = _freeze(payload)
-    report = _assess(reduced, frozen.to_dict(), QUALIFICATION_SEEDS)
+    report = _assess(reduced, frozen.to_dict(), QUALIFICATION_SEEDS, strict_c=False)
     if report.status != "supported":
         raise AnalysisError("qualification_gate:" + report.reasons[0])
     return frozen
@@ -2149,7 +2191,7 @@ def _artifact_assay_report(value: VerifiedRun | ValidatedPrefix, frozen: FrozenA
         reduction = EvidenceReduction("inconclusive", reduction.rows,
                                       reduction.interventions, reduction.anchors,
                                       tuple(sorted(set(reasons))), reduction.trainings, reduction.checkpoints)
-    report = _assess(reduction, frozen.to_dict(), CONFIRMATION_SEEDS)
+    report = _assess(reduction, frozen.to_dict(), CONFIRMATION_SEEDS, strict_c=True)
     report.values["verification_mode"] = mode
     report.values["nonmaterialized_parents"] = [
         {"parent_sha256": digest, "parent_kind": kind}

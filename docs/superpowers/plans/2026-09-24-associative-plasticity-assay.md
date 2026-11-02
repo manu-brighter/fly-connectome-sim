@@ -19,14 +19,39 @@ follow [`2026-10-03-candidate-state-digest-contract.md`](../specs/2026-10-03-can
 
 **Strict qualification refinement:** Remaining integration follows
 [`2026-11-01-strict-qualification-contract.md`](../specs/2026-11-01-strict-qualification-contract.md).
-Its f/g integration remains open; this is no source-freeze/qualification approval.
+The [six-slice f implementation plan](2026-11-02-strict-qualification-integration.md)
+records exact contracts and ownership. Only f.1 is accepted; f.2–f.6/g integration
+remains open. This is no source-freeze/qualification approval.
 
 ## Current checkpoint and live remaining work — 2026-11-02
 
 The early task-level RED/GREEN boxes are historical execution instructions, not
 the current backlog. Tasks 1–6, strict analysis 7A, motor-only Task8 and source
-slices 7B4a–e are implemented and accepted, including e.3 source review and actual
-9/51/408-pair tiny-native repeat acceptance. Current source:
+slices 7B4a–e and bounded f.1 are implemented and accepted. Current source:
+`73994df1e35e1bd51407d863f42733551b994b8d2dbc8503a60bda33597e35ef`;
+schema `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
+f.1 shares one declaration-based reducer while preserving the confirmation
+wrapper; explicit integer C rules reject `<1` for qualification and `<=1` for
+confirmation. No unrelated equation, schema, native core or public trust change.
+Source review passed; the sole old mutation-hook finding was closed by forwarding
+the new keyword in two test-only lines, preserving eight real integrity guards.
+
+R1 full analysis: **345 passed in 184.58 s**, exit0, no errors/failures/skips.
+Focused130/37.26 s and mutation-eight/14.41 s overlap the full file, not additive.
+Related R0 modules on identical package source: **1,305 passed, four skipped in
+953.91 s**, exit0. R1 then changed only the two test lines. Skips were complete96,
+MaleCNS grid baseline, MaleCNS zero-anchor context and junction permission.
+The latter three separately **passed on the normal host in 15.55 s**, exit0,
+no errors/failures/skips. Complete96 remains unrun. Applicable two-path/all30/
+schema before/after identities matched; stored final acceptance audit passed.
+Initial114 RED failures/23.92 s, first-GREEN81 fixture failures/22.28 s and
+R0 full-analysis eight hook failures/185.36 s remain failed development history.
+
+f.2's ratified design is planned, not released; f.3–f.6 remain future. Current
+acceptance is bounded: no whole-project, all-eight, complete96 or full MaleCNS
+assay rerun, scientific qualification/configuration or capacity is claimed.
+
+Historical e.3 source review and actual 9/51/408 tiny-native repeat acceptance:
 `2d07f37e85935f78b522bccb0a60d7f2b9f1d0e5a1475c8d306f12b995766da8`;
 schema `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
 R1 focused: **78 passed, 89 deselected in 189.24 s**. Subsequent R2/R3 edits
@@ -73,7 +98,7 @@ passed on the normal host; all frozen source/test/schema bytes matched before/
 after. Focused and compatibility counts overlap; no whole ordinary/all-eight/
 complete96 run was repeated on e.2 R1.
 That e.2 source kept True production unavailable/False-only; its results are
-historical, not current e.3 acceptance.
+historical, not current f.1 acceptance.
 
 Historical accepted e.1 helper source:
 `293c8a721f0a18ba9dcf0baf726437b8455133d67cf343bb9fb1c69ca617a060`;
@@ -107,10 +132,11 @@ attestation. Detailed actual inventories/hashes are in the
 The c.2b complete96 grid and reviewed detail-on fullgraph prefix sample remain
 historical on source
 `64041111c7cf3edfaf51128e071b79d939875937f810790c00d1425458c6e60e`.
-The costly96 case was not repeated for d/e.1/e.2/e.3. Profiled durations require a controlled
+The costly96 case was not repeated for d/e.1/e.2/e.3/f.1. Profiled durations require a controlled
 unprofiled follow-up before runtime/capacity decisions. Continue on the original
-Windows workstation with e/e.3 implementation and 9/51/408 acceptance complete,
-then f/g. The actual True producer remains private; production global
+Windows workstation after bounded f.1 acceptance, with ratified but unreleased
+f.2, then f.3–f.6/g. Earlier e/e.3 9/51/408 evidence stays source-specific.
+The actual True producer remains private; production global
 reconciliation/final lifecycle and integrated capacity remain unimplemented.
 This is no current whole-project/complete96-grid/full MaleCNS assay acceptance.
 No production config, formal source freeze or qualification is established.
@@ -129,6 +155,8 @@ Cloud setup below applies only to a future fresh checkout, not local continuatio
 - [x] Accept private successful-append reference helper (e.1); public append unchanged.
 - [x] Accept closed diagnostic/schema, projections and local pair comparison (e.2).
 - [x] Measure all selected physical response repeats and actual state resolution (e).
+- [x] Share declaration arithmetic and explicit integer qualification/confirmation C gates (f.1).
+- [ ] Implement the ratified bounded pair-checker extraction (f.2; not released).
 - [ ] Integrate public frozen-config lifecycle and implement the real assay CLI;
   current CLI lacks `assay` (f/g).
 - [ ] Resolve discarded-grid training ancestry without mistaking black-retention
@@ -756,8 +784,9 @@ capacity, scientific support or formal qualification. No new complete suite ran.
 
 #### Task7B4: strict qualification integration after Task8
 
-Keep the same plan/workspace. Source slices a–e are implemented and accepted;
-e.3 source review and complete tiny-native 9/51/408 acceptance passed. f/g remain future,
+Keep the same plan/workspace. Source slices a–e and bounded f.1 are implemented
+and accepted. Earlier e.3 tiny-native 9/51/408 acceptance is source-specific;
+f.2–f.6/g remain future,
 without permission to run formal qualification now. Preserve all existing confirmation
 routes and scientific gates. Concrete per-slice briefs must settle exact data
 shapes before implementation; do not bootstrap with a fabricated frozen object.
@@ -1027,9 +1056,19 @@ The full matrix passed on the four-node fixture; this is no capacity claim.
 qualification, recorder/schema and tests. Share `_evaluate_qualification(value)`
 over genuine prefix/seal proof plus a private execution contract. Keep public
 `build_frozen_config(VerifiedRun)` sealed-only and engine-free.
+Follow the [six-slice integration plan](2026-11-02-strict-qualification-integration.md).
+- [x] f.1: declaration reducer plus explicit integer C flag; source review and
+  bounded R1 analysis/source-identical related/normal-host acceptance passed.
+- [ ] f.2: ratified checker extraction, not released. Require POST's explicit
+  anchor hash/PRE None, at most five chronological actual prior events, twelve
+  operations/sixteen PRE rows, one finish with release and compact late watch.
+  The local wrapper still drains EOF and rejects every later target event.
 - [ ] Independently reconcile all selected physical/logical references, sources,
   PRE reuse and EOF in the production shared evaluator; e's test oracle does not
   implement this f requirement.
+- [ ] f.3 alone owns exactly one final `checkpoint` named `brain-after.npz` on the actual last repeat
+  branch after full selected/control inventory, bound to diagnostic/owner/anchor/
+  clock/decoded archive. This is no general late-event exception or local-wrapper rule.
 - [ ] RED: early support, missing causal cell/context, forged prefix/frozen
   data, terminal/report mutation and integrity-only objects claiming native proof.
 - [ ] GREEN: prefix native verification, one evidence-bound terminal, seal,
@@ -1043,7 +1082,8 @@ tests. `run_assay(engine_factory, frozen, *, output_dir)` runs all frozen cohort
 overwrite/bad identity/config, rather than returning a preconstructed engine.
 - [ ] RED/GREEN: actual CLI routing, strict native negative qualification and
   sealed verification. Do not create a positive config to continue a negative run.
-- [ ] Benchmark actual detail-enabled grid/archive I/O and both verifications,
+- [ ] Benchmark actual detail-enabled grid/archive I/O and THREE verification
+  boundaries: grid prefix before selected production, final prefix, independent seal,
   including a controlled unprofiled follow-up with coarse phase wall/process CPU
   and boundary memory/file samples before runtime, optimization or capacity
   decisions; do not extrapolate or subtract partial overhead from the profiled

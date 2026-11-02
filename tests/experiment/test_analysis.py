@@ -694,7 +694,7 @@ def test_candidate_w_pair_decoder_checks_finiteness_and_model_bounds(value):
         analysis._decode_candidate_w_pair(projection, expected_maps=maps, n=4, memory_count=1, edge_count=1, lower=-1.0, upper=2.0)
 
 
-def _count_response_fixture(population, window, *, pre_c=2, post_c=2):
+def _count_response_fixture(population, window, *, pre_c=2, post_c=2, family="confirmation"):
     """Declared arithmetic fixture with explicit raw integer counts, never native proof."""
     from fly_connectome_sim.experiment.qualification import ResponseWindow, _one_spike_rate, _response_rate
     data = build_frozen_config(_qualification()).to_dict()
@@ -707,10 +707,10 @@ def _count_response_fixture(population, window, *, pre_c=2, post_c=2):
     data.pop("digest")
     data["digest"] = sha256(json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
     frozen = FrozenAssayConfig.from_dict(data)
-    events = _responses("confirmation")
+    events = _responses(family)
     start, stop = round(window["start_ms"] * 10), round(window["end_ms"] * 10)
     for event in events:
-        if event["type"] != "assay_response":
+        if event["type"] != ("qualification_evidence" if family == "qualification" else "assay_response"):
             continue
         count = ((pre_c if event["phase"] == "pre" else post_c) if event["stimulus"] == "C"
                  else event["bins"][0]["spikes"])
@@ -720,6 +720,142 @@ def _count_response_fixture(population, window, *, pre_c=2, post_c=2):
                      one_spike_rate_hz=_response_rate(1, stop - start, population),
                      sim_ms=(event["cs_onset_tick"] + stop) / 10)
     return frozen, events
+
+
+def _arithmetic_declarations(family):
+    """Plain arithmetic inputs; no artifact hashes, frozen config or proof."""
+    result = {"engine_identity": _engine_identity(), "mbon11_population_size": 10,
+              "candidate_identity": "kc-mbon11-ppl101/v1", "selected_configuration": dict(CONFIGURATION),
+              "response_window": dict(WINDOW), "retention_times_ms": [10000, 70000]}
+    if family == "confirmation":
+        result["confirmation_input_sha256"] = deepcopy(_input_hashes("confirmation"))
+    return result
+
+
+@pytest.mark.parametrize("family,event_type", [("qualification", "qualification_evidence"), ("confirmation", "assay_response")])
+def test_declared_reduction_matches_frozen_wrapper(family, event_type):
+    import fly_connectome_sim.experiment.analysis as analysis
+    frozen = build_frozen_config(_qualification())
+    events = _responses(family)
+    declarations = _arithmetic_declarations(family)
+    before_events, before_declarations = deepcopy(events), deepcopy(declarations)
+    frozen_json = frozen.to_json()
+    expected = reduce_assay_evidence(iter(events), frozen, event_type=event_type, attested_state_anchors=(H["before"],))
+    actual = analysis._reduce_declared_evidence(iter(events), declarations, event_type=event_type,
+                                               attested_state_anchors=(H["before"],))
+    assert asdict(actual) == asdict(expected)
+    assert actual.status == "supported" and not actual.reasons
+    assert events == before_events and declarations == before_declarations and frozen.to_json() == frozen_json
+
+
+@pytest.mark.parametrize("family,event_type", [("qualification", "qualification_evidence"), ("confirmation", "assay_response")])
+def test_declared_reduction_needs_no_frozen_artifact(family, event_type, monkeypatch):
+    import fly_connectome_sim.experiment.analysis as analysis
+    declarations = _arithmetic_declarations(family)
+    events = _responses(family)
+    def forbidden(*args, **kwargs):
+        pytest.fail("Arithmetic declarations constructed a Frozen object")
+    monkeypatch.setattr(analysis, "_freeze", forbidden)
+    reduced = analysis._reduce_declared_evidence(iter(events), declarations, event_type=event_type)
+    assert reduced.status == "supported" and not reduced.reasons
+    assert len(reduced.rows) == 16 and len(reduced.trainings) == 40 and len(reduced.interventions) == 24
+
+
+@pytest.mark.parametrize("late_error", [False, True])
+def test_declared_reduction_drains_semantic_failures_and_propagates_late_eof(late_error):
+    import fly_connectome_sim.experiment.analysis as analysis
+    declarations = _arithmetic_declarations("confirmation")
+    events = _responses("confirmation")
+    next(event for event in events if event["type"] == "assay_response")["learning"] = True
+    visited = []
+    def stream():
+        for index, event in enumerate(events):
+            visited.append(index)
+            yield event
+        visited.append("EOF")
+        if late_error:
+            raise ValueError("declared late EOF failure")
+    if late_error:
+        with pytest.raises(ValueError, match="declared late EOF failure"):
+            analysis._reduce_declared_evidence(stream(), declarations, event_type="assay_response")
+    else:
+        reduced = analysis._reduce_declared_evidence(stream(), declarations, event_type="assay_response")
+        assert reduced.status == "inconclusive" and any("reward_free_test" in reason for reason in reduced.reasons)
+    assert visited == [*range(len(events)), "EOF"]
+
+
+@pytest.mark.parametrize("mutation", ["type", "missing", "extra", "family", "seeds", "artifact", "floor", "population_bool",
+    "population_zero", "identity", "candidate", "configuration", "window", "window_bool", "retention", "retention_bool",
+    "input", "extra_seed", "qualification_input", "event_type", "event_type_list"])
+def test_declared_reduction_rejects_contract_before_iterator(mutation):
+    import fly_connectome_sim.experiment.analysis as analysis
+    declarations = _arithmetic_declarations("confirmation")
+    event_type = "assay_response"
+    if mutation == "type": declarations = []
+    elif mutation == "missing": del declarations["engine_identity"]
+    elif mutation == "extra": declarations["unknown"] = None
+    elif mutation == "family": declarations["family"] = "confirmation"
+    elif mutation == "seeds": declarations["seeds"] = [101, 113]
+    elif mutation == "artifact": declarations["qualification_artifact"] = {"events_sha256": H["events"]}
+    elif mutation == "floor": declarations["effect_floor_hz"] = 0.0
+    elif mutation == "population_bool": declarations["mbon11_population_size"] = True
+    elif mutation == "population_zero": declarations["mbon11_population_size"] = 0
+    elif mutation == "identity": declarations["engine_identity"]["neural_groups"]["mbon11"].reverse()
+    elif mutation == "candidate": declarations["candidate_identity"] = "unknown"
+    elif mutation == "configuration": declarations["selected_configuration"]["cs_duration_ms"] = 99.0
+    elif mutation == "window": declarations["response_window"]["end_ms"] = 200.0
+    elif mutation == "window_bool": declarations["response_window"]["start_ms"] = False
+    elif mutation == "retention": declarations["retention_times_ms"] = [10000, 60000]
+    elif mutation == "retention_bool": declarations["retention_times_ms"][0] = True
+    elif mutation == "input": declarations["confirmation_input_sha256"]["113"]["C"] = H["events"]
+    elif mutation == "extra_seed": declarations["confirmation_input_sha256"]["11"] = declarations["confirmation_input_sha256"]["101"]
+    elif mutation == "qualification_input": event_type = "qualification_evidence"
+    elif mutation == "event_type": event_type = "qualification"
+    else: event_type = []
+    def forbidden():
+        pytest.fail("Malformed declaration consumed events")
+        yield
+    with pytest.raises(AnalysisError):
+        analysis._reduce_declared_evidence(forbidden(), declarations, event_type=event_type)
+
+
+@pytest.mark.parametrize("population", [3, 13, 7])
+@pytest.mark.parametrize("window", [{"start_ms": 0.0, "end_ms": 100.0},
+    {"start_ms": 0.0, "end_ms": 300.0}, {"start_ms": 100.0, "end_ms": 300.0}])
+@pytest.mark.parametrize("pre_c,post_c", [(pre, post) for pre in (0, 1, 2) for post in (0, 1, 2)])
+def test_qualification_c_boundary_is_integer(population, window, pre_c, post_c):
+    import fly_connectome_sim.experiment.analysis as analysis
+    for family, event_type, seeds, strict in (("qualification", "qualification_evidence", (11, 23), False),
+                                             ("confirmation", "assay_response", (101, 113), True)):
+        frozen, events = _count_response_fixture(population, window, pre_c=pre_c, post_c=post_c, family=family)
+        # A real arithmetic negative independent of C: this paired cell has no A change.
+        pre_a = next(event for event in events if event["type"] == event_type
+                     and _is_cell(event, phase="pre", stimulus="A", seed=seeds[0]))
+        post_a = next(event for event in events if event["type"] == event_type
+                      and _is_cell(event, phase="post", stimulus="A", seed=seeds[0]))
+        post_a["bins"][0]["spikes"] = pre_a["bins"][0]["spikes"]
+        post_a["rate_hz"] = pre_a["rate_hz"]
+        config = frozen.to_dict()
+        declarations = {name: config[name] for name in _arithmetic_declarations(family)}
+        reduced = analysis._reduce_declared_evidence(events, declarations, event_type=event_type)
+        assert reduced.status == "supported" and not reduced.reasons
+        before = deepcopy(asdict(reduced))
+        report = analysis._assess(reduced, config, seeds, strict_c=strict)
+        key = f"{seeds[0]}/A/AB/10000"
+        assert ("C_floor:" + key in report.reasons) is (pre_c <= int(strict) or post_c <= int(strict))
+        assert report.status == "unsupported" and "paired_effect:" + key in report.reasons
+        assert reduced.rows[key]["paired"]["pre_C"]["spikes"] == pre_c
+        assert reduced.rows[key]["paired"]["post_C"]["spikes"] == post_c
+        assert asdict(reduced) == before
+
+
+@pytest.mark.parametrize("strict", [None, 0, 1, "False", np.bool_(False), np.bool_(True)])
+def test_qualification_c_boundary_rejects_non_boolean_flag(strict):
+    import fly_connectome_sim.experiment.analysis as analysis
+    frozen, events = _count_response_fixture(13, WINDOW)
+    reduced = reduce_assay_evidence(events, frozen)
+    with pytest.raises(AnalysisError):
+        analysis._assess(reduced, frozen.to_dict(), (101, 113), strict_c=strict)
 
 
 def test_consumer_one_c_spike_is_rejected_for_upward_rounded_population_13():
@@ -2333,8 +2469,8 @@ def test_report_generation_detects_mutation_during_scientific_assessment(
         consume = analyze_assay
     original = analysis._assess
 
-    def mutate_after_reduction(*args):
-        result = original(*args)
+    def mutate_after_reduction(*args, **kwargs):
+        result = original(*args, **kwargs)
         path = (recorder.path / "checkpoints" / "training-end.npz" if target == "source"
                 else recorder.path / "events.jsonl")
         raw = path.read_bytes()
