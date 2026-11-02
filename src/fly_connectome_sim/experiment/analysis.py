@@ -333,9 +333,186 @@ def _selected_replay_observation(event, segment, diagnostic, execution, n):
     return selected, ppl_count
 
 
+class _SelectedReplayChecker:
+    """Bounded actual-record intake for one pair; plain expectations confer no proof."""
+
+    def __init__(self, physical_key, *, expected_anchor_sha256, metadata, execution,
+                 expected_source_occurrence, expected_start, expected_maps, n,
+                 memory_count, edge_count, lower, upper, prior_events=()):
+        self._events = []
+        self._arguments = None
+        self._key = None
+        self._branches = ()
+        self._training_id = self._intervention_id = None
+        self._anchor = expected_anchor_sha256
+        self._error = self._result = None
+        self._closed = False
+        self._last_sequence = -1
+        self._roles = set()
+        self._operation_count = self._row_count = 0
+        self._activity = False
+        try:
+            key = physical_key
+            post = type(key) is dict and key.get("phase") == "post"
+            if (type(key) is not dict or set(key) != {"seed", "paired_identity", "presentation_order", "phase", "stimulus"}
+                    | ({"condition", "retention_ms"} if post else set())
+                    or type(key["seed"]) is not int or key["seed"] not in (11, 23)
+                    or key["paired_identity"] not in ("A", "B") or key["presentation_order"] not in ("AB", "BA")
+                    or key["stimulus"] not in STIMULI or key["phase"] not in ("pre", "post")
+                    or (post and (key["condition"] not in CONDITIONS or not _int(key["retention_ms"], minimum=10000)))
+                    or (not _digest(expected_anchor_sha256) if post else expected_anchor_sha256 is not None)):
+                raise AnalysisError("selected_replay_checker_key")
+            from .replay import _source
+
+            _source(expected_source_occurrence)
+            self._key = dict(key)
+            base = f"selected/{key['seed']}/{key['paired_identity']}/{key['presentation_order']}/"
+            branch = (base + ("" if key["condition"] == "paired" else key["condition"] + "/")
+                      + f"post/{key['retention_ms']}/{key['stimulus']}" if post else base + "pre/" + key["stimulus"])
+            self._branches = (branch, branch + "/repeat")
+            recipient = ("matched_reference" if key.get("condition") == "sufficiency" else
+                         "paired" if key.get("condition") in INTERVENTIONS else key.get("condition"))
+            self._training_id = base + str(recipient) + "/training" if post else None
+            self._intervention_id = expected_source_occurrence["origin_branch_id"] if post else None
+            self._arguments = dict(metadata=metadata, execution=execution, expected_source_occurrence=expected_source_occurrence,
+                expected_start=expected_start, expected_maps=expected_maps, n=n, memory_count=memory_count,
+                edge_count=edge_count, lower=lower, upper=upper)
+            if type(prior_events) is not tuple or len(prior_events) > 5:
+                raise AnalysisError("selected_replay_prior_tuple")
+            for event in prior_events:
+                if not self._prior_roles(event):
+                    raise AnalysisError("selected_replay_prior_record")
+                self.consume(event)
+        except (KeyError, TypeError, ValueError, IndexError, AttributeError, OverflowError):
+            self._fail("selected_replay_checker_declarations")
+
+    def _fail(self, message):
+        self._events.clear()
+        self._arguments = self._key = self._result = None
+        if not _digest(self._anchor):
+            self._anchor = None
+        self._roles.clear()
+        self._closed = True
+        self._error = message
+        raise AnalysisError(message) from None
+
+    def _prior_roles(self, event):
+        roles = set()
+        source = self._arguments["expected_source_occurrence"]
+        if event.get("sequence") == source["checkpoint_sequence"]:
+            roles.add("source")
+        if self._key["phase"] == "post":
+            if event.get("type") == "checkpoint" and event.get("branch_id") == self._training_id:
+                roles.add("recipient")
+            if (self._key["condition"] in INTERVENTIONS and event.get("type") == "checkpoint"
+                    and event.get("branch_id") == self._intervention_id):
+                roles.add("intervention_checkpoint")
+            if event.get("type") == "qualification_training" and event.get("training_id") == self._training_id:
+                roles.add("training")
+            if event.get("type") == "assay_intervention" and event.get("intervention_id") == self._intervention_id:
+                roles.add("intervention")
+            if event.get("type") == "state_anchor" and event.get("state_anchor_sha256") == self._anchor:
+                roles.add("anchor")
+        return roles
+
+    def _late_match(self, event):
+        return (event.get("branch_id") in self._branches
+            or event.get("type") == "qualification_training" and self._training_id is not None
+            and event.get("training_id") == self._training_id
+            or event.get("type") == "assay_intervention" and self._intervention_id is not None
+            and event.get("intervention_id") == self._intervention_id
+            or event.get("type") == "state_anchor" and self._anchor is not None
+            and event.get("state_anchor_sha256") == self._anchor
+            or event.get("type") == "qualification_replay"
+            and (event.get("original_branch_id") in self._branches or event.get("replay_id") in self._branches))
+
+    def consume(self, event):
+        if self._error is not None:
+            raise AnalysisError(self._error)
+        try:
+            if self._closed:
+                if self._late_match(event):
+                    raise AnalysisError("selected_replay_activity_after_diagnostic")
+                return
+            roles = self._prior_roles(event)
+            target = event.get("branch_id") in self._branches
+            if not roles and not target:
+                return
+            sequence = event["sequence"]
+            if not _int(sequence) or sequence <= self._last_sequence:
+                raise AnalysisError("selected_replay_event_order")
+            self._last_sequence = sequence
+            if roles:
+                if self._activity or self._roles.intersection(roles) or len(self._events) >= 5:
+                    raise AnalysisError("selected_replay_prior_order")
+                self._roles.update(roles)
+            if target:
+                self._activity = True
+                if event["type"] == "qualification_evidence":
+                    self._row_count += 1
+                    if self._row_count > (16 if self._key["phase"] == "pre" else 1):
+                        raise AnalysisError("selected_replay_response_reuse")
+                elif event["type"] in ("branch_start", "replay_thaw", "observe"):
+                    self._operation_count += 1
+                    if self._operation_count > 12:
+                        raise AnalysisError("selected_replay_extra_operation")
+                else:
+                    raise AnalysisError("selected_replay_unreferenced_target_event")
+            self._events.append(event)
+        except (KeyError, TypeError, ValueError, IndexError, AttributeError, OverflowError):
+            self._fail("selected_replay_checker_stream")
+
+    def finish(self, diagnostic):
+        if self._closed:
+            self._fail(self._error or "selected_replay_duplicate_finish")
+        try:
+            if (diagnostic["physical_key"] != self._key or diagnostic.get("parent_state_anchor_sha256") != self._anchor
+                    or not _int(diagnostic["sequence"]) or diagnostic["sequence"] <= self._last_sequence):
+                raise AnalysisError("selected_replay_finish_binding")
+            result = _compare_selected_replay_records((*self._events, diagnostic), diagnostic, **self._arguments)
+        except (KeyError, TypeError, ValueError, IndexError, AttributeError, OverflowError):
+            self._fail("selected_replay_checker_finish")
+        self._events.clear()
+        self._arguments = self._key = None
+        self._roles.clear()
+        self._closed = True
+        self._result = result
+        return dict(result)
+
+
 def _compare_selected_replay(events, diagnostic, *, metadata, execution, expected_source_occurrence, expected_start,
                              expected_maps, n, memory_count, edge_count, lower, upper):
-    """Compare one recorded pair, draining the external fixed-prefix iterator; never issue proof."""
+    """Withhold bounded recorded consistency until the external iterator reaches EOF."""
+    error = result = checker = None
+    try:
+        checker = _SelectedReplayChecker(diagnostic["physical_key"], expected_anchor_sha256=diagnostic.get("parent_state_anchor_sha256"),
+            metadata=metadata, execution=execution, expected_source_occurrence=expected_source_occurrence,
+            expected_start=expected_start, expected_maps=expected_maps, n=n, memory_count=memory_count,
+            edge_count=edge_count, lower=lower, upper=upper)
+    except (KeyError, TypeError, ValueError, IndexError, AttributeError, OverflowError):
+        error = "selected_replay_declarations"
+    for event in events:
+        if error is not None:
+            continue
+        try:
+            if event.get("type") == "qualification_replay" and event.get("branch_id") == checker._branches[1]:
+                if _canonical(event) != _canonical(diagnostic):
+                    checker._fail("selected_replay_diagnostic")
+                result = checker.finish(event)
+            else:
+                checker.consume(event)
+        except (KeyError, TypeError, ValueError, IndexError, AttributeError, OverflowError):
+            error = "selected_replay_stream"
+    if error is not None:
+        raise AnalysisError(error)
+    if result is None:
+        checker._fail("selected_replay_incomplete")
+    return result
+
+
+def _compare_selected_replay_records(events, diagnostic, *, metadata, execution, expected_source_occurrence, expected_start,
+                                     expected_maps, n, memory_count, edge_count, lower, upper):
+    """Existing comparison kernel over bounded actual records, including the actual diagnostic."""
     from .recorder import OWNED, _check_qualification_replay
     from .qualification import _state_difference
     from .replay import OPERATION_VERSION, _clock

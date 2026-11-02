@@ -2,8 +2,8 @@
 
 Use `origin` of `manu-brighter/fly-connectome-sim`, branch
 `feat/connectome-experiment-core`, latest pushed feature commit. The latest
-accepted work is Task7B4f.1, shared declaration arithmetic and integer C gates.
-Parent e is complete on its earlier source; f.2–f.6/g integration remains open.
+accepted work is corrected Task7B4f.2, one bounded pair checker and full-EOF adapter.
+Parent e/f.1 evidence is source-specific; f.3a–f.3d/f.4–f.6/g remain planned.
 The project remains WIP, not v1.
 
 Continue autonomously on the original Windows workstation, including reviewed
@@ -60,14 +60,64 @@ conversion. Unavailable counts stay unavailable; no gate tolerance was added.
 NumPy 2.4.6's private header API supports NPY1/2/3; lossy structured/subarray
 extension templates are rejected. Protocol/raw formats and native core remain.
 
-**Task7B4f.1 passed bounded source review and implementation acceptance.**
+**Corrected Task7B4f.2 passed bounded source review and implementation acceptance.**
+One checker collects at most five chronological actual prior records, twelve
+operations and sixteen PRE/one POST rows in their actual interleaving. Finish
+consumes the actual diagnostic once; map/model binding precedes W decoding.
+The unchanged-signature adapter withholds success through EOF, drains after
+semantic errors and propagates iterator/final-binding failures. Capture payloads
+are released; compact late watches retain no history or proof authority.
+
+For EVERY POST pair, intervention-event matching uses the actual source-origin
+ID, including ordinary training sources, so malformed aliases cannot be silently
+ignored; intervention-checkpoint roles remain restricted to INTERVENTIONS.
+Hash-selected anchors are checked regardless of
+changed origin/source. The extracted comparison kernel/equations, schema and
+native core are unchanged; no global evaluator/lifecycle/cap was added.
+
+Current model-source identity:
+`17e784092d0579680a8f0007699fb72275d82f9649a362eb2466b74d1ac13887`;
+schema `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
+Corrected worker frozen-r2 equals the accepted snapshot's r1 bytes. Focused:
+**118 passed, 260 deselected in 117.82 s**; full analysis: **378 passed in
+242.79 s**, exit0, zero failures/errors/skips. Focus overlaps full, not additive.
+Normal-host recorder/replay: **622 passed, one declared opt-in skip in 43.74 s**,
+exit0; the skipped actual MaleCNS zero-anchor map-context case separately
+**passed in 8.42 s**, exit0, no skips/errors/failures. Applicable two-file/all30/
+schema identities matched before/after; stored final acceptance audit passed.
+These are bounded functional checks, not controlled capacity measurements.
+
+R0 source aff5948… was rejected despite 372 green tests: ordinary-POST source-ID
+intervention aliases were filtered out before the unchanged kernel could reject
+them. Real fix RED: **four failed/two passed in 11.03 s**, exit1; two minimal
+source clauses and six regression cases closed the Important finding, with no
+remaining source-review findings. The first API RED retains six failures/log/XML
+but no separate pytest subprocess exit; its shell exit is not pytest evidence.
+Neither that omission nor earlier green R0 tests is relabeled acceptance.
+
+f.3 is NOT released as one monolithic change. Its linked plan now separates
+grid composition, a sequence-preserving accumulator, the selected component,
+then a genuine combined evaluator/final-role/cap proof. Positive native
+eligible-grid→selected end-to-end coverage remains unavailable. Declared internal
+dispatch/math fixtures and genuine partial/native component checks stay distinct;
+never invent eligible points or proof. Budget current-source complete96 negative
+acceptance only after f.3d stabilizes. No current whole-project/grid96/408/full
+MaleCNS assay, positive lifecycle/configuration, history proof or capacity claim.
+Integration still requires THREE verification boundaries: grid prefix before
+selected execution, final prefix, and independent seal; f.4–f.6/g/LF/Task9 remain open.
+
+## Historical evidence — not current-source acceptance
+
+### Task7B4f.1 — declaration arithmetic on earlier source
+
+**Task7B4f.1 passed bounded acceptance on its earlier source.**
 A declaration-based reducer now accepts plain scientific declarations; the
 existing confirmation wrapper still validates its Frozen config. `_assess` chooses integer C
 rules: qualification rejects counts below one; confirmation rejects counts at
 or below one. Other assessment equations, native core, schema and public trust
 boundaries are unchanged. Public strict freezing remains future f.5 work.
 
-Current model-source identity:
+Historical f.1 model-source identity:
 `73994df1e35e1bd51407d863f42733551b994b8d2dbc8503a60bda33597e35ef`;
 schema `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
 The sole review finding was an old mutation hook not forwarding the new keyword;
@@ -92,14 +142,8 @@ Development failures remain failures: initial RED had 114 failed/16 passed in
 No current whole-project/all-eight/complete96/full MaleCNS assay pass, formal
 qualification/configuration, response-history proof or capacity is claimed.
 
-Only f.1 is complete. The linked plan carries ratified f.2 design, **not released
-implementation**: bounded actual prior records, POST's required hash-only anchor
-selector, once-only diagnostic finish and full late-event/EOF handling. f.3–f.6
-global reconciliation, terminal/seal/freezing and fresh qualification caller
-remain future. Integration requires THREE native verification boundaries:
-grid prefix before selected execution, final prefix, and independent seal.
-
-## Historical evidence — not current-source acceptance
+This earlier f.1 evidence is not upgraded to the later f.2 source. Strict
+global qualification/freezing remains separate future work.
 
 ### Task7B4e.3 — complete repeats on earlier source
 
@@ -286,7 +330,7 @@ capacity follows from these matrices or the graph compatibility cases.
   Its complete96 tiny-native prefix/seal case passed in **5,124.53 s**:
   96 units/144 points, 89,831 events, 1,478 checkpoints and 3,594,389,820 event
   bytes; zero-anchor checks authenticated maps/context, not training replay.
-  This costly case was **not repeated on d, e.1, e.2, e.3 or f.1 source**.
+  This costly case was **not repeated on d, e.1, e.2, e.3, f.1 or f.2 source**.
 - The [detail-on fullgraph prefix sample](experiments/2026-11-02-fullgraph-detail-prefix-pilot.md)
   used that same c.2b source at commit `21f788342b276e1d8a323f572e37e248542948d6`.
   Its final sample was 630.546 s / 55,267,543 dedicated bytes /
@@ -339,7 +383,11 @@ Interrupted development runs are never counted as passes.
   No full MaleCNS assay, scientific outcome or capacity approval follows.
 - [x] 7B4f.1: shared declaration reduction and explicit integer C assessment;
   bounded analysis/related-module/normal-host acceptance recorded above.
-- [ ] 7B4f.2: ratified bounded pair-checker design; not released or implemented.
+- [x] 7B4f.2: corrected bounded pair checker and full-EOF adapter; bounded
+  source/analysis/recorder/replay/actual map-context acceptance recorded above.
+- [ ] 7B4f.3a–d: four planned sequential slices; no implementation release yet.
+  Keep genuine partial/native checks separate from internal declared fixtures;
+  positive eligible-grid→selected native integration remains unavailable.
 - [ ] 7B4f: integrate selected inventory with authenticated grid assessment, one
   evidence-bound terminal and independently checked seal; sealed-only engine-free
   public freezing. Complete valid negatives never create a production config.

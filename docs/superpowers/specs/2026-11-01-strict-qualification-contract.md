@@ -11,11 +11,12 @@ focused/affected-file compatibility and separate actual MaleCNS context acceptan
 The private e.3 True producer passed source review, actual 9/51/408-pair
 tiny-native checks and assay-module compatibility. Parent e implementation
 acceptance is complete; production global reconciliation/public assessment/freeze
-integration remains open. Bounded f.1 declaration arithmetic/integer C assessment
-passed source review and acceptance on source
-`73994df1e35e1bd51407d863f42733551b994b8d2dbc8503a60bda33597e35ef`;
-f.2–f.6, CLI/capacity (g)
-and formal qualification remain open. f.2 design is ratified, not released or implemented.
+integration remains open. f.1 declaration arithmetic and corrected f.2 bounded
+checker/EOF adapter are accepted; current model-source is
+`17e784092d0579680a8f0007699fb72275d82f9649a362eb2466b74d1ac13887`,
+schema unchanged. f.1's73994… and earlier e.3 evidence remain source-specific.
+f.3a–f.3d/f.4–f.6, CLI/capacity (g) and formal qualification remain planned.
+No f.3 implementation release follows from its readiness decomposition.
 This is no source-freeze or scientific approval. **Date:** 2026-11-01.
 **Updated:** 2026-11-02.
 
@@ -23,7 +24,7 @@ Refines the [assay design](2026-09-24-associative-plasticity-pivot-design.md),
 [replay contract](2026-10-02-replay-anchor-contract.md) and existing
 [implementation plan](../plans/2026-09-24-associative-plasticity-assay.md).
 The [six-slice integration plan](../plans/2026-11-02-strict-qualification-integration.md)
-defines f ownership and exact future contracts; only f.1 is accepted.
+defines f ownership/contracts; f.1/f.2 are accepted and later slices remain planned.
 The endpoint, fixed grid, seeds, windows, current, floors, exclusions and
 scientific interpretation remain unchanged. No supported result is presumed.
 
@@ -466,7 +467,7 @@ final clock/complete-state hash to this owner before final checkpoint/terminal/s
 is no trust issuer. The 9/51/408 checks observed **21/130/1,033** production factories.
 Parent e implementation acceptance is complete; f/g/formal gates remain open.
 
-### f.1 declaration arithmetic — accepted bounded slice
+### f.1 declaration arithmetic — accepted on earlier source
 
 `_reduce_declared_evidence` owns the shared reduction body without requiring
 fabricated artifact fields; the public confirmation wrapper retains genuine
@@ -476,10 +477,10 @@ selects confirmation's `<=1`. Other equations and trust boundaries stay unchange
 This does not implement the future shared qualification evaluator or strict freeze.
 Earlier e.3 native-repeat evidence remains bound to its source revision recorded above.
 
-### f.2 checker extraction — ratified design, not released
+### f.2 checker extraction — corrected bounded slice accepted
 
-Use one extracted comparison kernel and preserve the existing local wrapper's
-signature and full-iterator behavior. Proposed private interface:
+The accepted implementation uses one extracted comparison kernel and preserves
+the existing local wrapper's signature and full-iterator behavior. Private interface:
 
 ```text
 _SelectedReplayChecker(physical_key, *, expected_anchor_sha256, metadata,
@@ -521,7 +522,20 @@ After finish retain only compact branch/training/intervention IDs, selected
 anchor hash and scalar result/error/closed state. Late matching routes fail even
 when branch/origin changes. Local EOF comparison rejects ANY later target event
 and withholds its result until clean EOF.
-Future global f.3 owns this watch after checker disposal and exactly ONE final
+For EVERY POST pair, intervention-event matching uses
+`expected_source_occurrence.origin_branch_id`, including ordinary training
+sources; PRE keeps None. Intervention-checkpoint roles remain conditional on
+INTERVENTIONS. This preserves rejection of changed-branch/origin events claiming
+an ordinary source ID, both before and after finish; R0's filter regression was
+corrected without changing the kernel/equations.
+
+Corrected-source focused118/full378 and recorder/replay622+one skip passed;
+the actual MaleCNS zero-anchor context passed separately. These bounded checks
+do not implement global composition, issue history proof or establish capacity.
+R0 aff5948… was rejected despite372 green tests. The genuine fix RED recorded
+four failures/two passes before the two-clause correction and scoped source closure.
+
+Future global f.3d owns this watch after checker disposal and exactly ONE final
 ordinary `checkpoint` named `brain-after.npz` after full selected/control inventory, on the
 actual last repeat branch, bound to diagnostic/native owner/anchor ancestry/
 clock/independently decoded archive. This final framing is never fed into the
@@ -529,6 +543,30 @@ discarded checker and is no arbitrary late-event exception. No global behavior,
 408 W-payload cache, repeated history scan, trust issuer or cap is implemented here.
 f.3 supplies the hash from its actual indexed prior anchor, reconciled with the
 compact diagnostic parent hash, without retaining full diagnostic W payloads.
+
+### f.3 readiness — four planned sequential slices
+
+No monolithic f.3 release is established here. Only f.3a's planned API is ratified
+in the linked integration plan; later component APIs need bounded briefs.
+The linked plan separates composable grid ownership/measurement (f.3a), a shared
+declared accumulator preserving actual global sequences (f.3b), selected role
+inventory/reduction using accepted f.2/f.3b (f.3c), then the genuine combined
+evaluator/report/final-role/cap proof (f.3d). Preserve standalone grid behavior
+and explicit final/terminal policies; compose in the SAME two EOF passes.
+Only f.3d may conditionally activate5120 after the closed4850/1602/8099 proof;
+confirmation4096 and all other limits remain unchanged meanwhile.
+
+Historical complete96 negative prefix/seal evidence is not current native
+context. Use genuine partial/unit and native selected-component checks before
+budgeting a current-source complete96 negative run after f.3d stabilizes.
+Declared internal dispatch/math fixtures may model selection only at INTERNAL
+composition seams; they cannot fabricate recorded eligible points, proof or a
+trusted selected result for the genuine evaluator. Native selected-component
+success does not establish preceding grid eligibility. Reject selected activity
+after an authenticated negative/unavailable grid without changing points/gates.
+Positive native eligible-grid→selected end-to-end coverage remains unavailable;
+do not tune thresholds or search for fabricated support to conceal that limit.
+f.4–f.6 strict wire/freezing/production lifecycle, g capacity and formal gates remain open.
 
 ## One truthful terminal and sealed-only freezing
 

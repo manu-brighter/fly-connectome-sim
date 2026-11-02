@@ -10,7 +10,7 @@
 
 **Spec:** [Strict qualification contract](../specs/2026-11-01-strict-qualification-contract.md), alongside the [current assay plan](2026-09-24-associative-plasticity-assay.md) and [continuation record](../../cloud-handover.md).
 
-**Status:** f.1 is implemented and accepted on source `73994df1e35e1bd51407d863f42733551b994b8d2dbc8503a60bda33597e35ef`, with schema unchanged. f.2 design below is ratified but NOT released; f.3–f.6 remain future. Earlier e.3 acceptance is historical/source-specific, not current formal qualification. Unchecked commands remain planned checks.
+**Status:** Corrected f.2 is accepted on source `17e784092d0579680a8f0007699fb72275d82f9649a362eb2466b74d1ac13887`, schema unchanged. f.1's73994… and e.3 acceptance remain historical/source-specific. f.3a–f.3d are planned sequential slices, NOT released; only f.3a's planned API below is ratified. f.4–f.6/g/formal gates remain future. Unchecked commands are planned checks.
 
 ## Global Constraints
 
@@ -18,7 +18,7 @@
 - No provisional frozen config, invented metric, native-context fallback, extra selected checkpoint, response-history issuer or 408 archive scans. Bind genuine context at intake and final recheck; maps precede numeric decoding.
 - Keep grid and selected-control/washout measurements separate; remove cross-protocol washout equality. Qualification C fails at integer count `<1`; confirmation fails at `<=1`. No tolerance or training/response W-metric substitution.
 - Require **THREE** native verification boundaries/factories: grid prefix before selected production, final prefix before terminal, independently verified seal after close. Count all three in later resource evidence.
-- The operational branch cap is 4096 until f.3's conditional proof. Confirmation stays at 4096; checkpoint/relevant-event limits remain 2048/10000. g owns actual integrated capacity/assay CLI; LF/source freeze and Task9 formal qualification remain open. No scientific support follows from this plan.
+- The operational branch cap is 4096 until f.3d's conditional proof. Confirmation stays at 4096; checkpoint/relevant-event limits remain 2048/10000. g owns actual integrated capacity/assay CLI; LF/source freeze and Task9 formal qualification remain open. No scientific support follows from this plan.
 
 ## Review Focus
 
@@ -89,21 +89,21 @@ Each slice needs actual RED before implementation, hash-bound GREEN results, ind
 
 ### f.1: Declaration Arithmetic and Integer C
 
-**Ownership:** Modify `src/fly_connectome_sim/experiment/analysis.py`; test `tests/experiment/test_analysis.py`. This bounded slice is accepted.
+**Ownership:** Modify `src/fly_connectome_sim/experiment/analysis.py`; test `tests/experiment/test_analysis.py`. Accepted on earlier73994… source.
 
 - [x] RED `test_declared_reduction_matches_frozen_wrapper` compares every EvidenceReduction field; `test_declared_reduction_needs_no_frozen_artifact` supplies no artifact fields. `test_qualification_c_boundary_is_integer` covers PRE/POST C counts 0/1/2, populations 3/13/7 and all three windows. One count passes qualification C and fails confirmation C; unrelated failures remain visible.
 - [x] Move the existing reducer body into `_reduce_declared_evidence(events: Iterable[dict], declarations: dict, *, event_type: str, attested_state_anchors: Iterable[str]=()) -> EvidenceReduction`. Closed declarations: `engine_identity,mbon11_population_size,candidate_identity,selected_configuration,response_window,retention_times_ms`, plus `confirmation_input_sha256` only for assay_response. Existing predicates validate identity/schedule/inputs; event type fixes family/seeds. Caller anchor strings remain arithmetic inputs, never proof.
 - [x] Keep public `reduce_assay_evidence` signature/Frozen validation and project these fields. Change `_assess(reduction, config, seeds, *, strict_c: bool) -> AssayReport`; explicit False for qualification, True for confirmation; reject non-bool. No new wire/lifecycle/cap behavior or FixtureRun fallback; public-freeze migration waits for f.5.
 - [x] Run `.venv/Scripts/python.exe -m pytest tests/experiment/test_analysis.py -k "declared_reduction or qualification_c_boundary or consumer_retains_counts or consumer_one_c_spike" -q -p no:cacheprovider`; record RED/GREEN, then affected compatibility/review.
 
-Accepted R1 full analysis:345 passed/184.58 s, no skips/errors/failures. Focused130 and hook-eight overlap this run. Source-identical R0 related modules:1305 passed/four skips/953.91 s; three skipped context/junction cases separately passed on R1 normal host/15.55 s. Complete96 remains unrun. The two-line test-hook fix closed the sole review finding; no strict lifecycle is implemented.
+Historical f.1 R1 full analysis:345 passed/184.58 s, no skips/errors/failures. Focused130 and hook-eight overlap this run. Source-identical R0 related modules:1305 passed/four skips/953.91 s; three skipped context/junction cases separately passed on R1 normal host/15.55 s. Complete96 remained unrun. The two-line test-hook fix closed the sole review finding; no strict lifecycle was implemented or later evidence upgraded.
 
 ### f.2: One Bounded Pair Checker
 
 **Ownership:** Same analysis source/test paths as f.1.
 
-- [ ] RED wrapper/dispatcher equivalence for existing PRE/POST/intervention faults, optional thaw, third window, signed zero and after-diagnostic activity.
-- [ ] Extract ONE existing comparison kernel with this private API; preserve `_compare_selected_replay`'s existing signature as its full-EOF adapter:
+- [x] RED wrapper/dispatcher equivalence for existing PRE/POST/intervention faults, optional thaw, third window, signed zero and after-diagnostic activity.
+- [x] Extract ONE existing comparison kernel with this private API; preserve `_compare_selected_replay`'s existing signature as its full-EOF adapter:
 
 ```text
 _SelectedReplayChecker(physical_key, *, expected_anchor_sha256, metadata,
@@ -115,22 +115,64 @@ finish(diagnostic) -> dict
 
 Return exactly `{response_replay_resolution_hz,candidate_memory_w_resolution}`.
 
-- [ ] Validate `prior_events` as an exact tuple of at most five distinct actual unchanged events: PRE baseline1; ordinary POST checkpoint/training/anchor3; intervention POST recipient checkpoint/training, intervention checkpoint/event, anchor5. Role aliases share occurrences. Require strictly increasing non-bool integer global sequences, permit gaps; never sort/renumber/deduplicate malformed input. Seed before pair activity through the same collection path; data confer no authority.
-- [ ] Require `expected_anchor_sha256`: valid POST digest, exactly None for PRE. Select ALL matching-hash anchors regardless of branch/origin/source/clock, then validate. Malformed-first/healthy-later fails; wrong-hash canonical anchors cannot replace it. Bind finish's actual diagnostic to that hash. The adapter takes it from its caller diagnostic without decoding W.
-- [ ] Retain ≤12 operations/16 PRE rows(one POST) in actual interleaving. Finish consumes the actual diagnostic once instead of `consume`, strictly after captured activity; compare full caller/actual diagnostic, references, windows, rows and tails with unchanged arithmetic. Bind maps/model before numeric decode. Release payload/vectors on success AND semantic failure; duplicate finish rejects. Store bounded error strings, no traceback objects; callers drain EOF after constructor/semantic errors and propagate iterator/final-binding errors.
-- [ ] Keep only compact branch/training/intervention IDs, anchor hash and scalar result/error/closed state afterward. Reject matching late activity despite changed branch/origin. Local adapter rejects ANY later target event, including final checkpoints; withhold its result until clean EOF. No second decoder/model, fake diagnostic, history scan or trust issuer. RED also covers malformed chronology, seeded equivalence, decoder timing, matching-hash anchor with altered origin AND source before a healthy anchor, wrong clock, mismatched finish hash, late anchor/route duplicates, release and repeated finish.
-- [ ] Run `.venv/Scripts/python.exe -m pytest tests/experiment/test_analysis.py -k "selected_replay or candidate_w_pair" -q -p no:cacheprovider`, including new equivalence tests; record actual RED/GREEN and review before global use.
+- [x] Validate `prior_events` as an exact tuple of at most five distinct actual unchanged events: PRE baseline1; ordinary POST checkpoint/training/anchor3; intervention POST recipient checkpoint/training, intervention checkpoint/event, anchor5. Role aliases share occurrences. Require strictly increasing non-bool integer global sequences, permit gaps; never sort/renumber/deduplicate malformed input. Seed before pair activity through the same collection path; data confer no authority.
+- [x] Require `expected_anchor_sha256`: valid POST digest, exactly None for PRE. Select ALL matching-hash anchors regardless of branch/origin/source/clock, then validate. Malformed-first/healthy-later fails; wrong-hash canonical anchors cannot replace it. Bind finish's actual diagnostic to that hash. The adapter takes it from its caller diagnostic without decoding W.
+- [x] Retain ≤12 operations/16 PRE rows(one POST) in actual interleaving. Finish consumes the actual diagnostic once instead of `consume`, strictly after captured activity; compare full caller/actual diagnostic, references, windows, rows and tails with unchanged arithmetic. Bind maps/model before numeric decode. Release payload/vectors on success AND semantic failure; duplicate finish rejects. Store bounded error strings, no traceback objects; callers drain EOF after constructor/semantic errors and propagate iterator/final-binding errors.
+- [x] Keep only compact branch/training/intervention IDs, anchor hash and scalar result/error/closed state afterward. Reject matching late activity despite changed branch/origin. For ALL POST pairs, match intervention events by source-origin ID, including ordinary sources; checkpoint collection remains INTERVENTIONS-only. Local adapter rejects ANY later target event, including final checkpoints; withhold its result until clean EOF. No second decoder/model, fake diagnostic, history scan or trust issuer. RED also covers malformed chronology, seeded equivalence, decoder timing, matching-hash anchor with altered origin AND source before a healthy anchor, wrong clock, mismatched finish hash, late anchor/route duplicates, release and repeated finish.
+- [x] Run `.venv/Scripts/python.exe -m pytest tests/experiment/test_analysis.py -k "selected_replay or candidate_w_pair" -q -p no:cacheprovider`, including new equivalence tests; record actual RED/GREEN and review before global use.
 
-### f.3: Global Ownership and Shared Assessment
+Corrected focus118/117.82 s overlaps full378/242.79 s, both exit0/no failures/errors/skips. Normal-host recorder/replay622+one skip/43.74 s and separate actual MaleCNS context1/8.42 s passed on exact two-file/all30/schema identities. R0 aff5948… was rejected despite green372; real alias-fix RED4failed/2passed preceded the minimal two-clause correction and scoped source closure. First API RED lacks a retained subprocess exit; do not infer it from its shell exit. No global/native-positive lifecycle or capacity acceptance follows.
 
-**Ownership:** `analysis.py`, `qualification_grid.py` under `src/fly_connectome_sim/experiment/`; corresponding `tests/experiment/test_analysis.py`, `test_qualification_grid.py`.
+### f.3a–f.3d: Sequential Planned Composition
 
-- [ ] RED missing/duplicate 96 bindings/144 points, discarded-grid corruption, selected orphans/late events, exact 24 PRE/384 POST/768 logical cells, PRE reuse 16, 40 trainings/24 interventions/128 anchors, occurrence aliases, final branch/archive mismatch and EOF failure after semantic error.
-- [ ] Implement `_evaluate_qualification(value: ValidatedPrefix | VerifiedRun) -> dict`, exactly `{grid,execution,reduction,controls,last_physical,evidence,report}`. Reuse grid/reduction dataclasses; reduction=null before complete selected evidence, execution=null without selection; controls are ordered tuples. Last physical=null or `{branch_id,sim_tick,parent,complete_state_sha256}`, unavailable digest=null. Evidence=`{event_count,final_scientific_sha256}` excludes terminal. These are plain data.
-- [ ] Pass 1 owns closed roles/references/occurrences without W payload retention. Pass 2 reconstructs grid selection before selected activity, consuming one pair/archive and finished scalar rows. Share an internal reduction accumulator; pass actual global sequence explicitly. Read baseline/source/final archives through existing codec/state hashing and genuine context; NPZ byte SHA is not state SHA. Global dispatcher owns completeness/late events and drains both streams after bounded semantic errors; iterator errors propagate.
-- [ ] Preserve valid incomplete-prefix inconclusive versus malformed-after-drain errors and complete negatives. Remove cross-protocol washout equality. `_selected_control_summaries(reduction, retention: int) -> tuple[dict,...]` derives 40 controls; compare present claims, requiring summaries/final only for terminal readiness.
-- [ ] Supply expected anchor hash from actual indexed prior anchor, reconciled with compact diagnostic parent hash, without retaining408 W payloads. Own compact late watches after checker disposal. Admit exactly ONE ordinary `checkpoint` named `brain-after.npz` after full selected/control inventory on the actual last repeat branch, bound to diagnostic/native owner/anchor/clock/decoded archive. Never feed this final framing to the discarded checker or generalize it to late activity.
-- [ ] Prove role bijection/≤4850 branches/1602 checkpoints/8099 relevant events using e.3 conformance and finite grid enumeration; only then enable 5120 for strict qualification global inventory. Run `.venv/Scripts/python.exe -m pytest tests/experiment/test_analysis.py tests/experiment/test_qualification_grid.py -q -p no:cacheprovider` and review; this proves grammar, not capacity.
+These are readiness boundaries, not a monolithic release. f.3a's planned API is
+ratified below; later component APIs need bounded briefs. No framework or trusted selection shortcut.
+
+#### f.3a: Composable Grid Ownership
+
+**Ownership:** `src/fly_connectome_sim/experiment/qualification_grid.py`, `tests/experiment/test_qualification_grid.py`.
+
+- [ ] Keep `_Inventory(manifest)`, `consume(event)` and `finish(value)` unchanged. Extract only `_GridMeasurements(value, inventory, context, metadata)`, `consume(event) -> None`, `finish() -> _GridAssessment`. Construction borrows inputs/initializes existing state without iteration, archive reads, engine or context issuance. This planned API is ratified, not released or implemented.
+- [ ] Preserve genuine `_reduce_qualification_grid` as owner of two exhausted passes, intake/final context checks and all-checkpoint/grid-final/legacy-terminal policies. Measurement finish returns a plain summary, not an EOF certificate. No skip/ignore flags or filtered manifest; unknown/selected component events reject.
+- [ ] RED/GREEN exact two exhausted passes, identical negative/inconclusive summaries, discarded-unit validation and eight-unit projection lifetime; use genuine partial/unit tests. No callback framework or context issuer.
+
+#### f.3b: Sequence-Preserving Declared Accumulator
+
+**Ownership:** `src/fly_connectome_sim/experiment/analysis.py`, `tests/experiment/test_analysis.py`.
+
+- [ ] Extract the accepted declaration reducer into one internal accumulator. Consume explicit ACTUAL global sequences; finish returns existing EvidenceReduction. Public/declaration wrappers stay behaviorally identical; filtered selected events are never renumbered. No global evaluator yet.
+- [ ] RED/GREEN every reduction field, sequence gaps, late EOF, caps and input nonmutation.
+
+#### f.3c: Selected Component
+
+**Ownership:** Grid source/test paths from f.3a; analysis changes only for a documented f.3b interface omission.
+
+- [ ] Consume plain scientific declarations/actual prior events with accepted f.2/f.3b. Own exact24PRE/384POST/768logical/PRE16,40 trainings/24 interventions/128 anchors, compact closed-pair watches,40 derived controls and bounded descriptor storage. Preserve hash-only anchor selection and actual occurrence ownership.
+- [ ] RED/GREEN coordinate/occurrence aliases, missing/extra/late roles, anchor selectors and pair release. Use genuine native selected-component checks separately from internal declared dispatch/math fixtures. Local success establishes no preceding grid eligibility. No context fallback, report/seal or cap activation.
+
+#### f.3d: Genuine Combined Evaluation, Final Role and Cap Proof
+
+**Ownership:** Analysis/grid source files and their two tests above.
+
+- [ ] Compose in the SAME two EOF passes: reconstruct authenticated grid selection before selected dispatch; genuine context at intake/recheck; independent baseline/source/final archive checks through existing codec/state hashing. NPZ byte SHA is not state SHA. Drain after bounded semantic errors; propagate iterator/final-binding failures.
+- [ ] Preserve the ratified `_evaluate_qualification(value: ValidatedPrefix | VerifiedRun)` plain `{grid,execution,reduction,controls,last_physical,evidence,report}` contract. Grid/reduction reuse existing dataclasses; reduction=null before complete selected evidence, execution=null without selection; controls are ordered tuples. Last physical=null or `{branch_id,sim_tick,parent,complete_state_sha256}`, unavailable digest=null; evidence=`{event_count,final_scientific_sha256}` excludes terminal. No new concrete component API is released here.
+- [ ] Own exactly ONE selected final `checkpoint` named `brain-after.npz` on the actual last repeat branch, after full selected/control inventory, bound to diagnostic/native owner/anchor/clock/decoded archive. Keep grid final semantics when no selection; reject selected activity after negative/unavailable grid. No local-wrapper exception. Derive controls from actual reduction, compare claims; preserve incomplete/negative distinctions and remove cross-protocol washout equality.
+- [ ] Prove role bijection/≤4850 branches/1602 checkpoints/8099 relevant events before strict-qualification5120 activation; confirmation4096/checkpoint2048/relevant10000 stay. f.4–f.6 retain strict writing/freezing/lifecycle. Conditional grammar proof is not capacity approval.
+
+**Honest test strategy:** Complete96 negative prefix/seal evidence (96 units,
+144 points, zero anchors) is historical,
+not fresh native context. Keep genuine partial/unit and selected-native component
+checks distinct from declared internal dispatch/math fixtures. Constructed
+selection may enter only INTERNAL composition seams, never the genuine evaluator
+through synthetic proof/injected trusted results or fabricated recorded eligible
+points. Historical408 may support pure grammar tests, never new attestation.
+Required genuine integration rejection appends selected activity after an
+authenticated negative grid without changing gates. Positive native
+eligible-grid→selected E2E remains unavailable until a compatible fixture
+naturally qualifies; do not tune thresholds or launch a support-manufacturing
+search. Budget one current-source complete96 negative acceptance after f.3d
+stabilizes, not after every extraction. No positive lifecycle/configuration or
+capacity claim follows from component acceptance.
 
 ### f.4: Strict Terminal Wire
 

@@ -629,6 +629,392 @@ def test_selected_replay_retains_no_unrelated_history(selected_replay_pair):
     assert len(visited) == 40
 
 
+def _bounded_selected_checker(diagnostic, arguments, *, prior_events=()):
+    import fly_connectome_sim.experiment.analysis as analysis
+    return analysis._SelectedReplayChecker(diagnostic["physical_key"],
+        expected_anchor_sha256=diagnostic.get("parent_state_anchor_sha256"),
+        prior_events=prior_events, **arguments)
+
+
+def _bounded_selected_prior(events, diagnostic, arguments):
+    source = arguments["expected_source_occurrence"]
+    key = diagnostic["physical_key"]
+    base = f"selected/{key['seed']}/{key['paired_identity']}/{key['presentation_order']}/"
+    recipient = "matched_reference" if key.get("condition") == "sufficiency" else (
+        "paired" if key.get("condition") in INTERVENTIONS else key.get("condition"))
+    training_id = base + str(recipient) + "/training"
+    return tuple(event for event in events if event["sequence"] == source["checkpoint_sequence"]
+        or (key["phase"] == "post" and (
+            event["type"] in ("checkpoint", "qualification_training") and event["branch_id"] == training_id
+            or event["type"] == "assay_intervention" and event.get("intervention_id") == source["origin_branch_id"]
+            or event["type"] == "state_anchor" and event.get("state_anchor_sha256") == diagnostic["parent_state_anchor_sha256"])))
+
+
+@pytest.mark.parametrize("selected_replay_pair", [{}, {"frozen": True}, {"window_end": 300.0},
+    {"cs": 300.0, "window_start": 100.0, "window_end": 300.0},
+    {"post": True, "retention": 10000}, {"post": True, "condition": "sham"}], indirect=True)
+def test_selected_replay_bounded_checker_seeded_streamed_equivalence(selected_replay_pair, monkeypatch):
+    import fly_connectome_sim.experiment.analysis as analysis
+    _, prefix, diagnostic, arguments = selected_replay_pair
+    events = list(prefix.iter_events())
+    prior = _bounded_selected_prior(events, diagnostic, arguments)
+    assert len(prior) == (1 if diagnostic["physical_key"]["phase"] == "pre" else
+                          5 if diagnostic["physical_key"]["condition"] == "sham" else 3)
+    decoder = analysis._decode_candidate_w_pair
+    decoded = []
+    def spy(*args, **kwargs):
+        decoded.append(True)
+        return decoder(*args, **kwargs)
+    monkeypatch.setattr(analysis, "_decode_candidate_w_pair", spy)
+    for seeded in ((), prior):
+        checker = _bounded_selected_checker(diagnostic, arguments, prior_events=seeded)
+        for event in events[:-1]:
+            if not any(event is item for item in seeded):
+                checker.consume(event)
+        assert len(decoded) == (0 if not seeded else 1)
+        result = checker.finish(diagnostic)
+        assert checker._events == [] and checker._arguments is None
+        assert result == {"response_replay_resolution_hz": 0.0, "candidate_memory_w_resolution": 0.0}
+        with pytest.raises(AnalysisError):
+            checker.finish(diagnostic)
+    assert analysis._compare_selected_replay(iter(events), diagnostic, **arguments) == result
+
+
+@pytest.mark.parametrize("ending", ["actual", "missing", "late_error"])
+def test_selected_replay_adapter_defers_decode_until_actual_diagnostic(selected_replay_pair, monkeypatch, ending):
+    import fly_connectome_sim.experiment.analysis as analysis
+    _, prefix, diagnostic, arguments = selected_replay_pair
+    decoder = analysis._decode_candidate_w_pair
+    decoded, encountered = [], []
+    def spy(*args, **kwargs):
+        assert encountered, "Projection decoded before actual diagnostic"
+        decoded.append(True)
+        return decoder(*args, **kwargs)
+    monkeypatch.setattr(analysis, "_decode_candidate_w_pair", spy)
+    class LateFailure(RuntimeError):
+        pass
+    def stream():
+        for event in prefix.iter_events():
+            if event["type"] == "qualification_replay":
+                if ending != "actual":
+                    continue
+                encountered.append(True)
+            yield event
+        if ending == "late_error":
+            raise LateFailure("actual iterator final binding failure")
+    if ending == "actual":
+        assert analysis._compare_selected_replay(stream(), diagnostic, **arguments)["candidate_memory_w_resolution"] == 0.0
+        assert decoded == [True]
+    else:
+        with pytest.raises(LateFailure if ending == "late_error" else AnalysisError):
+            analysis._compare_selected_replay(stream(), diagnostic, **arguments)
+        assert decoded == []
+
+
+@pytest.mark.parametrize("selected_replay_pair", [{}, {"post": True}, {"post": True, "condition": "sham"}], indirect=True)
+def test_selected_replay_bounded_checker_prior_contract_and_release(selected_replay_pair):
+    import fly_connectome_sim.experiment.analysis as analysis
+    _, prefix, diagnostic, arguments = selected_replay_pair
+    events = list(prefix.iter_events())
+    prior = _bounded_selected_prior(events, diagnostic, arguments)
+    mutations = [list(prior), prior * 6, (prior[0], prior[0]),
+        ({**prior[0], "sequence": True},), ({**prior[0], "sequence": -1},),
+        ({**prior[0], "sequence": 1.5},), ({"type": "unrelated", "sequence": 999999},)]
+    if len(prior) > 1:
+        mutations.extend([prior[::-1], (prior[1], prior[0], *prior[2:]),
+                          (prior[0], {**prior[1], "sequence": prior[0]["sequence"]}, *prior[2:])])
+    for malformed in mutations:
+        checker = analysis._SelectedReplayChecker.__new__(analysis._SelectedReplayChecker)
+        with pytest.raises(AnalysisError):
+            checker.__init__(diagnostic["physical_key"], expected_anchor_sha256=diagnostic.get("parent_state_anchor_sha256"),
+                             prior_events=malformed, **arguments)
+        assert checker._events == [] and checker._arguments is None and checker._key is None
+        assert type(checker._error) is str and len(checker._error) <= 256
+    for anchor in ({"unexpected": list(range(100))}, "wrong", None if len(prior) > 1 else "a" * 64):
+        checker = analysis._SelectedReplayChecker.__new__(analysis._SelectedReplayChecker)
+        with pytest.raises(AnalysisError):
+            checker.__init__(diagnostic["physical_key"], expected_anchor_sha256=anchor, **arguments)
+        assert checker._events == [] and checker._arguments is None
+        assert checker._anchor is None or type(checker._anchor) is str
+
+
+@pytest.mark.parametrize("selected_replay_pair", [{}, {"post": True}, {"post": True, "condition": "sham"}], indirect=True)
+def test_selected_replay_bounded_checker_limits_order_failure_and_finish(selected_replay_pair):
+    _, prefix, diagnostic, arguments = selected_replay_pair
+    events = list(prefix.iter_events())
+    prior = _bounded_selected_prior(events, diagnostic, arguments)
+    activity = [event for event in events if event["branch_id"] in (diagnostic["original_branch_id"], diagnostic["replay_id"])][:-1]
+    for mutation in ("unknown", "overflow", "early_finish", "late_prior", "bool_sequence", "finish_hash", "finish_before_activity"):
+        checker = _bounded_selected_checker(diagnostic, arguments, prior_events=prior)
+        with pytest.raises(AnalysisError):
+            if mutation == "early_finish":
+                checker.finish(diagnostic)
+            elif mutation == "finish_hash":
+                for event in activity:
+                    checker.consume(event)
+                checker.finish({**diagnostic, "parent_state_anchor_sha256": "a" * 64})
+            elif mutation == "finish_before_activity":
+                for event in activity:
+                    checker.consume(event)
+                checker.finish({**diagnostic, "sequence": activity[-1]["sequence"]})
+            elif mutation == "late_prior":
+                checker.consume(activity[0])
+                checker.consume(prior[-1])
+            elif mutation == "bool_sequence":
+                checker.consume({**activity[0], "sequence": True})
+            elif mutation == "unknown":
+                checker.consume({**activity[0], "type": "unknown"})
+            else:
+                for index in range(13):
+                    checker.consume({**activity[0], "sequence": activity[0]["sequence"] + index})
+        assert checker._events == [] and checker._arguments is None and checker._key is None
+        assert type(checker._error) is str and len(checker._error) <= 256
+        with pytest.raises(AnalysisError):
+            checker.finish(diagnostic)
+
+
+@pytest.mark.parametrize("selected_replay_pair", [{}, {"post": True}, {"post": True, "condition": "sham"}], indirect=True)
+def test_selected_replay_bounded_checker_rejects_compact_late_routes(selected_replay_pair):
+    import fly_connectome_sim.experiment.analysis as analysis
+    _, prefix, diagnostic, arguments = selected_replay_pair
+    events = list(prefix.iter_events())
+    late = [{"type": "checkpoint", "branch_id": branch, "sequence": diagnostic["sequence"] + 1}
+            for branch in (diagnostic["original_branch_id"], diagnostic["replay_id"])]
+    late.append({**diagnostic, "branch_id": "changed", "sequence": diagnostic["sequence"] + 1})
+    for prior in _bounded_selected_prior(events, diagnostic, arguments):
+        if prior["type"] in ("qualification_training", "assay_intervention", "state_anchor"):
+            late.append({**prior, "branch_id": "changed", "origin_branch_id": "changed",
+                         "source_occurrence": {"changed": True}, "sequence": diagnostic["sequence"] + 1})
+    for event in late:
+        checker = _bounded_selected_checker(diagnostic, arguments)
+        for actual in events[:-1]:
+            checker.consume(actual)
+        checker.finish(diagnostic)
+        checker.consume({"type": "unrelated", "branch_id": "other"})
+        with pytest.raises(AnalysisError):
+            checker.consume(event)
+        assert checker._events == [] and checker._arguments is None
+        with pytest.raises(AnalysisError):
+            analysis._compare_selected_replay(iter([*events, event]), diagnostic, **arguments)
+
+
+@pytest.mark.parametrize("selected_replay_pair", [{"post": True}, {"post": True, "condition": "sham"}], indirect=True)
+def test_selected_replay_bounded_checker_selects_all_matching_anchor_hashes(selected_replay_pair):
+    import fly_connectome_sim.experiment.analysis as analysis
+    _, prefix, diagnostic, arguments = selected_replay_pair
+    events = list(prefix.iter_events())
+    anchor = next(event for event in events if event["type"] == "state_anchor")
+    position = events.index(anchor)
+    for mutation in ("earlier_bad_route", "clock", "wrong_hash"):
+        selected = deepcopy(events)
+        if mutation == "earlier_bad_route":
+            selected.insert(position, {**deepcopy(anchor), "origin_branch_id": "changed",
+                "source_occurrence": {**anchor["source_occurrence"], "origin_branch_id": "changed"},
+                "sequence": anchor["sequence"] - 1})
+        elif mutation == "clock":
+            selected[position]["sim_tick"] += 1
+        else:
+            selected[position]["state_anchor_sha256"] = "a" * 64
+        checker = _bounded_selected_checker(diagnostic, arguments)
+        with pytest.raises(AnalysisError):
+            for event in selected[:-1]:
+                checker.consume(event)
+            checker.finish(diagnostic)
+        assert checker._events == [] and checker._arguments is None
+        with pytest.raises(AnalysisError):
+            analysis._compare_selected_replay(iter(selected), diagnostic, **arguments)
+
+
+@pytest.mark.parametrize("selected_replay_pair", [{"post": True}, {"post": True, "condition": "sham"}], indirect=True)
+def test_selected_replay_bounded_checker_preserves_logical_row_interleaving(selected_replay_pair):
+    import fly_connectome_sim.experiment.analysis as analysis
+    recorder = selected_replay_pair[0]
+    original = (recorder.path / "events.jsonl").read_bytes()
+    for mutation in ("valid", "early", "duplicate", "resolution", "dan", "one_spike", "training_clock", "source_sha"):
+        (recorder.path / "events.jsonl").write_bytes(original)
+        prefix, diagnostic, arguments, _ = _recorded_selected_replay_logical_pair(selected_replay_pair, mutation)
+        checker = _bounded_selected_checker(diagnostic, arguments)
+        def compare():
+            for event in list(prefix.iter_events())[:-1]:
+                checker.consume(event)
+            return checker.finish(diagnostic)
+        if mutation == "valid":
+            assert compare() == analysis._compare_selected_replay(prefix.iter_events(), diagnostic, **arguments)
+        else:
+            with pytest.raises(AnalysisError):
+                compare()
+            assert checker._events == [] and checker._arguments is None
+
+
+def test_selected_replay_bounded_checker_projection_bits_and_existing_kernel_guards(selected_replay_pair, monkeypatch):
+    import fly_connectome_sim.experiment.analysis as analysis
+    _, prefix, diagnostic, arguments = selected_replay_pair
+    original = list(prefix.iter_events())
+    for mutation in ("signed_zero_equal", "signed_zero_different", "telemetry", "non_mbon", "input", "clock", "tail",
+                     "state", "reference_hash", "reference_side", "reference_index", "missing_tail", "map", "bounds"):
+        events = deepcopy(original)
+        actual = events[-1]
+        args = deepcopy(arguments)
+        observations = [item for item in events if item["type"] == "observe"]
+        if mutation.startswith("signed_zero"):
+            zero = np.zeros(actual["candidate_projection"]["shape"][0], dtype="<f8")
+            zero[0] = -0.0
+            actual["candidate_projection"]["original_hex"] = zero.tobytes().hex()
+            if mutation == "signed_zero_different":
+                zero[0] = 0.0
+            actual["candidate_projection"]["repeat_hex"] = zero.tobytes().hex()
+        elif mutation in ("telemetry", "tail"):
+            observations[-1 if mutation == "tail" else 0]["telemetry"]["memory"]["unexpected"] = 1
+        elif mutation == "non_mbon": observations[0]["telemetry"]["rates_hz"]["mbon07"] += 1
+        elif mutation == "input": observations[0]["telemetry"]["input_sha256"] = "a" * 64
+        elif mutation == "clock": observations[0]["duration_ms"] += 0.1
+        elif mutation == "state": actual["boundaries"]["start"]["repeat"]["complete_state_sha256"] = "a" * 64
+        elif mutation == "reference_hash": actual["operations"]["original"][0]["scientific_sha256"] = "a" * 64
+        elif mutation == "reference_side": actual["operations"]["original"], actual["operations"]["repeat"] = actual["operations"]["repeat"], actual["operations"]["original"]
+        elif mutation == "reference_index": actual["operations"]["original"].reverse()
+        elif mutation == "missing_tail": events.remove(observations[-1])
+        elif mutation == "map": args["expected_maps"]["target_indices"] = [3]
+        else: args["lower"] -= 1
+        checker = _bounded_selected_checker(actual, args)
+        for event in events[:-1]:
+            checker.consume(event)
+        if mutation == "signed_zero_equal":
+            decoder = analysis._decode_candidate_w_pair
+            decoded = []
+            def spy(*args, **kwargs):
+                values = decoder(*args, **kwargs)
+                decoded.append(tuple(value.tobytes() for value in values))
+                return values
+            with monkeypatch.context() as patch:
+                patch.setattr(analysis, "_decode_candidate_w_pair", spy)
+                assert checker.finish(actual)["candidate_memory_w_resolution"] == 0.0
+            assert decoded == [(bytes.fromhex(actual["candidate_projection"]["original_hex"]),) * 2]
+        else:
+            with pytest.raises(AnalysisError):
+                checker.finish(actual)
+        assert checker._events == [] and checker._arguments is None
+
+
+@pytest.mark.parametrize("failure", ["constructor", "consume", "finish"])
+def test_selected_replay_bounded_checker_semantic_failure_never_hides_late_eof(selected_replay_pair, failure):
+    import fly_connectome_sim.experiment.analysis as analysis
+    _, prefix, diagnostic, arguments = selected_replay_pair
+    if failure == "constructor": diagnostic = {**diagnostic, "physical_key": {}}
+    elif failure == "finish": diagnostic = {**diagnostic, "candidate_memory_w_resolution": 0.5}
+    visited = []
+    class LateFailure(RuntimeError):
+        pass
+    def stream():
+        for event in prefix.iter_events():
+            if failure == "consume" and event["type"] == "branch_start":
+                event = {**event, "type": "unknown"}
+            visited.append(event["sequence"])
+            yield event
+        raise LateFailure("actual EOF binding failed")
+    with pytest.raises(LateFailure):
+        analysis._compare_selected_replay(stream(), diagnostic, **arguments)
+    assert visited == list(range(prefix.manifest["event_count"]))
+
+
+@pytest.mark.parametrize("selected_replay_pair", [{"post": True, "retention": 10000}], indirect=True)
+@pytest.mark.parametrize("position", ["before", "after"])
+@pytest.mark.parametrize("consumer", ["kernel", "checker", "adapter"])
+def test_selected_replay_ordinary_post_source_intervention_alias(selected_replay_pair, position, consumer):
+    """An actual recorded alias must reach the same rejection as the unfiltered kernel."""
+    import fly_connectome_sim.experiment.analysis as analysis
+    _, prefix, diagnostic, arguments = selected_replay_pair
+    recorder = selected_replay_pair[0]
+    baseline = next(event for event in prefix.iter_events() if event["type"] == "qualification_checkpoint")
+    recorder.append({"type": "assay_intervention", "branch_id": "qualification/changed-alias", "sim_ms": 0.0,
+        "origin_branch_id": "changed-origin", "intervention_id": arguments["expected_source_occurrence"]["origin_branch_id"],
+        "parent_branch_id": baseline["branch_id"], "parent_checkpoint_name": baseline["checkpoint_name"],
+        "parent_checkpoint_sequence": baseline["sequence"], "parent_checkpoint_sha256": baseline["checkpoint_sha256"]})
+    prefix = recorder.validate_prefix()
+    if position == "before":
+        events = list(prefix.iter_events())
+        alias = events.pop()
+        insertion = next(index for index, event in enumerate(events) if event["branch_id"] == diagnostic["original_branch_id"])
+        events.insert(insertion, alias)
+        positions = {event["sequence"]: index for index, event in enumerate(events)}
+        for references in events[-1]["operations"].values():
+            for reference in references:
+                reference["sequence"] = positions[reference["sequence"]]
+        prefix, diagnostic = _rewrite_selected_replay(recorder, events)
+    else:
+        diagnostic = next(event for event in prefix.iter_events() if event["type"] == "qualification_replay")
+    assert diagnostic["physical_key"]["condition"] == "paired"
+    if consumer == "checker":
+        checker = _bounded_selected_checker(diagnostic, arguments)
+        with pytest.raises(AnalysisError):
+            for event in prefix.iter_events():
+                if event["type"] == "qualification_replay":
+                    checker.finish(event)
+                else:
+                    checker.consume(event)
+        assert checker._events == [] and checker._arguments is None
+    else:
+        compare = analysis._compare_selected_replay_records if consumer == "kernel" else analysis._compare_selected_replay
+        with pytest.raises(AnalysisError):
+            compare(prefix.iter_events(), diagnostic, **arguments)
+
+
+def test_selected_replay_bounded_checker_pre_sixteen_actual_window_rows(selected_replay_pair):
+    """Reuse declared route rows with actual native PRE measurements; these are no proof."""
+    import fly_connectome_sim.experiment.analysis as analysis
+    recorder, prefix, diagnostic, arguments = selected_replay_pair
+    events = list(prefix.iter_events())
+    stop = diagnostic["boundaries"]["window"]["original"]["sim_tick"]
+    calls = [event for event in events if event["type"] == "observe"
+             and event["branch_id"] == diagnostic["original_branch_id"] and event["end_tick"] <= stop]
+    bins = [{"start_tick": round(part["end_ms"] * 10) - round(part["duration_ms"] * 10),
+             "end_tick": round(part["end_ms"] * 10), "spikes": part["group_spikes"]["mbon11"]}
+            for event in calls for part in event["telemetry"]["bins"]
+            if diagnostic["cs_onset_tick"] < round(part["end_ms"] * 10) <= stop]
+    rows = [row for row in _responses("qualification") if row["type"] == "qualification_evidence"
+            and all(row[name] == diagnostic["physical_key"][name] for name in diagnostic["physical_key"])]
+    assert len(rows) == 16
+    parent = {name: diagnostic[name] for name in ("parent_branch_id", "parent_checkpoint_name",
+              "parent_checkpoint_sequence", "parent_checkpoint_sha256")}
+    for row in rows:
+        row.update(**parent, branch_id=diagnostic["original_branch_id"], sim_ms=stop / 10,
+            population_size=diagnostic["population_size"], cs_onset_tick=diagnostic["cs_onset_tick"], bins=deepcopy(bins),
+            rate_hz=analysis._response_rate(sum(part["spikes"] for part in bins), stop - diagnostic["cs_onset_tick"], 1),
+            one_spike_rate_hz=analysis._response_rate(1, stop - diagnostic["cs_onset_tick"], 1),
+            endogenous_dan_spikes=sum(part["group_spikes"]["ppl101"] for event in calls for part in event["telemetry"]["bins"]),
+            response_replay_resolution_hz=diagnostic["response_replay_resolution_hz"], replay_id=diagnostic["replay_id"])
+    insertion = max(event["sequence"] for event in events if event["type"] == "observe" and event["end_tick"] == stop) + 1
+    events[insertion:insertion] = rows
+    positions = {event["sequence"]: index for index, event in enumerate(events) if "sequence" in event}
+    for references in events[-1]["operations"].values():
+        for reference in references:
+            reference["sequence"] = positions[reference["sequence"]]
+    prefix, diagnostic = _rewrite_selected_replay(recorder, events)
+    events = list(prefix.iter_events())
+    for mutation in ("valid", "duplicate", "overflow", "early"):
+        checker = _bounded_selected_checker(diagnostic, arguments)
+        selected = deepcopy(events)
+        actual = selected[-1]
+        logical = [event for event in selected if event["type"] == "qualification_evidence"]
+        if mutation == "duplicate":
+            logical[-1].update(condition=logical[0]["condition"], retention_ms=logical[0]["retention_ms"])
+        elif mutation == "early":
+            selected.remove(logical[0])
+            selected.insert(3, logical[0])
+        def compare():
+            for event in selected[:-1]:
+                checker.consume(event)
+            if mutation == "overflow":
+                checker.consume({**logical[-1], "sequence": actual["sequence"]})
+            return checker.finish(actual)
+        if mutation == "valid":
+            assert compare() == analysis._compare_selected_replay(iter(selected), actual, **arguments)
+            assert checker._row_count == 16
+        else:
+            with pytest.raises(AnalysisError):
+                compare()
+        assert checker._events == [] and checker._arguments is None
+
+
 def test_candidate_w_pair_nonzero_float64_math_and_signed_zero():
     import fly_connectome_sim.experiment.analysis as analysis
     from fly_connectome_sim.experiment.qualification import _state_difference, _response_rate
