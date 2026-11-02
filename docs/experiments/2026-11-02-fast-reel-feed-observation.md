@@ -1,5 +1,11 @@
 # Fast reel feed: 5× content and a recorded quick swipe
 
+Visual follow-up: the user's subsequent screen-contact request supersedes this
+export's limb-animation acceptance. Its frame/input/count checks remain valid,
+but the old whole-leg tilt did not visibly swipe across the screen. The
+[screen-contact correction](2026-11-02-screen-contact-swipe.md) reuses exactly
+this measurement artifact; it does not create new simulation evidence.
+
 The requested fast-feed pilot is complete on Windows/Chrome. The first reel
 ran for **3 seconds**, showing about 15 seconds of source content; the second
 ran for **4 seconds**, showing about 20 seconds. Exact selected RGB frames went

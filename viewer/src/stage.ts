@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { decodePixels, type Recording, type sampleAtTick } from './replay.ts';
 import { EXPORT_SIZE } from './export.ts';
-import { advancePose, flyPose } from './motion.ts';
+import { flyPose } from './motion.ts';
+import { createSwipeArm } from './swipe-arm.ts';
 import { isVideoRecording, sampleVideoAtTick, videoInputLabel, videoPlaneHeight, videoPolicyLabel, videoSpeedLabel, type VideoRecording } from './video-replay.ts';
 
 type Sample = ReturnType<typeof sampleAtTick> | ReturnType<typeof sampleVideoAtTick>;
@@ -133,8 +134,10 @@ export function createStage(canvas: HTMLCanvasElement) {
   }
   // These six legs and wing veins are illustrative construction, never mapped neurons.
   const legs: THREE.Group[] = [], wings: Array<{ side: number; group: THREE.Group }> = [];
+  const swipeArm = createSwipeArm(dark);
   for (const side of [-1, 1]) {
     for (let leg = 0; leg < 3; leg += 1) {
+      if (side === 1 && leg === 0) { fly.add(swipeArm.group); legs.push(swipeArm.group); continue; }
       const start = new THREE.Vector3(side * .25, -.1, .25 - leg * .35);
       const knee = new THREE.Vector3(side * (.8 + leg * .07), -.3, .72 - leg * .73);
       const ankle = new THREE.Vector3(side * (1.16 + leg * .035), -.77, .9 - leg * .95);
@@ -212,8 +215,11 @@ export function createStage(canvas: HTMLCanvasElement) {
     if (inputName) {
       let texture = textures[inputName]!;
       if (swipeSurface && sample && 'gesture' in sample && sample.gesture && !reducedMotion) {
-        swipeSurface.draw(textures[sample.gesture.outgoingFrameId].image, textures[sample.gesture.incomingFrameId].image, sample.gesture.progress);
-        texture = swipeSurface.texture;
+        if (sample.gesture.screenProgress === 0) texture = textures[sample.gesture.outgoingFrameId];
+        else if (sample.gesture.screenProgress < 1) {
+          swipeSurface.draw(textures[sample.gesture.outgoingFrameId].image, textures[sample.gesture.incomingFrameId].image, sample.gesture.screenProgress);
+          texture = swipeSurface.texture;
+        }
       }
       const material = pixelsScreen.material as THREE.MeshBasicMaterial;
       if (material.map !== texture) { material.map = texture; material.color.set('#ffffff'); material.needsUpdate = true; }
@@ -222,9 +228,8 @@ export function createStage(canvas: HTMLCanvasElement) {
       const pose = flyPose(sample.tick, reducedMotion);
       fly.position.y = .85 + pose.bob; fly.rotation.x = pose.bodyPitch; head.rotation.y = pose.headYaw;
       wings.forEach(({ side, group }) => { group.rotation.z = side * pose.wingAngle; });
-      legs.forEach((group, index) => { group.rotation.z = (index % 2 ? -1 : 1) * pose.legAngle; });
-      const advance = 'gesture' in sample && sample.gesture ? advancePose(sample.gesture.progress, reducedMotion) : { lift: 0, reach: 0 };
-      legs[3].rotation.z += advance.lift; legs[3].position.x = advance.reach;
+      legs.forEach((group, index) => { if (group !== swipeArm.group) group.rotation.z = (index % 2 ? -1 : 1) * pose.legAngle; });
+      swipeArm.update(fly, phone, !reducedMotion && 'gesture' in sample && sample.gesture ? sample.gesture.progress : null, -pose.legAngle);
     }
     if (!exporting) controls.update();
     renderer.render(scene, camera);

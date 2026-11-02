@@ -40,7 +40,9 @@ classification unchanged; it does not establish learned behavior.
 
 Measured Replay remains experimental WIP. The current [fast-feed contract](docs/superpowers/specs/2026-11-02-fast-reel-feed.md)
 adds an explicit `fast-feed` profile: 5× source-content sampling, 3s minimum
-watch time, a 4s clip cap and a 200ms illustrative swipe after recorded ADVANCE.
+watch time and a 4s clip cap. After recorded ADVANCE, an illustrative foreground
+leg reaches onto the display, swipes it and retracts in400ms; the synchronized
+content stroke takes200ms.
 Simulation stays at normal time; media PTS and replay speed are separate clocks.
 Default `standard` preserves the original 1×/v1 protocol. The swipe combines
 actual fed outgoing/incoming frames for presentation; it is not neural input.

@@ -266,13 +266,14 @@ export function currentClipPolicyAtTick(recording: VideoRecording, tick: number,
 }
 
 export function advanceGestureAtTick(recording: VideoRecording, tick: number, reducedMotion = false) {
-  if (reducedMotion) return null;
+  if (reducedMotion || visiblePolicyAtTick(recording, tick)?.action === 'stop') return null;
   const outgoing = recording.segments.findLast((segment) => segment.video_policy?.action === 'advance' && segment.video_policy.effective_tick <= tick);
   const policy = outgoing?.video_policy;
-  if (!outgoing || !policy || tick >= policy.effective_tick + 2000) return null;
+  if (!outgoing || !policy || tick >= policy.effective_tick + 4000) return null;
   const incoming = recording.segments.find((segment) => segment.playback_start_tick <= tick && tick < segment.playback_end_tick);
   if (!incoming || incoming.clip_id === outgoing.clip_id) return null;
-  return { reason: policy.reason, progress: (tick - policy.effective_tick) / 2000, outgoingFrameId: outgoing.frame_id, incomingFrameId: incoming.frame_id };
+  const elapsed = tick - policy.effective_tick;
+  return { reason: policy.reason, progress: elapsed / 4000, screenProgress: Math.max(0, Math.min(1, (elapsed - 1000) / 2000)), outgoingFrameId: outgoing.frame_id, incomingFrameId: incoming.frame_id };
 }
 
 export function sampleVideoAtTick(recording: VideoRecording, requestedTick: number) {

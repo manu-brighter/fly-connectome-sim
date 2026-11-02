@@ -294,22 +294,28 @@ test('v2 measured right readout watches through 2.9s then causally advances at 3
   }
 });
 
-test('200ms transition binds last actually fed outgoing and current incoming across seek', () => {
+test('400ms arm gesture holds screen during reach and release and scrolls only during 200ms contact', () => {
   const value = structuredClone(recording), incoming = value.segments[1];
   incoming.playback_end_tick = incoming.source_end_tick = 1333;
-  for (let index = 1; index < 7; index += 1) {
+  for (let index = 1; index < 14; index += 1) {
     const id = `incoming-${index}`, start = 1000 + Math.round(index * 1000 / 3), end = 1000 + Math.round((index + 1) * 1000 / 3);
     value.inputs[id] = { ...value.inputs.second, frame_index: index };
     value.segments.push({ ...incoming, frame_id: id, frame_index: index, playback_start_tick: start, source_start_tick: start, playback_end_tick: end, source_end_tick: end });
   }
-  value.duration_ticks = 3333;
+  value.duration_ticks = 5667;
   assert.equal(advanceGestureAtTick(value, 999), null);
-  assert.deepEqual(advanceGestureAtTick(value, 1000), { reason: 'motor_right', progress: 0, outgoingFrameId: 'first', incomingFrameId: 'second' });
+  assert.deepEqual(advanceGestureAtTick(value, 1000), { reason: 'motor_right', progress: 0, screenProgress: 0, outgoingFrameId: 'first', incomingFrameId: 'second' });
   assert.equal(advanceGestureAtTick(value, 1700).incomingFrameId, 'incoming-2');
   assert.equal(advanceGestureAtTick(value, 2999).incomingFrameId, 'incoming-5');
-  assert.equal(advanceGestureAtTick(value, 3000), null);
+  assert.equal(advanceGestureAtTick(value, 5000), null);
   assert.equal(advanceGestureAtTick(value, 1000).progress, 0);
-  assert.equal(advanceGestureAtTick(value, 1500).progress, .25);
+  assert.equal(advanceGestureAtTick(value, 1500).progress, .125);
+  for (const [tick, screenProgress] of [[1000, 0], [1999, 0], [2000, 0], [3000, .5], [4000, 1], [4999, 1]]) {
+    assert.equal(advanceGestureAtTick(value, tick).screenProgress, screenProgress);
+  }
+  assert.equal(advanceGestureAtTick(value, 4999).incomingFrameId, 'incoming-11');
+  assert.equal(advanceGestureAtTick(value, 2000).progress, .25);
+  assert.equal(advanceGestureAtTick(value, 4000).progress, .75);
   assert.equal(advanceGestureAtTick(value, 1500, true), null);
   assert.equal(sampleVideoAtTick(value, 1700).input, value.inputs['incoming-2']);
 });
@@ -330,6 +336,14 @@ test('swipe surface clips both images, reuses its texture and releases it', () =
   assert.equal(surface.texture, texture);
   let disposed = 0; texture.addEventListener('dispose', () => { disposed += 1; });
   surface.dispose(); assert.equal(disposed, 1); assert.equal(canvas.width, 1); assert.equal(canvas.height, 1);
+});
+
+test('a recorded STOP suppresses any preceding advance gesture at its exact boundary', () => {
+  const value = structuredClone(recording);
+  value.segments[1].video_policy = { ...policy, effective_tick: 1200, action: 'stop' };
+  assert.ok(advanceGestureAtTick(value, 1199));
+  assert.equal(advanceGestureAtTick(value, 1200), null);
+  assert.ok(advanceGestureAtTick(value, 1199));
 });
 
 test('v2 capture labels speed and distinguishes simulation clock from media PTS and swipe', () => {

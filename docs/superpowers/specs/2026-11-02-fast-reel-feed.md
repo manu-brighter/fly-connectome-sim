@@ -3,7 +3,8 @@
 The user requests 500% reel-content speed, roughly3–4s watching each reel,
 then a simple quick swipe into the next reel. Use the existing engine and
 viewer. Builder choices: first acceptance reuses the same two local renditions;
-3s minimum dwell,4s clip cap,8s session cap,200ms illustrative swipe. No new
+3s minimum dwell,4s clip cap,8s session cap,200ms screen stroke within a400ms
+illustrative foreground-leg gesture. No new
 dependency, simulator, learning/semantic claim or formal assay work.
 
 ## Closed profile and backward compatibility
@@ -61,9 +62,15 @@ Show `Reel 5×` for v2; simulation/replay time stays normal. Label native
 source_start_tick/sourceTick as simulation time and media PTS separately.
 Keep30fps timestamped export, half-up frame quantizer and0.5s terminal hold.
 
-For200ms after an actual recorded ADVANCE, move the last actually consumed
-outgoing frame upward and reveal the current actually consumed incoming frame
-from below. Clip both to the phone screen. Incoming advances with its real
+The viewer's screen-contact correction uses a400ms illustrative foreground-leg
+gesture after an actual recorded ADVANCE:100ms approach,200ms upward contact
+stroke,100ms release/retraction. The articulated leg stays attached to the fly
+and its tip crosses the visible display in the phone's actual local coordinate
+frame. Current fly bob/pitch must not move the contact behind the display.
+During the middle200ms, move the last actually consumed outgoing frame upward
+and reveal the current actually consumed incoming frame from below, synchronized
+to the contacting tip. Hold the outgoing frame during approach and show current
+incoming during release. Clip both to the phone screen. Incoming advances with its real
 recorded frames throughout the transition; it must not freeze frame0 or show
 unobserved future media. The current input label/telemetry/PTS refers to incoming.
 The composited screen/leg motion is explicitly labelled illustrative during
@@ -72,8 +79,9 @@ textures outside transitions are exact fed RGB. Do not insert any observation,
 presentation pause, extra simulation ticks or reordered inputs for the swipe.
 
 Animate the foreground leg quickly using the same absolute-time transition.
-At effective_tick the transition begins, at effective_tick+2000 it is complete;
-before the boundary it is absent. STOP never swipes. Seek/backward seek must
+At effective_tick the arm approaches; the screen stroke spans+1000..+3000ticks,
+and the arm returns by+4000ticks. Before the boundary it is absent. STOP never
+swipes. Seek/backward seek must
 reproduce the pose/composite. Reduced motion disables slide/gesture and shows
 the actual incoming frame immediately. Bound/reuse/dispose transient canvas/
 texture resources; export and interactive rendering share the same function.
@@ -83,7 +91,8 @@ texture resources; export and interactive rendering share the same function.
 Test-first: preserve v1 tests/real export acceptance; genuine tiny20s decode
 proves5x selected PTS/RGB and short-source rejection before factory; v2 native
 sealed roundtrip and profile/PTS/policy mutations; 2.9/3.0s dwell and4s/8s
-priorities; strict frontend dual version validation;200ms boundary/seek/STOP/
+priorities; strict frontend dual version validation;400ms arm/200ms contact
+boundary/seek/STOP/
 reduced-motion/current-incoming and clipped-composite tests. Run focused old
 and new backend/CLI tests, viewer tests/build and appropriate compatibility.
 

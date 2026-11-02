@@ -13,6 +13,14 @@ audit and same-artifact Chrome/encoded-file acceptance passed. Earlier assay evi
 historical/source-specific; formal qualification/freeze/confirmation, C1 and
 LLM work remain parked.
 
+The current viewer-only [screen-contact correction](experiments/2026-11-02-screen-contact-swipe.md)
+reuses that exact7s recording. The foreground leg now visibly reaches onto the
+screen, strokes upward and retracts in400ms; only the middle200ms scrolls the
+content. Actual encoded lower/mid/upper contact frames were inspected. Viewer
+tests:66 passed/build0; all33 Python/C++ sources remain unchanged and no native
+run was repeated. This supersedes the earlier small whole-leg tilt's visual
+acceptance, not its data/frame checks.
+
 Continue autonomously on the original Windows workstation, including reviewed
 feature commits and explicit feature pushes, without pausing at each checkpoint.
 No PR, merge or deployment is authorized. Cloud setup is for a future fresh
@@ -74,15 +82,16 @@ No external stimulation or learning is enabled; passive evolution is unchanged.
 The existing 1Hz lateral motor threshold, causal 300ms counts/100ms evaluations
 and session > clip-window > motor-right > watch priority remain. Fast-feed
 allows motor advance at 3s or later; the 4s clip-window limit is external.
-No result is tuned to force a neural action. The 200ms swipe uses the last fed
-outgoing frame and current actual incoming frame; its composite/foreleg motion
-is illustrative, not another neural input. STOP/reduced motion do not swipe.
+No result is tuned to force a neural action. The400ms foreground-leg gesture
+contains a200ms screen swipe, using the last fed outgoing frame and current
+actual incoming frame. Its composite/foreleg motion is illustrative, not another
+neural input. STOP/reduced motion do not swipe.
 Media PTS, native simulation time and Replay Speed remain distinct.
 
 Focused backend/CLI tests: **114 passed in 94.32s**, covering 81 existing and 33
-new tests. Viewer: **63 passed; build exit0**. Independent Astra source/integrity
+new tests. Initial fast-feed viewer: **63 passed; build exit0**. Independent Astra source/integrity
 review closed C0/I0/M0, including 240 actual source PTS/RGB hashes and 19,360
-pure policy cases. Independent Sol viewer review closed C0/I0/M0 on 18-file freeze
+pure policy cases. That historical Sol viewer review closed C0/I0/M0 on 18-file freeze
 `41423f850430b40c1447c6d508efbbef6682e36f563d864d03014aac3e30e00f`.
 Historical actual v1-video and A/B re-exports remain byte-identical; the strict
 reader was not loosened. Source tests alone do not establish native runtime.

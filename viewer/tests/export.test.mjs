@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { frameAt, quantizeVideoTick, writeFrames } from '../src/export.ts';
-import { advancePose, flyPose } from '../src/motion.ts';
+import { flyPose } from '../src/motion.ts';
 
 test('12 second export has 360 source samples and 15 terminal presentation frames', () => {
   const frames = Array.from({ length: 375 }, (_, index) => frameAt(index, 120000));
@@ -51,11 +51,4 @@ test('illustrative pose depends on absolute replay time and reduced motion', () 
   assert.deepEqual(flyPose(2500, false), flyPose(2500, false));
   assert.notDeepEqual(flyPose(2500, false), flyPose(5000, false));
   assert.deepEqual(flyPose(2500, true), flyPose(5000, true));
-});
-
-test('recorded advance gesture rises only within its effective interval', () => {
-  assert.deepEqual(advancePose(0), { lift: 0, reach: 0 });
-  assert.ok(advancePose(.5).lift > 0);
-  assert.deepEqual(advancePose(1), { lift: 0, reach: 0 });
-  assert.deepEqual(advancePose(.5, true), { lift: 0, reach: 0 });
 });
