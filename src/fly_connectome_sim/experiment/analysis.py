@@ -152,6 +152,410 @@ def _same_number(a: object, b: object) -> bool:
     return _number(a) and _number(b) and math.isclose(a, b, rel_tol=1e-12, abs_tol=1e-12)
 
 
+def _encode_candidate_w_pair(first, second, *, maps):
+    """Encode actual float64 values without silently changing their dtype or bits."""
+    from .recorder import _check_candidate_w_pair
+
+    for value in (first, second):
+        if (type(value) is not np.ndarray or value.ndim != 1 or value.dtype.str != "<f8"
+                or not value.size or not np.isfinite(value).all()):
+            raise AnalysisError("candidate_w_pair_array")
+    if first.shape != second.shape:
+        raise AnalysisError("candidate_w_pair_shape")
+    projection = {"projection_version": "selected-candidate-w-pair/v1", "dtype": "<f8",
+                  "shape": list(first.shape), "maps": _load(_canonical(maps)),
+                  "original_hex": first.tobytes(order="C").hex(), "repeat_hex": second.tobytes(order="C").hex()}
+    _check_candidate_w_pair(projection)
+    return projection
+
+
+def _decode_candidate_w_pair(projection, *, expected_maps, n, memory_count, edge_count, lower, upper):
+    """Bind ordered maps/layout BEFORE allocating encoded numeric bytes; caller owns authority."""
+    from .recorder import _check_candidate_w_pair
+
+    _check_candidate_w_pair(projection)
+    if (any(not _int(value, minimum=1) for value in (n, memory_count, edge_count))
+            or not _number(lower) or not _number(upper) or lower > upper
+            or type(expected_maps) is not dict or set(expected_maps) != {
+                "target_indices", "candidate_positions", "candidate_edge_indices"}):
+        raise AnalysisError("candidate_w_pair_layout")
+    for name, limit in (("target_indices", n), ("candidate_positions", memory_count), ("candidate_edge_indices", edge_count)):
+        indices = expected_maps[name]
+        if (type(indices) is not list or not indices or any(not _int(index) or index >= limit for index in indices)
+                or len(set(indices)) != len(indices)):
+            raise AnalysisError("candidate_w_pair_expected_maps")
+    size = len(expected_maps["candidate_positions"])
+    if (_canonical(projection["maps"]) != _canonical(expected_maps) or projection["shape"] != [size]
+            or len(expected_maps["candidate_edge_indices"]) != size):
+        raise AnalysisError("candidate_w_pair_map_binding")
+    result = tuple(np.frombuffer(bytes.fromhex(projection[side + "_hex"]), dtype="<f8") for side in ("original", "repeat"))
+    if any(not np.isfinite(value).all() or np.any(value < lower) or np.any(value > upper) for value in result):
+        raise AnalysisError("candidate_w_pair_bounds")
+    return result
+
+
+def _compare_replay_operations(first_event, second_event):
+    from .recorder import _scientific
+
+    excluded = {"sequence", "scientific_sha256", "previous_scientific_sha256", "run_metadata_sha256", "branch_id",
+                "parent_branch_id", "parent_checkpoint_name", "parent_checkpoint_sequence",
+                "parent_checkpoint_sha256", "parent_state_anchor_sha256"}
+    if type(first_event) is not dict or type(second_event) is not dict:
+        raise AnalysisError("selected_replay_operation_object")
+    if _canonical(_scientific({key: value for key, value in first_event.items() if key not in excluded})) != _canonical(
+            _scientific({key: value for key, value in second_event.items() if key not in excluded})):
+        raise AnalysisError("selected_replay_scientific_operation")
+
+
+def _selected_replay_plan(diagnostic, metadata, execution, source, start):
+    """Validate selected plain declarations without inventing metadata selection."""
+    from .replay import _source
+
+    fields = {"family", "seeds", "engine_identity", "mbon11_population_size", "candidate_identity",
+              "selected_configuration", "response_window", "retention_times_ms", "input_sha256"}
+    if (type(execution) is not dict or set(execution) != fields or execution["family"] != "qualification"
+            or type(execution["seeds"]) not in (list, tuple) or tuple(execution["seeds"]) != (11, 23)
+            or any(type(seed) is not int for seed in execution["seeds"])
+            or not _int(execution["mbon11_population_size"], minimum=1)
+            or not _valid_engine_identity(execution["engine_identity"], execution["mbon11_population_size"])
+            or _canonical(execution["engine_identity"]) != _canonical(metadata["engine_identity"])
+            or execution["mbon11_population_size"] != diagnostic["population_size"]
+            or execution["candidate_identity"] != diagnostic["candidate_identity"]
+            or _canonical(execution["input_sha256"]) != _canonical(_expected_inputs("qualification"))):
+        raise AnalysisError("selected_replay_execution")
+    for name, choices, keys in (("selected_configuration", GRID, {"cs_duration_ms", "dan_onset_ms", "post_pair_gap_ms"}),
+                                ("response_window", RESPONSE_WINDOWS, {"start_ms", "end_ms"})):
+        value = execution[name]
+        if (type(value) is not dict or set(value) != keys or any(not _number(number) for number in value.values())
+                or value not in [vars(choice) for choice in choices]):
+            raise AnalysisError("selected_replay_execution_timing")
+    times = execution["retention_times_ms"]
+    if (type(times) is not list or len(times) != 2 or any(not _int(time) for time in times)
+            or times[0] not in RETENTION_CANDIDATES_MS or times[1] != times[0] + 60000
+            or diagnostic["response_window"] != execution["response_window"]):
+        raise AnalysisError("selected_replay_execution_retention")
+    _source(source)
+    if (type(start) is not dict or set(start) != {"sim_tick", "complete_state_sha256", "weights_frozen"}
+            or not _int(start["sim_tick"]) or not _digest(start["complete_state_sha256"])
+            or type(start["weights_frozen"]) is not bool
+            or source != diagnostic["source_occurrence"] or start != diagnostic["boundaries"]["start"]["original"]):
+        raise AnalysisError("selected_replay_parent_expectation")
+    key = diagnostic["physical_key"]
+    base = f"selected/{key['seed']}/{key['paired_identity']}/{key['presentation_order']}/"
+    if key["phase"] == "pre":
+        branch = base + "pre/" + key["stimulus"]
+        parent = {"parent_branch_id": source["origin_branch_id"], "parent_checkpoint_name": source["checkpoint_name"],
+                  "parent_checkpoint_sequence": source["checkpoint_sequence"], "parent_checkpoint_sha256": source["checkpoint_sha256"]}
+        if start["sim_tick"] != source["sim_tick"]:
+            raise AnalysisError("selected_replay_baseline_clock")
+    else:
+        if key["retention_ms"] not in times:
+            raise AnalysisError("selected_replay_selected_retention")
+        role = "intervention" if key["condition"] in INTERVENTIONS else "training"
+        if source["origin_branch_id"] != base + key["condition"] + "/" + role:
+            raise AnalysisError("selected_replay_source_role")
+        prefix = base + ("" if key["condition"] == "paired" else key["condition"] + "/")
+        branch = prefix + f"post/{key['retention_ms']}/{key['stimulus']}"
+        parent = {"parent_branch_id": prefix + f"retention/{key['retention_ms']}",
+                  "parent_state_anchor_sha256": diagnostic["parent_state_anchor_sha256"]}
+    if branch != diagnostic["original_branch_id"] or any(diagnostic[name] != value for name, value in parent.items()):
+        raise AnalysisError("selected_replay_parent_naming")
+    from .qualification import _trial_segments
+
+    onset = diagnostic["cs_onset_tick"]
+    schedule = _trial_segments(GridConfiguration(**execution["selected_configuration"]), key["stimulus"], paired=False)
+    segments = [(onset + round(part.start_ms * 10), onset + round(part.end_ms * 10), part.stimulus) for part in schedule]
+    if (segments[0][0] != start["sim_tick"] or segments[-1][1] != diagnostic["sim_tick"]
+            or len(segments) not in (3, 4)):
+        raise AnalysisError("selected_replay_selected_schedule")
+    return parent, segments
+
+
+def _selected_replay_observation(event, segment, diagnostic, execution, n):
+    """Check actual call/bin coverage and return bounded MBON11 window bins."""
+    from .recorder import OWNED
+    from .replay import OPERATION_VERSION, _clock
+
+    start, end, stimulus = segment
+    fields = OWNED | {"type", "branch_id", "sim_ms", "operation_version", "start_tick", "end_tick", "duration_ticks",
+                      "duration_ms", "stimulation", "learning", "current_mv", "pathway_detail", "qualification_detail", "telemetry"}
+    if (set(event) != fields or event["type"] != "observe" or event["operation_version"] != OPERATION_VERSION
+            or any(type(event[name]) is not int for name in ("start_tick", "end_tick", "duration_ticks"))
+            or (event["start_tick"], event["end_tick"], event["duration_ticks"]) != (start, end, end - start)
+            or not 0 < end - start <= 5000 or event["learning"] is not False or event["stimulation"] is not None
+            or not _number(event["current_mv"]) or event["current_mv"] != 20.0
+            or event["pathway_detail"] is not False or event["qualification_detail"] is not False):
+        raise AnalysisError("selected_replay_call")
+    _clock(event["sim_ms"], end)
+    _clock(event["duration_ms"], end - start)
+    telemetry = event["telemetry"]
+    expected_hash = diagnostic["input_sha256"] if stimulus else diagnostic["black_sha256"]
+    if (type(telemetry) is not dict or _canonical(telemetry.get("engine_identity")) != _canonical(execution["engine_identity"])
+            or telemetry.get("input_shape") != [32, 32, 3] or telemetry.get("input_dtype") != "uint8"
+            or telemetry.get("input_sha256") != expected_hash or telemetry.get("learning") is not False
+            or telemetry.get("stimulation") is not None or not _int(telemetry.get("total_spikes"))
+            or telemetry["total_spikes"] > n * (end - start) or not _digest(telemetry.get("spike_sha256"))):
+        raise AnalysisError("selected_replay_telemetry")
+    _clock(telemetry["sim_ms"], end)
+    _clock(telemetry["interval_ms"], end - start)
+    bins, cursor, selected, ppl_count = telemetry["bins"], start, [], 0
+    if type(bins) is not list or len(bins) != (end - start + 99) // 100:
+        raise AnalysisError("selected_replay_bin_count")
+    groups = execution["engine_identity"]["neural_groups"]
+    totals = {name: 0 for name in groups}
+    window_start = diagnostic["cs_onset_tick"] + round(execution["response_window"]["start_ms"] * 10)
+    window_end = diagnostic["boundaries"]["window"]["original"]["sim_tick"]
+    for item in bins:
+        if type(item) is not dict or set(item) != {"end_ms", "duration_ms", "group_spikes"}:
+            raise AnalysisError("selected_replay_bin_fields")
+        ticks = min(100, end - cursor)
+        _clock(item["end_ms"], cursor + ticks)
+        _clock(item["duration_ms"], ticks)
+        counts = item["group_spikes"]
+        if type(counts) is not dict or set(counts) != set(groups):
+            raise AnalysisError("selected_replay_bin_groups")
+        for name, count in counts.items():
+            if not _int(count) or count > len(groups[name]) * ticks:
+                raise AnalysisError("selected_replay_bin_count_bound")
+            totals[name] += count
+        if window_start <= cursor and cursor + ticks <= window_end:
+            selected.append({"start_tick": cursor, "end_tick": cursor + ticks, "spikes": counts["mbon11"]})
+        if cursor + ticks <= window_end:
+            ppl_count += counts["ppl101"]
+        cursor += ticks
+    if type(telemetry.get("rates_hz")) is not dict or set(telemetry["rates_hz"]) != set(groups):
+        raise AnalysisError("selected_replay_rates")
+    for name, count in totals.items():
+        if not _same_number(telemetry["rates_hz"][name], _response_rate(count, end - start, len(groups[name]))):
+            raise AnalysisError("selected_replay_rate_bins")
+    if not _same_number(telemetry.get("turn_hz"), telemetry["rates_hz"]["motor_right"] - telemetry["rates_hz"]["motor_left"]):
+        raise AnalysisError("selected_replay_turn")
+    return selected, ppl_count
+
+
+def _compare_selected_replay(events, diagnostic, *, metadata, execution, expected_source_occurrence, expected_start,
+                             expected_maps, n, memory_count, edge_count, lower, upper):
+    """Compare one recorded pair, draining the external fixed-prefix iterator; never issue proof."""
+    from .recorder import OWNED, _check_qualification_replay
+    from .qualification import _state_difference
+    from .replay import OPERATION_VERSION, _clock
+
+    error = None
+    try:
+        _check_qualification_replay(diagnostic, metadata, diagnostic["sequence"])
+        parent, segments = _selected_replay_plan(diagnostic, metadata, execution, expected_source_occurrence, expected_start)
+        parameters = execution["engine_identity"]["model_provenance"]["parameters"]
+        if (expected_maps["target_indices"] != execution["engine_identity"]["neural_groups"]["mbon11"]
+                or not _number(lower) or not _number(upper)
+                or lower != parameters["minimum_fraction"] - 1 or upper != parameters["maximum_fraction"] - 1):
+            raise AnalysisError("selected_replay_model_maps_bounds")
+        first, second = _decode_candidate_w_pair(diagnostic["candidate_projection"], expected_maps=expected_maps, n=n,
+            memory_count=memory_count, edge_count=edge_count, lower=lower, upper=upper)
+        state_resolution = _state_difference(first, second)
+        if (not _number(state_resolution, minimum=0) or state_resolution != diagnostic["candidate_memory_w_resolution"]
+                or diagnostic["candidate_projection"]["original_hex"] != diagnostic["candidate_projection"]["repeat_hex"]):
+            raise AnalysisError("selected_replay_state_resolution")
+        references = {reference["sequence"]: (side, index, reference["scientific_sha256"])
+                      for side, values in diagnostic["operations"].items() for index, reference in enumerate(values)}
+        branches = {diagnostic["original_branch_id"]: "original", diagnostic["replay_id"]: "repeat"}
+        key = diagnostic["physical_key"]
+        base = f"selected/{key['seed']}/{key['paired_identity']}/{key['presentation_order']}/"
+        recipient = ("matched_reference" if key.get("condition") == "sufficiency" else
+                     "paired" if key.get("condition") in INTERVENTIONS else key.get("condition"))
+        training_id = base + str(recipient) + "/training"
+    except (KeyError, TypeError, ValueError, IndexError, AttributeError, OverflowError):
+        error = "selected_replay_declarations"
+    operations = {"original": [], "repeat": []}
+    bins = {"original": [], "repeat": []}
+    ppl_counts = {"original": 0, "repeat": 0}
+    source_seen = anchor_seen = diagnostic_seen = False
+    training = intervention = None
+    recipient_occurrence = intervention_occurrence = intervention_parent = None
+    route_fields = ("training_id", "training_start_tick", "association_t0_tick", "retention_reference_tick",
+                    "training_end_tick", "last_visual_end_tick", "last_external_dan_end_tick",
+                    "unpaired_nearest_cs_boundary_ticks", "training_visual_exposure_ticks", "training_end_checkpoint_sha256")
+    cells = set()
+    window_sequences = {}
+    for event in events:
+        if error is not None:
+            continue
+        try:
+            if event["sequence"] == expected_source_occurrence["checkpoint_sequence"]:
+                source = expected_source_occurrence
+                if (event["type"] != ("qualification_checkpoint" if key["phase"] == "pre" else "checkpoint")
+                        or any(event.get(name) != value for name, value in {
+                            "checkpoint_name": source["checkpoint_name"], "checkpoint_sha256": source["checkpoint_sha256"],
+                            "branch_id": source["origin_branch_id"], "sim_tick": source["sim_tick"]}.items())):
+                    raise AnalysisError("selected_replay_source_occurrence")
+                _clock(event["sim_ms"], source["sim_tick"])
+                source_seen = True
+            if key["phase"] == "post":
+                if event["type"] == "checkpoint" and event["branch_id"] == training_id and training is None:
+                    if recipient_occurrence is not None:
+                        raise AnalysisError("selected_replay_ambiguous_recipient_occurrence")
+                    recipient_occurrence = {"checkpoint_name": event["checkpoint_name"], "checkpoint_sha256": event["checkpoint_sha256"],
+                        "origin_branch_id": event["branch_id"], "checkpoint_sequence": event["sequence"], "sim_tick": event["sim_tick"]}
+                if (key["condition"] in INTERVENTIONS and event["type"] == "checkpoint"
+                        and event["branch_id"] == expected_source_occurrence["origin_branch_id"] and intervention is None):
+                    if intervention_occurrence is not None:
+                        raise AnalysisError("selected_replay_ambiguous_intervention_occurrence")
+                    intervention_occurrence = {"checkpoint_name": event["checkpoint_name"], "checkpoint_sha256": event["checkpoint_sha256"],
+                        "origin_branch_id": event["branch_id"], "checkpoint_sequence": event["sequence"], "sim_tick": event["sim_tick"]}
+                    intervention_parent = {name: event.get(name) for name in (
+                        "parent_branch_id", "parent_checkpoint_name", "parent_checkpoint_sequence", "parent_checkpoint_sha256")}
+                if event["type"] == "qualification_training" and event.get("training_id") == training_id:
+                    if training is not None:
+                        raise AnalysisError("selected_replay_duplicate_training")
+                    _validate_training(event, execution, (11, 23), "qualification")
+                    if (event["branch_id"] != training_id or event["condition"] != recipient
+                            or any(event[name] != key[name] for name in ("seed", "paired_identity", "presentation_order"))):
+                        raise AnalysisError("selected_replay_training_factors")
+                    if (recipient_occurrence is None or recipient_occurrence["sim_tick"] != event["training_end_tick"]
+                            or recipient_occurrence["checkpoint_sha256"] != event["training_end_checkpoint_sha256"]):
+                        raise AnalysisError("selected_replay_recipient_occurrence")
+                    training = {name: event[name] for name in route_fields}
+                if event["type"] == "assay_intervention" and event.get("intervention_id") == expected_source_occurrence["origin_branch_id"]:
+                    if intervention is not None:
+                        raise AnalysisError("selected_replay_duplicate_intervention")
+                    _validate_intervention(event, execution, (11, 23))
+                    if (event["branch_id"] != expected_source_occurrence["origin_branch_id"]
+                            or event["condition"] != key["condition"]
+                            or any(event[name] != key[name] for name in ("seed", "paired_identity", "presentation_order"))):
+                        raise AnalysisError("selected_replay_intervention_factors")
+                    if (training is None or recipient_occurrence is None or intervention_occurrence != expected_source_occurrence
+                            or not _int(event["recipient_training_end_tick"])
+                            or event["recipient_training_end_tick"] != training["training_end_tick"]
+                            or event["recipient_training_end_tick"] != expected_source_occurrence["sim_tick"]
+                            or event["recipient_training_id"] != training_id):
+                        raise AnalysisError("selected_replay_intervention_clock_occurrence")
+                    expected_parent = {"parent_branch_id": recipient_occurrence["origin_branch_id"],
+                        "parent_checkpoint_name": recipient_occurrence["checkpoint_name"],
+                        "parent_checkpoint_sequence": recipient_occurrence["checkpoint_sequence"],
+                        "parent_checkpoint_sha256": recipient_occurrence["checkpoint_sha256"]}
+                    if (_canonical(intervention_parent) != _canonical(expected_parent)
+                            or _canonical({name: event.get(name) for name in expected_parent}) != _canonical(expected_parent)):
+                        raise AnalysisError("selected_replay_intervention_parent_occurrence")
+                    intervention = {name: event[name] for name in ("recipient_training_id", "recipient_checkpoint_sha256",
+                        "post_intervention_checkpoint_sha256", "recipient_training_end_tick", "condition", "intervention_id")}
+                if event["type"] == "state_anchor" and event.get("state_anchor_sha256") == parent["parent_state_anchor_sha256"]:
+                    if (anchor_seen or event["origin_branch_id"] != parent["parent_branch_id"]
+                            or event["source_occurrence"] != expected_source_occurrence
+                            or event["sim_tick"] != expected_start["sim_tick"]
+                            or event["complete_state_sha256"] != expected_start["complete_state_sha256"]):
+                        raise AnalysisError("selected_replay_anchor")
+                    anchor_seen = True
+            side = branches.get(event["branch_id"])
+            if event["sequence"] in references:
+                expected_side, index, digest = references[event["sequence"]]
+                if side != expected_side or len(operations[side]) != index or event["scientific_sha256"] != digest:
+                    raise AnalysisError("selected_replay_reference")
+            if side is None:
+                continue
+            if diagnostic_seen:
+                raise AnalysisError("selected_replay_activity_after_diagnostic")
+            if event["type"] == "qualification_replay":
+                if side != "repeat" or _canonical(event) != _canonical(diagnostic):
+                    raise AnalysisError("selected_replay_diagnostic")
+                diagnostic_seen = True
+                continue
+            if event["type"] == "qualification_evidence":
+                if side != "original" or len(window_sequences) != 2:
+                    raise AnalysisError("selected_replay_early_response")
+                _validate_response(event, execution, (11, 23), "qualification_evidence")
+                replay_scalar = event.get("response_replay_resolution_hz")
+                one_spike = event.get("one_spike_rate_hz")
+                window = execution["response_window"]
+                window_ticks = round((window["end_ms"] - window["start_ms"]) * 10)
+                if (not _number(replay_scalar, minimum=0) or replay_scalar != diagnostic["response_replay_resolution_hz"]
+                        or not _number(one_spike, minimum=0)
+                        or one_spike != _response_rate(1, window_ticks, diagnostic["population_size"])
+                        or event["endogenous_dan_spikes"] != ppl_counts["original"]):
+                    raise AnalysisError("selected_replay_response_measurements")
+                if key["phase"] == "post":
+                    if (training is None or _canonical({name: event[name] for name in route_fields}) != _canonical(training)
+                            or event["retention_source_checkpoint_sha256"] != expected_source_occurrence["checkpoint_sha256"]
+                            or event["passive_decay_ticks"] != training["retention_reference_tick"] + key["retention_ms"] * 10
+                            - expected_source_occurrence["sim_tick"]
+                            or event["intervention_id"] != (intervention["intervention_id"] if key["condition"] in INTERVENTIONS else None)):
+                        raise AnalysisError("selected_replay_response_training_route")
+                if (any(event[name] != key[name] for name in ("seed", "paired_identity", "presentation_order", "phase", "stimulus"))
+                        or (key["phase"] == "post" and any(event[name] != key[name] for name in ("condition", "retention_ms")))
+                        or event["bins"] != bins["original"] or event.get("replay_id") != diagnostic["replay_id"]
+                        or event.get("response_replay_resolution_hz") != diagnostic["response_replay_resolution_hz"]
+                        or any(event.get(name) != value for name, value in parent.items())
+                        or event["cs_onset_tick"] != diagnostic["cs_onset_tick"]):
+                    raise AnalysisError("selected_replay_response")
+                cell = event["condition"], event["retention_ms"]
+                if cell in cells or len(cells) >= (16 if key["phase"] == "pre" else 1):
+                    raise AnalysisError("selected_replay_response_reuse")
+                cells.add(cell)
+                continue
+            if event["sequence"] not in references:
+                raise AnalysisError("selected_replay_unreferenced_target_event")
+            index = len(operations[side])
+            if (not source_seen or (key["phase"] == "post" and (not anchor_seen or training is None
+                    or (key["condition"] in INTERVENTIONS and intervention is None)))):
+                raise AnalysisError("selected_replay_late_parent")
+            if index == 0:
+                if (set(event) != OWNED | {"type", "branch_id", "sim_ms"} | set(parent)
+                        or event["type"] != "branch_start" or any(event[name] != value for name, value in parent.items())):
+                    raise AnalysisError("selected_replay_branch_start")
+                _clock(event["sim_ms"], expected_start["sim_tick"])
+            elif expected_start["weights_frozen"] and index == 1:
+                if (set(event) != OWNED | {"type", "branch_id", "sim_ms", "sim_tick", "operation_version",
+                        "before_weights_frozen", "after_weights_frozen"} or event["type"] != "replay_thaw"
+                        or event["operation_version"] != OPERATION_VERSION or type(event["sim_tick"]) is not int
+                        or event["sim_tick"] != expected_start["sim_tick"] or event["before_weights_frozen"] is not True
+                        or event["after_weights_frozen"] is not False):
+                    raise AnalysisError("selected_replay_thaw")
+                _clock(event["sim_ms"], expected_start["sim_tick"])
+            else:
+                segment_index = index - 1 - int(expected_start["weights_frozen"])
+                if not 0 <= segment_index < len(segments):
+                    raise AnalysisError("selected_replay_extra_operation")
+                selected, ppl_count = _selected_replay_observation(event, segments[segment_index], diagnostic, execution, n)
+                bins[side].extend(selected)
+                ppl_counts[side] += ppl_count
+                if event["end_tick"] == diagnostic["boundaries"]["window"][side]["sim_tick"]:
+                    window_sequences[side] = event["sequence"]
+            operations[side].append(event)
+        except (KeyError, TypeError, ValueError, IndexError, AttributeError, OverflowError):
+            error = "selected_replay_stream"
+    if error is not None:
+        raise AnalysisError(error)
+    if (not source_seen or not diagnostic_seen or len(window_sequences) != 2
+            or any(len(operations[side]) != len(diagnostic["operations"][side])
+                   or len(operations[side]) != 1 + int(expected_start["weights_frozen"]) + len(segments)
+                   for side in operations)):
+        raise AnalysisError("selected_replay_incomplete")
+    if key["phase"] == "post":
+        if (not anchor_seen or training is None
+                or training["retention_reference_tick"] + key["retention_ms"] * 10 - 1000 != expected_start["sim_tick"]
+                or training["training_end_tick"] != expected_source_occurrence["sim_tick"]):
+            raise AnalysisError("selected_replay_training_route")
+        if key["condition"] in INTERVENTIONS:
+            if (intervention is None or intervention["recipient_training_id"] != training["training_id"]
+                    or intervention["recipient_checkpoint_sha256"] != training["training_end_checkpoint_sha256"]
+                    or intervention["post_intervention_checkpoint_sha256"] != expected_source_occurrence["checkpoint_sha256"]
+                    or intervention["condition"] != key["condition"]):
+                raise AnalysisError("selected_replay_intervention_route")
+        elif recipient_occurrence != expected_source_occurrence:
+            raise AnalysisError("selected_replay_training_source")
+    for first_event, second_event in zip(operations["original"], operations["repeat"]):
+        _compare_replay_operations(first_event, second_event)
+    if bins["original"] != bins["repeat"] or not bins["original"]:
+        raise AnalysisError("selected_replay_window_bins")
+    window = execution["response_window"]
+    duration = round((window["end_ms"] - window["start_ms"]) * 10)
+    if sum(item["end_tick"] - item["start_tick"] for item in bins["original"]) != duration:
+        raise AnalysisError("selected_replay_window_coverage")
+    response_resolution = _response_rate(abs(sum(item["spikes"] for item in bins["original"])
+        - sum(item["spikes"] for item in bins["repeat"])), duration, diagnostic["population_size"])
+    if response_resolution != diagnostic["response_replay_resolution_hz"]:
+        raise AnalysisError("selected_replay_response_resolution")
+    return {"response_replay_resolution_hz": response_resolution, "candidate_memory_w_resolution": state_resolution}
+
+
 def _valid_engine_identity(identity: object, population: int) -> bool:
     """Match the engine's complete nested, self-hashed identity contract."""
     if (not isinstance(identity, dict)

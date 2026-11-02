@@ -2,7 +2,7 @@
 
 Use `origin` of `manu-brighter/fly-connectome-sim`, branch
 `feat/connectome-experiment-core`, latest pushed feature commit. The latest
-reviewed checkpoint is Task7B4e.1, the private successful-append reference helper.
+reviewed checkpoint is Task7B4e.2 R1, bounded diagnostic/schema and pair-comparison helpers.
 The project remains WIP, not v1.
 
 Continue autonomously on the original Windows workstation, including reviewed
@@ -58,6 +58,41 @@ conversion. Unavailable counts stay unavailable; no gate tolerance was added.
 NumPy 2.4.6's private header API supports NPY1/2/3; lossy structured/subarray
 extension templates are rejected. Protocol/raw formats and native core remain.
 
+**Task7B4e.2 R1 passed independent source review and bounded Windows acceptance.**
+Closed qualification_replay structural/schema intake, float64 W-pair projection
+helpers and independent external-iterator pair comparison are implemented.
+The corrected review findings cover exact source/recipient occurrences and
+present-cell response fields, including cumulative pre-window PPL101 counts.
+Plain metadata/execution/source/start expectations confer no authority; actual
+native or genuine-context maps must bind before numeric decoding. Every target
+operation, whole scientific telemetry, tail and EOF remains checked. These are
+recorded-consistency checks, not isolated response/history attestation.
+
+Current R1 model-source identity:
+`4527956304d4d1630c415a190d4a475912cbe4ca028b4abb63baa859f9af13ae`.
+Schema SHA256:
+`3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
+Focused R1 tests: **115 passed, 519 deselected in 62.55 s**, exit0, no
+failures/errors/skips; all five owned paths and 30 source members matched
+before/after. Actual native PRE, ordinary POST at 10,000/70,000 ms, SHAM and
+[100,300) tonic-PPL101 fixtures exercise the local comparisons. R1 affected-file
+compatibility: **853 passed, one declared opt-in skip in 172.38 s**, exit0,
+no errors/failures. Its sole skipped fullgraph zero-anchor qualification-context
+case separately **passed on actual MaleCNS in 7.89 s**, exit0, no skips/errors.
+All three normal-host junction cases passed. Both runs matched all five frozen
+paths, 30 source members and schema before/after; independent acceptance-file
+audit passed. Focused/compatibility coverage overlaps and is not additive.
+No whole ordinary/all-eight/complete96 run was repeated on this source.
+
+True production remains unavailable (`measure_replay` accepts only False).
+No full 408-physical/768-logical repeat matrix has been measured. Parent e stays
+open; e.3 owns lockstep production and f owns global actual-byte reconciliation
+and public assessment/freezing. No formal/configuration/capacity claim follows.
+
+## Historical evidence — not current-source acceptance
+
+### Task7B4e.1 — accepted reference foundation on earlier source
+
 **Task7B4e.1 passed independent source review and bounded Windows acceptance.**
 Only recorder.py gained the private `_append_reference` helper; public `append`
 and its None return remain byte-for-byte unchanged. The helper returns claimed
@@ -66,7 +101,7 @@ including write/flush/raw-digest update, with healthy/open and exact +1 position
 checks. Failures/drift return no reference. It adds no cache, prefix scan, trust
 issuer, crash-durability guarantee or proof; f must authenticate actual bytes.
 
-Current Windows model-source identity:
+Historical e.1 Windows model-source identity:
 `293c8a721f0a18ba9dcf0baf726437b8455133d67cf343bb9fb1c69ca617a060`.
 Schema remains
 `c56a64f91bf08b2f3c379a4720d4be3a5c2d1743c1c09394d2483f23d61af115`.
@@ -78,13 +113,9 @@ skip is not a junction pass. All 30 source members and both frozen source/test
 paths matched before/after these runs. No whole ordinary suite, all-eight matrix
 or complete96 grid was repeated on this source.
 
-The helper is not wired into measured production. No qualification_replay event,
-schema, analysis, assay or core change and no 408 repeats were implemented here.
-Parent e remains open: e.2 diagnostics/projections/independent comparison and
-e.3 lockstep production require their own bounded briefs/releases. No scientific
-support, formal freeze/configuration or full-assay capacity follows from e.1.
-
-## Historical evidence — not current-source acceptance
+The e.1 slice added no qualification_replay schema/comparator or True production.
+Later e.2 source/schema work is reported separately above; none upgrades the
+earlier e.1 test evidence to the current source.
 
 ### Task7B4d — accepted production on earlier source
 
@@ -147,7 +178,7 @@ capacity follows from these matrices or the graph compatibility cases.
   Its complete96 tiny-native prefix/seal case passed in **5,124.53 s**:
   96 units/144 points, 89,831 events, 1,478 checkpoints and 3,594,389,820 event
   bytes; zero-anchor checks authenticated maps/context, not training replay.
-  This costly case was **not repeated on d or e.1 source**.
+  This costly case was **not repeated on d, e.1 or e.2 source**.
 - The [detail-on fullgraph prefix sample](experiments/2026-11-02-fullgraph-detail-prefix-pilot.md)
   used that same c.2b source at commit `21f788342b276e1d8a323f572e37e248542948d6`.
   Its final sample was 630.546 s / 55,267,543 dedicated bytes /
@@ -191,9 +222,11 @@ Interrupted development runs are never counted as passes.
 - [x] 7B4e.1: private successful-append reference foundation; public append unchanged.
 - [ ] 7B4e: measure all 408 physical response repeats and actual state resolution;
   bind exact independent parents/raw bins. Never borrow frozen tolerance or invent 0.
-  Planned e.2 covers closed diagnostics/projections/schema and independent pair
-  comparison; e.3 covers lockstep 9/51/408 production. Full repeat production
+  e.2 bounded schema/helpers/local pair comparison are accepted. e.3 covers
+  lockstep 9/51/408 production. Full repeat production
   remains unreleased until explicit bounded briefs.
+- [x] 7B4e.2: closed diagnostic/schema intake, bounded W projections and independent
+  external-iterator local pair comparison; no True-production wiring.
 - [ ] 7B4f: integrate selected inventory with authenticated grid assessment, one
   evidence-bound terminal and independently checked seal; sealed-only engine-free
   public freezing. Complete valid negatives never create a production config.

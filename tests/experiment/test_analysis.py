@@ -26,7 +26,7 @@ from fly_connectome_sim.experiment.qualification import (
     GRID, RESPONSE_WINDOWS, RETENTION_CANDIDATES_MS, GridConfiguration,
     _training_timeline,
 )
-from replay_helpers import engine_factory, _declared_native_frozen_config
+from replay_helpers import engine_factory, map_engine_factory, _declared_native_frozen_config
 
 
 H = {name: sha256(name.encode()).hexdigest() for name in (
@@ -46,6 +46,652 @@ INTERVENTIONS = ("necessity", "sufficiency", "sham")
 ORDINARY = ("paired", "frozen_plasticity", "no_external_dan",
             "temporally_unpaired", "matched_reference")
 BASE_TICK = 100000
+
+
+@pytest.fixture
+def selected_replay_pair(engine_factory, tmp_path, request):
+    """Actual tiny-native PRE consistency data, without native-history attestation."""
+    from fly_connectome_sim.cli import _qualification_metadata
+    from fly_connectome_sim.experiment.replay import OPERATION_VERSION, build_black_retention_recipe, build_state_anchor
+    from fly_connectome_sim.experiment.analysis import _training_plan
+    options = getattr(request, "param", {})
+    cs = options.get("cs", 100.0)
+    if options.get("ppl_tonic"):
+        tonic = np.zeros(8, dtype=np.float32)
+        tonic[3] = 20.0
+        configured = request.getfixturevalue("map_engine_factory")
+        def engine_factory():
+            return configured(tonic=tonic)
+    native = engine_factory()
+    native.brain.weights_frozen = options.get("frozen", False)
+    metadata = _qualification_metadata(native.identity())
+    recorder = RunRecorder(tmp_path / "selected-replay", run_kind="qualification", metadata=metadata,
+                           root_branch_id="qualification/baseline")
+    path = tmp_path / "baseline.npz"
+    native.brain.checkpoint(path)
+    digest = recorder.ingest_checkpoint("brain-before.npz", path, origin_branch_id="qualification/baseline")
+    source = {"checkpoint_name": "brain-before.npz", "checkpoint_sha256": digest,
+              "checkpoint_sequence": 0, "origin_branch_id": "qualification/baseline", "sim_tick": 0}
+    recorder.append({"type": "qualification_checkpoint", "branch_id": "qualification/baseline",
+                     "sim_ms": 0.0, "sim_tick": 0, "checkpoint_name": "brain-before.npz"})
+    parent = {"parent_branch_id": source["origin_branch_id"], "parent_checkpoint_name": source["checkpoint_name"],
+              "parent_checkpoint_sequence": source["checkpoint_sequence"], "parent_checkpoint_sha256": digest}
+    key = {"seed": 11, "paired_identity": "A", "presentation_order": "AB", "phase": "pre", "stimulus": "A"}
+    if options.get("post"):
+        configuration = {**CONFIGURATION, "cs_duration_ms": cs}
+        plan = _training_plan({"selected_configuration": configuration}, 11, "A", "AB", "paired", "qualification", 0)
+        branch = "selected/11/A/AB/paired/training"
+        recorder.append({"type": "branch_start", "branch_id": branch, "sim_ms": 0.0, **parent})
+        for segment in plan["segments"]:
+            frame = (np.zeros((32, 32, 3), dtype=np.uint8) if segment["stimulus"] is None
+                     else AssayStimuli(11, "qualification").frame(segment["stimulus"]))
+            observed = native.observe(frame, (segment["end_tick"] - segment["start_tick"]) / 10,
+                                      stimulation=segment["external_stimulation"], learning=segment["learning"])
+            recorder.append({"type": "observe", "branch_id": branch, "sim_ms": native.brain.cursor / 10,
+                             "telemetry": observed})
+        path = tmp_path / "training-end.npz"
+        native.brain.checkpoint(path)
+        digest = recorder.ingest_checkpoint(path.name, path, origin_branch_id=branch)
+        source = {"checkpoint_name": path.name, "checkpoint_sha256": digest, "origin_branch_id": branch,
+                  "checkpoint_sequence": recorder.next_sequence, "sim_tick": native.brain.cursor}
+        recorder.append({"type": "checkpoint", "branch_id": branch, "sim_ms": native.brain.cursor / 10,
+                         "sim_tick": native.brain.cursor, "checkpoint_name": path.name, **parent})
+        recorder.append({"type": "qualification_training", "branch_id": branch, "sim_ms": native.brain.cursor / 10,
+            "training_version": "associative-training/v1", "training_id": branch, "seed": 11, "paired_identity": "A",
+            "presentation_order": "AB", "condition": "paired", "candidate_identity": "kc-mbon11-ppl101/v1",
+            "baseline_tick": 0, "baseline_checkpoint_sha256": parent["parent_checkpoint_sha256"],
+            "training_end_checkpoint_sha256": digest, **plan, **native.brain.candidate_state_digests(native.groups.mbon11)})
+        condition = options.get("condition", "paired")
+        if condition == "sham":
+            recipient_source = deepcopy(source)
+            recipient_parent = {"parent_branch_id": source["origin_branch_id"], "parent_checkpoint_name": source["checkpoint_name"],
+                "parent_checkpoint_sequence": source["checkpoint_sequence"], "parent_checkpoint_sha256": source["checkpoint_sha256"]}
+            if options.get("wrong_parent_occurrence"):
+                alias_digest = recorder.ingest_checkpoint("recipient-alias.npz", path, origin_branch_id=branch)
+                alias_sequence = recorder.next_sequence
+                recorder.append({"type": "checkpoint", "branch_id": branch, "sim_ms": native.brain.cursor / 10,
+                                 "sim_tick": native.brain.cursor, "checkpoint_name": "recipient-alias.npz"})
+                assert alias_digest == digest
+                recipient_parent.update(parent_checkpoint_name="recipient-alias.npz", parent_checkpoint_sequence=alias_sequence)
+            donor, recipient_engine = engine_factory(), engine_factory()
+            assert donor.identity() == recipient_engine.identity() == metadata["engine_identity"]
+            donor.brain.restore(path)
+            recipient_engine.brain.restore(path)
+            before = recipient_engine.brain.candidate_state_digests(recipient_engine.groups.mbon11)
+            donor_state = donor.brain.candidate_state_digests(donor.groups.mbon11)
+            recipient_engine.brain.replace_candidate_memory(donor.brain.candidate_memory(donor.groups.mbon11))
+            after = recipient_engine.brain.candidate_state_digests(recipient_engine.groups.mbon11)
+            assert before == after == donor_state
+            native = recipient_engine
+            branch = "selected/11/A/AB/" + ("other" if options.get("wrong_source") else "sham") + "/intervention"
+            recorder.append({"type": "branch_start", "branch_id": branch, "sim_ms": native.brain.cursor / 10, **recipient_parent})
+            path = tmp_path / "sham-post.npz"
+            native.brain.checkpoint(path)
+            digest = recorder.ingest_checkpoint(path.name, path, origin_branch_id=branch)
+            source = {"checkpoint_name": path.name, "checkpoint_sha256": digest, "origin_branch_id": branch,
+                      "checkpoint_sequence": recorder.next_sequence, "sim_tick": native.brain.cursor}
+            recorder.append({"type": "checkpoint", "branch_id": branch, "sim_ms": native.brain.cursor / 10,
+                             "sim_tick": native.brain.cursor, "checkpoint_name": path.name, **recipient_parent})
+            recorder.append({"type": "assay_intervention", "branch_id": branch, "sim_ms": native.brain.cursor / 10,
+                "intervention_version": "candidate-memory-replacement/v1", "intervention_id": branch,
+                "seed": 11, "paired_identity": "A", "presentation_order": "AB", "condition": "sham",
+                "candidate_identity": "kc-mbon11-ppl101/v1", "donor_role": "trained", "recipient_role": "trained",
+                "donor_training_id": recipient_source["origin_branch_id"], "recipient_training_id": recipient_source["origin_branch_id"],
+                "donor_training_end_tick": donor.brain.cursor, "recipient_training_end_tick": recipient_engine.brain.cursor,
+                "donor_checkpoint_sha256": recipient_source["checkpoint_sha256"], "recipient_checkpoint_sha256": recipient_source["checkpoint_sha256"],
+                "post_intervention_checkpoint_sha256": digest, "donor_candidate_memory_sha256": donor_state["candidate_memory_sha256"],
+                "recipient_candidate_memory_before_sha256": before["candidate_memory_sha256"],
+                "recipient_candidate_memory_after_sha256": after["candidate_memory_sha256"],
+                "noncandidate_state_before_sha256": before["noncandidate_state_sha256"],
+                "noncandidate_state_after_sha256": after["noncandidate_state_sha256"],
+                "replaced_components": ["memory_u", "memory_w", "weight"], "complete_replacement": True, **recipient_parent})
+        elif options.get("wrong_source"):
+            original = source
+            branch = "selected/11/A/AB/other/training"
+            parent = {"parent_branch_id": original["origin_branch_id"], "parent_checkpoint_name": original["checkpoint_name"],
+                      "parent_checkpoint_sequence": original["checkpoint_sequence"], "parent_checkpoint_sha256": original["checkpoint_sha256"]}
+            recorder.append({"type": "branch_start", "branch_id": branch, "sim_ms": native.brain.cursor / 10, **parent})
+            alias_digest = recorder.ingest_checkpoint("source-alias.npz", path, origin_branch_id=branch)
+            source = {"checkpoint_name": "source-alias.npz", "checkpoint_sha256": alias_digest, "origin_branch_id": branch,
+                      "checkpoint_sequence": recorder.next_sequence, "sim_tick": native.brain.cursor}
+            assert alias_digest == digest
+            recorder.append({"type": "checkpoint", "branch_id": branch, "sim_ms": native.brain.cursor / 10,
+                             "sim_tick": native.brain.cursor, "checkpoint_name": "source-alias.npz", **parent})
+            digest = alias_digest
+        retention = options.get("retention", 70000)
+        branch = "selected/11/A/AB/" + ("" if condition == "paired" else condition + "/") + f"retention/{retention}"
+        parent = {"parent_branch_id": source["origin_branch_id"], "parent_checkpoint_name": source["checkpoint_name"],
+                  "parent_checkpoint_sequence": source["checkpoint_sequence"], "parent_checkpoint_sha256": digest}
+        recorder.append({"type": "fork", "operation_version": OPERATION_VERSION, "branch_id": branch,
+                         "sim_tick": native.brain.cursor, "sim_ms": native.brain.cursor / 10, **parent})
+        target = plan["retention_reference_tick"] + retention * 10 - 1000
+        while native.brain.cursor < target:
+            start = native.brain.cursor
+            ticks = min(5000, target - start)
+            native.observe(np.zeros((32, 32, 3), dtype=np.uint8), ticks / 10, learning=False, stimulation=None)
+            recorder.append({"type": "neutral_gap_chunk", "operation_version": OPERATION_VERSION, "branch_id": branch,
+                "sim_ms": native.brain.cursor / 10, "start_tick": start, "end_tick": native.brain.cursor,
+                "duration_ticks": ticks, "duration_ms": ticks / 10, "stimulation": None, "learning": False,
+                "current_mv": 20.0, "pathway_detail": False, "qualification_detail": False, **metadata["black_input"]})
+        prefix = recorder.validate_prefix()
+        recipe = build_black_retention_recipe(prefix.iter_events(), source_occurrence=source, origin_branch_id=branch,
+            target_tick=target, engine_identity=native.identity(), run_metadata_sha256=prefix.manifest["run_metadata_sha256"],
+            black_input=metadata["black_input"], scientific_prefix=prefix.scientific_prefix)
+        anchor = build_state_anchor(anchor_id=branch, recipe=recipe, complete_state_sha256=native.brain.checkpoint_state_sha256())
+        recorder.append_state_anchor(anchor)
+        path = tmp_path / "retained.npz"
+        native.brain.checkpoint(path)
+        parent = {"parent_branch_id": branch, "parent_state_anchor_sha256": anchor["state_anchor_sha256"]}
+        key.update(phase="post", condition=condition, retention_ms=retention)
+    original_branch = ("selected/11/A/AB/pre/A" if key["phase"] == "pre" else "selected/11/A/AB/"
+                       + ("" if key["condition"] == "paired" else key["condition"] + "/") + f"post/{key['retention_ms']}/A")
+    branches = {"original": original_branch, "repeat": original_branch + "/repeat"}
+    engines = {side: engine_factory() for side in branches}
+    for engine in engines.values():
+        engine.brain.restore(path)
+    def state(engine, start=False):
+        result = {"sim_tick": engine.brain.cursor, "complete_state_sha256": engine.brain.checkpoint_state_sha256()}
+        if start:
+            result["weights_frozen"] = engine.brain.weights_frozen
+        else:
+            result.update(engine.brain.candidate_state_digests(engine.groups.mbon11))
+        return result
+    boundaries = {"start": {side: state(engine, True) for side, engine in engines.items()}}
+    operations = {side: [recorder._append_reference({"type": "branch_start", "branch_id": branch,
+        "sim_ms": engine.brain.cursor / 10, **parent})] for (side, branch), engine in zip(branches.items(), engines.values())}
+    for side, engine in engines.items():
+        if engine.brain.weights_frozen:
+            operations[side].append(recorder._append_reference({"type": "replay_thaw", "branch_id": branches[side],
+                "sim_tick": engine.brain.cursor, "sim_ms": engine.brain.cursor / 10, "operation_version": OPERATION_VERSION,
+                "before_weights_frozen": True, "after_weights_frozen": False}))
+            engine.brain.weights_frozen = False
+    window = {"start_ms": options.get("window_start", 0.0), "end_ms": options.get("window_end", 100.0)}
+    onset = native.brain.cursor + 1000
+    window_tick = onset + round(window["end_ms"] * 10)
+    positions = native.brain._candidate_positions(native.groups.mbon11)
+    maps = {"target_indices": native.groups.mbon11.tolist(), "candidate_positions": positions.tolist(),
+            "candidate_edge_indices": native.brain.circuit["edges"][positions].tolist()}
+    w_pair = None
+    window_counts = {side: 0 for side in engines}
+    window_start = onset + round(window["start_ms"] * 10)
+    schedule = ((100.0, None), (100.0, "A"), (200.0, None)) if cs == 100.0 else (
+        (100.0, None), (100.0, "A"), (200.0, "A"), (200.0, None))
+    for duration, stimulus in schedule:
+        frame = np.zeros((32, 32, 3), dtype=np.uint8) if stimulus is None else AssayStimuli(11, "qualification").frame(stimulus)
+        for side, engine in engines.items():
+            start = engine.brain.cursor
+            observed = engine.observe(frame, duration, learning=False, stimulation=None)
+            window_counts[side] += sum(item["group_spikes"]["mbon11"] for item in observed["bins"]
+                if window_start < round(item["end_ms"] * 10) <= window_tick)
+            operations[side].append(recorder._append_reference({"type": "observe", "branch_id": branches[side],
+                "operation_version": OPERATION_VERSION, "start_tick": start, "end_tick": engine.brain.cursor,
+                "duration_ticks": round(duration * 10), "duration_ms": duration, "sim_ms": engine.brain.cursor / 10,
+                "stimulation": None, "learning": False, "current_mv": 20.0,
+                "pathway_detail": False, "qualification_detail": False, "telemetry": observed}))
+        if engines["original"].brain.cursor == window_tick:
+            boundaries["window"] = {side: state(engine) for side, engine in engines.items()}
+            w_pair = {side: engine.brain.memory_w[positions].copy() for side, engine in engines.items()}
+    boundaries["final"] = {side: state(engine) for side, engine in engines.items()}
+    projection = {"projection_version": "selected-candidate-w-pair/v1", "dtype": "<f8", "shape": [len(positions)],
+                  "maps": maps, "original_hex": w_pair["original"].tobytes().hex(),
+                  "repeat_hex": w_pair["repeat"].tobytes().hex()}
+    diagnostic = {"type": "qualification_replay", "replay_version": "selected-response-repeat/v1",
+        "replay_id": branches["repeat"], "branch_id": branches["repeat"], "original_branch_id": branches["original"],
+        "physical_key": key,
+        "source_occurrence": source, "engine_identity_sha256": native.identity()["sha256"],
+        "candidate_identity": "kc-mbon11-ppl101/v1", "population_size": 1,
+        "input_sha256": metadata["rgb_input_sha256"]["stimuli"]["11"]["A"],
+        "black_sha256": metadata["rgb_input_sha256"]["black"], "response_window": window,
+        "cs_onset_tick": onset, "sim_tick": native.brain.cursor, "sim_ms": native.brain.cursor / 10, "operations": operations,
+        "boundaries": boundaries, "candidate_projection": projection,
+        "response_replay_resolution_hz": abs(window_counts["original"] - window_counts["repeat"]) / ((window_tick - window_start) / 10000.0),
+        "candidate_memory_w_resolution": float(np.abs(w_pair["original"] - w_pair["repeat"]).mean()),
+        **parent}
+    diagnostic.update(sim_tick=engines["repeat"].brain.cursor, sim_ms=engines["repeat"].brain.cursor / 10)
+    recorder.append(diagnostic)
+    prefix = recorder.validate_prefix()
+    diagnostic = list(prefix.iter_events())[-1]
+    execution = {"family": "qualification", "seeds": [11, 23], "engine_identity": native.identity(),
+        "mbon11_population_size": 1, "candidate_identity": "kc-mbon11-ppl101/v1",
+        "selected_configuration": {**CONFIGURATION, "cs_duration_ms": cs}, "response_window": window, "retention_times_ms": [10000, 70000],
+        "input_sha256": {seed: {**row, "black": metadata["rgb_input_sha256"]["black"]}
+                         for seed, row in metadata["rgb_input_sha256"]["stimuli"].items()}}
+    arguments = {"metadata": metadata, "execution": execution, "expected_source_occurrence": source,
+        "expected_start": boundaries["start"]["original"], "expected_maps": maps, "n": native.brain.n,
+        "memory_count": len(native.brain.memory_w), "edge_count": len(native.brain.weight),
+        "lower": native.brain.rule_parameters["minimum_fraction"] - 1,
+        "upper": native.brain.rule_parameters["maximum_fraction"] - 1}
+    try:
+        yield recorder, prefix, diagnostic, arguments
+    finally:
+        recorder.__exit__(RuntimeError, RuntimeError("unsealed consistency fixture"), None)
+
+
+def test_selected_replay_actual_native_pair_resolves_real_prefix(selected_replay_pair):
+    import fly_connectome_sim.experiment.analysis as analysis
+    _, prefix, diagnostic, arguments = selected_replay_pair
+    assert arguments["expected_source_occurrence"]["checkpoint_sha256"] != arguments["expected_start"]["complete_state_sha256"]
+    result = analysis._compare_selected_replay(prefix.iter_events(), diagnostic, **arguments)
+    assert result == {"response_replay_resolution_hz": 0.0, "candidate_memory_w_resolution": 0.0}
+
+
+def _rewrite_selected_replay(recorder, events, *, repair_references=True):
+    """Rehash actual recorded bytes for adversarial consistency tests, not native proof."""
+    from fly_connectome_sim.experiment.recorder import _canonical, _scientific_event
+    from fly_connectome_sim.experiment.replay import build_black_retention_recipe, build_state_anchor
+    previous = "0" * 64
+    anchors = {}
+    for index, item in enumerate(events):
+        item.setdefault("run_metadata_sha256", events[0]["run_metadata_sha256"])
+        item.update(sequence=index, previous_scientific_sha256=previous)
+        if item.get("parent_state_anchor_sha256") in anchors:
+            item["parent_state_anchor_sha256"] = anchors[item["parent_state_anchor_sha256"]]
+        if item["type"] == "state_anchor":
+            old = item["state_anchor_sha256"]
+            recipe = build_black_retention_recipe(events[:index], source_occurrence=item["source_occurrence"],
+                origin_branch_id=item["origin_branch_id"], target_tick=item["sim_tick"],
+                engine_identity=recorder.metadata["engine_identity"], run_metadata_sha256=item["run_metadata_sha256"],
+                black_input=recorder.metadata["black_input"],
+                scientific_prefix={"event_count": index, "final_sequence": index - 1, "final_scientific_sha256": previous})
+            item.update(build_state_anchor(anchor_id=item["anchor_id"], recipe=recipe,
+                                           complete_state_sha256=item["complete_state_sha256"]))
+            anchors[old] = item["state_anchor_sha256"]
+        if item["type"] == "qualification_replay" and repair_references:
+            for references in item["operations"].values():
+                for reference in references:
+                    reference["scientific_sha256"] = events[reference["sequence"]]["scientific_sha256"]
+        item["scientific_sha256"] = sha256(_canonical(_scientific_event(item))).hexdigest()
+        previous = item["scientific_sha256"]
+    (recorder.path / "events.jsonl").write_bytes(b"".join(_canonical(item) + b"\n" for item in events))
+    prefix = recorder.validate_prefix()
+    return prefix, next(item for item in prefix.iter_events() if item["type"] == "qualification_replay")
+
+
+@pytest.mark.parametrize("selected_replay_pair", [{"frozen": True}, {"window_end": 300.0},
+    {"cs": 300.0}, {"cs": 300.0, "window_end": 300.0, "frozen": True}], indirect=True)
+def test_selected_replay_native_thaw_windows_and_complete_tail(selected_replay_pair):
+    import fly_connectome_sim.experiment.analysis as analysis
+    _, prefix, diagnostic, arguments = selected_replay_pair
+    result = analysis._compare_selected_replay(prefix.iter_events(), diagnostic, **arguments)
+    assert result == {"response_replay_resolution_hz": 0.0, "candidate_memory_w_resolution": 0.0}
+    if arguments["execution"]["selected_configuration"]["cs_duration_ms"] == 100.0 and diagnostic["response_window"]["end_ms"] == 300.0:
+        assert diagnostic["boundaries"]["window"] == diagnostic["boundaries"]["final"]
+    else:
+        assert diagnostic["boundaries"]["window"] != diagnostic["boundaries"]["final"]
+
+
+@pytest.mark.parametrize("selected_replay_pair", [{"post": True, "retention": 10000}, {"post": True, "retention": 70000}], indirect=True)
+def test_selected_replay_actual_post_parent_and_training_route(selected_replay_pair):
+    import fly_connectome_sim.experiment.analysis as analysis
+    _, prefix, diagnostic, arguments = selected_replay_pair
+    assert diagnostic["physical_key"]["phase"] == "post"
+    assert diagnostic["source_occurrence"]["sim_tick"] == 111000
+    assert analysis._compare_selected_replay(prefix.iter_events(), diagnostic, **arguments) == {
+        "response_replay_resolution_hz": 0.0, "candidate_memory_w_resolution": 0.0,
+    }
+
+
+@pytest.mark.parametrize("selected_replay_pair", [{"post": True}], indirect=True)
+def test_selected_replay_rehashed_post_training_factor_cannot_alias_source_branch(selected_replay_pair):
+    import fly_connectome_sim.experiment.analysis as analysis
+    recorder, prefix, _, arguments = selected_replay_pair
+    events = list(prefix.iter_events())
+    training = next(item for item in events if item["type"] == "qualification_training")
+    training["seed"] = 23
+    training.update(analysis._training_plan(arguments["execution"], 23, "A", "AB", "paired", "qualification", 0))
+    prefix, diagnostic = _rewrite_selected_replay(recorder, events)
+    with pytest.raises(AnalysisError):
+        analysis._compare_selected_replay(prefix.iter_events(), diagnostic, **arguments)
+
+
+def _recorded_selected_replay_logical_pair(selected_replay_pair, mutation="valid"):
+    from fly_connectome_sim.experiment.qualification import _response_rate
+    recorder, prefix, diagnostic, arguments = selected_replay_pair
+    events = list(prefix.iter_events())
+    training = next(item for item in events if item["type"] == "qualification_training")
+    onset = diagnostic["cs_onset_tick"]
+    window_start = onset + round(diagnostic["response_window"]["start_ms"] * 10)
+    stop = diagnostic["boundaries"]["window"]["original"]["sim_tick"]
+    observations = [item for item in events if item["type"] == "observe"
+                    and item["branch_id"] == diagnostic["original_branch_id"] and item["end_tick"] <= stop]
+    raw = [item for observation in observations for item in observation["telemetry"]["bins"]]
+    bins = [{"start_tick": round(item["end_ms"] * 10) - round(item["duration_ms"] * 10),
+             "end_tick": round(item["end_ms"] * 10), "spikes": item["group_spikes"]["mbon11"]}
+            for item in raw if window_start < round(item["end_ms"] * 10) <= stop]
+    shared = {name: deepcopy(training[name]) for name in ("training_id", "association_t0_tick", "retention_reference_tick",
+        "training_start_tick", "training_end_tick", "last_visual_end_tick", "last_external_dan_end_tick",
+        "unpaired_nearest_cs_boundary_ticks", "training_visual_exposure_ticks", "training_end_checkpoint_sha256")}
+    response = {"type": "qualification_evidence", "branch_id": diagnostic["original_branch_id"], "sim_ms": stop / 10,
+        "parent_branch_id": diagnostic["parent_branch_id"], "parent_state_anchor_sha256": diagnostic["parent_state_anchor_sha256"],
+        **shared, **diagnostic["physical_key"], "evidence_version": "mbon11-response/v1",
+        "candidate_identity": diagnostic["candidate_identity"], "population": "mbon11", "population_size": 1,
+        "cs_onset_tick": onset, "bins": bins, "rate_hz": _response_rate(sum(item["spikes"] for item in bins), stop - window_start, 1),
+        "one_spike_rate_hz": _response_rate(1, stop - window_start, 1),
+        "retention_source_checkpoint_sha256": diagnostic["source_occurrence"]["checkpoint_sha256"],
+        "passive_decay_ticks": training["retention_reference_tick"] + diagnostic["physical_key"]["retention_ms"] * 10 - training["training_end_tick"],
+        "input_sha256": diagnostic["input_sha256"], "black_sha256": diagnostic["black_sha256"],
+        "endogenous_dan_spikes": sum(item["group_spikes"]["ppl101"] for item in raw),
+        "learning": False, "external_stimulation": None,
+        "intervention_id": diagnostic["source_occurrence"]["origin_branch_id"] if diagnostic["physical_key"]["condition"] == "sham" else None,
+        "response_replay_resolution_hz": 1.0 if mutation == "resolution" else 0.0, "replay_id": diagnostic["replay_id"]}
+    if mutation == "replay_bool": response["response_replay_resolution_hz"] = False
+    elif mutation == "dan": response["endogenous_dan_spikes"] += 1
+    elif mutation == "one_spike": response["one_spike_rate_hz"] += 1.0
+    elif mutation == "one_spike_missing": del response["one_spike_rate_hz"]
+    elif mutation == "source_sha": response["retention_source_checkpoint_sha256"] = "a" * 64
+    elif mutation == "training_id": response["training_id"] = "wrong/training"
+    elif mutation == "training_sha": response["training_end_checkpoint_sha256"] = "b" * 64
+    elif mutation == "training_clock": response["training_start_tick"] += 1
+    elif mutation == "association_clock":
+        response["association_t0_tick"] -= 1
+        response["last_visual_end_tick"] -= 1
+    elif mutation == "dan_clock": response["last_external_dan_end_tick"] += 1
+    elif mutation == "exposure": response["training_visual_exposure_ticks"]["A"] += 1000
+    elif mutation == "intervention_id": response["intervention_id"] = "wrong/intervention"
+    window_calls = [item["sequence"] for item in events if item["type"] == "observe"
+                    and item["branch_id"] in (diagnostic["original_branch_id"], diagnostic["replay_id"])
+                    and item["end_tick"] == stop]
+    insertion = (min(window_calls) if mutation == "early" else max(window_calls)) + 1
+    events[insertion:insertion] = [response, deepcopy(response)] if mutation == "duplicate" else [response]
+    positions = {item["sequence"]: index for index, item in enumerate(events) if "sequence" in item}
+    for references in events[-1]["operations"].values():
+        for reference in references:
+            reference["sequence"] = positions[reference["sequence"]]
+    prefix, diagnostic = _rewrite_selected_replay(recorder, events)
+    return prefix, diagnostic, arguments, response
+
+
+@pytest.mark.parametrize("selected_replay_pair", [{"post": True, "retention": 10000}], indirect=True)
+@pytest.mark.parametrize("mutation", ["valid", "duplicate", "resolution", "early", "replay_bool", "dan", "one_spike",
+    "one_spike_missing", "source_sha", "training_id", "training_sha", "training_clock", "association_clock", "dan_clock", "exposure"])
+def test_selected_replay_binds_actual_post_logical_window_cells(selected_replay_pair, mutation):
+    import fly_connectome_sim.experiment.analysis as analysis
+    prefix, diagnostic, arguments, _ = _recorded_selected_replay_logical_pair(selected_replay_pair, mutation)
+    if mutation == "valid":
+        assert analysis._compare_selected_replay(prefix.iter_events(), diagnostic, **arguments)["response_replay_resolution_hz"] == 0.0
+    else:
+        with pytest.raises(AnalysisError):
+            analysis._compare_selected_replay(prefix.iter_events(), diagnostic, **arguments)
+
+
+@pytest.mark.parametrize("selected_replay_pair", [
+    {"post": True, "retention": 10000, "condition": "sham"},
+    {"post": True, "retention": 10000, "condition": "sham", "wrong_source": True},
+    {"post": True, "retention": 10000, "condition": "sham", "wrong_parent_occurrence": True},
+    {"post": True, "retention": 10000, "wrong_source": True},
+], indirect=True)
+def test_selected_replay_fix1_actual_intervention_and_exact_occurrence(selected_replay_pair, request):
+    import fly_connectome_sim.experiment.analysis as analysis
+    prefix, diagnostic, arguments, _ = _recorded_selected_replay_logical_pair(selected_replay_pair)
+    options = request.node.callspec.params["selected_replay_pair"]
+    if options.get("wrong_source") or options.get("wrong_parent_occurrence"):
+        with pytest.raises(AnalysisError):
+            analysis._compare_selected_replay(prefix.iter_events(), diagnostic, **arguments)
+    else:
+        assert analysis._compare_selected_replay(prefix.iter_events(), diagnostic, **arguments)["candidate_memory_w_resolution"] == 0.0
+
+
+@pytest.mark.parametrize("selected_replay_pair", [{"post": True, "retention": 10000, "condition": "sham"}], indirect=True)
+@pytest.mark.parametrize("mutation", ["clock", "intervention_id"])
+def test_selected_replay_fix1_intervention_clock_and_present_link(selected_replay_pair, mutation):
+    import fly_connectome_sim.experiment.analysis as analysis
+    recorder, prefix, diagnostic, arguments = selected_replay_pair
+    if mutation == "intervention_id":
+        prefix, diagnostic, arguments, _ = _recorded_selected_replay_logical_pair(selected_replay_pair, mutation)
+    else:
+        events = list(prefix.iter_events())
+        intervention = next(item for item in events if item["type"] == "assay_intervention")
+        intervention["donor_training_end_tick"] += 1
+        intervention["recipient_training_end_tick"] += 1
+        prefix, diagnostic = _rewrite_selected_replay(recorder, events)
+    with pytest.raises(AnalysisError):
+        analysis._compare_selected_replay(prefix.iter_events(), diagnostic, **arguments)
+
+
+@pytest.mark.parametrize("selected_replay_pair", [{"post": True, "retention": 10000, "window_start": 100.0,
+    "window_end": 300.0, "ppl_tonic": True}], indirect=True)
+def test_selected_replay_fix1_nonzero_pre_window_dan_and_third_window(selected_replay_pair):
+    import fly_connectome_sim.experiment.analysis as analysis
+    prefix, diagnostic, arguments, response = _recorded_selected_replay_logical_pair(selected_replay_pair)
+    assert len(response["bins"]) == 20
+    start = diagnostic["cs_onset_tick"] + 1000
+    assert response["bins"][0]["start_tick"] == start
+    assert response["bins"][-1]["end_tick"] == start + 2000
+    raw = [part for item in prefix.iter_events() if item["type"] == "observe" and item["branch_id"] == diagnostic["original_branch_id"]
+           for part in item["telemetry"]["bins"]]
+    window_dan = sum(part["group_spikes"]["ppl101"] for part in raw if start < round(part["end_ms"] * 10) <= start + 2000)
+    assert response["endogenous_dan_spikes"] > window_dan > 0
+    assert analysis._compare_selected_replay(prefix.iter_events(), diagnostic, **arguments)["response_replay_resolution_hz"] == 0.0
+
+
+@pytest.mark.parametrize("name", ["type", "sim_ms", "operation_version", "learning", "telemetry"])
+def test_selected_replay_operation_comparison_keeps_all_scientific_fields(name):
+    import fly_connectome_sim.experiment.analysis as analysis
+    first = {"type": "observe", "sim_ms": 1.0, "operation_version": "v1", "learning": False,
+             "telemetry": {"other_population": [1], "compute_seconds": 1.0}}
+    second = deepcopy(first)
+    second[name] = {"changed": True} if name == "telemetry" else "changed"
+    with pytest.raises(AnalysisError):
+        analysis._compare_replay_operations(first, second)
+    second = {**deepcopy(first), "sequence": 99, "scientific_sha256": "a" * 64,
+        "previous_scientific_sha256": "b" * 64, "run_metadata_sha256": "c" * 64, "branch_id": "different",
+        "parent_branch_id": "different", "parent_checkpoint_name": "different.npz", "parent_checkpoint_sequence": 88,
+        "parent_checkpoint_sha256": "d" * 64, "parent_state_anchor_sha256": "e" * 64}
+    second["telemetry"]["compute_seconds"] = 999
+    analysis._compare_replay_operations(first, second)
+
+
+@pytest.mark.parametrize("selected_replay_pair", [{"cs": 300.0, "window_end": 300.0}], indirect=True)
+def test_selected_replay_missing_both_tail_calls_cannot_hide_behind_final_hashes(selected_replay_pair):
+    import fly_connectome_sim.experiment.analysis as analysis
+    recorder, prefix, diagnostic, arguments = selected_replay_pair
+    events = list(prefix.iter_events())
+    removed = {item["sequence"] for item in events if item["type"] == "observe" and item["end_tick"] == diagnostic["sim_tick"]}
+    assert len(removed) == 2
+    events = [item for item in events if item["sequence"] not in removed]
+    positions = {item["sequence"]: index for index, item in enumerate(events)}
+    for side in ("original", "repeat"):
+        references = events[-1]["operations"][side]
+        references[:] = [reference for reference in references if reference["sequence"] not in removed]
+        for reference in references:
+            reference["sequence"] = positions[reference["sequence"]]
+    prefix, diagnostic = _rewrite_selected_replay(recorder, events)
+    with pytest.raises(AnalysisError):
+        analysis._compare_selected_replay(prefix.iter_events(), diagnostic, **arguments)
+
+
+@pytest.mark.parametrize("mutation", ["telemetry", "non_mbon", "input", "learning", "current", "version", "clock", "tail", "wrong_ref"])
+def test_selected_replay_rehashed_operation_or_reference_tampering_fails(selected_replay_pair, mutation):
+    import fly_connectome_sim.experiment.analysis as analysis
+    recorder, prefix, _, arguments = selected_replay_pair
+    events = list(prefix.iter_events())
+    observed = [item for item in events if item["type"] == "observe" and not item["branch_id"].endswith("/repeat")]
+    item = observed[-1] if mutation == "tail" else observed[0]
+    if mutation in ("telemetry", "tail"):
+        item["telemetry"]["memory"]["unexpected"] = 1
+    elif mutation == "non_mbon": item["telemetry"]["rates_hz"]["mbon07"] += 1
+    elif mutation == "input": item["telemetry"]["input_sha256"] = arguments["metadata"]["rgb_input_sha256"]["stimuli"]["11"]["B"]
+    elif mutation == "learning": item["learning"] = True
+    elif mutation == "current": item["current_mv"] = 10.0
+    elif mutation == "version": item["operation_version"] = "unknown/v1"
+    elif mutation == "clock": item["duration_ms"] += 0.1
+    else: events[-1]["operations"]["original"][0]["scientific_sha256"] = "0" * 64
+    prefix, diagnostic = _rewrite_selected_replay(recorder, events, repair_references=mutation != "wrong_ref")
+    with pytest.raises(AnalysisError):
+        analysis._compare_selected_replay(prefix.iter_events(), diagnostic, **arguments)
+
+
+def test_selected_replay_timing_only_change_preserves_whole_scientific_comparison(selected_replay_pair):
+    import fly_connectome_sim.experiment.analysis as analysis
+    recorder, prefix, _, arguments = selected_replay_pair
+    events = list(prefix.iter_events())
+    observed = next(item for item in events if item["type"] == "observe")
+    observed["telemetry"]["compute_seconds"] += 999
+    observed["telemetry"]["memory"]["kernel_seconds"] = 321
+    prefix, diagnostic = _rewrite_selected_replay(recorder, events)
+    assert analysis._compare_selected_replay(prefix.iter_events(), diagnostic, **arguments) == {
+        "response_replay_resolution_hz": 0.0, "candidate_memory_w_resolution": 0.0,
+    }
+
+
+@pytest.mark.parametrize("kind", ["observe", "replay_thaw", "unknown", "after_original", "after_repeat", "extra_diagnostic"])
+def test_selected_replay_rejects_every_unreferenced_or_subsequent_target_event(selected_replay_pair, kind):
+    import fly_connectome_sim.experiment.analysis as analysis
+    recorder, prefix, diagnostic, arguments = selected_replay_pair
+    if kind.startswith("after"):
+        branch = diagnostic["original_branch_id"] if kind == "after_original" else diagnostic["replay_id"]
+        recorder.append({"type": "unknown_mutation", "branch_id": branch, "sim_ms": 400.0})
+        prefix = recorder.validate_prefix()
+    elif kind == "extra_diagnostic":
+        from fly_connectome_sim.experiment.recorder import OWNED
+        recorder.append({name: value for name, value in diagnostic.items() if name not in OWNED})
+        prefix = recorder.validate_prefix()
+    else:
+        events = list(prefix.iter_events())
+        extra = {"type": "unknown_mutation", "branch_id": diagnostic["original_branch_id"], "sim_ms": 400.0}
+        if kind == "observe":
+            extra = deepcopy(next(item for item in reversed(events) if item["type"] == "observe"))
+        elif kind == "replay_thaw":
+            extra.update(type="replay_thaw", sim_tick=4000, operation_version="black-retention-operation/v1",
+                         before_weights_frozen=True, after_weights_frozen=False)
+        events.insert(-1, extra)
+        prefix, diagnostic = _rewrite_selected_replay(recorder, events)
+    with pytest.raises(AnalysisError):
+        analysis._compare_selected_replay(prefix.iter_events(), diagnostic, **arguments)
+
+
+@pytest.mark.parametrize("mutation", ["metadata", "window", "cs", "retention", "source", "state", "frozen", "map", "model_bounds", "response_resolution", "w_resolution"])
+def test_selected_replay_rejects_unbound_declarations_and_still_drains(selected_replay_pair, mutation):
+    import fly_connectome_sim.experiment.analysis as analysis
+    _, prefix, diagnostic, arguments = selected_replay_pair
+    arguments = deepcopy(arguments)
+    if mutation == "metadata": arguments["metadata"]["mbon11_population_size"] = 2
+    elif mutation == "window": arguments["execution"]["response_window"] = {"start_ms": 100.0, "end_ms": 300.0}
+    elif mutation == "cs": arguments["execution"]["selected_configuration"]["cs_duration_ms"] = 300.0
+    elif mutation == "retention": arguments["execution"]["retention_times_ms"] = [10000, 60000]
+    elif mutation == "source": arguments["expected_source_occurrence"]["checkpoint_sequence"] = 1
+    elif mutation == "state": arguments["expected_start"]["complete_state_sha256"] = arguments["expected_source_occurrence"]["checkpoint_sha256"]
+    elif mutation == "frozen": arguments["expected_start"]["weights_frozen"] = True
+    elif mutation == "map": arguments["expected_maps"]["target_indices"] = [3]
+    elif mutation == "model_bounds": arguments["lower"] -= 1.0
+    elif mutation == "response_resolution": diagnostic = {**diagnostic, "response_replay_resolution_hz": 10.0}
+    else: diagnostic = {**diagnostic, "candidate_memory_w_resolution": 0.5}
+    visited = []
+    def actual_stream():
+        for item in prefix.iter_events():
+            visited.append(item["sequence"])
+            yield item
+    with pytest.raises(AnalysisError):
+        analysis._compare_selected_replay(actual_stream(), diagnostic, **arguments)
+    assert visited == list(range(prefix.manifest["event_count"]))
+
+
+def test_selected_replay_does_not_hide_late_file_mutation_after_semantic_error(selected_replay_pair):
+    import fly_connectome_sim.experiment.analysis as analysis
+    from fly_connectome_sim.experiment.recorder import RunArtifactError
+    recorder, prefix, diagnostic, arguments = selected_replay_pair
+    path = recorder.path / "events.jsonl"
+    original = path.read_bytes()
+    diagnostic = {**diagnostic, "candidate_memory_w_resolution": 0.5}
+    def changing():
+        for item in prefix.iter_events():
+            yield item
+            if item["sequence"] == 0:
+                path.write_bytes(original[:-1])
+    try:
+        with pytest.raises(RunArtifactError):
+            analysis._compare_selected_replay(changing(), diagnostic, **arguments)
+    finally:
+        path.write_bytes(original)
+
+
+def test_selected_replay_retains_no_unrelated_history(selected_replay_pair):
+    import weakref
+    import fly_connectome_sim.experiment.analysis as analysis
+    recorder, _, diagnostic, arguments = selected_replay_pair
+    for _ in range(40):
+        recorder.append({"type": "unrelated", "branch_id": "qualification/baseline", "sim_ms": 0.0,
+                         "payload": list(range(100))})
+    prefix = recorder.validate_prefix()
+    live, visited = [], []
+    class Tracked(dict):
+        pass
+    def bounded():
+        for item in prefix.iter_events():
+            live[:] = [reference for reference in live if reference() is not None]
+            assert len(live) <= 2, "Unrelated history retained by pair comparison"
+            if item["type"] == "unrelated":
+                item = Tracked(item)
+                live.append(weakref.ref(item))
+                visited.append(item["sequence"])
+            yield item
+    analysis._compare_selected_replay(bounded(), diagnostic, **arguments)
+    assert len(visited) == 40
+
+
+def test_candidate_w_pair_nonzero_float64_math_and_signed_zero():
+    import fly_connectome_sim.experiment.analysis as analysis
+    from fly_connectome_sim.experiment.qualification import _state_difference, _response_rate
+    maps = {"target_indices": [2], "candidate_positions": [0, 1], "candidate_edge_indices": [3, 1]}
+    first, second = np.array([-0.0, 1.0], dtype="<f8"), np.array([0.5, 0.5], dtype="<f8")
+    projection = analysis._encode_candidate_w_pair(first, second, maps=maps)
+    assert projection["original_hex"] == "0000000000000080000000000000f03f"
+    a, b = analysis._decode_candidate_w_pair(projection, expected_maps=maps, n=4, memory_count=2, edge_count=4, lower=-1.0, upper=2.0)
+    assert a.dtype.str == b.dtype.str == "<f8" and a.tobytes() == first.tobytes()
+    assert _state_difference(a, b) == 0.5
+    assert _response_rate(abs(4 - 1), 1000, 3) == 9.999999999999998
+    adjacent = np.nextafter(np.array([1.0], dtype="<f8"), np.array([2.0], dtype="<f8"))
+    assert _state_difference(adjacent, np.array([1.0], dtype="<f8")) == 2.220446049250313e-16
+    first[0] = 1.0
+    maps["target_indices"][0] = 0
+    assert projection["maps"]["target_indices"] == [2] and projection["original_hex"].startswith("0000000000000080")
+
+
+@pytest.mark.parametrize("mutation", ["dtype", "rank", "shape", "nan", "infinite", "empty"])
+def test_candidate_w_pair_encoder_rejects_lossy_or_invalid_arrays(mutation):
+    import fly_connectome_sim.experiment.analysis as analysis
+    maps = {"target_indices": [2], "candidate_positions": [0], "candidate_edge_indices": [0]}
+    first, second = np.zeros(1, dtype="<f8"), np.zeros(1, dtype="<f8")
+    if mutation == "dtype": first = first.astype(np.float32)
+    elif mutation == "rank": first = first.reshape(1, 1)
+    elif mutation == "shape": second = np.zeros(2, dtype="<f8")
+    elif mutation == "nan": first[0] = np.nan
+    elif mutation == "infinite": first[0] = np.inf
+    else: first = second = np.zeros(0, dtype="<f8")
+    with pytest.raises(ValueError):
+        analysis._encode_candidate_w_pair(first, second, maps=maps)
+
+
+@pytest.mark.parametrize("mutation", ["target", "order", "duplicate", "dtype", "hex", "length", "boolean", "index_bound", "layout_bool"])
+def test_candidate_w_pair_rejects_maps_before_numeric_decode(monkeypatch, mutation):
+    import fly_connectome_sim.experiment.analysis as analysis
+    maps = {"target_indices": [2], "candidate_positions": [0, 1], "candidate_edge_indices": [3, 1]}
+    projection = analysis._encode_candidate_w_pair(np.zeros(2, dtype="<f8"), np.zeros(2, dtype="<f8"), maps=maps)
+    arguments = {"expected_maps": maps, "n": 4, "memory_count": 2, "edge_count": 4, "lower": -1.0, "upper": 2.0}
+    if mutation == "target": projection["maps"]["target_indices"] = [1]
+    elif mutation == "order": projection["maps"]["candidate_edge_indices"].reverse()
+    elif mutation == "duplicate": projection["maps"]["candidate_positions"] = [0, 0]
+    elif mutation == "dtype": projection["dtype"] = ">f8"
+    elif mutation == "hex": projection["original_hex"] = "g" * 32
+    elif mutation == "length": projection["shape"] = [1]
+    elif mutation == "boolean": projection["maps"]["target_indices"] = [True]
+    elif mutation == "index_bound": arguments["edge_count"] = 3
+    else: arguments["n"] = True
+    def forbidden(*args, **kwargs):
+        pytest.fail("Numeric decode preceded expected-map/layout binding")
+    monkeypatch.setattr(np, "frombuffer", forbidden)
+    with pytest.raises(ValueError):
+        analysis._decode_candidate_w_pair(projection, **arguments)
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), -1.01, 2.01])
+def test_candidate_w_pair_decoder_checks_finiteness_and_model_bounds(value):
+    import fly_connectome_sim.experiment.analysis as analysis
+    maps = {"target_indices": [2], "candidate_positions": [0], "candidate_edge_indices": [0]}
+    projection = analysis._encode_candidate_w_pair(np.zeros(1, dtype="<f8"), np.zeros(1, dtype="<f8"), maps=maps)
+    projection["original_hex"] = np.array([value], dtype="<f8").tobytes().hex()
+    with pytest.raises(ValueError):
+        analysis._decode_candidate_w_pair(projection, expected_maps=maps, n=4, memory_count=1, edge_count=1, lower=-1.0, upper=2.0)
 
 
 def _count_response_fixture(population, window, *, pre_c=2, post_c=2):

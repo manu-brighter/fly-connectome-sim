@@ -69,6 +69,508 @@
     }}}
   }],
   "$defs": {
+    "selected_replay_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sequence",
+        "scientific_sha256"
+      ],
+      "properties": {
+        "sequence": {
+          "$ref": "#/$defs/tick"
+        },
+        "scientific_sha256": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "selected_replay_key": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "seed",
+            "paired_identity",
+            "presentation_order",
+            "phase",
+            "stimulus"
+          ],
+          "properties": {
+            "seed": {
+              "type": "integer",
+              "enum": [
+                11,
+                23
+              ]
+            },
+            "paired_identity": {
+              "enum": [
+                "A",
+                "B"
+              ]
+            },
+            "presentation_order": {
+              "enum": [
+                "AB",
+                "BA"
+              ]
+            },
+            "phase": {
+              "const": "pre"
+            },
+            "stimulus": {
+              "enum": [
+                "A",
+                "B",
+                "C"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "seed",
+            "paired_identity",
+            "presentation_order",
+            "phase",
+            "stimulus",
+            "condition",
+            "retention_ms"
+          ],
+          "properties": {
+            "seed": {
+              "type": "integer",
+              "enum": [
+                11,
+                23
+              ]
+            },
+            "paired_identity": {
+              "enum": [
+                "A",
+                "B"
+              ]
+            },
+            "presentation_order": {
+              "enum": [
+                "AB",
+                "BA"
+              ]
+            },
+            "phase": {
+              "const": "post"
+            },
+            "stimulus": {
+              "enum": [
+                "A",
+                "B",
+                "C"
+              ]
+            },
+            "condition": {
+              "enum": [
+                "paired",
+                "frozen_plasticity",
+                "no_external_dan",
+                "temporally_unpaired",
+                "matched_reference",
+                "necessity",
+                "sufficiency",
+                "sham"
+              ]
+            },
+            "retention_ms": {
+              "type": "integer",
+              "minimum": 10000
+            }
+          }
+        }
+      ]
+    },
+    "selected_replay_start": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sim_tick",
+        "complete_state_sha256",
+        "weights_frozen"
+      ],
+      "properties": {
+        "sim_tick": {
+          "$ref": "#/$defs/tick"
+        },
+        "complete_state_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "weights_frozen": {
+          "type": "boolean"
+        }
+      }
+    },
+    "selected_replay_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sim_tick",
+        "complete_state_sha256",
+        "candidate_memory_sha256",
+        "noncandidate_state_sha256"
+      ],
+      "properties": {
+        "sim_tick": {
+          "$ref": "#/$defs/tick"
+        },
+        "complete_state_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "candidate_memory_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "noncandidate_state_sha256": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "selected_replay_operations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "original",
+        "repeat"
+      ],
+      "properties": {
+        "original": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 6,
+          "items": {
+            "$ref": "#/$defs/selected_replay_reference"
+          }
+        },
+        "repeat": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 6,
+          "items": {
+            "$ref": "#/$defs/selected_replay_reference"
+          }
+        }
+      }
+    },
+    "selected_replay_boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "start",
+        "window",
+        "final"
+      ],
+      "properties": {
+        "start": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "original",
+            "repeat"
+          ],
+          "properties": {
+            "original": {
+              "$ref": "#/$defs/selected_replay_start"
+            },
+            "repeat": {
+              "$ref": "#/$defs/selected_replay_start"
+            }
+          }
+        },
+        "window": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "original",
+            "repeat"
+          ],
+          "properties": {
+            "original": {
+              "$ref": "#/$defs/selected_replay_state"
+            },
+            "repeat": {
+              "$ref": "#/$defs/selected_replay_state"
+            }
+          }
+        },
+        "final": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "original",
+            "repeat"
+          ],
+          "properties": {
+            "original": {
+              "$ref": "#/$defs/selected_replay_state"
+            },
+            "repeat": {
+              "$ref": "#/$defs/selected_replay_state"
+            }
+          }
+        }
+      }
+    },
+    "candidate_w_pair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projection_version",
+        "dtype",
+        "shape",
+        "maps",
+        "original_hex",
+        "repeat_hex"
+      ],
+      "properties": {
+        "projection_version": {
+          "const": "selected-candidate-w-pair/v1"
+        },
+        "dtype": {
+          "const": "<f8"
+        },
+        "shape": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "maps": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "target_indices",
+            "candidate_positions",
+            "candidate_edge_indices"
+          ],
+          "properties": {
+            "target_indices": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/tick"
+              }
+            },
+            "candidate_positions": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/tick"
+              }
+            },
+            "candidate_edge_indices": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/tick"
+              }
+            }
+          }
+        },
+        "original_hex": {
+          "type": "string",
+          "pattern": "^[0-9a-f]+$"
+        },
+        "repeat_hex": {
+          "type": "string",
+          "pattern": "^[0-9a-f]+$"
+        }
+      }
+    },
+    "qualification_replay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sequence",
+        "type",
+        "branch_id",
+        "sim_ms",
+        "run_metadata_sha256",
+        "previous_scientific_sha256",
+        "scientific_sha256",
+        "replay_version",
+        "replay_id",
+        "original_branch_id",
+        "physical_key",
+        "source_occurrence",
+        "engine_identity_sha256",
+        "candidate_identity",
+        "population_size",
+        "input_sha256",
+        "black_sha256",
+        "response_window",
+        "cs_onset_tick",
+        "sim_tick",
+        "operations",
+        "boundaries",
+        "candidate_projection",
+        "response_replay_resolution_hz",
+        "candidate_memory_w_resolution",
+        "parent_branch_id"
+      ],
+      "properties": {
+        "sequence": {
+          "$ref": "#/$defs/tick"
+        },
+        "type": {
+          "const": "qualification_replay"
+        },
+        "branch_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "sim_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "run_metadata_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "previous_scientific_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "scientific_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "replay_version": {
+          "const": "selected-response-repeat/v1"
+        },
+        "replay_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "original_branch_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "physical_key": {
+          "$ref": "#/$defs/selected_replay_key"
+        },
+        "source_occurrence": {
+          "$ref": "#/$defs/source_occurrence"
+        },
+        "engine_identity_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "candidate_identity": {
+          "const": "kc-mbon11-ppl101/v1"
+        },
+        "population_size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "input_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "black_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "response_window": {
+          "$ref": "#/$defs/qualification_window"
+        },
+        "cs_onset_tick": {
+          "$ref": "#/$defs/tick"
+        },
+        "sim_tick": {
+          "$ref": "#/$defs/tick"
+        },
+        "operations": {
+          "$ref": "#/$defs/selected_replay_operations"
+        },
+        "boundaries": {
+          "$ref": "#/$defs/selected_replay_boundaries"
+        },
+        "candidate_projection": {
+          "$ref": "#/$defs/candidate_w_pair"
+        },
+        "response_replay_resolution_hz": {
+          "type": "number",
+          "minimum": 0
+        },
+        "candidate_memory_w_resolution": {
+          "type": "number",
+          "minimum": 0
+        },
+        "parent_branch_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "parent_checkpoint_name": {
+          "$ref": "#/$defs/source_occurrence/properties/checkpoint_name"
+        },
+        "parent_checkpoint_sequence": {
+          "$ref": "#/$defs/tick"
+        },
+        "parent_checkpoint_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "parent_state_anchor_sha256": {
+          "$ref": "#/$defs/digest"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "physical_key": {
+                "properties": {
+                  "phase": {
+                    "const": "pre"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "parent_checkpoint_name",
+              "parent_checkpoint_sequence",
+              "parent_checkpoint_sha256"
+            ],
+            "not": {
+              "required": [
+                "parent_state_anchor_sha256"
+              ]
+            }
+          },
+          "else": {
+            "required": [
+              "parent_state_anchor_sha256"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "parent_checkpoint_name"
+                  ]
+                },
+                {
+                  "required": [
+                    "parent_checkpoint_sequence"
+                  ]
+                },
+                {
+                  "required": [
+                    "parent_checkpoint_sha256"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
     "qualification_grid_failure": {
       "type": "object",
       "additionalProperties": false,
@@ -573,7 +1075,7 @@
       },
       "additionalProperties": true,
       "not": {"required": ["parent_checkpoint_sha256", "parent_state_anchor_sha256"]},
-      "allOf": [{"if": {"properties": {"type": {"const": "qualification_grid_binding"}}, "required": ["type"]}, "then": {"$ref": "#/$defs/qualification_grid_binding"}}, {
+      "allOf": [{"if": {"properties": {"type": {"const": "qualification_replay"}}, "required": ["type"]}, "then": {"$ref": "#/$defs/qualification_replay"}}, {"if": {"properties": {"type": {"const": "qualification_grid_binding"}}, "required": ["type"]}, "then": {"$ref": "#/$defs/qualification_grid_binding"}}, {
         "if": {"properties": {"type": {}}, "required": ["parent_state_anchor_sha256"]},
         "then": {"not": {"anyOf": [
             {"required": ["parent_checkpoint_sha256"]}, {"required": ["parent_checkpoint_name"]},

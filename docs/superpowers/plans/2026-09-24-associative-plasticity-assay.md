@@ -25,9 +25,24 @@ It is not implemented or a source-freeze/qualification approval.
 
 The early task-level RED/GREEN boxes are historical execution instructions, not
 the current backlog. Tasks 1–6, strict analysis 7A, motor-only Task8 and source
-slices 7B4a–d are implemented and independently reviewed. Latest accepted e.1
-is only the private successful-append reference helper, not parent e completion.
-Current model-source identity:
+slices 7B4a–d and helper e.1 are accepted. e.2 R1 closed diagnostics/schema,
+projection/arithmetic helpers and independent external-iterator pair comparison
+passed source review and bounded runtime acceptance. Current source:
+`4527956304d4d1630c415a190d4a475912cbe4ca028b4abb63baa859f9af13ae`;
+schema `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
+Focused R1: **115 passed, 519 deselected in 62.55 s**, exit0, no failures/errors/
+skips; all five owned paths and 30 source members matched before/after. Native
+PRE/ordinary POST10,000+70,000/SHAM/[100,300) tonic-PPL101 cases exercise recorded
+consistency, not isolated response/history attestation. Affected-file R1
+compatibility: **853 passed, one declared opt-in skip in 172.38 s**, exit0,
+no errors/failures. The sole skipped actual MaleCNS zero-anchor context case
+separately **passed in 7.89 s**, exit0, no errors/skips. All three junction cases
+passed on the normal host; all frozen source/test/schema bytes matched before/
+after. Focused and compatibility counts overlap; no whole ordinary/all-eight/
+complete96 run was repeated on e.2 R1.
+True production remains unavailable/False-only; no 408-repeat matrix is measured.
+
+Historical accepted e.1 helper source:
 `293c8a721f0a18ba9dcf0baf726437b8455133d67cf343bb9fb1c69ca617a060`;
 schema `c56a64f91bf08b2f3c379a4720d4be3a5c2d1743c1c09394d2483f23d61af115`.
 Independent source review passed. Actual recorder/replay compatibility was
@@ -59,10 +74,10 @@ attestation. Detailed actual inventories/hashes are in the
 The c.2b complete96 grid and reviewed detail-on fullgraph prefix sample remain
 historical on source
 `64041111c7cf3edfaf51128e071b79d939875937f810790c00d1425458c6e60e`.
-The costly96 case was not repeated for d/e.1. Profiled durations require a controlled
+The costly96 case was not repeated for d/e.1/e.2. Profiled durations require a controlled
 unprofiled follow-up before runtime/capacity decisions. Continue on the original
-Windows workstation with planned e.2/e.3, then f/g; full repeat production is not
-released by helper acceptance.
+Windows workstation with planned e.3, then f/g; full repeat production is not
+released by helper/comparator acceptance.
 No production config, formal source freeze or qualification is established.
 Cloud setup below applies only to a future fresh checkout, not local continuation.
 
@@ -77,6 +92,7 @@ Cloud setup below applies only to a future fresh checkout, not local continuatio
 - [x] Complete caller-owned selected controls/interventions and actual eight-factor
   selected/legacy confirmation production acceptance (d).
 - [x] Accept private successful-append reference helper (e.1); public append unchanged.
+- [x] Accept closed diagnostic/schema, projections and local pair comparison (e.2).
 - [ ] Measure selected response repeats, integrate public frozen-config lifecycle
   and implement the real assay CLI; current CLI lacks `assay`.
 - [ ] Resolve discarded-grid training ancestry without mistaking black-retention
@@ -705,7 +721,8 @@ capacity, scientific support or formal qualification. No new complete suite ran.
 #### Task7B4: strict qualification integration after Task8
 
 Keep the same plan/workspace. Source slices a–d and helper e.1 are accepted;
-parent e remains open, with e.2/e.3 and f/g planned,
+e.2 R1 source review and bounded runtime acceptance passed. Parent e remains
+open, with e.3 and f/g future,
 without permission to run formal qualification now. Preserve all existing confirmation
 routes and scientific gates. Concrete per-slice briefs must settle exact data
 shapes before implementation; do not bootstrap with a fabricated frozen object.
@@ -946,10 +963,12 @@ IDs, real window-stop Hz/W metrics, complete tails and closed diagnostics.
 - [x] e.1: standalone private `_append_reference` after successful public append;
   unchanged None-return append, actual sequence/hash, healthy/+1 guards and no
   cache/scan/proof issuer. Independent review and recorder/replay plus actual
-  fullgraph context acceptance passed on the current source recorded above.
-  The helper is not wired to True production; no repeats or diagnostic wire exist.
-- [ ] e.2: closed diagnostics/W projections/schema and independent current-pair
-  stream comparison under a final bounded brief; preserve ratified map/byte rules.
+  fullgraph context acceptance passed on its historical source recorded above.
+  The helper is not wired to True production; e.2 schema work is separate.
+- [x] e.2: closed diagnostics/W projections/schema and independent current-pair
+  stream comparison implemented and source-reviewed R1; focused115 tests passed.
+  Affected-file and actual native-context acceptance passed on the exact R1 bytes;
+  preserve ratified map/byte rules. This is recorded consistency, not full production.
 - [ ] e.3: lockstep fresh-parent native production under its own bounded brief.
 
 - [ ] RED: copied zero, missing late T, altered whole telemetry/tail/state/maps,

@@ -214,6 +214,157 @@ def _check_motor_readout(event: dict, metadata: dict) -> None:
         raise RunArtifactError("Motor decision differs from bound measured telemetry")
 
 
+def _check_candidate_w_pair(projection: dict) -> None:
+    """Check encoded shape only; no unauthenticated numeric bytes are decoded."""
+    if (type(projection) is not dict or set(projection) != {
+            "projection_version", "dtype", "shape", "maps", "original_hex", "repeat_hex"}
+            or projection["projection_version"] != "selected-candidate-w-pair/v1"
+            or projection["dtype"] != "<f8" or type(projection["shape"]) is not list
+            or len(projection["shape"]) != 1 or type(projection["shape"][0]) is not int
+            or projection["shape"][0] < 1):
+        raise RunArtifactError("Invalid candidate W pair shape")
+    size, maps = projection["shape"][0], projection["maps"]
+    if type(maps) is not dict or set(maps) != {"target_indices", "candidate_positions", "candidate_edge_indices"}:
+        raise RunArtifactError("Invalid candidate W pair maps")
+    for name, values in maps.items():
+        if (type(values) is not list or not values
+                or any(type(value) is not int or not 0 <= value <= 9223372036854775789 for value in values)
+                or len(set(values)) != len(values) or (name != "target_indices" and len(values) != size)):
+            raise RunArtifactError("Invalid candidate W pair indices")
+    for side in ("original", "repeat"):
+        encoded = projection[side + "_hex"]
+        if type(encoded) is not str or len(encoded) != 16 * size or re.fullmatch(r"[0-9a-f]+", encoded) is None:
+            raise RunArtifactError("Invalid candidate W pair hex")
+
+
+def _check_qualification_replay(event: dict, metadata: dict, count: int) -> None:
+    """Closed structural intake, without selection authority or numerical decoding."""
+    from .replay import _clock, _source
+
+    def fields(value, expected):
+        if type(value) is not dict or set(value) != expected:
+            raise RunArtifactError("Invalid selected replay fields")
+
+    def integer(value, minimum=0):
+        if type(value) is not int or not minimum <= value <= 9223372036854775789:
+            raise RunArtifactError("Invalid selected replay integer")
+
+    def digest(value):
+        if type(value) is not str or DIGEST.fullmatch(value) is None:
+            raise RunArtifactError("Invalid selected replay digest")
+
+    base = OWNED | {"type", "branch_id", "sim_ms", "replay_version", "replay_id", "original_branch_id",
+        "physical_key", "source_occurrence", "engine_identity_sha256", "candidate_identity", "population_size",
+        "input_sha256", "black_sha256", "response_window", "cs_onset_tick", "sim_tick", "operations",
+        "boundaries", "candidate_projection", "response_replay_resolution_hz", "candidate_memory_w_resolution",
+        "parent_branch_id"}
+    if type(event) is not dict or type(metadata) is not dict or metadata.get("family") != "qualification":
+        raise RunArtifactError("Selected replay requires qualification metadata")
+    key = event.get("physical_key")
+    if type(key) is not dict or key.get("phase") not in ("pre", "post"):
+        raise RunArtifactError("Invalid selected replay physical key")
+    post = key["phase"] == "post"
+    fields(key, {"seed", "paired_identity", "presentation_order", "phase", "stimulus"}
+           | ({"condition", "retention_ms"} if post else set()))
+    fields(event, base | ({"parent_state_anchor_sha256"} if post else {
+        "parent_checkpoint_name", "parent_checkpoint_sequence", "parent_checkpoint_sha256"}))
+    if (type(key["seed"]) is not int or key["seed"] not in (11, 23)
+            or key["paired_identity"] not in ("A", "B") or key["presentation_order"] not in ("AB", "BA")
+            or key["stimulus"] not in ("A", "B", "C")):
+        raise RunArtifactError("Invalid selected replay factors")
+    if post:
+        integer(key["retention_ms"], 10000)
+        if key["condition"] not in ("paired", "frozen_plasticity", "no_external_dan", "temporally_unpaired",
+                                    "matched_reference", "necessity", "sufficiency", "sham"):
+            raise RunArtifactError("Invalid selected replay condition")
+        digest(event["parent_state_anchor_sha256"])
+    else:
+        integer(event["parent_checkpoint_sequence"])
+        _safe_name(event["parent_checkpoint_name"])
+        digest(event["parent_checkpoint_sha256"])
+    if (event["type"] != "qualification_replay" or event["replay_version"] != "selected-response-repeat/v1"
+            or type(event["original_branch_id"]) is not str or not event["original_branch_id"]
+            or event["replay_id"] != event["original_branch_id"] + "/repeat"
+            or event["branch_id"] != event["replay_id"]
+            or type(event["parent_branch_id"]) is not str or not event["parent_branch_id"]):
+        raise RunArtifactError("Invalid selected replay naming")
+    integer(count)
+    integer(event["sequence"])
+    if event["sequence"] != count:
+        raise RunArtifactError("Invalid selected replay sequence")
+    for name in OWNED - {"sequence"}:
+        digest(event[name])
+    try:
+        _source(event["source_occurrence"])
+        if event["source_occurrence"]["checkpoint_sequence"] >= count:
+            raise ValueError("Late selected replay source")
+        identity = metadata["engine_identity"]
+        inputs = metadata["rgb_input_sha256"]
+        if (event["engine_identity_sha256"] != identity["sha256"]
+                or event["candidate_identity"] != metadata["candidate_identity"]
+                or event["candidate_identity"] != "kc-mbon11-ppl101/v1"
+                or type(event["population_size"]) is not int or event["population_size"] < 1
+                or type(metadata["mbon11_population_size"]) is not int
+                or event["population_size"] != metadata["mbon11_population_size"]
+                or event["input_sha256"] != inputs["stimuli"][str(key["seed"])][key["stimulus"]]
+                or event["black_sha256"] != inputs["black"]
+                or event["black_sha256"] != metadata["black_input"]["input_sha256"]):
+            raise ValueError("Selected replay metadata mismatch")
+        for name in ("engine_identity_sha256", "input_sha256", "black_sha256"):
+            digest(event[name])
+        integer(event["cs_onset_tick"], 1000)
+        integer(event["sim_tick"])
+        _clock(event["sim_ms"], event["sim_tick"])
+    except (KeyError, TypeError, ValueError) as error:
+        raise RunArtifactError("Invalid selected replay declarations") from error
+    window = event["response_window"]
+    fields(window, {"start_ms", "end_ms"})
+    if (any(not _finite_number(value) or not math.isfinite(value * 10)
+            or value * 10 != round(value * 10) for value in window.values())
+            or window["start_ms"] >= window["end_ms"]):
+        raise RunArtifactError("Invalid selected replay window")
+    for name in ("response_replay_resolution_hz", "candidate_memory_w_resolution"):
+        if not _finite_number(event[name]):
+            raise RunArtifactError("Invalid selected replay resolution")
+    boundaries = event["boundaries"]
+    fields(boundaries, {"start", "window", "final"})
+    for boundary, pair in boundaries.items():
+        fields(pair, {"original", "repeat"})
+        for state in pair.values():
+            fields(state, {"sim_tick", "complete_state_sha256"} | ({"weights_frozen"} if boundary == "start" else {
+                "candidate_memory_sha256", "noncandidate_state_sha256"}))
+            integer(state["sim_tick"])
+            for name in state.keys() - {"sim_tick", "weights_frozen"}:
+                digest(state[name])
+            if boundary == "start" and type(state["weights_frozen"]) is not bool:
+                raise RunArtifactError("Invalid selected replay frozen flag")
+        if _canonical(pair["original"]) != _canonical(pair["repeat"]):
+            raise RunArtifactError("Selected replay boundary disagreement")
+    start, stop, final = (boundaries[name]["original"]["sim_tick"] for name in ("start", "window", "final"))
+    if (start != event["cs_onset_tick"] - 1000
+            or stop != event["cs_onset_tick"] + round(window["end_ms"] * 10)
+            or not start < stop <= final or final != event["sim_tick"]
+            or (stop == final and boundaries["window"] != boundaries["final"])):
+        raise RunArtifactError("Invalid selected replay boundary clocks")
+    operations = event["operations"]
+    fields(operations, {"original", "repeat"})
+    seen = set()
+    for references in operations.values():
+        if type(references) is not list or not 4 <= len(references) <= 6:
+            raise RunArtifactError("Invalid selected replay operation count")
+        previous = -1
+        for reference in references:
+            fields(reference, {"sequence", "scientific_sha256"})
+            integer(reference["sequence"])
+            digest(reference["scientific_sha256"])
+            position = reference["sequence"]
+            if not previous < position < count or position in seen:
+                raise RunArtifactError("Invalid selected replay operation reference")
+            previous = position
+            seen.add(position)
+    _check_candidate_w_pair(event["candidate_projection"])
+
+
 def _check_qualification_result(event: dict, metadata: dict) -> None:
     required = {"status", "family", "seeds", "selected_configuration",
                 "selected_window", "selected_retention_ms", "observed_effect_sign",
@@ -514,6 +665,10 @@ class _Chain:
             raise RunArtifactError("Qualification result in a non-qualification run")
         if event["type"] == "assay_result" and self.run_kind != "confirmation":
             raise RunArtifactError("Assay result in a non-confirmation run")
+        if event["type"] == "qualification_replay":
+            if self.run_kind != "qualification":
+                raise RunArtifactError("Selected replay in a non-qualification run")
+            _check_qualification_replay(event, self.metadata, self.count)
         grid_id = None
         if event["type"] == "qualification_grid_binding":
             if self.run_kind != "qualification":

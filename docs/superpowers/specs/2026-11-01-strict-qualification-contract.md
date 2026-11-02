@@ -5,8 +5,10 @@ map context (Tasks7B4a/b), authenticated grid reconstruction (Task7B4c.2b) and
 caller-owned selected native production (Task7B4d) are implemented and accepted.
 d passed independent source review and actual tiny-native selected/legacy
 confirmation matrices on its earlier source. Private successful-append reference
-helper e.1 is accepted with unchanged public append; it is not wired into repeat
-production. Full selected response repeats (parent e), public assessment/freeze
+helper e.1 is accepted with unchanged public append. e.2 R1 schema/structural
+intake, projections and independent local pair comparison passed source review,
+focused/affected-file compatibility and separate actual MaleCNS context acceptance.
+True production remains unavailable. Full selected response repeats (parent e), public assessment/freeze
 integration (f), CLI/capacity (g) and formal qualification remain open.
 This is no source-freeze or scientific approval. **Date:** 2026-11-01.
 **Updated:** 2026-11-02.
@@ -229,7 +231,7 @@ siblings. Selected evidence comprises 40 acquisitions, 24 interventions,
 Legacy selected-control summaries derive from actual new raw T cells; do not
 execute a second inconsistent control protocol.
 
-**Parent e contract remains planned; only helper e.1 is accepted. Full repeat
+**Parent e remains open; e.1 and bounded e.2 R1 are accepted. Full repeat
 production is not released or runtime-accepted.** Accept only exact
 Boolean `measure_replay`; True is qualification-only. False preserves absent
 qualification fields and confirmation's genuine legacy scalar. Repeat all
@@ -282,10 +284,11 @@ advancement before writing is insufficient. Do not add per-diagnostic growing-
 prefix hash-retrieval scans, raw-history caches or trust issuers. These producer-
 supplied references are not crash-durable proof.
 
-e.1's isolated helper acceptance does not implement diagnostics/projections/schema
-or independent pair comparison (planned e.2), nor lockstep native production
-(planned e.3). Those steps require final bounded briefs; no 408 repeats have been
-measured and no new native/history trust authority exists.
+e.1 is the isolated reference foundation; e.2 R1 diagnostics/projections/schema
+and independent local pair comparison are implemented and accepted on R1.
+Lockstep native production remains planned e.3 under its own
+bounded brief; no 408 repeats have been measured and no new native/history trust
+authority exists.
 
 e owns local structural/arithmetic validation and an independent bounded current-
 pair stream comparison. f resolves ALL references against actual fixed bytes,
@@ -300,6 +303,119 @@ reference helper and existing tests; no core/grid/public-freeze/terminal changes
 Progress through nine paired-cohort comparisons, 51 full-cohort comparisons,
 then separately budgeted 408. Keep operational cap4096 and intended 1602-checkpoint
 bound; cap activation and g's actual controlled unprofiled capacity remain separate.
+
+### e.2 exact mechanical contract — bounded helpers accepted
+
+The mechanical contract is implemented and accepted for bounded R1 helpers/schema/
+local pair comparison on source
+`4527956304d4d1630c415a190d4a475912cbe4ca028b4abb63baa859f9af13ae`,
+schema `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
+Parent e remains open; False-only production/confirmation behavior stays.
+
+Closed `qualification_replay` adds exactly this payload to existing seven event
+framing fields (sequence/type/branch_id/sim_ms/run_metadata_sha256/
+previous_scientific_sha256/scientific_sha256); nested objects forbid extras/nulls:
+
+```text
+replay_version="selected-response-repeat/v1", replay_id, original_branch_id,
+physical_key, source_occurrence, engine_identity_sha256, candidate_identity,
+population_size, input_sha256, black_sha256, response_window, cs_onset_tick,
+sim_tick, operations, boundaries, candidate_projection,
+response_replay_resolution_hz, candidate_memory_w_resolution, parent_branch_id
+```
+
+Add PRE's parent_checkpoint_name/parent_checkpoint_sequence/parent_checkpoint_sha256,
+or POST's parent_state_anchor_sha256. Require qualification run/family,
+branch_id=replay_id=original_branch_id+
+`"/repeat"`, sim_tick=repeat final tick, sim_ms=tick/10. Closed `physical_key`:
+`{seed,paired_identity,presentation_order,phase,stimulus}`; POST adds exactly
+`{condition,retention_ms}`. Phase is pre/post respectively; existing qualification
+factors apply. PRE source_occurrence is caller baseline; POST is training/intervention
+source matching the actual anchor source. PRE omits T/condition.
+
+`operations={original,repeat}` contains ordered, unique, disjoint prior
+`{sequence,scientific_sha256}` references: branch_start, optional immediate
+replay_thaw, EVERY observe through tail, excluding logical evidence. Each list
+has 4–6 entries: three/four scheduled calls, start, at most one thaw; schedule
+tests must reject incompatible future changes.
+
+`boundaries={start,window,final}`, each exactly `{original,repeat}`. Start records
+are `{sim_tick,complete_state_sha256,weights_frozen}`; window/final records replace
+the flag with `candidate_memory_sha256,noncandidate_state_sha256`. Start precedes
+thaw and equals parent tick/state and onset−1000; window=onset+window.end_ms*10;
+final=onset+cs_duration_ms*10+2000.
+Pair records agree at each boundary; coincident window/final clocks require
+identical records per side. Exact Boolean start flag requires/forbids immediate
+true-to-false thaw; later final state need not equal earlier window state.
+
+Closed projection:
+
+```text
+{projection_version:"selected-candidate-w-pair/v1",dtype:"<f8",shape:[m],
+ maps:{target_indices,candidate_positions,candidate_edge_indices},original_hex,repeat_hex}
+```
+
+Maps are nonempty unique exact nonnegative ordered integers; positions/edges
+length=m>0. Each lowercase hex string has exactly16*m characters. Structure checks
+allocate no hex bytes/NumPy arrays. Actual 1D ndarray `<f8` encoding uses C-order
+bytes without casts. Bind complete expected maps, cardinality and index bounds
+BEFORE fromhex/frombuffer; then check finite values/model bounds, preserving
+signed zero. Equal candidate hashes require equal W bytes.
+
+Private APIs:
+
+```text
+recorder._check_qualification_replay(event, metadata, count) -> None
+analysis._encode_candidate_w_pair(first, second, *, maps) -> dict
+analysis._decode_candidate_w_pair(projection, *, expected_maps, n,
+ memory_count, edge_count, lower, upper) -> (first, second)
+analysis._compare_replay_operations(first_event, second_event) -> None
+analysis._compare_selected_replay(events, diagnostic, *, metadata, execution,
+ expected_source_occurrence, expected_start, expected_maps, n,
+ memory_count, edge_count, lower, upper) -> dict
+```
+
+Recorder checks structure/local clocks/prior refs/finite scalars against ACTUAL metadata
+identity/population/candidate and stimulus hashes; black matches both declarations.
+Bind engine_identity.sha256, mbon11_population_size, candidate_identity,
+rgb_input_sha256.stimuli[str(seed)][stimulus], rgb_input_sha256.black and
+black_input.input_sha256. Dispatch inside _Chain.check before commit.
+Metadata declares grid candidates, not selected CS/T/window: preserve later70000.
+No analysis import/decode/scan. Analysis binds exact existing plain execution,
+source occurrence and start-record expectations, not capabilities. e.3 supplies actual
+native parents/maps; f derives PRE state from bound NPZ content (not file SHA),
+POST from verified anchor/source/thaw. f uses _verified_qualification_context;
+maps are context.candidate_maps.mbon11;
+n/layout derive from genuine context/checkpoint_schema memory_w/weight lengths.
+Indices obey target<n/position<memory_count/edge<edge_count; lower/upper are actual
+minimum_fraction−1/maximum_fraction−1. Context binding precedes numeric decoding.
+Recompute float64 W distance via `_state_difference`, response Hz via integer
+window-count difference/`_response_rate`; reject mismatches, never invent zero.
+
+Operation comparison excludes EXACTLY:
+
+```text
+sequence,scientific_sha256,previous_scientific_sha256,run_metadata_sha256,
+branch_id,parent_branch_id,parent_checkpoint_name,parent_checkpoint_sequence,
+parent_checkpoint_sha256,parent_state_anchor_sha256
+```
+
+Bind these separately; retain WHOLE remaining object through `_scientific`,
+including type/sim_ms/version/flags/telemetry. Never use replay.FRAMING.
+branch_start adds no invented operation_version.
+
+Comparator drains an externally supplied fixed-prefix iterator, resolving actual
+diagnostic/source/anchor/training route and EVERY target-branch event through EOF,
+including after diagnostic. Require exact scheduled coverage/inputs/raw bins;
+permit only referenced start/thaw/observe, valid original window-stop evidence
+after both measurements, and one exact repeat diagnostic. Reject extra/unknown/
+unreferenced/subsequent activity. Validate present unique cells, max16 PRE/1 POST;
+execution invents no requested-condition list. Retain at most12 operations/bounded
+descriptors/keys; semantic errors drain with bounded reasons, iterator errors
+and final-binding errors propagate; semantic errors then raise. Recorded state
+checks do not reconstruct unrecorded full native history. e.3 adds no408 scans;
+f owns global408/768 completeness/PRE reuse.
+No new line-allocation bound, checkpoint, proof issuer or cap activation follows.
 
 ## One truthful terminal and sealed-only freezing
 

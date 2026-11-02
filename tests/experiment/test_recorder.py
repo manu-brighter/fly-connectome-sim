@@ -29,6 +29,132 @@ METADATA = {
 ZERO = "0" * 64
 
 
+def _selected_replay_recorder(tmp_path):
+    """Wire-only declarations and actual references, without native execution/proof."""
+    import numpy as np
+    from fly_connectome_sim.engine import _rgb_input_sha256
+    black = _rgb_input_sha256(np.zeros((32, 32, 3), dtype=np.uint8))
+    metadata = {**deepcopy(METADATA), "engine_identity": {"sha256": ZERO},
+        "candidate_identity": "kc-mbon11-ppl101/v1", "mbon11_population_size": 1,
+        "rgb_input_sha256": {"stimuli": {"11": {"A": METADATA["input_sha256"][1]}}, "black": black},
+        "black_input": {"generator": "black-rgb/v1", "input_shape": [32, 32, 3], "input_dtype": "uint8", "input_sha256": black},
+        "input_sha256": [*METADATA["input_sha256"], black]}
+    recorder = RunRecorder(tmp_path / "selected-replay-wire", run_kind="qualification", metadata=metadata, root_branch_id="root")
+    digest = checkpoint(recorder, tmp_path, "brain-before.npz")
+    recorder.append(event(type="qualification_checkpoint", checkpoint_name="brain-before.npz", sim_tick=0))
+    parent = {"parent_branch_id": "root", "parent_checkpoint_name": "brain-before.npz",
+              "parent_checkpoint_sequence": 0, "parent_checkpoint_sha256": digest}
+    operations = {}
+    for side, branch in (("original", "selected/11/A/AB/pre/A"), ("repeat", "selected/11/A/AB/pre/A/repeat")):
+        operations[side] = [recorder._append_reference(event(branch, type="branch_start", **parent))]
+        operations[side].extend(recorder._append_reference(event(branch, type="observe", sim_ms=float(index))) for index in (1, 2, 3))
+    start = {"sim_tick": 0, "complete_state_sha256": ZERO, "weights_frozen": False}
+    state = {"sim_tick": 2000, "complete_state_sha256": ZERO, "candidate_memory_sha256": ZERO, "noncandidate_state_sha256": ZERO}
+    body = {"type": "qualification_replay", "branch_id": "selected/11/A/AB/pre/A/repeat", "sim_ms": 400.0,
+        "replay_version": "selected-response-repeat/v1", "replay_id": "selected/11/A/AB/pre/A/repeat",
+        "original_branch_id": "selected/11/A/AB/pre/A",
+        "physical_key": {"seed": 11, "paired_identity": "A", "presentation_order": "AB", "phase": "pre", "stimulus": "A"},
+        "source_occurrence": {"checkpoint_name": "brain-before.npz", "checkpoint_sha256": digest,
+            "checkpoint_sequence": 0, "origin_branch_id": "root", "sim_tick": 0},
+        "engine_identity_sha256": ZERO, "candidate_identity": metadata["candidate_identity"], "population_size": 1,
+        "input_sha256": METADATA["input_sha256"][1], "black_sha256": black,
+        "response_window": {"start_ms": 0.0, "end_ms": 100.0}, "cs_onset_tick": 1000, "sim_tick": 4000,
+        "operations": operations, "boundaries": {"start": {"original": start, "repeat": deepcopy(start)},
+            "window": {"original": state, "repeat": deepcopy(state)},
+            "final": {"original": {**state, "sim_tick": 4000}, "repeat": {**state, "sim_tick": 4000}}},
+        "candidate_projection": {"projection_version": "selected-candidate-w-pair/v1", "dtype": "<f8", "shape": [1],
+            "maps": {"target_indices": [0], "candidate_positions": [0], "candidate_edge_indices": [0]},
+            "original_hex": "00" * 8, "repeat_hex": "00" * 8},
+        "response_replay_resolution_hz": 0.0, "candidate_memory_w_resolution": 0.0, **parent}
+    return recorder, body
+
+
+def test_selected_replay_schema_closes_diagnostic_projection_and_dispatch():
+    schema = json.loads(files("fly_connectome_sim.schemas").joinpath("run.schema.json").read_text(encoding="utf-8"))
+    definitions = schema["$defs"]
+    assert definitions["qualification_replay"]["additionalProperties"] is False
+    assert definitions["candidate_w_pair"]["additionalProperties"] is False
+    assert definitions["candidate_w_pair"]["properties"]["dtype"] == {"const": "<f8"}
+    assert definitions["selected_replay_operations"]["properties"]["original"]["maxItems"] == 6
+    assert {"if": {"properties": {"type": {"const": "qualification_replay"}}, "required": ["type"]},
+            "then": {"$ref": "#/$defs/qualification_replay"}} in definitions["event"]["allOf"]
+
+
+def test_selected_replay_closed_append_rejection_preserves_valid_retry(tmp_path):
+    recorder, body = _selected_replay_recorder(tmp_path)
+    try:
+        before = recorder.validate_prefix().scientific_prefix
+        with pytest.raises(RunArtifactError):
+            recorder.append({**body, "trusted": True})
+        assert recorder.validate_prefix().scientific_prefix == before
+        recorder.append(body)
+        assert list(recorder.validate_prefix().iter_events())[-1]["replay_id"] == body["replay_id"]
+    finally:
+        recorder.__exit__(RuntimeError, RuntimeError(), None)
+
+
+@pytest.mark.parametrize("path,value", [
+    (("physical_key", "seed"), True), (("physical_key", "retention_ms"), 10000),
+    (("population_size",), True), (("population_size",), 2), (("candidate_identity",), "other/v1"),
+    (("input_sha256",), ZERO), (("black_sha256",), ZERO), (("engine_identity_sha256",), "a" * 64),
+    (("response_window", "end_ms"), True), (("response_window", "end_ms"), 1e308),
+    (("boundaries", "start", "original", "weights_frozen"), 0),
+    (("boundaries", "start", "original", "sim_tick"), True),
+    (("boundaries", "final", "repeat", "complete_state_sha256"), "a" * 64),
+    (("operations", "original", 0, "sequence"), True), (("operations", "original", 0, "sequence"), 10000),
+    (("operations", "repeat", 0, "sequence"), 1), (("operations", "original", 0, "extra"), 0),
+    (("candidate_projection", "shape"), [True]), (("candidate_projection", "shape"), [2]),
+    (("candidate_projection", "maps", "target_indices"), [True]),
+    (("candidate_projection", "dtype"), "<f4"), (("candidate_projection", "original_hex"), "00"),
+    (("response_replay_resolution_hz",), True), (("candidate_memory_w_resolution",), -1),
+    (("source_occurrence", "sim_tick"), True), (("extra",), "unclosed"),
+])
+def test_selected_replay_invalid_wire_is_nonmutating_with_valid_retry(tmp_path, path, value):
+    recorder, body = _selected_replay_recorder(tmp_path)
+    invalid = deepcopy(body)
+    target = invalid
+    for name in path[:-1]:
+        target = target[name]
+    target[path[-1]] = value
+    try:
+        before = recorder.validate_prefix().scientific_prefix
+        with pytest.raises(RunArtifactError):
+            recorder.append(invalid)
+        assert recorder.validate_prefix().scientific_prefix == before
+        recorder.append(body)
+        recorder.validate_prefix()
+    finally:
+        recorder.__exit__(RuntimeError, RuntimeError(), None)
+
+
+def test_selected_replay_structural_later_t_is_not_limited_by_initial_grid(tmp_path):
+    recorder, body = _selected_replay_recorder(tmp_path)
+    key = {**body["physical_key"], "phase": "post", "condition": "paired", "retention_ms": 70000}
+    parent = {"parent_branch_id": "retained", "parent_state_anchor_sha256": "a" * 64}
+    body = {name: value for name, value in body.items() if not name.startswith("parent_")}
+    body.update(physical_key=key, **parent)
+    from fly_connectome_sim.experiment.recorder import _check_qualification_replay
+    try:
+        # Pure structural check; this does not register a fake anchor or native context.
+        owned = {"sequence": recorder.next_sequence, "run_metadata_sha256": ZERO,
+                 "previous_scientific_sha256": ZERO, "scientific_sha256": ZERO}
+        _check_qualification_replay({**body, **owned}, recorder.metadata, recorder.next_sequence)
+    finally:
+        recorder.__exit__(RuntimeError, RuntimeError(), None)
+
+
+def test_selected_replay_coincident_window_final_requires_equal_full_records(tmp_path):
+    recorder, body = _selected_replay_recorder(tmp_path)
+    body.update(sim_tick=2000, sim_ms=200.0)
+    for side in ("original", "repeat"):
+        body["boundaries"]["final"][side].update(sim_tick=2000, complete_state_sha256="a" * 64)
+    try:
+        with pytest.raises(RunArtifactError, match="boundary clocks"):
+            recorder.append(body)
+    finally:
+        recorder.__exit__(RuntimeError, RuntimeError(), None)
+
+
 def test_append_reference_matches_actual_prefix_bytes_and_preserves_public_append(tmp_path):
     recorder = RunRecorder(tmp_path / "references", run_kind="pilot", metadata=METADATA,
                            root_branch_id="root")
