@@ -8,10 +8,9 @@ confirmation matrices on its earlier source. Private successful-append reference
 helper e.1 is accepted with unchanged public append. e.2 R1 schema/structural
 intake, projections and independent local pair comparison passed source review,
 focused/affected-file compatibility and separate actual MaleCNS context acceptance.
-The private e.3 True producer has source review, bounded 9/51 native checks and
-assay-module compatibility: an accepted partial WIP checkpoint, with complete
-408 acceptance open. Full selected
-response repeats (parent e), public assessment/freeze
+The private e.3 True producer passed source review, actual 9/51/408-pair
+tiny-native checks and assay-module compatibility. Parent e implementation
+acceptance is complete; production global reconciliation/public assessment/freeze
 integration (f), CLI/capacity (g) and formal qualification remain open.
 This is no source-freeze or scientific approval. **Date:** 2026-11-01.
 **Updated:** 2026-11-02.
@@ -234,8 +233,8 @@ siblings. Selected evidence comprises 40 acquisitions, 24 interventions,
 Legacy selected-control summaries derive from actual new raw T cells; do not
 execute a second inconsistent control protocol.
 
-**Parent e remains open; e.1/e.2 are accepted. e.3 True production is implemented
-and source-reviewed with bounded 9/51 checks, not complete 408 acceptance.** Accept only exact
+**Parent e, including e.1/e.2/e.3, is implemented and accepted with complete
+tiny-native 9/51/408 checks. Production global f assessment remains open.** Accept only exact
 Boolean `measure_replay`; True is qualification-only. False preserves absent
 qualification fields and confirmation's genuine legacy scalar. Repeat all
 **408 physical trials: 24 PRE + 384 POST**, including both T. Each full-matrix PRE
@@ -289,9 +288,9 @@ supplied references are not crash-durable proof.
 
 e.1 is the isolated reference foundation; e.2 R1 diagnostics/projections/schema
 and independent local pair comparison are implemented and accepted on R1.
-Lockstep native production has bounded e.3 9/51 evidence; the full 408 matrix
-has not been measured and no new native/history trust
-authority exists.
+Lockstep native production has actual e.3 9/51/408 evidence; the complete matrix
+was measured on the four-node tiny-native fixture. No new native/history trust
+authority exists; production global reconciliation remains f.
 
 e owns local structural/arithmetic validation and an independent bounded current-
 pair stream comparison. f resolves ALL references against actual fixed bytes,
@@ -303,8 +302,8 @@ Native anchor replay proves black retention only, separately from response repea
 
 Minimal e scope: producer, analysis, schema, narrow recorder structural dispatch/
 reference helper and existing tests; no core/grid/public-freeze/terminal changes.
-Progress through nine paired-cohort comparisons, 51 full-cohort comparisons,
-then separately budgeted 408. Keep operational cap4096 and intended 1602-checkpoint
+The staged nine paired-cohort, 51 full-cohort and separately budgeted 408 checks
+have passed. Keep operational cap4096 and intended 1602-checkpoint
 bound; cap activation and g's actual controlled unprofiled capacity remain separate.
 
 ### e.2 exact mechanical contract — bounded helpers accepted
@@ -313,7 +312,7 @@ The mechanical contract is implemented and accepted for bounded R1 helpers/schem
 local pair comparison on source
 `4527956304d4d1630c415a190d4a475912cbe4ca028b4abb63baa859f9af13ae`,
 schema `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
-Parent e remains open; accepted e.2's False-only baseline is historical. The
+Parent e acceptance is complete; accepted e.2's False-only baseline is historical. The
 current private True producer is scoped below; confirmation behavior stays.
 
 Closed `qualification_replay` adds exactly this payload to existing seven event
@@ -421,14 +420,21 @@ checks do not reconstruct unrecorded full native history. e.3 adds no408 scans;
 f owns global408/768 completeness/PRE reuse.
 No new line-allocation bound, checkpoint, proof issuer or cap activation follows.
 
-### e.3 independence and final-owner handoff — bounded 9/51 checks
+### e.3 independence and final-owner handoff — complete tiny-native acceptance
 
-Source review and bounded 9/51 native checks passed on model
+Source review and actual 9/51/408 native checks passed on model
 `2d07f37e85935f78b522bccb0a60d7f2b9f1d0e5a1475c8d306f12b995766da8`,
 with unchanged schema3cc3257…; e.2 runtime evidence above is historical. Assay
-compatibility passed; the partial checkpoint is accepted, with complete 408
-acceptance still open. These checks
-establish recorded consistency, not response/native-history or scientific proof.
+compatibility passed. R3 True408 passed in **2,333.98 s**, runner 2,334.437 s,
+with no failures/errors/skips. It checked 408 diagnostics (24 PRE + 384 POST),
+768 logical cells, sixteen-fold PRE reuse, 1,033 production factories, 128 native
+black-retention anchors and 65 durable CPs including caller baseline. All 408 pairs
+had native/actual-byte lookup checks; nine external full-prefix e.2 EOF comparisons
+covered every cohort, intervention/T combination and PRE. No 408 prefix scans
+were added. Both frozen paths/all 30 source members/schema matched before/after.
+This four-node tiny-native prefix remains unsealed without scientific outcome.
+These checks establish recorded consistency, not response/native-history or
+scientific proof.
 
 Acquire both pair engines before either restore. Validate native checkpoint
 registration; reject identical Engine/Brain objects and ANY cross-field mutable
@@ -451,9 +457,8 @@ No reconstructed owner, extra NPZ/checkpoint/factory or rerun.
 
 f authenticates the actual last diagnostic and binds its repeat branch, lineage,
 final clock/complete-state hash to this owner before final checkpoint/terminal/seal; owner data
-is no trust issuer. Bounded 9/51 checks observed **21/130** production factories;
-**1033** remains an unmeasured expectation. Full 408 acceptance remains outstanding;
-parent e and f/g/formal gates remain open.
+is no trust issuer. The 9/51/408 checks observed **21/130/1,033** production factories.
+Parent e implementation acceptance is complete; f/g/formal gates remain open.
 
 ## One truthful terminal and sealed-only freezing
 

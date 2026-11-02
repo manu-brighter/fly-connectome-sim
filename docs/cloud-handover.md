@@ -2,8 +2,8 @@
 
 Use `origin` of `manu-brighter/fly-connectome-sim`, branch
 `feat/connectome-experiment-core`, latest pushed feature commit. The latest
-source-reviewed work is Task7B4e.3, with bounded 9/51-pair native evidence.
-The complete 408-repeat acceptance remains open.
+source-reviewed work is Task7B4e.3, with complete 9/51/408-pair tiny-native
+implementation acceptance. Parent e is complete; f/g integration remains open.
 The project remains WIP, not v1.
 
 Continue autonomously on the original Windows workstation, including reviewed
@@ -59,7 +59,7 @@ conversion. Unavailable counts stay unavailable; no gate tolerance was added.
 NumPy 2.4.6's private header API supports NPY1/2/3; lossy structured/subarray
 extension templates are rejected. Protocol/raw formats and native core remain.
 
-**Task7B4e.3 is WIP: source review and bounded 9/51 checks passed; 408 remains open.**
+**Task7B4e.3 and parent e implementation acceptance are complete.**
 The private True-qualification producer now executes independent native pairs,
 measured window-stop response/W resolution, complete tails and exact diagnostic
 references. False/confirmation retains its existing owner and behavior; True
@@ -72,8 +72,8 @@ schema `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
 Independent source review closed the retained-snapshot/anchor mismatch finding.
 R1 focused: **78 passed, 89 deselected in 189.24 s**, no failures/errors/skips.
 Later matrix-oracle additions and the raw/manifest sequence correction changed
-tests only; their independent reviews passed. The earlier failed R2 test-only
-anchor-key attempt is not a pass.
+tests only; their independent reviews passed. The earlier R2 True51 run failed
+in 126.07 s on the test-only manifest/event_sequence mapping; it is not a pass.
 
 Actual R3 True51: **1 passed in 155.54 s**, exit0, no failures/errors/skips.
 The declared tiny-native fixture produced 51 diagnostics/96 logical cells,
@@ -82,17 +82,27 @@ checkpoints including baseline. All eight conditions/intervention routes and
 exact sixteen-fold PRE reuse were checked; every one of the 51 pairs passed
 the e.2 actual fixed-prefix-to-EOF comparator, native window-W/raw-reference and
 actual last-owner checks. Paired nine-comparison checks verified 21 production
-factories. 1033 factories remain an unmeasured full-matrix expectation.
+factories.
+
+Actual R3 True408 on the **four-node tiny-native fixture**:
+**1 passed in 2,333.98 s**, runner 2,334.437 s, exit0, no failures/errors/skips.
+The test checked 408 diagnostics (24 PRE + 384 POST), 768 original logical cells,
+1,033 production factories before separate native verification, 128 native
+black-retention anchors and 65 durable checkpoints including baseline. Every
+PRE serves exactly sixteen condition/T cells. All 408 pairs passed the actual
+native boundary/W/whole-operation/reference lookup oracle; nine selected pairs
+also passed the full external e.2 fixed-prefix-to-EOF comparator, covering every
+cohort, each intervention/T combination and PRE. This was not 408 full-prefix scans.
 
 One actual MaleCNS zero-anchor map-context case **passed in 8.28 s**, exit0,
-without failures/skips. Both R3 runs matched two frozen paths, all 30 source
+without failures/skips. These R3 runs matched two frozen paths, all 30 source
 members and schema before/after. This is one context, not a full MaleCNS assay.
-Default opt-in-off compatibility for the entire assay test module: **166 passed,
+Earlier opt-in-off compatibility for the entire assay test module: **166 passed,
 three declared opt-in skips in 1,426.94 s**, exit0, no failures/errors. Skips were
-False all-eight, True51 (separately passed above), and unexecuted True408. R3
+False all-eight, True51 and True408; the True nodes passed separately above. R3
 source/test/schema bytes matched before/after. R1 focused and R3 broader coverage
-overlap and are not additive. The 408-repeat native matrix has not started;
-no current whole-project/all-eight/native96/full MaleCNS assay pass is claimed.
+overlap and are not additive. No current whole-project/complete96-grid/full
+MaleCNS assay pass is claimed.
 These are recorded-consistency/black-retention checks, not response or upstream
 native-history attestation, scientific qualification or learning/capacity support.
 
@@ -102,6 +112,15 @@ PRE and 48 POST comparisons/96 logical cells. Events SHA256:
 `7662e4dc54eb5d8291938c835d4ea2fd34830e8cbd5f3562f839aade1ebd6cc6`.
 It remains unsealed without scientific outcome/terminal/configuration. The audit
 reissued no native proof; raw artifacts remain local-only.
+
+The independent original-file/count audit also passed the True408 prefix:
+**16,088 events / 42,057,618 bytes**, 1,010 branches, 65 checkpoints/598,897 bytes.
+Events SHA256:
+`78b660fd566045feb058ca49143e2487e14de4a63ac2e87e7d50ec7352790ebb`.
+It remains unsealed with no scientific outcome, terminal or frozen configuration.
+The audit reissued no native proof. This completes e's tiny-native implementation
+acceptance; f's production global reconciliation/final lifecycle and g's integrated
+capacity, LF/source-freeze and formal qualification gates remain open.
 
 ## Historical evidence — not current-source acceptance
 
@@ -135,7 +154,7 @@ No whole ordinary/all-eight/complete96 run was repeated on this source.
 
 That e.2 source kept True production unavailable/False-only; current bounded
 producer work is reported separately above. It does not upgrade these older
-tests to the new source or complete the full 408/768 repeat matrix.
+tests to the new source; current 408/768 repeat acceptance is recorded above.
 
 ### Task7B4e.1 — accepted reference foundation on earlier source
 
@@ -207,7 +226,8 @@ plus one caller baseline; its artifact remains an unsealed prefix without
 terminal/run.json/configuration. Real prefix verification asserted 128 native
 black-retention anchors; legacy prefix and seal each asserted the same genuine
 anchor inventory. These checks authenticate black retention/maps, not upstream
-training or response history. Response-repeat measurement remains e.
+training or response history. Later e.3 response-repeat acceptance is recorded
+above on its own source revision.
 
 Independent original-file/count audits passed both artifacts; they reissued no
 native proof. Event SHA256: selected
@@ -266,15 +286,15 @@ Interrupted development runs are never counted as passes.
   authentication, preserved confirmation wrappers/native transfer checks and
   actual selected-eight/legacy confirmation-eight acceptance.
 - [x] 7B4e.1: private successful-append reference foundation; public append unchanged.
-- [ ] 7B4e: measure all 408 physical response repeats and actual state resolution;
+- [x] 7B4e: measure all 408 physical response repeats and actual state resolution;
   bind exact independent parents/raw bins. Never borrow frozen tolerance or invent 0.
-  e.2 foundations are complete; e.3 has bounded 9/51 native evidence. Complete
-  408-repeat acceptance remains open; no global f assessment/freezing is integrated.
+  e.1/e.2 foundations and e.3 tiny-native 9/51/408 acceptance are complete.
+  Global f assessment/freezing remains separate and unimplemented.
 - [x] 7B4e.2: closed diagnostic/schema intake, bounded W projections and independent
   external-iterator local pair comparison; no True-production wiring.
-- [ ] 7B4e.3: source-reviewed True producer and bounded 9/51 checks; finish separately
-  budgeted 408-repeat acceptance before completion. Entire assay-module compatibility passed;
-  this is an accepted partial WIP checkpoint, not complete parent e.
+- [x] 7B4e.3: source-reviewed True producer and actual tiny-native 9/51/408 checks;
+  whole assay-module compatibility and separate complete repeat acceptance passed.
+  No full MaleCNS assay, scientific outcome or capacity approval follows.
 - [ ] 7B4f: integrate selected inventory with authenticated grid assessment, one
   evidence-bound terminal and independently checked seal; sealed-only engine-free
   public freezing. Complete valid negatives never create a production config.
