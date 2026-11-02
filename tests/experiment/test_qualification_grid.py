@@ -268,6 +268,183 @@ def test_genuine_prefix_uses_two_complete_event_passes(map_engine_factory, tmp_p
         recorder._stream.close()
 
 
+@pytest.mark.parametrize("stop", ["call", "unit"])
+def test_grid_measurements_matches_standalone_prefix(map_engine_factory, tmp_path, monkeypatch, stop):
+    from fly_connectome_sim.experiment import qualification_grid as grid
+
+    assert hasattr(grid, "_GridMeasurements"), "bounded grid measurement component is missing"
+    if stop == "unit":
+        recorder, run, expected, producer_seconds = _all_t_unit(map_engine_factory, tmp_path)
+    else:
+        recorder, run = _partial(map_engine_factory, tmp_path)
+    try:
+        value = verify_replay_prefix(recorder.validate_prefix(), engine_factory=map_engine_factory)
+        passes, accesses = [], []
+        original = type(value).iter_events
+        accessor = grid._verified_qualification_context
+
+        def counted(self):
+            count = 0
+            for event in original(self):
+                count += 1
+                yield event
+            passes.append(count)
+
+        def checked(actual):
+            accesses.append(actual)
+            return accessor(actual)
+
+        monkeypatch.setattr(type(value), "iter_events", counted)
+        monkeypatch.setattr(grid, "_verified_qualification_context", checked)
+        context = checked(value)
+        metadata = grid._qualification_declarations(value.manifest)
+        inventory = grid._Inventory(value.manifest)
+        for event in value.iter_events():
+            inventory.consume(event)
+        inventory.finish(value)
+        measurements = grid._GridMeasurements(value, inventory, context, metadata)
+        assert len(passes) == 1 and accesses == [value]
+        for event in value.iter_events():
+            measurements.consume(event)
+        checked(value)
+        direct = measurements.finish()
+        assert len(passes) == 2 and passes[0] == passes[1]
+        assert accesses == [value, value]
+        standalone = analysis._reduce_qualification_grid(value)
+        assert asdict(direct) == asdict(standalone)
+        assert passes == [passes[0]] * 4
+        assert accesses == [value] * 4
+    finally:
+        recorder._stream.close()
+
+
+@pytest.mark.parametrize("kind", ["qualification_replay", "assay_response", "unknown"])
+def test_grid_measurements_rejects_selected_and_unknown_roles(map_engine_factory, tmp_path, kind):
+    from fly_connectome_sim.experiment import qualification_grid as grid
+
+    assert hasattr(grid, "_GridMeasurements"), "bounded grid measurement component is missing"
+    recorder, run = _partial(map_engine_factory, tmp_path, "baseline")
+    try:
+        value = verify_replay_prefix(recorder.validate_prefix(), engine_factory=map_engine_factory)
+        context = grid._verified_qualification_context(value)
+        inventory = grid._Inventory(value.manifest)
+        for event in value.iter_events():
+            inventory.consume(event)
+        inventory.finish(value)
+        measurements = grid._GridMeasurements(value, inventory, context,
+                                             grid._qualification_declarations(value.manifest))
+        # Component-only malformed role input; never a claimed authenticated event.
+        event = {"type": kind, "sequence": 1}
+        with pytest.raises(analysis.AnalysisError, match="^grid_component_scope$"):
+            inventory.consume(event)
+        with pytest.raises(analysis.AnalysisError, match="^grid_component_scope$"):
+            measurements.consume(event)
+    finally:
+        recorder._stream.close()
+
+
+def test_grid_inventory_rejects_orphan_manifest_checkpoint(map_engine_factory, tmp_path):
+    from fly_connectome_sim.experiment import qualification_grid as grid
+
+    recorder, run = _partial(map_engine_factory, tmp_path, "baseline")
+    try:
+        value = verify_replay_prefix(recorder.validate_prefix(), engine_factory=map_engine_factory)
+        manifest = value.manifest
+        manifest["checkpoints"]["orphan.npz"] = deepcopy(manifest["checkpoints"]["brain-before.npz"])
+        # First-pass ownership seam with a declared extra, not a new native proof.
+        inventory = grid._Inventory(manifest)
+        for event in value.iter_events():
+            inventory.consume(event)
+        with pytest.raises(analysis.AnalysisError, match="^grid_orphan_checkpoint$"):
+            inventory.finish(value)
+    finally:
+        recorder._stream.close()
+
+
+@pytest.mark.parametrize("field", ["branch_id", "sim_tick", "parent_checkpoint_sha256"])
+def test_pure_grid_final_requires_last_grid_physical_owner(field):
+    """Declared complete cursor only; no complete native grid or EOF claim."""
+    from fly_connectome_sim.experiment import qualification_grid as grid
+
+    event = {"type": "qualification_checkpoint", "sequence": 100,
+             "checkpoint_name": "brain-after.npz", "checkpoint_sha256": "1" * 64,
+             "checkpoint_size": 1, "branch_id": "grid/last", "sim_tick": 123,
+             "sim_ms": 12.3, "parent_checkpoint_sha256": "2" * 64}
+    inventory = grid._Inventory({"checkpoints": {"brain-after.npz": {"sha256": "1" * 64, "size": 1}}})
+    inventory.bound, inventory.points = 96, 144
+    inventory.units = [None] * 96
+    inventory.last_physical = (event["branch_id"], event["sim_tick"], event["parent_checkpoint_sha256"])
+    event[field] = 124 if field == "sim_tick" else "wrong"
+    with pytest.raises(analysis.AnalysisError, match="^grid_final_branch$"):
+        inventory.consume(event)
+
+
+@pytest.mark.parametrize("selected", [False, True])
+def test_pure_grid_legacy_terminal_matches_independent_selection(selected):
+    """Plain terminal arithmetic only; this issues no artifact/native attestation."""
+    from fly_connectome_sim.experiment import qualification_grid as grid
+
+    selection = (q.GRID[0], q.RESPONSE_WINDOWS[0], 10000, -1) if selected else None
+    event = {"status": "supported" if selected else "unsupported",
+             "selected_configuration": asdict(q.GRID[0]) if selected else None,
+             "selected_window": asdict(q.RESPONSE_WINDOWS[0]) if selected else None,
+             "selected_retention_ms": 10000 if selected else None,
+             "observed_effect_sign": -1 if selected else None}
+    grid._terminal(event, selection)
+    event["observed_effect_sign"] = 1
+    with pytest.raises(analysis.AnalysisError, match="^grid_terminal_selection$"):
+        grid._terminal(event, selection)
+
+
+@pytest.mark.parametrize("truncate", [False, True])
+def test_measurement_failure_releases_observation_while_draining(map_engine_factory, tmp_path, monkeypatch, truncate):
+    recorder, run = _partial(map_engine_factory, tmp_path)
+    clone = None
+    try:
+        frames = {name: AssayStimuli(11, "qualification").frame(name) for name in ("A", "B", "C")}
+        q._observe_segments(run, q._trial_segments(q.GRID[0], "A", paired=False)[1:], frames, learning=False)
+        recorder.flush()
+
+        def mutate(events):
+            events[2]["telemetry"]["pathway_detail"]["modeled_visual_drive"]["r8"]["count"] = -1
+
+        clone = _clone(recorder, tmp_path, mutate)
+        value = verify_replay_prefix(clone.validate_prefix(), engine_factory=map_engine_factory)
+        original = type(value).iter_events
+        failed_refs, completed = [], []
+        passes = 0
+
+        class RawEvent(dict):
+            pass
+
+        def tracked(self):
+            nonlocal passes
+            passes += 1
+            for event in original(self):
+                if passes == 2 and event["sequence"] == 2:
+                    event = RawEvent(event)
+                    failed_refs.append(weakref.ref(event))
+                yield event
+                if passes == 2 and event["sequence"] == 3:
+                    gc.collect()
+                    assert failed_refs and all(reference() is None for reference in failed_refs)
+                    if truncate:
+                        path = value.path / "events.jsonl"
+                        with path.open("r+b") as stream:
+                            stream.truncate(path.stat().st_size - 1)
+            completed.append(passes)
+
+        monkeypatch.setattr(type(value), "iter_events", tracked)
+        reason = "grid_artifact_changed_or_unverified" if truncate else "grid_raw_drive"
+        with pytest.raises(analysis.AnalysisError, match=f"^{reason}$"):
+            analysis._reduce_qualification_grid(value)
+        assert passes == 2 and completed == ([1] if truncate else [1, 2])
+    finally:
+        recorder._stream.close()
+        if clone:
+            clone._stream.close()
+
+
 def _training_prefix(factory, tmp_path):
     """Actual first training checkpoint, stopped before later acquisition roles."""
     recorder, run = _partial(factory, tmp_path, "baseline")

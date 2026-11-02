@@ -10,7 +10,7 @@
 
 **Spec:** [Strict qualification contract](../specs/2026-11-01-strict-qualification-contract.md), alongside the [current assay plan](2026-09-24-associative-plasticity-assay.md) and [continuation record](../../cloud-handover.md).
 
-**Status:** Corrected f.2 is accepted on source `17e784092d0579680a8f0007699fb72275d82f9649a362eb2466b74d1ac13887`, schema unchanged. f.1's73994… and e.3 acceptance remain historical/source-specific. f.3a–f.3d are planned sequential slices, NOT released; only f.3a's planned API below is ratified. f.4–f.6/g/formal gates remain future. Unchecked commands are planned checks.
+**Status:** f.3a is accepted on source `b8f0fcee7115f387f34a13d8e9651064290dc70626ed649f8f8bed32cce62ebb`, schema unchanged. f.2's17e784…, f.1's73994… and e.3 acceptance remain historical/source-specific. f.3b's API is ratified planning, NOT released source; f.3c–f.3d/f.4–f.6/g/formal gates remain future. Unchecked commands are planned checks.
 
 ## Global Constraints
 
@@ -121,27 +121,50 @@ Return exactly `{response_replay_resolution_hz,candidate_memory_w_resolution}`.
 - [x] Keep only compact branch/training/intervention IDs, anchor hash and scalar result/error/closed state afterward. Reject matching late activity despite changed branch/origin. For ALL POST pairs, match intervention events by source-origin ID, including ordinary sources; checkpoint collection remains INTERVENTIONS-only. Local adapter rejects ANY later target event, including final checkpoints; withhold its result until clean EOF. No second decoder/model, fake diagnostic, history scan or trust issuer. RED also covers malformed chronology, seeded equivalence, decoder timing, matching-hash anchor with altered origin AND source before a healthy anchor, wrong clock, mismatched finish hash, late anchor/route duplicates, release and repeated finish.
 - [x] Run `.venv/Scripts/python.exe -m pytest tests/experiment/test_analysis.py -k "selected_replay or candidate_w_pair" -q -p no:cacheprovider`, including new equivalence tests; record actual RED/GREEN and review before global use.
 
-Corrected focus118/117.82 s overlaps full378/242.79 s, both exit0/no failures/errors/skips. Normal-host recorder/replay622+one skip/43.74 s and separate actual MaleCNS context1/8.42 s passed on exact two-file/all30/schema identities. R0 aff5948… was rejected despite green372; real alias-fix RED4failed/2passed preceded the minimal two-clause correction and scoped source closure. First API RED lacks a retained subprocess exit; do not infer it from its shell exit. No global/native-positive lifecycle or capacity acceptance follows.
+Historical corrected f.2 source17e784…: focus118/117.82 s overlaps full378/242.79 s, both exit0/no failures/errors/skips. Normal-host recorder/replay622+one skip/43.74 s and separate actual MaleCNS context1/8.42 s passed on exact two-file/all30/schema identities. R0 aff5948… was rejected despite green372; real alias-fix RED4failed/2passed preceded the minimal two-clause correction and scoped source closure. First API RED lacks a retained subprocess exit; do not infer it from its shell exit. No global/native-positive lifecycle or capacity acceptance follows.
 
-### f.3a–f.3d: Sequential Planned Composition
+### f.3a–f.3d: Sequential Composition
 
-These are readiness boundaries, not a monolithic release. f.3a's planned API is
-ratified below; later component APIs need bounded briefs. No framework or trusted selection shortcut.
+These are bounded sequential slices, not a monolithic release. f.3a is accepted;
+f.3b's planned API is ratified below, source unreleased. Later component APIs need
+bounded briefs. No framework or trusted selection shortcut.
 
 #### f.3a: Composable Grid Ownership
 
 **Ownership:** `src/fly_connectome_sim/experiment/qualification_grid.py`, `tests/experiment/test_qualification_grid.py`.
 
-- [ ] Keep `_Inventory(manifest)`, `consume(event)` and `finish(value)` unchanged. Extract only `_GridMeasurements(value, inventory, context, metadata)`, `consume(event) -> None`, `finish() -> _GridAssessment`. Construction borrows inputs/initializes existing state without iteration, archive reads, engine or context issuance. This planned API is ratified, not released or implemented.
-- [ ] Preserve genuine `_reduce_qualification_grid` as owner of two exhausted passes, intake/final context checks and all-checkpoint/grid-final/legacy-terminal policies. Measurement finish returns a plain summary, not an EOF certificate. No skip/ignore flags or filtered manifest; unknown/selected component events reject.
-- [ ] RED/GREEN exact two exhausted passes, identical negative/inconclusive summaries, discarded-unit validation and eight-unit projection lifetime; use genuine partial/unit tests. No callback framework or context issuer.
+- [x] Keep `_Inventory(manifest)`, `consume(event)` and `finish(value)` unchanged. Extract only `_GridMeasurements(value, inventory, context, metadata)`, `consume(event) -> None`, `finish() -> _GridAssessment`. Construction borrows inputs/initializes existing state without iteration, archive reads, engine or context issuance.
+- [x] Preserve genuine `_reduce_qualification_grid` as owner of two exhausted passes, intake/final context checks and all-checkpoint/grid-final/legacy-terminal policies. Measurement finish returns a plain summary, not an EOF certificate. No skip/ignore flags or filtered manifest; unknown/selected component events reject.
+- [x] RED/GREEN exact two exhausted passes, identical negative/inconclusive summaries, discarded-unit validation and eight-unit projection lifetime; use genuine partial/unit tests. No callback framework or context issuer.
+
+Source review and bounded acceptance passed: focused68/three deselected/118.12 s;
+normal-host recorder/replay622/one graph skip/43.44 s; separate actual MaleCNS
+context/grid-baseline2/16.71 s; one-configuration1/588.35 s, all exit0/zero failures/
+errors with exact two-file/all30/schema identities. One of twelve configurations
+produced eight bindings/twelve points,129 checkpoints/1,204,732 bytes and7585 events/
+303,809,000 bytes; unsealed/inconclusive. Original-file audit reissues no proof.
+Graph/configuration overlap makes these functional durations, not capacity data.
+Complete96, current408/whole-project/full MaleCNS assay, positive native lifecycle,
+formal freeze/configuration and support remain unclaimed.
 
 #### f.3b: Sequence-Preserving Declared Accumulator
 
 **Ownership:** `src/fly_connectome_sim/experiment/analysis.py`, `tests/experiment/test_analysis.py`.
 
-- [ ] Extract the accepted declaration reducer into one internal accumulator. Consume explicit ACTUAL global sequences; finish returns existing EvidenceReduction. Public/declaration wrappers stay behaviorally identical; filtered selected events are never renumbered. No global evaluator yet.
-- [ ] RED/GREEN every reduction field, sequence gaps, late EOF, caps and input nonmutation.
+Ratified planned interface; no f.3b source release:
+
+```text
+_DeclaredEvidenceAccumulator(declarations, *, event_type, attested_state_anchors=())
+consume(sequence, event) -> None
+finish() -> EvidenceReduction
+```
+
+- [ ] Move declaration validation/state initialization, intake arithmetic and final reconciliation once. Preserve all seven result fields, validators/equations, copy depth and public/declaration wrapper signatures. Invalid declarations reject before iterator access; digest sets confer no proof. Borrow inputs read-only during their lifetime; no raw-history retention or new mutation guarantee.
+- [ ] Require exact non-bool integer explicit indices, nonnegative and strictly increasing; first index may exceed zero and gaps cost no event budget. Optional `event['sequence']` remains ignored as arithmetic framing, including existing fixtures. The unchanged wrapper supplies `enumerate(events)`; future authenticated composition supplies actual global indices before filtering, never renumbered. No new framing parser or trust flag.
+- [ ] Preserve causal delivery: only genuinely irrelevant records may occupy skipped gaps within the component's scope. First-seen branches and any `checkpoint_name` remain relevant regardless of type. No type-only prefilter or second relevance model; f.3c/d own selected/global routing completeness.
+- [ ] Check closed lifecycle before consume/finish. Finish marks closed BEFORE reconciliation, returns existing EvidenceReduction once, and cannot retry on failure. Invalid open-intake sequence raises `invalid_reducer_sequence` before state changes; closed reuse raises `invalid_reducer_lifecycle`. Unexpected intake errors propagate and require discard. No cached result/failure framework. Semantic reasons and caps continue intake; wrapper finishes only after normal EOF, propagating late iterator errors. Direct finish certifies no EOF.
+- [ ] Keep relevant10000/branch4096/checkpoint2048, terminal exclusion and neutral index advancement unchanged. Preserve current dictionary ownership/copy depth; no post-finish mutation through accumulator methods. No source-skip switch, evaluator or cap activation.
+- [ ] RED/GREEN independently frozen expected outputs/all seven fields for both families, wrapper equivalence, explicit gaps/ancestry including neutral-first-branch causality, missing/conflicting embedded framing, invalid sequence atomicity, lifecycle precedence/failed finish, cap edges, late semantic/EOF failures and input nonmutation. Dense/sparse parity uses genuinely neutral gaps without new branches/checkpoints. Complete analysis plus bounded recorder/replay acceptance on frozen bytes; no new native matrix claim.
 
 #### f.3c: Selected Component
 

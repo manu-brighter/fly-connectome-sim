@@ -774,6 +774,89 @@ def _terminal(event, selection):
             selection[3] if selection else None), "grid_terminal_selection")
 
 
+class _GridMeasurements:
+    """Bounded second-pass projections; finish returns data, not EOF proof."""
+
+    def __init__(self, value, inventory, context, metadata):
+        self._value = value
+        self._inventory = inventory
+        self._context = context
+        self._metadata = metadata
+        self._current = {}
+        self._measured = []
+        self._points = []
+        self._unavailable = False
+        self._baseline_projection = self._last_projection = None
+
+    def consume(self, event: dict) -> None:
+        kind = event["type"]
+        reference = self._inventory.references.get(event["sequence"])
+        if kind == "qualification_restore":
+            unit_index, branch = reference
+            unit = self._inventory.units[unit_index]
+            source = unit.roles[branch].plan.parent
+            source_projection = (self._baseline_projection if source == "baseline"
+                                 else self._current[unit_index][source])
+            projection = _Projection(trace=source_projection.trace, endpoint=source_projection.endpoint)
+            self._current.setdefault(unit_index, {})[branch] = projection
+            self._last_projection = _Projection(trace=projection.trace, endpoint=projection.endpoint)
+            _require(len(self._current) + len(self._measured) <= 8, "grid_projection_bound")
+        elif kind == "qualification_observation":
+            unit_index, branch = reference
+            unit = self._inventory.units[unit_index]
+            _raw(event, unit.roles[branch], self._current[unit_index][branch], self._context, self._metadata, unit)
+            projection = self._current[unit_index][branch]
+            self._last_projection = _Projection(trace=projection.trace, endpoint=projection.endpoint)
+        elif kind == "qualification_checkpoint":
+            projection = None
+            keep_state = False
+            if reference is not None:
+                unit_index, branch = reference
+                projection = self._current[unit_index][branch]
+                keep_state = self._inventory.units[unit_index].roles[branch].plan.kind == "training"
+            elif event["checkpoint_name"] == "brain-after.npz":
+                projection = self._last_projection
+            projection = _archive(self._value, event, self._context, projection, keep_state=keep_state)
+            if event["checkpoint_name"] == "brain-before.npz":
+                self._baseline_projection = projection
+            self._last_projection = _Projection(trace=projection.trace, endpoint=projection.endpoint)
+        elif kind == "qualification_grid_binding":
+            unit = self._inventory.units[len(self._measured) + (len(self._points) // 12) * 8]
+            unit_projections = self._current.pop(unit.index, {})
+            replicas, missing = _measure_unit(unit, unit_projections, self._context)
+            del unit_projections
+            self._measured.append(replicas)
+            self._unavailable |= missing
+            _require(len(self._measured) <= 8, "grid_projection_bound")
+        elif kind == "qualification_point":
+            point_index = reference[1]
+            offset = point_index % 12
+            replicas = tuple(unit[offset] for unit in self._measured)
+            grid = point_index // 12
+            summary = q._summarize_point(q.GRID[grid], q.RESPONSE_WINDOWS[offset // 4],
+                                         float(_TIMES[offset % 4]),
+                                         tuple(q._replicate_summary(item) for item in replicas))
+            expected = q.QualificationPoint(summary.configuration, summary.response_window,
+                summary.retention_ms, replicas, summary.mean_delta_hz, summary.reasons)
+            _equal(event["point"], expected, "grid_point_mismatch")
+            self._points.append(summary)
+            del replicas, expected
+            if offset == 11:
+                self._measured.clear()
+        elif kind == "qualification_result":
+            selection = q._select_compact_points(self._points) if not self._unavailable else None
+            _terminal(event, selection)
+        else:
+            raise AnalysisError("grid_component_scope")
+
+    def finish(self) -> _GridAssessment:
+        complete = self._inventory.bound == 96 and len(self._points) == 144 and not self._unavailable
+        selection = q._select_compact_points(self._points) if complete else None
+        return _GridAssessment("selected" if selection else "negative" if complete else "inconclusive",
+            () if complete else ("grid_unavailable",) if self._unavailable else ("grid_incomplete",),
+            selection, tuple(self._points), len(self._inventory.units))
+
+
 def _reduce_qualification_grid(value):
     """Consume exactly two complete authenticated event passes, without an engine."""
     try:
@@ -793,82 +876,18 @@ def _reduce_qualification_grid(value):
                 inventory.finish(value)
             except AnalysisError as failure:
                 error = str(failure)
-        current = {}
-        measured = []
-        points = []
-        unavailable = False
-        baseline_projection = last_projection = None
+        measurements = _GridMeasurements(value, inventory, context, metadata)
         for event in value.iter_events():
             if error is not None:
                 continue
             try:
-                kind = event["type"]
-                reference = inventory.references.get(event["sequence"])
-                if kind == "qualification_restore":
-                    unit_index, branch = reference
-                    unit = inventory.units[unit_index]
-                    source = unit.roles[branch].plan.parent
-                    source_projection = (baseline_projection if source == "baseline"
-                                         else current[unit_index][source])
-                    projection = _Projection(trace=source_projection.trace, endpoint=source_projection.endpoint)
-                    current.setdefault(unit_index, {})[branch] = projection
-                    last_projection = _Projection(trace=projection.trace, endpoint=projection.endpoint)
-                    _require(len(current) + len(measured) <= 8, "grid_projection_bound")
-                elif kind == "qualification_observation":
-                    unit_index, branch = reference
-                    unit = inventory.units[unit_index]
-                    _raw(event, unit.roles[branch], current[unit_index][branch], context, metadata, unit)
-                    projection = current[unit_index][branch]
-                    last_projection = _Projection(trace=projection.trace, endpoint=projection.endpoint)
-                elif kind == "qualification_checkpoint":
-                    projection = None
-                    keep_state = False
-                    if reference is not None:
-                        unit_index, branch = reference
-                        projection = current[unit_index][branch]
-                        keep_state = inventory.units[unit_index].roles[branch].plan.kind == "training"
-                    elif event["checkpoint_name"] == "brain-after.npz":
-                        projection = last_projection
-                    projection = _archive(value, event, context, projection, keep_state=keep_state)
-                    if event["checkpoint_name"] == "brain-before.npz":
-                        baseline_projection = projection
-                    last_projection = _Projection(trace=projection.trace, endpoint=projection.endpoint)
-                elif kind == "qualification_grid_binding":
-                    unit = inventory.units[len(measured) + (len(points) // 12) * 8]
-                    unit_projections = current.pop(unit.index, {})
-                    replicas, missing = _measure_unit(unit, unit_projections, context)
-                    del unit_projections
-                    measured.append(replicas)
-                    unavailable |= missing
-                    _require(len(measured) <= 8, "grid_projection_bound")
-                elif kind == "qualification_point":
-                    point_index = reference[1]
-                    offset = point_index % 12
-                    replicas = tuple(unit[offset] for unit in measured)
-                    grid = point_index // 12
-                    summary = q._summarize_point(q.GRID[grid], q.RESPONSE_WINDOWS[offset // 4],
-                                                 float(_TIMES[offset % 4]),
-                                                 tuple(q._replicate_summary(item) for item in replicas))
-                    expected = q.QualificationPoint(summary.configuration, summary.response_window,
-                        summary.retention_ms, replicas, summary.mean_delta_hz, summary.reasons)
-                    _equal(event["point"], expected, "grid_point_mismatch")
-                    points.append(summary)
-                    del replicas, expected
-                    if offset == 11:
-                        measured.clear()
-                elif kind == "qualification_result":
-                    selection = q._select_compact_points(points) if not unavailable else None
-                    _terminal(event, selection)
+                measurements.consume(event)
             except (OSError, KeyError, TypeError, ValueError, IndexError, AttributeError, OverflowError) as failure:
                 error = str(failure) if isinstance(failure, AnalysisError) else "grid_measurement"
         _verified_qualification_context(value)
         if error is not None:
             raise AnalysisError(error)
-        complete = inventory.bound == 96 and len(points) == 144 and not unavailable
-        selection = q._select_compact_points(points) if complete else None
-        return _GridAssessment("selected" if selection else "negative" if complete else "inconclusive",
-            () if complete else ("grid_unavailable",) if unavailable else ("grid_incomplete",),
-            selection, tuple(points), len(inventory.units))
+        return measurements.finish()
     except (OSError, TypeError, ValueError, KeyError, OverflowError) as failure:
         if isinstance(failure, AnalysisError):
             raise

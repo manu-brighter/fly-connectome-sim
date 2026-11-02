@@ -11,12 +11,12 @@ focused/affected-file compatibility and separate actual MaleCNS context acceptan
 The private e.3 True producer passed source review, actual 9/51/408-pair
 tiny-native checks and assay-module compatibility. Parent e implementation
 acceptance is complete; production global reconciliation/public assessment/freeze
-integration remains open. f.1 declaration arithmetic and corrected f.2 bounded
-checker/EOF adapter are accepted; current model-source is
-`17e784092d0579680a8f0007699fb72275d82f9649a362eb2466b74d1ac13887`,
-schema unchanged. f.1's73994… and earlier e.3 evidence remain source-specific.
-f.3a–f.3d/f.4–f.6, CLI/capacity (g) and formal qualification remain planned.
-No f.3 implementation release follows from its readiness decomposition.
+integration remains open. f.1 declaration arithmetic, corrected f.2 bounded
+checker/EOF adapter and f.3a standalone grid composition are accepted; current
+model-source is `b8f0fcee7115f387f34a13d8e9651064290dc70626ed649f8f8bed32cce62ebb`,
+schema unchanged. f.2's17e784…, f.1's73994… and earlier e.3 evidence remain
+source-specific history. f.3b–f.3d/f.4–f.6, CLI/capacity (g) and formal qualification
+remain planned. f.3b's ratified API is not a source release.
 This is no source-freeze or scientific approval. **Date:** 2026-11-01.
 **Updated:** 2026-11-02.
 
@@ -24,7 +24,7 @@ Refines the [assay design](2026-09-24-associative-plasticity-pivot-design.md),
 [replay contract](2026-10-02-replay-anchor-contract.md) and existing
 [implementation plan](../plans/2026-09-24-associative-plasticity-assay.md).
 The [six-slice integration plan](../plans/2026-11-02-strict-qualification-integration.md)
-defines f ownership/contracts; f.1/f.2 are accepted and later slices remain planned.
+defines f ownership/contracts; f.1/f.2/f.3a are accepted and later slices remain planned.
 The endpoint, fixed grid, seeds, windows, current, floors, exclusions and
 scientific interpretation remain unchanged. No supported result is presumed.
 
@@ -544,17 +544,43 @@ discarded checker and is no arbitrary late-event exception. No global behavior,
 f.3 supplies the hash from its actual indexed prior anchor, reconciled with the
 compact diagnostic parent hash, without retaining full diagnostic W payloads.
 
-### f.3 readiness — four planned sequential slices
+### f.3 composition — accepted grid extraction and remaining planned slices
 
-No monolithic f.3 release is established here. Only f.3a's planned API is ratified
-in the linked integration plan; later component APIs need bounded briefs.
-The linked plan separates composable grid ownership/measurement (f.3a), a shared
+No monolithic f.3 release is established here. f.3a's `_GridMeasurements(value,
+inventory, context, metadata)`, `consume(event)`, `finish() -> _GridAssessment`
+is implemented and accepted. The genuine standalone driver retains two exhausted
+passes, intake/final context checks, all-checkpoint/grid-final/legacy-terminal
+policies, with no engine, issuer or ignore/skip switch. Finish returns plain data,
+not an EOF certificate. Focused68/118.12 s, recorder/replay622+one skip/43.44 s,
+separate actual MaleCNS context/grid-baseline2/16.71 s and one-configuration1/588.35 s
+all passed with exact applicable two-file/all30/schema identities. The tiny-native
+configuration has eight bindings/twelve points and is unsealed/inconclusive;
+it covers one of twelve configurations, not complete96 or a full MaleCNS assay.
+Overlapping functional runs are not capacity evidence; original-file audits
+reissue no proof. Earlier f.2/f.1/e.3 runtime evidence stays historical.
+
+The linked plan separates accepted composable grid ownership/measurement (f.3a), a shared
 declared accumulator preserving actual global sequences (f.3b), selected role
 inventory/reduction using accepted f.2/f.3b (f.3c), then the genuine combined
 evaluator/report/final-role/cap proof (f.3d). Preserve standalone grid behavior
 and explicit final/terminal policies; compose in the SAME two EOF passes.
 Only f.3d may conditionally activate5120 after the closed4850/1602/8099 proof;
 confirmation4096 and all other limits remain unchanged meanwhile.
+
+Planned f.3b API is `_DeclaredEvidenceAccumulator(declarations, *, event_type,
+attested_state_anchors=())`, `consume(sequence, event) -> None`,
+`finish() -> EvidenceReduction`. One shared validation/arithmetic/reconciliation
+path preserves existing public/declaration wrappers and all fields/caps/copy depth.
+Explicit non-bool integer indices are nonnegative, strictly increasing, gaps
+allowed; optional embedded framing has no new arithmetic authority. The unchanged
+wrapper uses `enumerate(events)`; later verified composition supplies actual global
+indices without filtered renumbering. A skipped gap must be genuinely irrelevant:
+a first-seen branch or any `checkpoint_name` remains causal, regardless of type.
+No type-only filter or new framing parser is allowed. One-shot finish closes
+before reconciliation; failed finish cannot retry. Invalid open-intake sequence
+leaves state unchanged; closed lifecycle takes precedence. Semantic reasons/limits
+still drain, iterator/EOF errors propagate and prevent wrapper finish. Supplied
+anchor digests issue no proof. This API is ratified planning, not released source.
 
 Historical complete96 negative prefix/seal evidence is not current native
 context. Use genuine partial/unit and native selected-component checks before
