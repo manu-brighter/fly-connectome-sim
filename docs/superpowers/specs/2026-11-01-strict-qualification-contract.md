@@ -8,7 +8,10 @@ confirmation matrices on its earlier source. Private successful-append reference
 helper e.1 is accepted with unchanged public append. e.2 R1 schema/structural
 intake, projections and independent local pair comparison passed source review,
 focused/affected-file compatibility and separate actual MaleCNS context acceptance.
-True production remains unavailable. Full selected response repeats (parent e), public assessment/freeze
+The private e.3 True producer has source review, bounded 9/51 native checks and
+assay-module compatibility: an accepted partial WIP checkpoint, with complete
+408 acceptance open. Full selected
+response repeats (parent e), public assessment/freeze
 integration (f), CLI/capacity (g) and formal qualification remain open.
 This is no source-freeze or scientific approval. **Date:** 2026-11-01.
 **Updated:** 2026-11-02.
@@ -231,8 +234,8 @@ siblings. Selected evidence comprises 40 acquisitions, 24 interventions,
 Legacy selected-control summaries derive from actual new raw T cells; do not
 execute a second inconsistent control protocol.
 
-**Parent e remains open; e.1 and bounded e.2 R1 are accepted. Full repeat
-production is not released or runtime-accepted.** Accept only exact
+**Parent e remains open; e.1/e.2 are accepted. e.3 True production is implemented
+and source-reviewed with bounded 9/51 checks, not complete 408 acceptance.** Accept only exact
 Boolean `measure_replay`; True is qualification-only. False preserves absent
 qualification fields and confirmation's genuine legacy scalar. Repeat all
 **408 physical trials: 24 PRE + 384 POST**, including both T. Each full-matrix PRE
@@ -286,8 +289,8 @@ supplied references are not crash-durable proof.
 
 e.1 is the isolated reference foundation; e.2 R1 diagnostics/projections/schema
 and independent local pair comparison are implemented and accepted on R1.
-Lockstep native production remains planned e.3 under its own
-bounded brief; no 408 repeats have been measured and no new native/history trust
+Lockstep native production has bounded e.3 9/51 evidence; the full 408 matrix
+has not been measured and no new native/history trust
 authority exists.
 
 e owns local structural/arithmetic validation and an independent bounded current-
@@ -310,7 +313,8 @@ The mechanical contract is implemented and accepted for bounded R1 helpers/schem
 local pair comparison on source
 `4527956304d4d1630c415a190d4a475912cbe4ca028b4abb63baa859f9af13ae`,
 schema `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
-Parent e remains open; False-only production/confirmation behavior stays.
+Parent e remains open; accepted e.2's False-only baseline is historical. The
+current private True producer is scoped below; confirmation behavior stays.
 
 Closed `qualification_replay` adds exactly this payload to existing seven event
 framing fields (sequence/type/branch_id/sim_ms/run_metadata_sha256/
@@ -416,6 +420,40 @@ and final-binding errors propagate; semantic errors then raise. Recorded state
 checks do not reconstruct unrecorded full native history. e.3 adds no408 scans;
 f owns global408/768 completeness/PRE reuse.
 No new line-allocation bound, checkpoint, proof issuer or cap activation follows.
+
+### e.3 independence and final-owner handoff — bounded 9/51 checks
+
+Source review and bounded 9/51 native checks passed on model
+`2d07f37e85935f78b522bccb0a60d7f2b9f1d0e5a1475c8d306f12b995766da8`,
+with unchanged schema3cc3257…; e.2 runtime evidence above is historical. Assay
+compatibility passed; the partial checkpoint is accepted, with complete 408
+acceptance still open. These checks
+establish recorded consistency, not response/native-history or scientific proof.
+
+Acquire both pair engines before either restore. Validate native checkpoint
+registration; reject identical Engine/Brain objects and ANY cross-field mutable
+buffer overlap among weight plus validated registered fields, between the pair
+and still-required owners whose state must survive. Local np.shares_memory must
+fail closed on indeterminate overlap; static graph/maps may be shared. No global
+registry, historical IDs or extra factory. After BOTH restores, recheck BOTH
+actual parent/start states, clocks, frozen flags and maps before EITHER start.
+Preserve existing source rehash/occurrence/anchor/EOF checks.
+
+True-only cleanup drops obsolete acquired/donor/recipient/retained/sibling engines
+and window/raw/projection references at existing scope boundaries; preserve the
+training producer only while acquisition reuse/live-state guards require it.
+False/confirmation retains its existing returned training producer and behavior.
+True returns the ACTUAL last successful repeat native engine, unchanged engine
+type, only after both tails/final checks and successful diagnostic append.
+Discard the preceding completed owner before another pair; retain the final
+repeat through scratch cleanup. Failure raises without partial-success return.
+No reconstructed owner, extra NPZ/checkpoint/factory or rerun.
+
+f authenticates the actual last diagnostic and binds its repeat branch, lineage,
+final clock/complete-state hash to this owner before final checkpoint/terminal/seal; owner data
+is no trust issuer. Bounded 9/51 checks observed **21/130** production factories;
+**1033** remains an unmeasured expectation. Full 408 acceptance remains outstanding;
+parent e and f/g/formal gates remain open.
 
 ## One truthful terminal and sealed-only freezing
 

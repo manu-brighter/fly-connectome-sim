@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from replay_helpers import engine_factory, _declared_native_frozen_config
+from replay_helpers import engine_factory, map_engine_factory, _declared_native_frozen_config
 from fly_connectome_sim.experiment.analysis import analyze_assay, reduce_assay_evidence
 from fly_connectome_sim.experiment.recorder import verify_replay_run
 
@@ -29,6 +29,8 @@ def selected_caller(engine_factory, tmp_path, request):
         native.observe(np.zeros((32, 32, 3), dtype=np.uint8), options["tick"] / 10)
     if options.get("changed_state"):
         native.brain.v[3] += 1
+    if options.get("frozen"):
+        native.brain.weights_frozen = True
     identity = native.identity()
     metadata = _qualification_metadata(identity)
     black = _rgb_input_sha256(np.zeros((32, 32, 3), dtype=np.uint8))
@@ -66,6 +68,11 @@ def selected_caller(engine_factory, tmp_path, request):
                      "parent_checkpoint_sha256": baseline["checkpoint_sha256"]})
     prior = engine_factory()
     prior.brain.restore(source)
+    if options.get("frozen"):
+        recorder.append({"type": "replay_thaw", "branch_id": "prior-native",
+            "operation_version": "black-retention-operation/v1", "sim_tick": prior.brain.cursor,
+            "sim_ms": prior.brain.cursor / 10, "before_weights_frozen": True, "after_weights_frozen": False})
+        prior.brain.weights_frozen = False
     start = prior.brain.cursor
     observed = prior.observe(np.zeros((32, 32, 3), dtype=np.uint8), 10.0,
                              learning=False, pathway_detail=True, qualification_detail=True)
@@ -105,10 +112,503 @@ def test_selected_native_paired_uses_caller_baseline_and_global_positions(select
     assert not (recorder.path / "run.json").exists()
 
 
+@pytest.mark.parametrize("selected_caller", [
+    {"window": {"start_ms": 0.0, "end_ms": 100.0}},
+    {"window": {"start_ms": 0.0, "end_ms": 300.0}, "tick": 3, "frozen": True, "cs": 300.0},
+    {"window": {"start_ms": 100.0, "end_ms": 300.0}},
+], indirect=True)
+def test_selected_replay_native_paired_records_actual_repeats(selected_caller, engine_factory, request):
+    import fly_connectome_sim.experiment.assay as assay
+    from fly_connectome_sim.experiment.analysis import _compare_selected_replay
+    from fly_connectome_sim.experiment.recorder import verify_replay_prefix
+    recorder, execution, baseline = selected_caller
+    options = request.node.callspec.params["selected_caller"]
+    execution["response_window"] = options["window"]
+    execution["selected_configuration"]["cs_duration_ms"] = options.get("cs", 100.0)
+    records = []
+    def factory():
+        def native():
+            engine = engine_factory()
+            if options.get("tick"):
+                engine.observe(np.zeros((32, 32, 3), dtype=np.uint8), options["tick"] / 10)
+            engine.brain.weights_frozen = options.get("frozen", False)
+            return engine
+        engine = _tracked_factory(native, records, timing=len(records) + 0.25)()
+        record = records[-1]
+        observe = engine.observe
+        def capture_boundary(*args, **kwargs):
+            result = observe(*args, **kwargs)
+            record["calls"][-1].update(after_state=engine.brain.checkpoint_state_sha256(),
+                after_digests=engine.brain.candidate_state_digests(engine.groups.mbon11),
+                candidate_w_hex=engine.brain.memory_w[engine.brain._candidate_positions(engine.groups.mbon11)].tobytes().hex())
+            return result
+        engine.observe = capture_boundary
+        return engine
+    owner = assay._produce_cohorts(factory, recorder, execution=execution,
+        cohorts=((11, "A", "AB"),), conditions=("paired",),
+        baseline_occurrence=baseline, namespace=True, measure_replay=True)
+    assert len(records) == 21  # Production only; the independent verifier uses the raw factory.
+    prefix = verify_replay_prefix(recorder.validate_prefix(), engine_factory=engine_factory)
+    events = list(prefix.iter_events())
+    diagnostics = [event for event in events if event["type"] == "qualification_replay"]
+    assert len(diagnostics) == 9
+    originals = ["selected/11/A/AB/" + role + "/" + stimulus
+                 for role in ("pre", "post/10000", "post/70000") for stimulus in ("A", "B", "C")]
+    assert [event["original_branch_id"] for event in diagnostics] == originals
+    assert [event["replay_id"] for event in diagnostics] == [branch + "/repeat" for branch in originals]
+    responses = [event for event in events if event["type"] == "qualification_evidence"]
+    assert len(responses) == 12
+    assert len(records) == 21
+    assert len(prefix.manifest["state_anchors"]) == 2
+    assert set(prefix.manifest["checkpoints"]) == {"brain-before.npz", "selected-11-A-AB-training-end.npz"}
+    assert [event["sequence"] for event in events] == list(range(len(events)))
+    native_pairs = [records[index:index + 2] for index in (1, 3, 5, 8, 10, 12, 15, 17, 19)]
+    for diagnostic, pair in zip(diagnostics, native_pairs):
+        original, repeat = pair
+        assert original["engine"] is not repeat["engine"]
+        assert len(original["restores"]) == len(repeat["restores"]) == 1
+        assert original["restores"][0]["state"] == repeat["restores"][0]["state"]
+        if not options.get("frozen") or diagnostic["physical_key"]["phase"] == "post":
+            assert original["calls"][0]["state"] == original["restores"][0]["state"]
+        assert original["restores"][0]["path"].name == ("brain-before.npz" if diagnostic["physical_key"]["phase"] == "pre" else "retained.npz")
+        if diagnostic["physical_key"]["phase"] == "post":
+            assert not original["restores"][0]["path"].exists()
+        start = {"sim_tick": original["restores"][0]["tick"],
+                 "complete_state_sha256": original["restores"][0]["state"],
+                 "weights_frozen": original["restores"][0]["after_clock"][-1]}
+        if diagnostic["physical_key"]["phase"] == "pre":
+            source = baseline
+        else:
+            source = prefix.manifest["state_anchors"][diagnostic["parent_state_anchor_sha256"]]["source_occurrence"]
+        engine = original["engine"]
+        positions = engine.brain._candidate_positions(engine.groups.mbon11)
+        maps = {"target_indices": engine.groups.mbon11.tolist(), "candidate_positions": positions.tolist(),
+                "candidate_edge_indices": engine.brain.circuit["edges"][positions].tolist()}
+        result = _compare_selected_replay(prefix.iter_events(), diagnostic, metadata=prefix.manifest["metadata"],
+            execution=execution, expected_source_occurrence=source, expected_start=start, expected_maps=maps,
+            n=engine.brain.n, memory_count=len(engine.brain.memory_w), edge_count=len(engine.brain.weight),
+            lower=engine.brain.rule_parameters["minimum_fraction"] - 1,
+            upper=engine.brain.rule_parameters["maximum_fraction"] - 1)
+        assert result == {"response_replay_resolution_hz": 0.0, "candidate_memory_w_resolution": 0.0}
+        for side, record in zip(("original", "repeat"), pair):
+            referenced = [events[ref["sequence"]] for ref in diagnostic["operations"][side]]
+            assert [event["scientific_sha256"] for event in referenced] == [ref["scientific_sha256"] for ref in diagnostic["operations"][side]]
+            assert referenced[0]["type"] == "branch_start"
+            assert [event["telemetry"] for event in referenced if event["type"] == "observe"] == [call["telemetry"] for call in record["calls"]]
+            assert all(call["kwargs"] == {"stimulation": None, "learning": False} for call in record["calls"])
+            assert all(call["duration"] <= 500 for call in record["calls"])
+            stop = diagnostic["boundaries"]["window"][side]["sim_tick"]
+            window_call = next(call for call in record["calls"] if call["end"] == stop)
+            assert diagnostic["candidate_projection"][side + "_hex"] == window_call["candidate_w_hex"]
+            for boundary_name, call in (("window", window_call), ("final", record["calls"][-1])):
+                assert diagnostic["boundaries"][boundary_name][side] == {
+                    "sim_tick": call["end"], "complete_state_sha256": call["after_state"], **call["after_digests"]}
+        cells = [cell for cell in responses if cell["replay_id"] == diagnostic["replay_id"]]
+        assert len(cells) == (2 if diagnostic["physical_key"]["phase"] == "pre" else 1)
+        assert all(cell["sim_ms"] * 10 == diagnostic["boundaries"]["window"]["original"]["sim_tick"] for cell in cells)
+        window_start = diagnostic["cs_onset_tick"] + round(options["window"]["start_ms"] * 10)
+        stop = diagnostic["boundaries"]["window"]["original"]["sim_tick"]
+        raw = [item for call in original["calls"] for item in call["telemetry"]["bins"] if window_start < round(item["end_ms"] * 10) <= stop]
+        for cell in cells:
+            assert cell["bins"] == [{"start_tick": round(item["end_ms"] * 10) - round(item["duration_ms"] * 10),
+                                     "end_tick": round(item["end_ms"] * 10), "spikes": item["group_spikes"]["mbon11"]} for item in raw]
+            assert cell["response_replay_resolution_hz"] == result["response_replay_resolution_hz"]
+        if diagnostic["physical_key"]["phase"] == "pre" and options.get("frozen"):
+            assert [event["type"] for event in referenced[:2]] == ["branch_start", "replay_thaw"]
+        if options["window"]["end_ms"] == 100.0 or options.get("cs") == 300.0:
+            assert diagnostic["boundaries"]["window"] != diagnostic["boundaries"]["final"]
+        else:
+            assert diagnostic["boundaries"]["window"] == diagnostic["boundaries"]["final"]
+    assert owner is records[-1]["engine"]
+    assert owner.brain.cursor == diagnostics[-1]["sim_tick"]
+    assert owner.brain.checkpoint_state_sha256() == diagnostics[-1]["boundaries"]["final"]["repeat"]["complete_state_sha256"]
+    assert not (recorder.path / "run.json").exists()
+    assert not any(event["type"] in ("qualification_result", "assay_result") for event in events)
+    assert any(event["candidate_projection"]["original_hex"] != "0000000000000000" for event in diagnostics)
+
+
+@pytest.mark.parametrize("value", [0, 1, None, np.bool_(False), np.bool_(True), "true"])
+def test_selected_replay_exact_boolean_before_mutation(selected_caller, value):
+    import fly_connectome_sim.experiment.assay as assay
+    recorder, execution, baseline = selected_caller
+    before = recorder.next_sequence, set(recorder._checkpoints)
+    def forbidden():
+        pytest.fail("Factory called for invalid replay boolean")
+    with pytest.raises(ValueError, match="exact boolean"):
+        assay._produce_cohorts(forbidden, recorder, execution=execution, cohorts=((11, "A", "AB"),),
+            conditions=("paired",), baseline_occurrence=baseline, namespace=True, measure_replay=value)
+    assert (recorder.next_sequence, set(recorder._checkpoints)) == before
+
+
+@pytest.mark.parametrize("family", ["confirmation", "qualification"])
+def test_selected_replay_scalar_or_confirmation_true_before_mutation(selected_caller, family):
+    import fly_connectome_sim.experiment.assay as assay
+    recorder, execution, baseline = selected_caller
+    execution["family"] = family
+    before = recorder.next_sequence, set(recorder._checkpoints)
+    def forbidden():
+        pytest.fail("Factory called for confirmation replay request")
+    with pytest.raises(ValueError, match="requires qualification|resolution is unavailable"):
+        assay._produce_cohorts(forbidden, recorder, execution=execution,
+            cohorts=(((101 if family == "confirmation" else 11), "A", "AB"),),
+            conditions=("paired",), baseline_occurrence=baseline, namespace=True, measure_replay=True,
+            confirmation_replay_resolution_hz=0.0)
+    assert (recorder.next_sequence, set(recorder._checkpoints)) == before
+
+
+@pytest.mark.parametrize("execution", [None, [], "qualification", {}])
+def test_selected_replay_invalid_declaration_before_factory(selected_caller, execution):
+    import fly_connectome_sim.experiment.assay as assay
+    recorder, _, baseline = selected_caller
+    before = recorder.next_sequence
+    def forbidden():
+        pytest.fail("Factory called for invalid replay declaration")
+    with pytest.raises(ValueError):
+        assay._produce_cohorts(forbidden, recorder, execution=execution, cohorts=((11, "A", "AB"),),
+            conditions=("paired",), baseline_occurrence=baseline, namespace=True, measure_replay=True)
+    assert recorder.next_sequence == before
+
+
+def test_selected_replay_static_native_graph_sharing_is_allowed(engine_factory):
+    import fly_connectome_sim.experiment.assay as assay
+    original, repeat = engine_factory(), engine_factory()
+    for name in ("post", "ptr"):
+        setattr(repeat.brain, name, getattr(original.brain, name))
+    repeat.brain.circuit = original.brain.circuit
+    original.identity()
+    repeat.identity()
+    before = original.brain.checkpoint_state_sha256(), repeat.brain.checkpoint_state_sha256()
+    assay._check_replay_independence(original, repeat)
+    assert (original.brain.checkpoint_state_sha256(), repeat.brain.checkpoint_state_sha256()) == before
+
+
+@pytest.mark.parametrize("mutation", ["order", "dtype", "empty", "bounds"])
+def test_selected_replay_actual_native_maps_and_w_guard(map_engine_factory, monkeypatch, mutation):
+    import fly_connectome_sim.experiment.assay as assay
+    engine = map_engine_factory()
+    identity = engine.identity()
+    state, maps = assay._replay_boundary(engine, identity, 1, start=True)
+    assert maps == {"target_indices": [5], "candidate_positions": [0, 3], "candidate_edge_indices": [3, 1]}
+    assert state["complete_state_sha256"] == engine.brain.checkpoint_state_sha256()
+    if mutation == "order":
+        actual = engine.brain._candidate_positions
+        monkeypatch.setattr(engine.brain, "_candidate_positions", lambda targets: actual(targets)[::-1])
+    elif mutation == "dtype":
+        engine.brain.memory_w = engine.brain.memory_w.astype(np.float32)
+    elif mutation == "empty":
+        object.__setattr__(engine.groups, "mbon11", np.array([], dtype=np.int32))
+    else:
+        engine.brain.memory_w[0] = np.nextafter(engine.brain.rule_parameters["maximum_fraction"] - 1, np.inf)
+    with pytest.raises(ValueError):
+        assay._replay_boundary(engine, identity, 1, maps=maps)
+
+
+@pytest.mark.parametrize("collision", ["repeat_branch", "forward_id"])
+def test_selected_replay_last_reserved_name_before_factory(selected_caller, collision):
+    import fly_connectome_sim.experiment.assay as assay
+    recorder, execution, baseline = selected_caller
+    last = "selected/23/B/BA/post/70000/C/repeat"
+    if collision == "repeat_branch":
+        recorder.append({"type": "branch_start", "branch_id": last, "sim_ms": 0.0,
+            "parent_branch_id": baseline["origin_branch_id"], "parent_checkpoint_name": baseline["checkpoint_name"],
+            "parent_checkpoint_sequence": baseline["checkpoint_sequence"],
+            "parent_checkpoint_sha256": baseline["checkpoint_sha256"]})
+    else:
+        recorder.append({"type": "prior_diagnostic", "branch_id": "qualification/baseline", "sim_ms": 0.0,
+                         "replay_id": last})
+    before = recorder.next_sequence, set(recorder._checkpoints)
+    def forbidden():
+        pytest.fail("Factory called before last repeat collision checked")
+    with pytest.raises(ValueError, match="collides"):
+        assay._produce_cohorts(forbidden, recorder, execution=execution, cohorts=((11, "A", "AB"), (23, "B", "BA")),
+            conditions=("paired",), baseline_occurrence=baseline, namespace=True, measure_replay=True)
+    assert (recorder.next_sequence, set(recorder._checkpoints)) == before
+
+
+@pytest.mark.parametrize("alias", ["engine", "brain", "field", "cross_field"])
+def test_selected_replay_alias_rejected_before_either_restore(selected_caller, engine_factory, alias):
+    import fly_connectome_sim.experiment.assay as assay
+    from fly_connectome_sim.engine import FlyEngine
+    recorder, execution, baseline = selected_caller
+    created, pair_restores, states = [], [], []
+    def factory():
+        engine = engine_factory()
+        if len(created) == 2:
+            first = created[1]
+            assert not pair_restores  # Both objects are acquired before either restore.
+            if alias == "engine":
+                engine = first
+            elif alias == "brain":
+                engine = FlyEngine(brain=first.brain, groups=first.groups)
+            else:
+                engine.brain.v = first.brain.v if alias == "field" else first.brain.adaptation
+            states.extend((native, native.brain.checkpoint_state_sha256(), native.brain.cursor,
+                           {name: getattr(native.brain, name).tobytes() for name in ("weight", *native.brain.fields)})
+                          for native in (first, engine))
+        if len(created) > 0:
+            restore = engine.brain.restore
+            def traced_restore(path, restore=restore):
+                pair_restores.append(Path(path))
+                restore(path)
+            engine.brain.restore = traced_restore
+        created.append(engine)
+        return engine
+    with pytest.raises(ValueError, match="independent native state|share mutable native state"):
+        assay._produce_cohorts(factory, recorder, execution=execution, cohorts=((11, "A", "AB"),),
+            conditions=("paired",), baseline_occurrence=baseline, namespace=True, measure_replay=True)
+    assert len(created) == 3 and not pair_restores
+    for native, state, tick, arrays in states:
+        assert native.brain.checkpoint_state_sha256() == state and native.brain.cursor == tick
+        assert {name: getattr(native.brain, name).tobytes() for name in arrays} == arrays
+    events = list(recorder.validate_prefix().iter_events())
+    assert not any("/pre/" in event["branch_id"] for event in events)
+    assert not any(event["type"] in ("qualification_evidence", "qualification_replay") for event in events)
+
+
+@pytest.mark.parametrize("alias", ["producer", "retained", "indeterminate"])
+def test_selected_replay_live_owner_buffers_are_guarded(engine_factory, monkeypatch, alias):
+    import fly_connectome_sim.experiment.assay as assay
+    original, repeat, owner = (engine_factory() for _ in range(3))
+    for engine in (original, repeat, owner):
+        engine.identity()
+    if alias == "producer":
+        original.brain.v = owner.brain.adaptation
+    elif alias == "retained":
+        repeat.brain.adaptation = owner.brain.v
+    else:
+        def indeterminate(*args, **kwargs):
+            raise np.exceptions.TooHardError("bounded alias test")
+        monkeypatch.setattr(np, "shares_memory", indeterminate)
+    before = [engine.brain.checkpoint_state_sha256() for engine in (original, repeat, owner)]
+    with pytest.raises(ValueError, match="share mutable native state|indeterminate"):
+        assay._check_replay_independence(original, repeat, owner)
+    assert [engine.brain.checkpoint_state_sha256() for engine in (original, repeat, owner)] == before
+
+
+@pytest.mark.parametrize("mutation", ["state", "clock", "flag", "map", "dtype"])
+def test_selected_replay_second_restore_rechecks_both_before_starts(selected_caller, engine_factory, mutation):
+    import fly_connectome_sim.experiment.assay as assay
+    recorder, execution, baseline = selected_caller
+    created, restored = [], []
+    def factory():
+        engine = engine_factory()
+        if len(created) == 2:
+            first = created[1]
+            restore = engine.brain.restore
+            def corrupt_first(path):
+                assert len(created) == 3
+                restore(path)
+                restored.append(True)
+                if mutation == "state": first.brain.v[3] += 1
+                elif mutation == "clock":
+                    first.brain.cursor += 1
+                    first.brain.sim_ms = first.brain.cursor * 0.1
+                elif mutation == "flag": first.brain.weights_frozen = True
+                elif mutation == "map": object.__setattr__(first.groups, "mbon11", np.array([3], dtype=np.int32))
+                else: first.brain.memory_w = first.brain.memory_w.astype(np.float32)
+            engine.brain.restore = corrupt_first
+        created.append(engine)
+        return engine
+    with pytest.raises(ValueError):
+        assay._produce_cohorts(factory, recorder, execution=execution, cohorts=((11, "A", "AB"),),
+            conditions=("paired",), baseline_occurrence=baseline, namespace=True, measure_replay=True)
+    assert restored == [True]
+    events = list(recorder.validate_prefix().iter_events())
+    assert not any("/pre/" in event["branch_id"] for event in events)
+
+
+@pytest.mark.parametrize("mutation", ["telemetry", "tail_state", "tail_map"])
+def test_selected_replay_mismatch_never_completes_pair(selected_caller, engine_factory, mutation):
+    import fly_connectome_sim.experiment.assay as assay
+    recorder, execution, baseline = selected_caller
+    count = 0
+    def factory():
+        nonlocal count
+        engine = engine_factory()
+        count += 1
+        if count == 3:
+            observe = engine.observe
+            def corrupt(*args, **kwargs):
+                result = observe(*args, **kwargs)
+                if mutation == "telemetry": result["turn_hz"] += 1
+                elif engine.brain.cursor == 4000:
+                    if mutation == "tail_state": engine.brain.v[3] += 1
+                    else: object.__setattr__(engine.groups, "mbon11", np.array([3], dtype=np.int32))
+                return result
+            engine.observe = corrupt
+        return engine
+    with pytest.raises(ValueError):
+        assay._produce_cohorts(factory, recorder, execution=execution, cohorts=((11, "A", "AB"),),
+            conditions=("paired",), baseline_occurrence=baseline, namespace=True, measure_replay=True)
+    events = list(recorder.validate_prefix().iter_events())
+    assert not any(event["type"] == "qualification_replay" for event in events)
+    assert sum(event["type"] == "qualification_evidence" for event in events) == (0 if mutation == "telemetry" else 2)
+    assert not (recorder.path / "run.json").exists()
+
+
+@pytest.mark.parametrize("failure", ["append", "flush", "count", "diagnostic"])
+def test_selected_replay_durable_failure_returns_no_owner(selected_caller, engine_factory, monkeypatch, failure):
+    import fly_connectome_sim.experiment.assay as assay
+    recorder, execution, baseline = selected_caller
+    append = recorder.append
+    stream = recorder._stream
+    class FailingFlush:
+        fail = False
+        def __getattr__(self, name):
+            return getattr(stream, name)
+        def write(self, value):
+            self.fail = b'/pre/A/repeat' in value and b'"type":"observe"' in value
+            return stream.write(value)
+        def flush(self):
+            stream.flush()
+            if self.fail:
+                raise OSError("selected replay flush failure")
+    if failure == "flush":
+        monkeypatch.setattr(recorder, "_stream", FailingFlush())
+    def fail(event):
+        target = event["branch_id"] == "selected/11/A/AB/pre/A/repeat"
+        if target and event["type"] == "observe" and failure == "append":
+            raise OSError("selected replay append failure")
+        if event["type"] == "qualification_replay" and failure == "diagnostic":
+            raise OSError("selected replay diagnostic failure")
+        result = append(event)
+        if target and event["type"] == "branch_start" and failure == "count":
+            append({"type": "prior_diagnostic", "branch_id": "qualification/baseline", "sim_ms": 0.0})
+        return result
+    monkeypatch.setattr(recorder, "append", fail)
+    with pytest.raises((OSError, ValueError), match="selected replay|Event append failed|reference boundary changed"):
+        assay._produce_cohorts(engine_factory, recorder, execution=execution, cohorts=((11, "A", "AB"),),
+            conditions=("paired",), baseline_occurrence=baseline, namespace=True, measure_replay=True)
+    events = [json.loads(line) for line in (recorder.path / "events.jsonl").read_bytes().splitlines()]
+    assert not any(event["type"] in ("qualification_replay", "qualification_result", "assay_result") for event in events)
+    assert not (recorder.path / "run.json").exists()
+    if failure == "flush":
+        assert recorder._failed
+        assert events[-1]["branch_id"].endswith("/pre/A/repeat") and events[-1]["type"] == "observe"
+        monkeypatch.setattr(recorder, "_stream", stream)
+
+
+def test_selected_replay_pair_source_rehashed_after_both_factories(selected_caller, engine_factory):
+    import fly_connectome_sim.experiment.assay as assay
+    recorder, execution, baseline = selected_caller
+    path = recorder.path / "checkpoints" / "brain-before.npz"
+    original = path.read_bytes()
+    count, restores = 0, []
+    def factory():
+        nonlocal count
+        engine = engine_factory()
+        count += 1
+        if count == 3:
+            path.write_bytes(original + b"changed")
+        if count > 1:
+            restore = engine.brain.restore
+            def traced(path):
+                restores.append(Path(path))
+                restore(path)
+            engine.brain.restore = traced
+        return engine
+    try:
+        with pytest.raises(ValueError, match="Baseline source bytes changed"):
+            assay._produce_cohorts(factory, recorder, execution=execution, cohorts=((11, "A", "AB"),),
+                conditions=("paired",), baseline_occurrence=baseline, namespace=True, measure_replay=True)
+        assert count == 3 and not restores
+        path.write_bytes(original)
+        assert not any("/pre/" in event["branch_id"] for event in recorder.validate_prefix().iter_events())
+    finally:
+        path.write_bytes(original)
+
+
+def test_selected_replay_scratch_checkpoint_cannot_replace_anchor_parent(selected_caller, engine_factory):
+    import fly_connectome_sim.experiment.assay as assay
+    recorder, execution, baseline = selected_caller
+    mutations, returned = [], []
+    def factory():
+        engine = engine_factory()
+        checkpoint = engine.brain.checkpoint
+        def mutate_before_scratch(path):
+            if Path(path).name == "retained.npz" and not mutations:
+                anchors = [event for event in recorder.validate_prefix().iter_events() if event["type"] == "state_anchor"]
+                assert len(anchors) == 1
+                anchor = anchors[0]
+                before = engine.brain.checkpoint_state_sha256()
+                clock = engine.brain.cursor, engine.brain.sim_ms
+                assert before == anchor["complete_state_sha256"] and clock[0] == anchor["sim_tick"]
+                engine.brain.v[3] += 1  # Valid native state, unchanged actual clock.
+                engine.brain.candidate_state_digests(engine.groups.mbon11)
+                after = engine.brain.checkpoint_state_sha256()
+                assert after != before and (engine.brain.cursor, engine.brain.sim_ms) == clock
+                mutations.append((anchor["state_anchor_sha256"], before, after, clock[0]))
+            return checkpoint(path)
+        engine.brain.checkpoint = mutate_before_scratch
+        return engine
+    with pytest.raises(ValueError, match="Retained replay parent state mismatch"):
+        returned.append(assay._produce_cohorts(factory, recorder, execution=execution, cohorts=((11, "A", "AB"),),
+            conditions=("paired",), baseline_occurrence=baseline, namespace=True, measure_replay=True))
+        # On the unfixed producer, authenticate the actual contradictory output
+        # before pytest reports DID NOT RAISE; no native-history proof is created.
+        events = list(recorder.validate_prefix().iter_events())
+        admitted = [event for event in events if event["type"] == "qualification_replay"
+                    and event.get("parent_state_anchor_sha256") == mutations[0][0]]
+        assert len(admitted) == 3
+        assert all(event["boundaries"]["start"]["original"]["complete_state_sha256"] == mutations[0][2]
+                   and event["boundaries"]["start"]["original"]["complete_state_sha256"] != mutations[0][1]
+                   for event in admitted)
+        print("admitted contradictory POST diagnostics:", len(admitted), "anchor:", mutations[0][1],
+              "actual changed parent:", mutations[0][2], "unchanged tick:", mutations[0][3])
+    assert len(mutations) == 1 and not returned
+    events = list(recorder.validate_prefix().iter_events())
+    assert len([event for event in events if event["type"] == "qualification_replay"]) == 3  # PRE only.
+    assert not any("/post/" in event["branch_id"] for event in events)
+    assert not (recorder.path / "run.json").exists()
+
+
+def test_selected_replay_releases_obsolete_native_owners(selected_caller, engine_factory):
+    import weakref
+    import fly_connectome_sim.experiment.assay as assay
+    recorder, execution, baseline = selected_caller
+    references = []
+    def factory():
+        if len(references) in (1, 3, 5, 8, 10, 12, 15, 17, 19):
+            assert all(reference() is None for reference in references)
+        engine = engine_factory()
+        references.append(weakref.ref(engine))
+        return engine
+    owner = assay._produce_cohorts(factory, recorder, execution=execution, cohorts=((11, "A", "AB"),),
+        conditions=("paired",), baseline_occurrence=baseline, namespace=True, measure_replay=True)
+    assert len(references) == 21
+    assert all(reference() is None for reference in references[:-1])
+    assert references[-1]() is owner
+
+
+def test_selected_replay_false_preserves_training_owner_trace(selected_caller, engine_factory):
+    import fly_connectome_sim.experiment.assay as assay
+    recorder, execution, baseline = selected_caller
+    records = []
+    owner = assay._produce_cohorts(_tracked_factory(engine_factory, records), recorder, execution=execution,
+        cohorts=((11, "A", "AB"),), conditions=("paired",), baseline_occurrence=baseline,
+        namespace=True, measure_replay=False)
+    assert len(records) == 12 and owner is records[0]["engine"]
+    assert owner.brain.cursor == 111000
+    events = list(recorder.validate_prefix().iter_events())
+    training = next(event for event in events if event["type"] == "qualification_training")
+    assert owner.brain.candidate_state_digests(owner.groups.mbon11) == {
+        name: training[name] for name in ("candidate_memory_sha256", "noncandidate_state_sha256")}
+    assert len([event for event in events if event["type"] == "qualification_evidence"]) == 12
+    assert not any(event["type"] == "qualification_replay" or event["branch_id"].endswith("/repeat") for event in events)
+    assert all("response_replay_resolution_hz" not in event and "replay_id" not in event
+               for event in events if event["type"] == "qualification_evidence")
+    assert [event["sequence"] for event in events] == list(range(len(events)))
+    for record in records[1:4] + records[5:8] + records[9:12]:
+        assert len(record["restores"]) == 1
+        assert record["calls"][0]["state"] == record["restores"][0]["state"]
+        assert [call["duration"] for call in record["calls"]] == [100.0, 100.0, 200.0]
+        assert all(call["kwargs"] == {"stimulation": None, "learning": False} for call in record["calls"])
+
+
 @pytest.mark.parametrize("mutation", [
     "family", "seeds", "boolean_seed", "population", "candidate", "extra", "window", "retention",
     "last_input", "last_factor", "duplicates", "conditions", "dependencies", "namespace",
-    "replay", "replay_lookalike", "resolution", "baseline_name", "baseline_sequence",
+    "replay_numpy", "replay_lookalike", "resolution", "baseline_name", "baseline_sequence",
     "baseline_origin", "baseline_tick", "baseline_alias", "baseline_bytes", "factory_bytes",
     "black_missing", "black_hash", "late_branch_collision", "late_checkpoint_collision", "closed", "failed",
 ])
@@ -132,7 +632,7 @@ def test_selected_preflight_refuses_without_component_writes(selected_caller, en
     elif mutation == "conditions": conditions = ("paired", "paired")
     elif mutation == "dependencies": conditions = ("paired", "necessity")
     elif mutation == "namespace": options["namespace"] = False
-    elif mutation == "replay": options["measure_replay"] = True
+    elif mutation == "replay_numpy": options["measure_replay"] = np.bool_(True)
     elif mutation == "replay_lookalike": options["measure_replay"] = 0
     elif mutation == "resolution": options["confirmation_replay_resolution_hz"] = 0.0
     elif mutation == "baseline_name": baseline["checkpoint_name"] = "missing.npz"
@@ -336,6 +836,354 @@ def test_selected_all_eight_native_cohorts(selected_caller, engine_factory):
     verified = verify_replay_prefix(recorder.validate_prefix(), engine_factory=engine_factory)
     assert len(verified.replay_attested_state_anchors) == 128
     assert not (recorder.path / "run.json").exists()
+
+
+def _check_selected_replay_matrix(selected_caller, engine_factory, cohorts):
+    """Test-only native/byte oracle; black-anchor attestation is not response-history proof."""
+    import weakref
+    import fly_connectome_sim.experiment.assay as assay
+    from fly_connectome_sim.engine import _rgb_input_sha256
+    from fly_connectome_sim.experiment.analysis import (
+        _compare_replay_operations, _compare_selected_replay, _decode_candidate_w_pair,
+        _selected_replay_observation, _validate_intervention, _validate_response, _validate_training,
+    )
+    from fly_connectome_sim.experiment.qualification import _response_rate
+    from fly_connectome_sim.experiment.recorder import _canonical, _scientific, verify_replay_prefix
+
+    recorder, execution, baseline = selected_caller
+    conditions = ("paired", "frozen_plasticity", "no_external_dan", "temporally_unpaired",
+                  "matched_reference", "necessity", "sufficiency", "sham")
+    roles = ("training-end", "frozen_plasticity-training-end", "no_external_dan-training-end",
+             "temporally_unpaired-training-end", "matched-reference-training-end",
+             "necessity-post", "sufficiency-post", "sham-post")
+    expected_counts = {1: (51, 96, 130, 16, 9), 8: (408, 768, 1033, 128, 65)}[len(cohorts)]
+    assert execution["selected_configuration"] == {
+        "cs_duration_ms": 100.0, "dan_onset_ms": 0.0, "post_pair_gap_ms": 500.0}
+    assert execution["response_window"] == {"start_ms": 0.0, "end_ms": 100.0}
+    assert execution["retention_times_ms"] == [10000, 70000]
+    physical, slots, starts, anchor_names, source_names = [], [None], [], [], {}
+    for seed, paired, order in cohorts:
+        base = f"selected/{seed}/{paired}/{order}"
+        starts.extend(f"{base}/{condition}/training" for condition in conditions[:5])
+        starts.extend(f"{base}/{condition}/intervention" for condition in conditions[5:])
+        # Literal factory roles: five acquisitions, six donor/recipient restores.
+        slots.extend([None] * 11)
+        for condition, role in zip(conditions, roles):
+            source_names[seed, paired, order, condition] = f"selected-{seed}-{paired}-{order}-{role}.npz"
+        for stimulus in ("A", "B", "C"):
+            branch = f"{base}/pre/{stimulus}"
+            physical.append(({"seed": seed, "paired_identity": paired, "presentation_order": order,
+                              "phase": "pre", "stimulus": stimulus}, branch))
+            starts.extend((branch, branch + "/repeat"))
+            slots.extend((branch, branch + "/repeat"))
+        for condition in conditions:
+            path = base if condition == "paired" else f"{base}/{condition}"
+            for retention in (10000, 70000):
+                anchor_names.append(f"{path}/retention/{retention}")
+                starts.append(anchor_names[-1])
+                slots.append(None)  # One retained owner, followed by three independent pairs.
+                for stimulus in ("A", "B", "C"):
+                    branch = f"{path}/post/{retention}/{stimulus}"
+                    physical.append(({"seed": seed, "paired_identity": paired, "presentation_order": order,
+                        "phase": "post", "condition": condition, "retention_ms": retention, "stimulus": stimulus}, branch))
+                    starts.extend((branch, branch + "/repeat"))
+                    slots.extend((branch, branch + "/repeat"))
+    assert len(physical) == expected_counts[0] and len(slots) == expected_counts[2]
+    records, baseline_record, layout = {}, {}, {}
+    production_count = 0
+
+    def factory():
+        nonlocal production_count
+        assert production_count < len(slots), "Unexpected extra production factory"
+        branch = slots[production_count]
+        production_count += 1
+        engine = engine_factory()
+        engine.identity()
+        def capture(start=False):
+            brain = engine.brain
+            positions = brain._candidate_positions(engine.groups.mbon11)
+            maps = {"target_indices": engine.groups.mbon11.tolist(), "candidate_positions": positions.tolist(),
+                    "candidate_edge_indices": brain.circuit["edges"][positions].tolist()}
+            assert maps == layout["maps"]
+            assert brain.memory_w.dtype.str == "<f8" and brain.memory_w.ndim == 1
+            state = {"sim_tick": brain.cursor, "complete_state_sha256": brain.checkpoint_state_sha256()}
+            state.update({"weights_frozen": brain.weights_frozen} if start else brain.candidate_state_digests(engine.groups.mbon11))
+            return state
+        if production_count == 1:
+            positions = engine.brain._candidate_positions(engine.groups.mbon11)
+            layout.update(maps={"target_indices": engine.groups.mbon11.tolist(), "candidate_positions": positions.tolist(),
+                "candidate_edge_indices": engine.brain.circuit["edges"][positions].tolist()},
+                n=engine.brain.n, memory_count=len(engine.brain.memory_w), edge_count=len(engine.brain.weight),
+                lower=engine.brain.rule_parameters["minimum_fraction"] - 1,
+                upper=engine.brain.rule_parameters["maximum_fraction"] - 1)
+        if branch is not None or production_count == 1:
+            record = baseline_record if branch is None else {"engine": weakref.ref(engine), "calls": [], "restores": 0}
+            if branch is not None:
+                assert branch not in records
+                records[branch] = record
+            restore = engine.brain.restore
+            def restored(path):
+                restore(path)
+                record.update(path=Path(path), start=capture(start=True))
+                record["restores"] = record.get("restores", 0) + 1
+                del engine.brain.restore  # Do not retain a bound wrapper/engine after this native restore.
+            engine.brain.restore = restored
+        if branch is not None:
+            observe = engine.observe
+            def observed(frame, duration, **kwargs):
+                start = engine.brain.cursor
+                result = observe(frame, duration, **kwargs)
+                assert frame.shape == (32, 32, 3) and frame.dtype == np.uint8
+                record["calls"].append({"start": start, "end": engine.brain.cursor, "duration": duration,
+                    "input_sha256": _rgb_input_sha256(frame), "kwargs": dict(kwargs),
+                    "telemetry_sha256": sha256(_canonical(_scientific(result))).hexdigest()})
+                if engine.brain.cursor == record["start"]["sim_tick"] + 2000:
+                    record["window"] = capture()
+                    record["window_w_hex"] = engine.brain.memory_w[
+                        engine.brain._candidate_positions(engine.groups.mbon11)].tobytes().hex()
+                if engine.brain.cursor == record["start"]["sim_tick"] + 4000:
+                    record["final"] = capture()
+                    del engine.observe
+                return result
+            engine.observe = observed
+        return engine
+
+    owner = assay._produce_cohorts(factory, recorder, execution=execution, cohorts=cohorts, conditions=conditions,
+        baseline_occurrence=baseline, namespace=True, measure_replay=True)
+    assert production_count == expected_counts[2]  # BEFORE independent raw-factory native verification.
+    assert baseline_record["restores"] == 1 and baseline_record["path"].name == "brain-before.npz"
+    assert set(records) == {branch for _, original in physical for branch in (original, original + "/repeat")}
+    prefix = verify_replay_prefix(recorder.validate_prefix(), engine_factory=engine_factory)
+    manifest = prefix.manifest
+    attested_anchors = prefix.replay_attested_state_anchors
+    events = list(prefix.iter_events())  # One test-only actual-byte lookup, not a production f evaluator.
+    assert [event["sequence"] for event in events] == list(range(len(events)))
+    by_branch = {}
+    for event in events:
+        by_branch.setdefault(event["branch_id"], []).append(event)
+    diagnostics = [event for event in events if event["type"] == "qualification_replay"]
+    responses = [event for event in events if event["type"] == "qualification_evidence"]
+    anchors = [event for event in events if event["type"] == "state_anchor"]
+    checkpoints = [event for event in events if event["type"] in ("checkpoint", "qualification_checkpoint")]
+    assert (len(diagnostics), len(responses), production_count, len(anchors), len(checkpoints)) == expected_counts
+    assert [event["physical_key"] for event in diagnostics] == [key for key, _ in physical]
+    assert [event["original_branch_id"] for event in diagnostics] == [branch for _, branch in physical]
+    assert [event["replay_id"] for event in diagnostics] == [branch + "/repeat" for _, branch in physical]
+    actual_starts = [event["branch_id"] for event in events if event["type"] in ("branch_start", "fork")
+                     and event["branch_id"].startswith("selected/")]
+    assert actual_starts == starts and len(set(starts)) == len(starts)
+    assert set(by_branch) == {"qualification/baseline", "prior-native", *starts}
+    assert [event["anchor_id"] for event in anchors] == anchor_names
+    assert set(attested_anchors) == set(manifest["state_anchors"])
+    assert len(attested_anchors) == expected_counts[3]  # Black-retention proof only.
+    assert set(manifest["checkpoints"]) == {"brain-before.npz", *source_names.values()}
+    checkpoint_by_name = {event["checkpoint_name"]: event for event in checkpoints}
+    assert len(checkpoint_by_name) == len(checkpoints)
+    def occurrence(name):
+        event = checkpoint_by_name[name]
+        index = manifest["checkpoints"][name]
+        assert (index["checkpoint_sequence"], index["origin_branch_id"], index["sha256"], index["sim_tick"]) == (
+            event["sequence"], event["branch_id"], event["checkpoint_sha256"], event["sim_tick"])
+        return {"checkpoint_name": name, "checkpoint_sha256": event["checkpoint_sha256"],
+                "origin_branch_id": event["branch_id"], "checkpoint_sequence": event["sequence"], "sim_tick": event["sim_tick"]}
+    def parent(source):
+        return {"parent_branch_id": source["origin_branch_id"], "parent_checkpoint_name": source["checkpoint_name"],
+                "parent_checkpoint_sequence": source["checkpoint_sequence"], "parent_checkpoint_sha256": source["checkpoint_sha256"]}
+    assert occurrence("brain-before.npz") == baseline
+    training = [event for event in events if event["type"] == "qualification_training"]
+    interventions = [event for event in events if event["type"] == "assay_intervention"]
+    assert len(training) == 5 * len(cohorts) and len(interventions) == 3 * len(cohorts)
+    training_by_id = {event["training_id"]: event for event in training}
+    intervention_by_id = {event["intervention_id"]: event for event in interventions}
+    assert list(training_by_id) == [f"selected/{s}/{p}/{o}/{c}/training" for s, p, o in cohorts for c in conditions[:5]]
+    assert list(intervention_by_id) == [f"selected/{s}/{p}/{o}/{c}/intervention" for s, p, o in cohorts for c in conditions[5:]]
+    sources = {}
+    for factors, name in source_names.items():
+        seed, paired, order, condition = factors
+        source = occurrence(name)
+        sources[factors] = source
+        base = f"selected/{seed}/{paired}/{order}"
+        assert source["origin_branch_id"] == f"{base}/{condition}/" + ("training" if condition in conditions[:5] else "intervention")
+        checkpoint = checkpoint_by_name[name]
+        if condition in conditions[:5]:
+            descriptor = training_by_id[source["origin_branch_id"]]
+            _validate_training(descriptor, execution, (11, 23), "qualification")
+            assert descriptor["training_end_tick"] == source["sim_tick"]
+            assert descriptor["training_end_checkpoint_sha256"] == source["checkpoint_sha256"]
+            binding = parent(baseline)
+        else:
+            descriptor = intervention_by_id[source["origin_branch_id"]]
+            _validate_intervention(descriptor, execution, (11, 23))
+            donor = "matched_reference" if condition == "necessity" else "paired"
+            recipient = "matched_reference" if condition == "sufficiency" else "paired"
+            donor_source = occurrence(source_names[seed, paired, order, donor])
+            recipient_source = occurrence(source_names[seed, paired, order, recipient])
+            assert descriptor["donor_training_id"] == donor_source["origin_branch_id"]
+            assert descriptor["recipient_training_id"] == recipient_source["origin_branch_id"]
+            assert descriptor["donor_checkpoint_sha256"] == donor_source["checkpoint_sha256"]
+            assert descriptor["recipient_checkpoint_sha256"] == recipient_source["checkpoint_sha256"]
+            assert descriptor["post_intervention_checkpoint_sha256"] == source["checkpoint_sha256"]
+            assert descriptor["donor_training_end_tick"] == descriptor["recipient_training_end_tick"] == source["sim_tick"]
+            assert source["sim_tick"] == recipient_source["sim_tick"] == donor_source["sim_tick"]
+            binding = parent(recipient_source)
+            assert all(descriptor[key] == value for key, value in binding.items())
+        assert all(checkpoint[key] == value for key, value in binding.items())
+    assert {(event["seed"], event["paired_identity"], event["presentation_order"], event["condition"],
+             event["retention_ms"], event["phase"], event["stimulus"]) for event in responses} == {
+        (*cohort, condition, retention, phase, stimulus) for cohort in cohorts for condition in conditions
+        for retention in (10000, 70000) for phase in ("pre", "post") for stimulus in ("A", "B", "C")}
+    anchor_by_name = {anchor["anchor_id"]: anchor for anchor in anchors}
+    for anchor in anchors:
+        manifest_anchor = manifest["state_anchors"][anchor["state_anchor_sha256"]]
+        assert manifest_anchor["event_sequence"] == anchor["sequence"]
+        assert all(anchor[key] == value for key, value in manifest_anchor.items() if key != "event_sequence")
+    # These nine samples cover every cohort, every intervention×T combination,
+    # ordinary routes and PRE. The exhaustive lookup oracle still checks ALL408.
+    samples = {(11, "A", "AB", "necessity", 10000), (11, "A", "BA", "necessity", 70000),
+               (11, "B", "AB", "sufficiency", 10000), (11, "B", "BA", "sufficiency", 70000),
+               (23, "A", "AB", "sham", 10000), (23, "A", "BA", "sham", 70000),
+               (23, "B", "AB", "paired", 10000), (23, "B", "BA", "matched_reference", 70000)}
+    selected_samples = set()
+    claimed_references = set()
+    route_fields = ("training_id", "association_t0_tick", "retention_reference_tick", "training_start_tick",
+        "training_end_tick", "last_visual_end_tick", "last_external_dan_end_tick", "unpaired_nearest_cs_boundary_ticks",
+        "training_visual_exposure_ticks", "training_end_checkpoint_sha256")
+    for diagnostic, (key, branch) in zip(diagnostics, physical):
+        factors = key["seed"], key["paired_identity"], key["presentation_order"]
+        base = "selected/" + "/".join(str(value) for value in factors)
+        if key["phase"] == "pre":
+            source, binding = baseline, parent(baseline)
+            start = baseline_record["start"]
+        else:
+            source = sources[*factors, key["condition"]]
+            path = base if key["condition"] == "paired" else base + "/" + key["condition"]
+            anchor = anchor_by_name[f"{path}/retention/{key['retention_ms']}"]
+            recipient = "matched_reference" if key["condition"] == "sufficiency" else (
+                "paired" if key["condition"] in conditions[5:] else key["condition"])
+            descriptor = training_by_id[f"{base}/{recipient}/training"]
+            assert anchor["source_occurrence"] == source
+            assert anchor["sim_tick"] == descriptor["retention_reference_tick"] + key["retention_ms"] * 10 - 1000
+            start = {"sim_tick": anchor["sim_tick"], "complete_state_sha256": anchor["complete_state_sha256"], "weights_frozen": False}
+            binding = {"parent_branch_id": anchor["origin_branch_id"], "parent_state_anchor_sha256": anchor["state_anchor_sha256"]}
+        assert diagnostic["source_occurrence"] == source
+        assert diagnostic["boundaries"]["start"] == {"original": start, "repeat": start}
+        assert diagnostic["cs_onset_tick"] == start["sim_tick"] + 1000
+        assert diagnostic["sim_tick"] == start["sim_tick"] + 4000
+        assert all(diagnostic[name] == value for name, value in binding.items())
+        assert diagnostic["response_window"] == execution["response_window"]
+        assert diagnostic["engine_identity_sha256"] == execution["engine_identity"]["sha256"]
+        assert diagnostic["population_size"] == execution["mbon11_population_size"]
+        segments = [(start["sim_tick"], start["sim_tick"] + 1000, None),
+                    (start["sim_tick"] + 1000, start["sim_tick"] + 2000, key["stimulus"]),
+                    (start["sim_tick"] + 2000, start["sim_tick"] + 4000, None)]
+        operations, window_bins, ppl_counts, window_sequences = {}, {}, {}, {}
+        pair_references = set()
+        for side, native_branch in (("original", branch), ("repeat", branch + "/repeat")):
+            record = records[native_branch]
+            assert record["restores"] == 1 and record["start"] == start
+            assert record["path"].name == ("brain-before.npz" if key["phase"] == "pre" else "retained.npz")
+            if key["phase"] == "post":
+                assert not record["path"].exists()
+            assert diagnostic["boundaries"]["window"][side] == record["window"]
+            assert diagnostic["boundaries"]["final"][side] == record["final"]
+            assert diagnostic["candidate_projection"][side + "_hex"] == record["window_w_hex"]
+            references = diagnostic["operations"][side]
+            assert len(references) == 4 and [ref["sequence"] for ref in references] == sorted(ref["sequence"] for ref in references)
+            operations[side] = [events[ref["sequence"]] for ref in references]
+            for event, reference in zip(operations[side], references):
+                assert event["branch_id"] == native_branch and event["scientific_sha256"] == reference["scientific_sha256"]
+                assert reference["sequence"] < diagnostic["sequence"] and reference["sequence"] not in claimed_references
+                claimed_references.add(reference["sequence"])
+                pair_references.add(reference["sequence"])
+            first = operations[side][0]
+            assert first["type"] == "branch_start" and first["sim_ms"] == start["sim_tick"] / 10
+            assert all(first[name] == value for name, value in binding.items())
+            assert len(record["calls"]) == 3
+            window_bins[side], ppl_counts[side] = [], 0
+            for event, call, segment in zip(operations[side][1:], record["calls"], segments):
+                assert (call["start"], call["end"]) == segment[:2]
+                assert call["duration"] == (segment[1] - segment[0]) / 10 <= 500
+                assert call["kwargs"] == {"stimulation": None, "learning": False}
+                assert call["input_sha256"] == execution["input_sha256"][str(key["seed"])][segment[2] or "black"]
+                assert sha256(_canonical(_scientific(event["telemetry"]))).hexdigest() == call["telemetry_sha256"]
+                bins, ppl = _selected_replay_observation(event, segment, diagnostic, execution, layout["n"])
+                window_bins[side].extend(bins)
+                ppl_counts[side] += ppl
+                if event["end_tick"] == start["sim_tick"] + 2000:
+                    window_sequences[side] = event["sequence"]
+        for index, (original, repeated) in enumerate(zip(operations["original"], operations["repeat"])):
+            _compare_replay_operations(original, repeated)
+            assert original["sequence"] < repeated["sequence"]
+            if index:
+                assert operations["repeat"][index - 1]["sequence"] < original["sequence"]
+        assert window_bins["original"] == window_bins["repeat"] and window_bins["original"]
+        first, second = _decode_candidate_w_pair(diagnostic["candidate_projection"], expected_maps=layout["maps"],
+            **{name: layout[name] for name in ("n", "memory_count", "edge_count", "lower", "upper")})
+        assert first.tobytes() == second.tobytes()
+        state_resolution = float(np.abs(first - second).mean())
+        counts = {side: sum(item["spikes"] for item in bins) for side, bins in window_bins.items()}
+        resolution = _response_rate(abs(counts["original"] - counts["repeat"]), 1000, diagnostic["population_size"])
+        assert type(diagnostic["candidate_memory_w_resolution"]) is float and diagnostic["candidate_memory_w_resolution"] == state_resolution
+        assert type(diagnostic["response_replay_resolution_hz"]) is float and diagnostic["response_replay_resolution_hz"] == resolution
+        cells = [event for event in by_branch[branch] if event["type"] == "qualification_evidence"]
+        expected_cells = {(condition, retention) for condition in conditions for retention in (10000, 70000)} if key["phase"] == "pre" else {
+            (key["condition"], key["retention_ms"])}
+        assert len(cells) == len(expected_cells) and {(cell["condition"], cell["retention_ms"]) for cell in cells} == expected_cells
+        assert {event["sequence"] for event in by_branch[branch]} == {
+            *(event["sequence"] for event in cells), *(event["sequence"] for event in operations["original"])}
+        assert {event["sequence"] for event in by_branch[branch + "/repeat"]} == {
+            diagnostic["sequence"], *(event["sequence"] for event in operations["repeat"])}
+        for cell in cells:
+            _validate_response(cell, execution, (11, 23), "qualification_evidence")
+            assert all(cell[name] == key[name] for name in ("seed", "paired_identity", "presentation_order", "phase", "stimulus"))
+            condition, retention = cell["condition"], cell["retention_ms"]
+            recipient = "matched_reference" if condition == "sufficiency" else ("paired" if condition in conditions[5:] else condition)
+            descriptor = training_by_id[f"{base}/{recipient}/training"]
+            cell_source = sources[*factors, condition]
+            assert all(cell[name] == descriptor[name] for name in route_fields)
+            assert cell["retention_source_checkpoint_sha256"] == cell_source["checkpoint_sha256"]
+            assert cell["passive_decay_ticks"] == descriptor["retention_reference_tick"] + retention * 10 - cell_source["sim_tick"]
+            assert cell["intervention_id"] == (f"{base}/{condition}/intervention" if condition in conditions[5:] else None)
+            assert cell["replay_id"] == branch + "/repeat" and all(cell[name] == value for name, value in binding.items())
+            assert cell["bins"] == window_bins["original"] and cell["endogenous_dan_spikes"] == ppl_counts["original"]
+            assert cell["rate_hz"] == _response_rate(counts["original"], 1000, diagnostic["population_size"])
+            assert type(cell["response_replay_resolution_hz"]) is float and cell["response_replay_resolution_hz"] == resolution
+            assert cell["one_spike_rate_hz"] == _response_rate(1, 1000, diagnostic["population_size"])
+            assert cell["cs_onset_tick"] == diagnostic["cs_onset_tick"]
+            assert cell["sim_ms"] * 10 == start["sim_tick"] + 2000
+            assert max(window_sequences.values()) < cell["sequence"] < operations["original"][-1]["sequence"]
+        assert max(pair_references) < diagnostic["sequence"]
+        sample_key = (*factors, key.get("condition"), key.get("retention_ms"))
+        sample = key["stimulus"] == "A" and (sample_key in samples or (key["phase"] == "pre" and factors == (11, "A", "AB")))
+        if len(cohorts) == 1 or sample:
+            result = _compare_selected_replay(prefix.iter_events(), diagnostic, metadata=manifest["metadata"],
+                execution=execution, expected_source_occurrence=source, expected_start=start, expected_maps=layout["maps"],
+                **{name: layout[name] for name in ("n", "memory_count", "edge_count", "lower", "upper")})
+            assert result == {"response_replay_resolution_hz": resolution, "candidate_memory_w_resolution": state_resolution}
+            selected_samples.add(sample_key)
+    if len(cohorts) == 8:
+        assert samples <= selected_samples and (11, "A", "AB", None, None) in selected_samples
+        assert len(selected_samples) == 9  # Eight POSTs plus one PRE, not408 full-prefix scans.
+    for diagnostic, (_, next_branch) in zip(diagnostics, physical[1:]):
+        assert diagnostic["sequence"] < by_branch[next_branch][0]["sequence"]
+    last = diagnostics[-1]
+    assert records[last["replay_id"]]["engine"]() is owner
+    assert owner.brain.cursor == last["sim_tick"]
+    assert owner.brain.checkpoint_state_sha256() == last["boundaries"]["final"]["repeat"]["complete_state_sha256"]
+    assert any(event["candidate_projection"]["original_hex"] != "0000000000000000" for event in diagnostics)
+    assert not any(event["type"] in ("qualification_result", "assay_result") for event in events)
+    assert not (recorder.path / "run.json").exists()
+
+
+@pytest.mark.skipif(os.environ.get("FLY_CONNECTOME_SIM_FULL_TEST") != "1", reason="opt-in True51 selected replay matrix")
+def test_selected_replay_complete_native_cohort(selected_caller, engine_factory):
+    _check_selected_replay_matrix(selected_caller, engine_factory, ((11, "A", "AB"),))
+
+
+@pytest.mark.skipif(os.environ.get("FLY_CONNECTOME_SIM_FULL_TEST") != "1", reason="opt-in True408 selected replay matrix")
+def test_selected_replay_all_eight_native_cohorts(selected_caller, engine_factory):
+    cohorts = tuple((seed, paired, order) for seed in (11, 23) for paired in ("A", "B") for order in ("AB", "BA"))
+    _check_selected_replay_matrix(selected_caller, engine_factory, cohorts)
 
 
 def test_selected_multiple_paired_cohorts_restore_shared_baseline(selected_caller, engine_factory):

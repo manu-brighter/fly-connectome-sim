@@ -25,9 +25,29 @@ It is not implemented or a source-freeze/qualification approval.
 
 The early task-level RED/GREEN boxes are historical execution instructions, not
 the current backlog. Tasks 1–6, strict analysis 7A, motor-only Task8 and source
-slices 7B4a–d and helper e.1 are accepted. e.2 R1 closed diagnostics/schema,
+slices 7B4a–d/e.1/e.2 are accepted. e.3 is WIP with reviewed source and bounded
+9/51 native repeat evidence; its full 408 acceptance remains open. Current source:
+`2d07f37e85935f78b522bccb0a60d7f2b9f1d0e5a1475c8d306f12b995766da8`;
+schema `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
+R1 focused: **78 passed, 89 deselected in 189.24 s**. Subsequent R2/R3 edits
+changed only matrix test oracles. Actual R3 full-cohort True51: **1 passed in
+155.54 s**, no failures/errors/skips: 51 diagnostics, 96 logical cells, 130
+production factories, 16 native black anchors, nine durable checkpoints including
+baseline, all eight conditions and every pair's e.2 EOF comparison. Nine-pair
+tests checked 21 factories; full-matrix1033 remains expected, not measured.
+Actual MaleCNS zero-anchor map context: **1 passed in 8.28 s**, no failures/skips.
+Exact R3 source/test/schema bytes matched before/after. Entire assay-module
+opt-in-off compatibility: **166 passed, three declared opt-in skips in 1,426.94 s**,
+exit0, no failures/errors. Skips are False all-eight, separately passed True51,
+and unexecuted True408. R1 focused/R3 broader counts overlap, not additive.
+True51 original-file audit passed: 2,025 events/5,274,722 bytes, nine checkpoints/
+82,878 bytes, 128 branches, unsealed/no scientific outcome. True408 has not started.
+These are declared tiny-native recorded-consistency checks plus one actual
+MaleCNS context, not response/history attestation or scientific qualification.
+
+Historical e.2 R1 closed diagnostics/schema,
 projection/arithmetic helpers and independent external-iterator pair comparison
-passed source review and bounded runtime acceptance. Current source:
+passed source review and bounded runtime acceptance. Latest accepted e.2 source:
 `4527956304d4d1630c415a190d4a475912cbe4ca028b4abb63baa859f9af13ae`;
 schema `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
 Focused R1: **115 passed, 519 deselected in 62.55 s**, exit0, no failures/errors/
@@ -40,7 +60,8 @@ separately **passed in 7.89 s**, exit0, no errors/skips. All three junction case
 passed on the normal host; all frozen source/test/schema bytes matched before/
 after. Focused and compatibility counts overlap; no whole ordinary/all-eight/
 complete96 run was repeated on e.2 R1.
-True production remains unavailable/False-only; no 408-repeat matrix is measured.
+That e.2 source kept True production unavailable/False-only; its results are
+historical, not current e.3 acceptance.
 
 Historical accepted e.1 helper source:
 `293c8a721f0a18ba9dcf0baf726437b8455133d67cf343bb9fb1c69ca617a060`;
@@ -61,7 +82,7 @@ actual selected-eight (**1 passed, 1,532.18 s**) and legacy confirmation-eight
 (**1 passed, 1,721.32 s**). Package bytes stayed unchanged; the whole ordinary
 suite was not repeated on R2 tests. Both collections contained 2,340 cases.
 
-Both matrices use declared eight-cell native fixtures. Each has 40 trainings,
+Both matrices use declared tiny-native fixtures. Each has 40 trainings,
 24 interventions, 128 black-retention anchors and 768 logical cells, with 24
 physical PRE trials reused sixteen times and 384 POST originals. Selected
 production contributes 64 sources plus caller baseline (65 checkpoints), remains
@@ -74,10 +95,12 @@ attestation. Detailed actual inventories/hashes are in the
 The c.2b complete96 grid and reviewed detail-on fullgraph prefix sample remain
 historical on source
 `64041111c7cf3edfaf51128e071b79d939875937f810790c00d1425458c6e60e`.
-The costly96 case was not repeated for d/e.1/e.2. Profiled durations require a controlled
+The costly96 case was not repeated for d/e.1/e.2/e.3. Profiled durations require a controlled
 unprofiled follow-up before runtime/capacity decisions. Continue on the original
-Windows workstation with planned e.3, then f/g; full repeat production is not
-released by helper/comparator acceptance.
+Windows workstation with e.3 partial WIP source/9/51/compatibility checks complete,
+but 408 acceptance still open, then f/g.
+The actual True producer remains private; no full repeat matrix/global lifecycle
+or scientific approval is established by bounded 9/51 checks.
 No production config, formal source freeze or qualification is established.
 Cloud setup below applies only to a future fresh checkout, not local continuation.
 
@@ -722,7 +745,7 @@ capacity, scientific support or formal qualification. No new complete suite ran.
 
 Keep the same plan/workspace. Source slices a–d and helper e.1 are accepted;
 e.2 R1 source review and bounded runtime acceptance passed. Parent e remains
-open, with e.3 and f/g future,
+open, with e.3 source-reviewed/bounded-tested but 408 acceptance open and f/g future,
 without permission to run formal qualification now. Preserve all existing confirmation
 routes and scientific gates. Concrete per-slice briefs must settle exact data
 shapes before implementation; do not bootstrap with a fabricated frozen object.
@@ -935,7 +958,7 @@ with equal state/clock and no observation. Count it separately from baseline tri
 Replace source authentication's whole-prefix list with bounded streaming lookup
 and complete EOF drain, retaining exact occurrence/descriptor and post-factory
 byte/state checks. No persistent trust cache or omitted discarded history.
-The returned last paired engine is production data; f owns final physical
+The False/confirmation returned paired engine is production data; f owns final physical
 branch/clock framing, and e owns actual repeated response measurements.
 
 - [x] RED: real native qualification seed11 cannot use the confirmation-only
@@ -953,7 +976,7 @@ handover. The extra quiescent restore changes neither 64 actual baseline trials
 nor the asserted 625 legacy production factories. This completes d production,
 not e's response-resolution evidence, f's public lifecycle or g's capacity gate.
 
-**7B4e — actual replay-resolution measurements (open; full repeat production unreleased).**
+**7B4e — actual replay-resolution measurements (open; e.3 bounded 9/51 checks passed).**
 Follow the [strict selected-repeat contract](../specs/2026-11-01-strict-qualification-contract.md).
 Own producer/analysis/schema, narrow recorder dispatch/reference helper and
 existing tests. Exact qualification-only True enables independently restored
@@ -969,7 +992,17 @@ IDs, real window-stop Hz/W metrics, complete tails and closed diagnostics.
   stream comparison implemented and source-reviewed R1; focused115 tests passed.
   Affected-file and actual native-context acceptance passed on the exact R1 bytes;
   preserve ratified map/byte rules. This is recorded consistency, not full production.
-- [ ] e.3: lockstep fresh-parent native production under its own bounded brief.
+- [ ] e.3: source-reviewed lockstep native production; bounded 9/51 tests passed.
+  Entire assay-module compatibility passed; this partial checkpoint is accepted,
+  while complete 408 acceptance and parent e remain open.
+
+The released e.3 design requires actual Engine/Brain independence and cross-field
+mutable-buffer nonoverlap before either restore, then both-parent rechecks before
+starts. True-only cleanup returns the actual last successful repeat owner after
+both tails/diagnostic append through scratch cleanup; False/confirmation keeps
+its training producer. f binds actual final diagnostic/owner, not a guessed branch.
+Paired/full-cohort checks observed 21/130 production factories. Full-matrix 1033 and
+408-comparison execution/acceptance remain future; bounded evidence is no capacity claim.
 
 - [ ] RED: copied zero, missing late T, altered whole telemetry/tail/state/maps,
   failed append receipts/count drift, rehashed references, PRE over-reuse and EOF.
