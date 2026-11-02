@@ -24,38 +24,36 @@ It is not implemented or a source-freeze/qualification approval.
 ## Current checkpoint and live remaining work — 2026-11-02
 
 The early task-level RED/GREEN boxes are historical execution instructions, not
-the current backlog. Tasks 1–6 and strict analysis 7A are implemented; native
-controlled all-factor production and bounded validation improvements are shipped.
-The complete tiny-native pilot is still unsupported (136 negative gates), not
-formal fullgraph qualification. Historical unchanged-source Windows acceptance
-is 1,299 passes. Fresh Task8 Windows acceptance is 1,449 passes in 3,237.62
-seconds with no errors, failures or skips; neither result is a cloud run.
+the current backlog. Tasks 1–6, strict analysis 7A, motor-only Task8 and source
+slices 7B4a–d are implemented and independently reviewed. Latest accepted d
+model-source identity:
+`48af9d39b3ae8f0c9e965dbac6d0e987e0e23dda8fa68895f3807a6f98684ac3`;
+schema `c56a64f91bf08b2f3c379a4720d4be3a5c2d1743c1c09394d2483f23d61af115`.
+Windows R1 ordinary acceptance was **2,333 passed, seven declared opt-in skips
+in 1,909.58 s**, plus four actual MaleCNS graph cases in **26.31 s**. R2 changed
+only two tests: two native bookkeeping cases passed in **210.06 s**, followed by
+actual selected-eight (**1 passed, 1,532.18 s**) and legacy confirmation-eight
+(**1 passed, 1,721.32 s**). Package bytes stayed unchanged; the whole ordinary
+suite was not repeated on R2 tests. Both collections contained 2,340 cases.
 
-Continuation is back on the original Windows workstation, not the cloud.
-Fresh local runtime locks pass; recorder/replay/projection baseline is
-380 passed and one permission-limited Windows junction skip (57.23 seconds).
-Task7B3k's longer-retention measurement and independent review are complete.
-Task8's motor-only implementation passed independent scoped review and complete
-opt-in acceptance, including the genuine all-factor and both fullgraph tests.
-Task7B4a's shared checkpoint reader is also reviewed and accepted: 1,556 passed
-with three declared opt-in skips in the ordinary suite, then both actual
-fullgraph tests passed separately. Task7B4b's native map context passed Astra
-review, three actual graph cases and ordinary acceptance (1,627 passed, four
-declared opt-in skips). Task7B4c.1's grid capture passed independent review,
-ordinary acceptance (1,693 passed, four opt-in skips) and three separate actual
-graph tests. Task7B4c.2a's compact arithmetic passed Astra numerical review and
-targeted acceptance (470 passed, one opt-in skip). The separate integer-boundary
-correction also passed fresh Astra review, ordinary acceptance (2,230 passed,
-four opt-in skips) and three actual graph tests. The authenticated c.2b reader
-also passed independent review, ordinary acceptance (2,286 passed, six opt-in
-skips), four actual graph cases and the complete96 tiny-native prefix/seal test.
-The bounded detail-on fullgraph first-training-prefix sample then completed on
-the same source and passed independent measurement review; its instrumented
-timings require an unprofiled control before runtime/capacity decisions. Next is
-bounded selected native production d, then e/f. No production configuration or
-formal qualification is established.
-The cloud setup item below applies
-only when moving to a fresh cloud checkout, not as a gate on local continuation.
+Both matrices use declared eight-cell native fixtures. Each has 40 trainings,
+24 interventions, 128 black-retention anchors and 768 logical cells, with 24
+physical PRE trials reused sixteen times and 384 POST originals. Selected
+production contributes 64 sources plus caller baseline (65 checkpoints), remains
+unsealed and has no scientific assessment until f. Legacy confirmation has
+67 checkpoints and an actual unsupported report with 136 negative gates.
+Neither is formal MaleCNS qualification or upstream training/response-history
+attestation. Detailed actual inventories/hashes are in the
+[tracked handover](../../cloud-handover.md).
+
+The c.2b complete96 grid and reviewed detail-on fullgraph prefix sample remain
+historical on source
+`64041111c7cf3edfaf51128e071b79d939875937f810790c00d1425458c6e60e`.
+The costly96 case was not repeated for d. Profiled durations require a controlled
+unprofiled follow-up before runtime/capacity decisions. Continue on the original
+Windows workstation with planned e, then f/g; no e source release is implied.
+No production config, formal source freeze or qualification is established.
+Cloud setup below applies only to a future fresh checkout, not local continuation.
 
 - [ ] Establish/verify the cloud toolchain and regenerate ignored runtime before
   any actual fullgraph work; see [tracked handover](../../cloud-handover.md).
@@ -65,8 +63,10 @@ only when moving to a fresh cloud checkout, not as a gate on local continuation.
 - [x] Execute, independently review and publish the bounded actual MaleCNS
   detailed first-training prefix before d/e/f, as described below. This does not
   replace g or its required unprofiled controlled measurement.
-- [ ] Complete strict selected qualification controls/interventions, frozen-config
-  integration and the real assay CLI; current CLI lacks `assay`.
+- [x] Complete caller-owned selected controls/interventions and actual eight-factor
+  selected/legacy confirmation production acceptance (d).
+- [ ] Measure selected response repeats, integrate public frozen-config lifecycle
+  and implement the real assay CLI; current CLI lacks `assay`.
 - [ ] Resolve discarded-grid training ancestry without mistaking black-retention
   replay for proof of training history.
 - [x] Complete Task 8's motor-only readout and its complete opt-in acceptance.
@@ -692,8 +692,8 @@ capacity, scientific support or formal qualification. No new complete suite ran.
 
 #### Task7B4: strict qualification integration after Task8
 
-Keep the same plan/workspace. These are pending, reviewable source slices, not
-permission to run formal qualification now. Preserve all existing confirmation
+Keep the same plan/workspace. Source slices a–d are accepted; e–g remain planned,
+without permission to run formal qualification now. Preserve all existing confirmation
 routes and scientific gates. Concrete per-slice briefs must settle exact data
 shapes before implementation; do not bootstrap with a fabricated frozen object.
 
@@ -826,7 +826,7 @@ directly; public sealed-only freezing and arithmetic-fixture migration stay in
   anchors: this is native map/content authentication, not training-history replay.
   Expanded available-prefix, recovery, source-tamper and lifetime cases passed in
   the ordinary suite. All-eight assay acceptance was not repeated.
-  Accepted Windows source identity:
+  Historical c.2b Windows source identity; the costly96 case was not repeated for d:
   `64041111c7cf3edfaf51128e071b79d939875937f810790c00d1425458c6e60e`.
   Parent c/cap activation and public freeze integration remain unfinished.
 
@@ -844,16 +844,17 @@ directly; public sealed-only freezing and arithmetic-fixture migration stay in
   simulated duration is 385,844,000 ticks across restored branches, not one
   continuous animal trajectory. These measurements are not fullgraph capacity.
 
-**Early detail-on resource sample after c.2b — completed and reviewed.**
+**Early detail-on resource sample after c.2b — historical, completed and reviewed.**
 The [published Windows report](../../experiments/2026-11-02-fullgraph-detail-prefix-pilot.md)
 records exit 0 and independent measurement review with no findings on source
 `64041111c7cf3edfaf51128e071b79d939875937f810790c00d1425458c6e60e`,
 commit `21f788342b276e1d8a323f572e37e248542948d6`: 38 calls/45 events/two checkpoints,
 inconclusive/one evidenced unit/no points/no selection. Final sampling recorded
 630.546 s, 55,267,543 dedicated bytes and 1,089,613,824 bytes lifetime peak working
-set; later report writing/exit are excluded. The 1,617,776,145 global profiler
+set; later report writing/exit are excluded. These are earlier-source measurements,
+not current d acceptance. The 1,617,776,145 global profiler
 dispatches have unmeasured dispatch overhead, so these durations cannot establish
-unprofiled throughput or justify optimization/capacity projections. Proceed d/e/f;
+unprofiled throughput or justify optimization/capacity projections. Proceed e/f;
 include controlled unprofiled timing in g before runtime/capacity decisions.
 
 The completed predeclared route and limits were: before d/e/f source edits, measure
@@ -878,8 +879,8 @@ do not drop ancestry, controls or gates. Integrated g remains mandatory.
 - [x] Execute, independently review and publish this bounded Windows sample
   after the accepted c.2b checkpoint; keep its source identity explicit.
 
-**7B4d — caller-owned selected native execution.** Own `assay.py`, qualification
-owner metadata and producer tests. Extract `_produce_cohorts(engine_factory,
+**7B4d — caller-owned selected native execution: implemented and accepted.**
+Own `assay.py`, qualification owner metadata and producer tests. Extract `_produce_cohorts(engine_factory,
 recorder, *, execution, cohorts, conditions, baseline_occurrence, namespace,
 measure_replay=False, confirmation_replay_resolution_hz=None)`;
 execution declares family/seeds/identity/population/
@@ -898,26 +899,43 @@ names; qualification uses an explicit selected namespace, reserving all requeste
 names against the existing inventory before writes. Use actual global recorder
 positions, including anchors. Authenticate the caller's exact baseline event/
 occurrence and native state, preserving legitimate nonzero factory baselines.
+Preserve factory counts/reuse and trial restores; allow exactly one additional
+quiescent baseline-authentication restore on the existing preflight engine,
+with equal state/clock and no observation. Count it separately from baseline trials.
 Replace source authentication's whole-prefix list with bounded streaming lookup
 and complete EOF drain, retaining exact occurrence/descriptor and post-factory
 byte/state checks. No persistent trust cache or omitted discarded history.
 The returned last paired engine is production data; f owns final physical
 branch/clock framing, and e owns actual repeated response measurements.
-- [ ] RED: real native qualification seed11 cannot use the confirmation-only
+
+- [x] RED: real native qualification seed11 cannot use the confirmation-only
   wrapper; reject late source/clock/input/family errors before creating output.
-- [ ] GREEN: one qualification cohort's five sources, three interventions and
+- [x] GREEN: one qualification cohort's five sources, three interventions and
   independent two-T siblings, then eight-factor 40/24/128/768 evidence. Preserve
   all existing confirmation APIs/counts and exact occurrence/transfer checks.
 
-**7B4e — actual replay-resolution measurements.** Own producer, analysis/schema
-and native tests. `measure_replay=True` repeats 408 actual distinct selected
-trials and binds `qualification_replay` diagnostics to source/observation/state
-references and each response's `replay_id`; no borrowed frozen tolerance.
-- [ ] RED: copied zero, missing T+60 trial, changed bin/state/source, duplicated
-  logical cells without physical comparisons or fake diagnostic proof.
-- [ ] GREEN: 24 pre/384 post comparisons and actual state pairs; independently
-  derive resolution/one-spike floors, preserving scientific arithmetic and
-  separate black-parent attestation versus response-repeat interpretation.
+Independent source review closed the fresh verifier-group guard finding; the
+test-only baseline-accounting refinement also passed independent review. Focused
+R1 acceptance was 124 passed/one opt-in skip in 1,271.88 s. Actual R2 eight-factor
+selected and legacy confirmation cases passed on unchanged package bytes; their
+full inventories and R1/R2 acceptance distinction are recorded above and in the
+handover. The extra quiescent restore changes neither 64 actual baseline trials
+nor the asserted 625 legacy production factories. This completes d production,
+not e's response-resolution evidence, f's public lifecycle or g's capacity gate.
+
+**7B4e — actual replay-resolution measurements (planned; no source release).**
+Follow the [strict selected-repeat contract](../specs/2026-11-01-strict-qualification-contract.md).
+Own producer/analysis/schema, narrow recorder dispatch/reference helper and
+existing tests. Exact qualification-only True enables independently restored
+lockstep pairs; preserve False/confirmation behavior. Use deterministic `/repeat`
+IDs, real window-stop Hz/W metrics, complete tails and closed diagnostics.
+
+- [ ] RED: copied zero, missing late T, altered whole telemetry/tail/state/maps,
+  failed append receipts/count drift, rehashed references, PRE over-reuse and EOF.
+- [ ] GREEN: nine paired/51 full-cohort comparisons, then separately budgeted
+  24 PRE + 384 POST; f independently reconciles all bytes/768 logical cells.
+  No extra NPZ, trust issuer, cap activation, public freeze or scientific approval;
+  g retains actual controlled unprofiled capacity measurement.
 
 **7B4f — truthful terminal and real freeze lifecycle.** Own analysis,
 qualification, recorder/schema and tests. Share `_evaluate_qualification(value)`

@@ -120,9 +120,12 @@ def test_real_all_declared_controlled_cohorts(engine_factory, tmp_path, monkeypa
     assert len(prefixes) == len(sealed_runs) == 1
     assert producer_count == len(records) == 625
     assert all(count > 0 for count in replay_counts)
-    assert Counter(tuple(r["restores"]) for r in records)[()] == 1
+    authentication = records[0]
+    assert authentication["restores"] == ["baseline.npz"]
+    assert authentication["inputs"] == set()
+    assert all(r["restores"] for r in records)
     assert all(len(r["restores"]) <= 1 for r in records)
-    baseline_trials = [r for r in records if r["restores"] == ["baseline.npz"]]
+    baseline_trials = [r for r in records[1:] if r["restores"] == ["baseline.npz"]]
     assert len(baseline_trials) == 64
     assert Counter(len(r["inputs"] - {black_hash}) for r in baseline_trials) == {1: 24, 2: 40}
     assert sum(r["restores"] == ["retained.npz"] for r in records) == 384

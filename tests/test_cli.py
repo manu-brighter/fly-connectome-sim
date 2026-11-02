@@ -22,6 +22,11 @@ def test_qualification_metadata_declares_real_population_and_heldout_pixels():
     assert metadata["mbon11_population_size"] == 2
     assert metadata["candidate_identity"] == "kc-mbon11-ppl101/v1"
     black = _rgb_input_sha256(np.zeros((32, 32, 3), dtype=np.uint8))
+    assert metadata["black_input"] == {
+        "generator": "black-rgb/v1", "input_dtype": "uint8",
+        "input_shape": [32, 32, 3], "input_sha256": black,
+    }
+    assert metadata["rgb_input_sha256"]["black"] == black
     assert metadata["confirmation_input_sha256"] == {
         str(seed): {**{name: _rgb_input_sha256(AssayStimuli(seed, "confirmation").frame(name))
                       for name in ("A", "B", "C")}, "black": black}

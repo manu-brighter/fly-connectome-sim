@@ -4,6 +4,7 @@ from copy import deepcopy
 from dataclasses import replace
 from hashlib import sha256
 import json
+import os
 from pathlib import Path
 
 import numpy as np
@@ -12,6 +13,526 @@ import pytest
 from replay_helpers import engine_factory, _declared_native_frozen_config
 from fly_connectome_sim.experiment.analysis import analyze_assay, reduce_assay_evidence
 from fly_connectome_sim.experiment.recorder import verify_replay_run
+
+
+@pytest.fixture
+def selected_caller(engine_factory, tmp_path, request):
+    """Genuine caller-owned qualification prefix, without a frozen config."""
+    from fly_connectome_sim.cli import _qualification_metadata
+    from fly_connectome_sim.engine import _rgb_input_sha256
+    from fly_connectome_sim.experiment.recorder import RunRecorder
+    from fly_connectome_sim.experiment.stimuli import AssayStimuli
+
+    native = engine_factory()
+    options = getattr(request, "param", {})
+    if options.get("tick"):
+        native.observe(np.zeros((32, 32, 3), dtype=np.uint8), options["tick"] / 10)
+    if options.get("changed_state"):
+        native.brain.v[3] += 1
+    identity = native.identity()
+    metadata = _qualification_metadata(identity)
+    black = _rgb_input_sha256(np.zeros((32, 32, 3), dtype=np.uint8))
+    if options.get("missing_black"):
+        del metadata["black_input"]
+    execution = {
+        "family": "qualification", "seeds": [11, 23], "engine_identity": identity,
+        "mbon11_population_size": 1, "candidate_identity": "kc-mbon11-ppl101/v1",
+        "selected_configuration": {"cs_duration_ms": 100.0, "dan_onset_ms": 0.0,
+                                   "post_pair_gap_ms": 500.0},
+        "response_window": {"start_ms": 0.0, "end_ms": 100.0},
+        "retention_times_ms": [10000, 70000],
+        "input_sha256": {str(seed): {
+            **{name: _rgb_input_sha256(AssayStimuli(seed, "qualification").frame(name))
+               for name in ("A", "B", "C")}, "black": black,
+        } for seed in (11, 23)},
+    }
+    recorder = RunRecorder(tmp_path / "selected", run_kind="qualification", metadata=metadata,
+                           root_branch_id="qualification/baseline")
+    source = tmp_path / "baseline-source.npz"
+    native.brain.checkpoint(source)
+    digest = recorder.ingest_checkpoint("brain-before.npz", source,
+                                        origin_branch_id="qualification/baseline")
+    baseline = {"checkpoint_name": "brain-before.npz", "checkpoint_sha256": digest,
+                "origin_branch_id": "qualification/baseline", "checkpoint_sequence": 0,
+                "sim_tick": native.brain.cursor}
+    recorder.append({"type": "qualification_checkpoint", "branch_id": "qualification/baseline",
+                     "sim_tick": native.brain.cursor, "sim_ms": native.brain.cursor / 10,
+                     "checkpoint_name": "brain-before.npz"})
+    recorder.append({"type": "prior_diagnostic", "branch_id": "qualification/baseline",
+                     "sim_ms": native.brain.cursor / 10})
+    recorder.append({"type": "branch_start", "branch_id": "prior-native", "sim_ms": native.brain.cursor / 10,
+                     "parent_branch_id": baseline["origin_branch_id"], "parent_checkpoint_name": baseline["checkpoint_name"],
+                     "parent_checkpoint_sequence": baseline["checkpoint_sequence"],
+                     "parent_checkpoint_sha256": baseline["checkpoint_sha256"]})
+    prior = engine_factory()
+    prior.brain.restore(source)
+    start = prior.brain.cursor
+    observed = prior.observe(np.zeros((32, 32, 3), dtype=np.uint8), 10.0,
+                             learning=False, pathway_detail=True, qualification_detail=True)
+    recorder.append({"type": "observe", "branch_id": "prior-native",
+        "operation_version": "black-retention-operation/v1", "start_tick": start,
+        "end_tick": prior.brain.cursor, "duration_ticks": 100, "duration_ms": 10.0,
+        "sim_ms": prior.brain.cursor / 10, "stimulation": None, "learning": False,
+        "current_mv": 20.0, "pathway_detail": True, "qualification_detail": True, "telemetry": observed})
+    try:
+        yield recorder, execution, baseline
+    finally:
+        recorder.__exit__(RuntimeError, RuntimeError("intentional incomplete prefix"), None)
+
+
+def test_selected_native_paired_uses_caller_baseline_and_global_positions(selected_caller, engine_factory):
+    import fly_connectome_sim.experiment.assay as assay
+    recorder, execution, baseline = selected_caller
+    producer = assay._produce_cohorts(engine_factory, recorder, execution=execution,
+        cohorts=((11, "A", "AB"),), conditions=("paired",),
+        baseline_occurrence=baseline, namespace=True)
+    prefix = recorder.validate_prefix()
+    events = list(prefix.iter_events())
+    assert producer.brain.cursor == 111000
+    assert set(prefix.manifest["checkpoints"]) == {"brain-before.npz", "selected-11-A-AB-training-end.npz"}
+    training = next(event for event in events if event["type"] == "qualification_training")
+    checkpoint = next(event for event in events if event.get("checkpoint_name") == "selected-11-A-AB-training-end.npz")
+    assert checkpoint["sequence"] > 1
+    assert checkpoint["parent_checkpoint_sequence"] == baseline["checkpoint_sequence"]
+    assert training["training_id"] == "selected/11/A/AB/paired/training"
+    anchors = [event for event in events if event["type"] == "state_anchor"]
+    assert len(anchors) == 2
+    assert all(anchor["source_occurrence"]["checkpoint_sequence"] == checkpoint["sequence"] for anchor in anchors)
+    responses = [event for event in events if event["type"] == "qualification_evidence"]
+    assert len(responses) == 12
+    assert all("response_replay_resolution_hz" not in event and "replay_id" not in event for event in responses)
+    assert not any(event["type"] in {"qualification_result", "assay_result"} for event in events)
+    assert not (recorder.path / "run.json").exists()
+
+
+@pytest.mark.parametrize("mutation", [
+    "family", "seeds", "boolean_seed", "population", "candidate", "extra", "window", "retention",
+    "last_input", "last_factor", "duplicates", "conditions", "dependencies", "namespace",
+    "replay", "replay_lookalike", "resolution", "baseline_name", "baseline_sequence",
+    "baseline_origin", "baseline_tick", "baseline_alias", "baseline_bytes", "factory_bytes",
+    "black_missing", "black_hash", "late_branch_collision", "late_checkpoint_collision", "closed", "failed",
+])
+def test_selected_preflight_refuses_without_component_writes(selected_caller, engine_factory, monkeypatch, mutation):
+    import fly_connectome_sim.experiment.assay as assay
+    recorder, execution, baseline = selected_caller
+    cohorts, conditions = [(11, "A", "AB"), (23, "B", "BA")], ("paired",)
+    options = {"namespace": True}
+    factory = engine_factory
+    if mutation == "family": execution["family"] = "unknown"
+    elif mutation == "seeds": execution["seeds"] = [11, 113]
+    elif mutation == "boolean_seed": cohorts[-1] = (True, "B", "BA")
+    elif mutation == "population": execution["mbon11_population_size"] = True
+    elif mutation == "candidate": execution["candidate_identity"] = "other/v1"
+    elif mutation == "extra": execution["trusted"] = True
+    elif mutation == "window": execution["response_window"]["end_ms"] = True
+    elif mutation == "retention": execution["retention_times_ms"] = [10000, 60000]
+    elif mutation == "last_input": execution["input_sha256"]["23"]["A"] = "0" * 64
+    elif mutation == "last_factor": cohorts[-1] = (23, "C", "BA")
+    elif mutation == "duplicates": cohorts[-1] = cohorts[0]
+    elif mutation == "conditions": conditions = ("paired", "paired")
+    elif mutation == "dependencies": conditions = ("paired", "necessity")
+    elif mutation == "namespace": options["namespace"] = False
+    elif mutation == "replay": options["measure_replay"] = True
+    elif mutation == "replay_lookalike": options["measure_replay"] = 0
+    elif mutation == "resolution": options["confirmation_replay_resolution_hz"] = 0.0
+    elif mutation == "baseline_name": baseline["checkpoint_name"] = "missing.npz"
+    elif mutation == "baseline_sequence": baseline["checkpoint_sequence"] = 1
+    elif mutation == "baseline_origin": baseline["origin_branch_id"] = "other"
+    elif mutation == "baseline_tick": baseline["sim_tick"] = True
+    elif mutation == "baseline_alias":
+        recorder.ingest_checkpoint("alias.npz", recorder.path / "checkpoints/brain-before.npz",
+                                   origin_branch_id="qualification/baseline")
+        recorder.append({"type": "qualification_checkpoint", "branch_id": "qualification/baseline",
+                         "sim_ms": 0.0, "sim_tick": 0, "checkpoint_name": "alias.npz"})
+        baseline["checkpoint_name"] = "alias.npz"
+    elif mutation in ("baseline_bytes", "factory_bytes"):
+        path = recorder.path / "checkpoints/brain-before.npz"
+        if mutation == "baseline_bytes": path.write_bytes(path.read_bytes() + b"changed")
+        else:
+            def factory():
+                engine = engine_factory()
+                path.write_bytes(path.read_bytes() + b"changed")
+                return engine
+    elif mutation == "black_missing": del recorder.metadata["black_input"]
+    elif mutation == "black_hash": recorder.metadata["black_input"]["input_sha256"] = "0" * 64
+    elif mutation == "late_branch_collision":
+        recorder.append({"type": "branch_start", "branch_id": "selected/23/B/BA/post/70000/C", "sim_ms": 0.0,
+                         "parent_branch_id": baseline["origin_branch_id"],
+                         "parent_checkpoint_name": baseline["checkpoint_name"],
+                         "parent_checkpoint_sequence": baseline["checkpoint_sequence"],
+                         "parent_checkpoint_sha256": baseline["checkpoint_sha256"]})
+    elif mutation == "late_checkpoint_collision":
+        name = "selected-23-B-BA-training-end.npz"
+        recorder.ingest_checkpoint(name, recorder.path / "checkpoints/brain-before.npz",
+                                   origin_branch_id="qualification/baseline")
+        recorder.append({"type": "checkpoint", "branch_id": "qualification/baseline",
+                         "sim_ms": 0.0, "sim_tick": 0, "checkpoint_name": name})
+    elif mutation == "closed": recorder.__exit__(RuntimeError, RuntimeError(), None)
+    elif mutation == "failed": recorder._failed = True
+    before = recorder.next_sequence, set(recorder._checkpoints)
+    calls = []
+    def traced_factory():
+        engine = factory()
+        observe = engine.observe
+        def traced(*args, **kwargs):
+            calls.append(1)
+            return observe(*args, **kwargs)
+        engine.observe = traced
+        return engine
+    with pytest.raises(ValueError):
+        assay._produce_cohorts(traced_factory, recorder, execution=execution, cohorts=cohorts,
+            conditions=conditions, baseline_occurrence=baseline, **options)
+    assert (recorder.next_sequence, set(recorder._checkpoints)) == before
+    assert not calls
+
+
+def test_source_lookup_streams_without_retaining_history(native_transfer_sources, engine_factory, monkeypatch):
+    import weakref
+    import fly_connectome_sim.experiment.assay as assay
+    from fly_connectome_sim.experiment.recorder import ValidatedPrefix
+    recorder, sources, identity = native_transfer_sources
+    for _ in range(20):
+        recorder.append({"type": "diagnostic", "branch_id": "root", "sim_ms": 0.3,
+                         "payload": list(range(100))})
+    iterate = ValidatedPrefix.iter_events
+    live, visited = [], []
+    class TrackedEvent(dict):
+        pass
+    def bounded(self):
+        for event in iterate(self):
+            live[:] = [item for item in live if item() is not None]
+            assert len(live) <= 2, "raw prefix history retained"
+            wrapped = TrackedEvent(event)
+            live.append(weakref.ref(wrapped))
+            visited.append(event["sequence"])
+            yield wrapped
+    monkeypatch.setattr(ValidatedPrefix, "iter_events", bounded)
+    restored = assay._restore_training_source(recorder, *sources[0], engine_factory, identity, 1)
+    assert restored.brain.cursor == 3
+    # Prefix construction and source authentication each fully stream these bytes.
+    assert visited == list(range(recorder.next_sequence)) * 2
+
+
+def test_source_lookup_rejects_late_duplicate_descriptor(native_transfer_sources, engine_factory):
+    import fly_connectome_sim.experiment.assay as assay
+    recorder, sources, identity = native_transfer_sources
+    recorder.append(sources[0][1])
+    with pytest.raises(ValueError, match="descriptor"):
+        assay._restore_training_source(recorder, *sources[0], engine_factory, identity, 1)
+
+
+def _check_selected_inventory(prefix, execution, cohorts):
+    """Check literal selected roles, occurrence positions and logical factor cells."""
+    from fly_connectome_sim.experiment.analysis import _validate_response, _validate_training
+    conditions = ("paired", "frozen_plasticity", "no_external_dan", "temporally_unpaired",
+                  "matched_reference", "necessity", "sufficiency", "sham")
+    acquisitions = conditions[:5]
+    events = list(prefix.iter_events())
+    training = [event for event in events if event["type"] == "qualification_training"]
+    interventions = [event for event in events if event["type"] == "assay_intervention"]
+    responses = [event for event in events if event["type"] == "qualification_evidence"]
+    anchors = [event for event in events if event["type"] == "state_anchor"]
+    assert [event["sequence"] for event in events] == list(range(len(events)))
+    assert (len(training), len(interventions), len(anchors), len(responses)) == tuple(
+        count * len(cohorts) for count in (5, 3, 16, 96))
+    checkpoint_roles = ("training-end", "frozen_plasticity-training-end", "no_external_dan-training-end",
+                        "temporally_unpaired-training-end", "matched-reference-training-end",
+                        "necessity-post", "sufficiency-post", "sham-post")
+    assert set(prefix.manifest["checkpoints"]) == {"brain-before.npz"} | {
+        f"selected-{seed}-{paired}-{order}-{role}.npz"
+        for seed, paired, order in cohorts for role in checkpoint_roles}
+    expected_branches = {"qualification/baseline", "prior-native"}
+    for seed, paired, order in cohorts:
+        base = f"selected/{seed}/{paired}/{order}"
+        expected_branches.update(f"{base}/{condition}/training" for condition in acquisitions)
+        expected_branches.update(f"{base}/{condition}/intervention" for condition in conditions[5:])
+        expected_branches.update(f"{base}/pre/{stimulus}" for stimulus in ("A", "B", "C"))
+        for condition in conditions:
+            path = base if condition == "paired" else f"{base}/{condition}"
+            for retention in (10000, 70000):
+                expected_branches.add(f"{path}/retention/{retention}")
+                expected_branches.update(f"{path}/post/{retention}/{stimulus}" for stimulus in ("A", "B", "C"))
+    assert {event["branch_id"] for event in events} == expected_branches
+    assert {(event["seed"], event["paired_identity"], event["presentation_order"], event["condition"])
+            for event in training} == {(*cohort, condition) for cohort in cohorts for condition in acquisitions}
+    assert {(event["seed"], event["paired_identity"], event["presentation_order"], event["retention_ms"],
+             event["condition"], event["phase"], event["stimulus"]) for event in responses} == {
+        (*cohort, retention, condition, phase, stimulus)
+        for cohort in cohorts for retention in (10000, 70000) for condition in conditions
+        for phase in ("pre", "post") for stimulus in ("A", "B", "C")}
+    assert len({event["branch_id"] for event in responses if event["phase"] == "pre"}) == 3 * len(cohorts)
+    for event in training:
+        _validate_training(event, execution, (11, 23), "qualification")
+    for event in responses:
+        _validate_response(event, execution, (11, 23), "qualification_evidence")
+        assert "response_replay_resolution_hz" not in event and "replay_id" not in event
+    for event in events:
+        if event["type"] == "checkpoint":
+            entry = prefix.manifest["checkpoints"][event["checkpoint_name"]]
+            assert entry["checkpoint_sequence"] == event["sequence"]
+            assert entry["sha256"] == event["checkpoint_sha256"]
+            assert entry["sim_tick"] == event["sim_tick"]
+        if "parent_checkpoint_sequence" in event:
+            source = events[event["parent_checkpoint_sequence"]]
+            assert source["checkpoint_name"] == event["parent_checkpoint_name"]
+            assert source["checkpoint_sha256"] == event["parent_checkpoint_sha256"]
+        if event["type"] == "state_anchor":
+            source = events[event["source_occurrence"]["checkpoint_sequence"]]
+            assert source["checkpoint_sha256"] == event["source_occurrence"]["checkpoint_sha256"]
+    assert not any(event["type"] in ("qualification_result", "assay_result", "qualification_replay") for event in events)
+    return events
+
+
+@pytest.mark.parametrize("cohort", [(11, "A", "AB"), (23, "B", "BA")])
+def test_selected_complete_native_cohort_is_independent_and_owner_bounded(
+        selected_caller, engine_factory, monkeypatch, cohort):
+    import fly_connectome_sim.experiment.assay as assay
+    from fly_connectome_sim.experiment.analysis import CONDITIONS
+    from fly_connectome_sim.experiment.recorder import verify_replay_prefix
+    recorder, execution, baseline = selected_caller
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Production component crossed lifecycle/frozen boundary")
+    monkeypatch.setattr(recorder, "close", forbidden)
+    monkeypatch.setattr(assay.FrozenAssayConfig, "from_dict", forbidden)
+    monkeypatch.setattr(assay, "build_assay_result", forbidden)
+    records = []
+    assay._produce_cohorts(_tracked_factory(engine_factory, records), recorder, execution=execution,
+        cohorts=(cohort,), conditions=CONDITIONS, baseline_occurrence=baseline, namespace=True)
+    events = _check_selected_inventory(recorder.validate_prefix(), execution, (cohort,))
+    assert not (recorder.path / "run.json").exists()
+    assert sum(bool(record["replacements"]) for record in records) == 3
+    for record in records:
+        for replacement in record["replacements"]:
+            assert replacement["before_clock"] == replacement["after_clock"]
+            assert np.array_equal(replacement["before"]["v"], replacement["after"]["v"])
+    trials = [record for record in records if record["restores"]
+              and record["restores"][0]["path"].name == "retained.npz"]
+    assert len(trials) == 48
+    assert len({id(record["engine"]) for record in trials}) == 48
+    for record in trials:
+        assert len(record["restores"]) == 1
+        assert record["calls"][0]["state"] == record["restores"][0]["state"]
+        assert all(call["kwargs"] == {"stimulation": None, "learning": False} for call in record["calls"])
+    for event in events:
+        if event["type"] == "assay_intervention":
+            assert event["recipient_candidate_memory_after_sha256"] == event["donor_candidate_memory_sha256"]
+            assert event["noncandidate_state_before_sha256"] == event["noncandidate_state_after_sha256"]
+            if event["condition"] == "sham":
+                assert event["recipient_candidate_memory_before_sha256"] == event["recipient_candidate_memory_after_sha256"]
+    verified = verify_replay_prefix(recorder.validate_prefix(), engine_factory=engine_factory)
+    assert len(verified.replay_attested_state_anchors) == 16
+
+
+@pytest.mark.skipif(os.environ.get("FLY_CONNECTOME_SIM_FULL_TEST") != "1", reason="opt-in complete selected matrix")
+def test_selected_all_eight_native_cohorts(selected_caller, engine_factory):
+    import fly_connectome_sim.experiment.assay as assay
+    from fly_connectome_sim.experiment.analysis import CONDITIONS
+    recorder, execution, baseline = selected_caller
+    cohorts = tuple((seed, paired, order) for seed in (11, 23) for paired in ("A", "B") for order in ("AB", "BA"))
+    assay._produce_cohorts(engine_factory, recorder, execution=execution, cohorts=cohorts,
+        conditions=CONDITIONS, baseline_occurrence=baseline, namespace=True)
+    _check_selected_inventory(recorder.validate_prefix(), execution, cohorts)
+    from fly_connectome_sim.experiment.recorder import verify_replay_prefix
+    verified = verify_replay_prefix(recorder.validate_prefix(), engine_factory=engine_factory)
+    assert len(verified.replay_attested_state_anchors) == 128
+    assert not (recorder.path / "run.json").exists()
+
+
+def test_selected_multiple_paired_cohorts_restore_shared_baseline(selected_caller, engine_factory):
+    import fly_connectome_sim.experiment.assay as assay
+    recorder, execution, baseline = selected_caller
+    assay._produce_cohorts(engine_factory, recorder, execution=execution,
+        cohorts=((11, "A", "AB"), (23, "B", "BA")), conditions=("paired",),
+        baseline_occurrence=baseline, namespace=True)
+    training = [event for event in recorder.validate_prefix().iter_events() if event["type"] == "qualification_training"]
+    assert len(training) == 2
+    assert [event["training_end_tick"] for event in training] == [111000, 111000]
+
+
+@pytest.mark.parametrize("selected_caller", [{"tick": 3}], indirect=True)
+def test_selected_accepts_exact_nonzero_factory_baseline(selected_caller, engine_factory):
+    import fly_connectome_sim.experiment.assay as assay
+    recorder, execution, baseline = selected_caller
+    def advanced():
+        engine = engine_factory()
+        engine.observe(np.zeros((32, 32, 3), dtype=np.uint8), 0.3)
+        return engine
+    assay._produce_cohorts(advanced, recorder, execution=execution, cohorts=((11, "B", "BA"),),
+        conditions=("paired",), baseline_occurrence=baseline, namespace=True)
+    training = next(event for event in recorder.validate_prefix().iter_events() if event["type"] == "qualification_training")
+    assert training["baseline_tick"] == 3 and training["training_end_tick"] == 111003
+
+
+@pytest.mark.parametrize("selected_caller", [{"missing_black": True}], indirect=True)
+def test_selected_requires_black_descriptor_declared_before_recorder(selected_caller, engine_factory):
+    import fly_connectome_sim.experiment.assay as assay
+    recorder, execution, baseline = selected_caller
+    before = recorder.next_sequence, set(recorder._checkpoints)
+    with pytest.raises(ValueError, match="metadata"):
+        assay._produce_cohorts(engine_factory, recorder, execution=execution, cohorts=((11, "A", "AB"),),
+            conditions=("paired",), baseline_occurrence=baseline, namespace=True)
+    assert (recorder.next_sequence, set(recorder._checkpoints)) == before
+
+
+@pytest.mark.parametrize("selected_caller", [{"changed_state": True}], indirect=True)
+def test_selected_authentic_checkpoint_must_equal_fresh_factory_baseline(selected_caller, engine_factory):
+    import fly_connectome_sim.experiment.assay as assay
+    recorder, execution, baseline = selected_caller
+    before = recorder.next_sequence, set(recorder._checkpoints)
+    with pytest.raises(ValueError, match="fresh factory baseline state"):
+        assay._produce_cohorts(engine_factory, recorder, execution=execution, cohorts=((11, "A", "AB"),),
+            conditions=("paired",), baseline_occurrence=baseline, namespace=True)
+    assert (recorder.next_sequence, set(recorder._checkpoints)) == before
+
+
+def test_selected_reserves_late_anchor_ids_before_writes(selected_caller, engine_factory):
+    import fly_connectome_sim.experiment.assay as assay
+    from fly_connectome_sim.experiment.replay import build_black_retention_recipe, build_state_anchor, OPERATION_VERSION
+    recorder, execution, baseline = selected_caller
+    digest = recorder.ingest_checkpoint("prior.npz", recorder.path / "checkpoints/brain-before.npz",
+                                        origin_branch_id=baseline["origin_branch_id"])
+    source = {**baseline, "checkpoint_name": "prior.npz", "checkpoint_sha256": digest,
+              "checkpoint_sequence": recorder.next_sequence}
+    recorder.append({"type": "checkpoint", "branch_id": source["origin_branch_id"],
+                     "sim_ms": 0.0, "sim_tick": 0, "checkpoint_name": "prior.npz"})
+    recorder.append({"type": "fork", "operation_version": OPERATION_VERSION, "branch_id": "prior-retention",
+        "sim_ms": 0.0, "sim_tick": 0, "parent_branch_id": source["origin_branch_id"],
+        "parent_checkpoint_name": source["checkpoint_name"],
+        "parent_checkpoint_sequence": source["checkpoint_sequence"],
+        "parent_checkpoint_sha256": source["checkpoint_sha256"]})
+    prefix = recorder.validate_prefix()
+    recipe = build_black_retention_recipe(prefix.iter_events(), source_occurrence=source,
+        origin_branch_id="prior-retention", target_tick=0, engine_identity=execution["engine_identity"],
+        run_metadata_sha256=prefix.manifest["run_metadata_sha256"], black_input=recorder.metadata["black_input"],
+        scientific_prefix=prefix.scientific_prefix)
+    recorder.append_state_anchor(build_state_anchor(anchor_id="selected/23/B/BA/retention/70000", recipe=recipe,
+        complete_state_sha256=engine_factory().brain.checkpoint_state_sha256()))
+    before = recorder.next_sequence, set(recorder._checkpoints)
+    def factory():
+        engine = engine_factory()
+        def forbidden(*args, **kwargs):
+            pytest.fail("Late anchor collision reached native execution")
+        engine.observe = forbidden
+        return engine
+    with pytest.raises(ValueError, match="collides"):
+        assay._produce_cohorts(factory, recorder, execution=execution,
+            cohorts=((11, "A", "AB"), (23, "B", "BA")), conditions=("paired",),
+            baseline_occurrence=baseline, namespace=True)
+    assert (recorder.next_sequence, set(recorder._checkpoints)) == before
+
+
+def test_selected_last_cohort_unreachable_plan_fails_before_writes(selected_caller, engine_factory, monkeypatch):
+    import fly_connectome_sim.experiment.assay as assay
+    recorder, execution, baseline = selected_caller
+    plan = assay._training_plan
+    def changed(*args):
+        result = plan(*args)
+        if args[1] == 23:
+            result["training_end_tick"] += 1000000
+        return result
+    monkeypatch.setattr(assay, "_training_plan", changed)
+    before = recorder.next_sequence, set(recorder._checkpoints)
+    with pytest.raises(ValueError, match="precedes"):
+        assay._produce_cohorts(engine_factory, recorder, execution=execution,
+            cohorts=((11, "A", "AB"), (23, "B", "BA")), conditions=("paired",),
+            baseline_occurrence=baseline, namespace=True)
+    assert (recorder.next_sequence, set(recorder._checkpoints)) == before
+
+
+@pytest.mark.parametrize("mutation", ["truncate", "malformed"])
+def test_source_lookup_drains_changed_late_suffix_before_factory(native_transfer_sources, engine_factory, monkeypatch, mutation):
+    import fly_connectome_sim.experiment.assay as assay
+    from fly_connectome_sim.experiment.recorder import ValidatedPrefix
+    recorder, sources, identity = native_transfer_sources
+    recorder.append({"type": "late_diagnostic", "branch_id": "root", "sim_ms": 0.3})
+    prefix = recorder.validate_prefix()
+    path = recorder.path / "events.jsonl"
+    original = path.read_bytes()
+    iterate = ValidatedPrefix.iter_events
+    def changed(self):
+        for event in iterate(self):
+            yield event
+            if event["type"] == "assay_training" and event["training_id"] == "donor":
+                path.write_bytes(original[:-2] if mutation == "truncate" else original[:-2] + b"!\n")
+    monkeypatch.setattr(recorder, "validate_prefix", lambda: prefix)
+    monkeypatch.setattr(ValidatedPrefix, "iter_events", changed)
+    factories = []
+    def factory():
+        factories.append(1)
+        return engine_factory()
+    try:
+        with pytest.raises(ValueError):
+            assay._restore_training_source(recorder, *sources[0], factory, identity, 1)
+        assert not factories
+    finally:
+        path.write_bytes(original)
+
+
+def test_selected_equal_source_anchor_has_no_fictitious_gap(selected_caller, engine_factory):
+    import fly_connectome_sim.experiment.assay as assay
+    recorder, execution, baseline = selected_caller
+    execution["selected_configuration"].update(dan_onset_ms=100.0, post_pair_gap_ms=10000.0)
+    assay._produce_cohorts(engine_factory, recorder, execution=execution, cohorts=((11, "B", "AB"),),
+        conditions=("paired",), baseline_occurrence=baseline, namespace=True)
+    anchors = recorder.validate_prefix().manifest["state_anchors"].values()
+    anchor = next(value for value in anchors if value["anchor_id"] == "selected/11/B/AB/retention/10000")
+    assert anchor["sim_tick"] == anchor["source_occurrence"]["sim_tick"]
+    assert [operation["type"] for operation in anchor["recipe"]["operations"]] == ["fork"]
+
+
+def test_selected_append_failure_propagates_without_terminal_or_seal(selected_caller, engine_factory, monkeypatch):
+    import fly_connectome_sim.experiment.assay as assay
+    recorder, execution, baseline = selected_caller
+    append = recorder.append
+    def failing(event):
+        if event["type"] == "observe":
+            raise OSError("selected append failure")
+        return append(event)
+    monkeypatch.setattr(recorder, "append", failing)
+    with pytest.raises(OSError, match="selected append failure"):
+        assay._produce_cohorts(engine_factory, recorder, execution=execution, cohorts=((11, "A", "AB"),),
+            conditions=("paired",), baseline_occurrence=baseline, namespace=True)
+    assert not (recorder.path / "run.json").exists()
+    assert not any(event["type"] in ("qualification_result", "assay_result")
+                   for event in recorder.validate_prefix().iter_events())
+
+
+@pytest.mark.parametrize("phase", ["prefix", "sealed"])
+def test_confirmation_native_verifiers_recheck_cached_identity_groups(engine_factory, tmp_path, monkeypatch, phase):
+    import fly_connectome_sim.experiment.assay as assay
+    frozen = _declared_native_frozen_config(engine_factory())
+    active, completed = [], []
+    def factory():
+        engine = engine_factory()
+        if active:
+            engine.identity()  # Cached declared groups must not conceal the live mutation.
+            object.__setattr__(engine.groups, "motor_left", np.array([2], dtype=np.int32))
+        return engine
+    for stage, name in (("prefix", "verify_replay_prefix"), ("sealed", "verify_replay_run")):
+        native_verify = getattr(assay, name)
+        def checked_boundary(value, *, engine_factory, stage=stage, native_verify=native_verify):
+            if stage == phase:
+                active.append(stage)
+            try:
+                verified = native_verify(value, engine_factory=engine_factory)
+                completed.append(stage)
+                return verified
+            finally:
+                active.clear()
+        monkeypatch.setattr(assay, name, checked_boundary)
+    path = tmp_path / "cached-group-verifier"
+    with pytest.raises(ValueError, match="Actual engine identity/current groups"):
+        assay.run_paired_cohort(factory, frozen, output_dir=path)
+    events = [json.loads(line) for line in (path / "events.jsonl").read_text().splitlines()]
+    assert completed == ([] if phase == "prefix" else ["prefix"])
+    if phase == "prefix":
+        assert not (path / "run.json").exists()
+        assert not any(event["type"] == "assay_result" for event in events)
+    else:
+        # Owner sealing precedes the independent sealed verifier; its refusal
+        # leaves durable bytes, but the call must not return a successful report.
+        assert (path / "run.json").is_file()
+        assert sum(event["type"] == "assay_result" for event in events) == 1
 
 
 def test_count_boundary_emission_matches_validated_native_bins(engine_factory, tmp_path):
@@ -57,9 +578,17 @@ def _tracked_factory(factory, records, *, timing=0):
 
         def traced_restore(path):
             record["operations"].append("restore")
+            before_state = engine.brain.checkpoint_state_sha256()
+            before_clock = (engine.brain.cursor, engine.brain.sim_ms, engine.brain.dt,
+                            engine.brain.total_spikes, engine.brain.weights_frozen)
+            calls_before = len(record["calls"])
             restore(path)
             record["restores"].append({"path": Path(path), "tick": engine.brain.cursor,
-                                       "state": engine.brain.checkpoint_state_sha256()})
+                                       "state": engine.brain.checkpoint_state_sha256(),
+                                       "before_state": before_state, "before_clock": before_clock,
+                                       "after_clock": (engine.brain.cursor, engine.brain.sim_ms, engine.brain.dt,
+                                                       engine.brain.total_spikes, engine.brain.weights_frozen),
+                                       "calls_before": calls_before, "calls_after": len(record["calls"])})
 
         def traced_observe(frame, duration, **kwargs):
             record["operations"].append("observe")
@@ -389,6 +918,18 @@ def test_real_controlled_cohort(engine_factory, tmp_path, monkeypatch):
     path = tmp_path / "controls"
     report = assay.run_controlled_cohort(_tracked_factory(engine_factory, records), frozen,
                                        output_dir=path)
+    assert len(producer_records) == 79
+    authentication = producer_records[0]
+    assert not authentication["calls"]
+    assert len(authentication["restores"]) == 1
+    authenticated = authentication["restores"][0]
+    assert authenticated["path"].name == "baseline.npz"
+    assert authenticated["before_state"] == authenticated["state"]
+    assert authenticated["before_clock"] == authenticated["after_clock"]
+    assert authenticated["before_clock"][:2] == (0, 0.0)
+    assert authenticated["calls_before"] == authenticated["calls_after"] == 0
+    assert authentication["engine"].brain.cursor == 0
+    assert authentication["engine"].brain.checkpoint_state_sha256() == authenticated["state"]
     assert len(sealed_runs) == 1
     run = sealed_runs[0]
     events = list(run.iter_events())
@@ -755,14 +1296,31 @@ def test_declared_timing_and_window_edges(engine_factory, tmp_path, configuratio
         assert response["bins"][-1]["end_tick"] == response["cs_onset_tick"] + round(window["end_ms"] * 10)
 
 
-def test_actual_nonzero_submillisecond_baseline(engine_factory, tmp_path):
-    from fly_connectome_sim.experiment.assay import run_paired_cohort
+def test_actual_nonzero_submillisecond_baseline(engine_factory, tmp_path, monkeypatch):
+    import fly_connectome_sim.experiment.assay as assay
     def advanced():
         engine = engine_factory()
         engine.observe(np.zeros((32, 32, 3), dtype=np.uint8), 0.3)
         return engine
     frozen = _declared_native_frozen_config(advanced())
-    report = run_paired_cohort(advanced, frozen, output_dir=tmp_path / "assay")
+    records, producer_records = [], []
+    verify_prefix = assay.verify_replay_prefix
+    def tracked_prefix(*args, **kwargs):
+        producer_records.extend(records)
+        return verify_prefix(*args, **kwargs)
+    monkeypatch.setattr(assay, "verify_replay_prefix", tracked_prefix)
+    report = assay.run_paired_cohort(_tracked_factory(advanced, records), frozen, output_dir=tmp_path / "assay")
+    assert len(producer_records) == 12
+    authentication = producer_records[0]
+    assert len(authentication["restores"]) == 1
+    authenticated = authentication["restores"][0]
+    assert authenticated["path"].name == "baseline.npz"
+    assert authenticated["before_state"] == authenticated["state"]
+    assert authenticated["before_clock"] == authenticated["after_clock"]
+    assert authenticated["before_clock"][:2] == (3, 3 * 0.1)
+    assert authenticated["calls_before"] == authenticated["calls_after"] == 0
+    assert authentication["calls"][0]["start"] == 3
+    assert authentication["calls"][0]["state"] == authenticated["state"]
     assert all(reason.startswith("missing_") for reason in report.reasons)
     run = verify_replay_run(tmp_path / "assay", engine_factory=advanced)
     training = next(e for e in run.iter_events() if e["type"] == "assay_training")

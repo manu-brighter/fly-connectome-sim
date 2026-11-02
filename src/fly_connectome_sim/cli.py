@@ -70,6 +70,8 @@ def _qualification_metadata(identity: dict) -> dict:
             "color_assignment": "fixed",
         },
         "rgb_input_sha256": {"stimuli": inputs, "black": black},
+        "black_input": {"generator": "black-rgb/v1", "input_dtype": "uint8",
+                        "input_shape": [32, 32, 3], "input_sha256": black},
         "input_sha256": sorted(all_hashes),
     }
 

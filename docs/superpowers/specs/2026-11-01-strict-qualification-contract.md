@@ -1,9 +1,12 @@
 # Strict Qualification Evidence Contract
 
 **Status:** Integration in progress. The shared checkpoint reader and native
-map context (Tasks7B4a/b) and authenticated grid reconstruction (Task7B4c.2b)
-are implemented and accepted; selected evidence and public freeze integration
-remain pending, without formal qualification approval. **Date:** 2026-11-01.
+map context (Tasks7B4a/b), authenticated grid reconstruction (Task7B4c.2b) and
+caller-owned selected native production (Task7B4d) are implemented and accepted.
+d passed independent source review and actual tiny-native selected/legacy
+confirmation matrices. Selected response repeats (e), public assessment/freeze
+integration (f), CLI/capacity (g) and formal qualification remain open.
+This is no source-freeze or scientific approval. **Date:** 2026-11-01.
 **Updated:** 2026-11-02.
 
 Refines the [assay design](2026-09-24-associative-plasticity-pivot-design.md),
@@ -205,7 +208,11 @@ metadata. Require paired in every canonical conditions subset, matched_reference
 for necessity/sufficiency, and exactly one cohort for namespace=False. Preserve
 confirmation names and use a reserved selected namespace for qualification.
 Validate all requested names/cohorts and the caller's exact baseline occurrence/
-event/native state before the component's first mutation. Use actual global
+event/native state before the component's first mutation. Preserve factory
+counts/reuse and all acquisition/intervention/trial restores. Baseline
+authentication adds exactly one quiescent native restore on the already allocated
+preflight engine, with equal complete state/clock and no observation; count it
+separately from baseline trials without weakening the comparison. Use actual global
 append positions; anchors append globally too. Training-source authentication
 streams the complete prefix with bounded exact occurrence/descriptor lookup,
 preserving post-factory byte/clock/digest checks without retaining raw history.
@@ -220,15 +227,71 @@ siblings. Selected evidence comprises 40 acquisitions, 24 interventions,
 Legacy selected-control summaries derive from actual new raw T cells; do not
 execute a second inconsistent control protocol.
 
-With `measure_replay=True`, repeat all 408 physically distinct selected trials
-from their exact independent parents: 24 pre and 384 post, including both T.
-Emit source/observation/state-bound `qualification_replay` records and link each
-response by `replay_id`. Derive response resolution from actual bin/rate
-differences; require deterministic raw-bin/complete-state agreement. Compare
-actual candidate state pairs rather than copying a zero tolerance. Shared pre
-cells reuse their real comparison, not fictitious duplicate trials. One-spike
-and effect-floor arithmetic remain unchanged. Native anchor replay still proves
-black retention only; report response repeats separately.
+**Planned e contract; no source release or runtime acceptance.** Accept only exact
+Boolean `measure_replay`; True is qualification-only. False preserves absent
+qualification fields and confirmation's genuine legacy scalar. Repeat all
+**408 physical trials: 24 PRE + 384 POST**, including both T. Each full-matrix PRE
+comparison serves sixteen logical cells; subsets serve twice their condition
+count. Originals/repeats use independently restored fresh engines in lockstep
+over the identical split schedule. PRE uses the exact caller baseline occurrence;
+POST uses the same retained scratch parent, checking anchor complete-state/clock
+and authenticated training-source binding. No extra NPZ is introduced.
+
+Reserve all repeat IDs/branches before writes. `replay_id` and repeat branch are
+`original_branch + "/repeat"`; `replay_version` is `selected-response-repeat/v1`.
+At window stop, derive actual response resolution from absolute integer MBON11
+count differences using canonical duration/population-to-Hz conversion. Derive
+separate `candidate_memory_w_resolution` through existing `_state_difference`
+on actual float64 W pairs, preserving dtype through subtraction/absolute/mean.
+Keep original response clocks and forward `replay_id`; finish both trial tails,
+then emit one closed `qualification_replay` diagnostic on the repeat branch.
+No repeat emits extra logical responses. This metric does not replace grid
+training `state_replay_resolution`; one-spike/effect-floor arithmetic is unchanged.
+
+Compare every scientific operation payload (version, clocks, stimulation,
+learning, current, detail flags) and WHOLE telemetry object through existing
+`recorder._scientific`, excluding ONLY `compute_seconds`/`kernel_seconds`. Event
+envelopes differ and are bound separately. Record both engines' start/window/final
+clocks and complete-state hashes; require corresponding equality and parent/start
+agreement. Window/final candidate/noncandidate digest pairs must also agree.
+Scientific-body/source/state/nonfinite/binding errors raise and abort; incomplete
+comparisons remain unavailable, never zero. Release each completed pair/raw data.
+
+Persist versioned strict bounded W-pair projections: dtype `<f8`, one-dimensional
+length and little-endian hexadecimal bytes, plus actual ordered target,
+candidate-position and edge-index maps once per pair. Require finite values,
+nonempty equal maps, unique indices and exact dtype/hex/byte lengths; preserve
+bytes/sign zero without concealing casts. Production binds actual native maps;
+f binds genuine qualification-context maps BEFORE numeric decoding and bounds
+vectors by their cardinality. Hashes cannot reconstruct numerical distance or
+attest full native history.
+
+Closed diagnostics bind physical key/version, identity/input/window declarations,
+both branches, exact parent occurrence/anchor, ordered observation sequence/hash
+references, clock/state boundaries, projections and derived resolutions. Private
+recorder `_append_reference` checks healthy/open state, captures integer
+`next_sequence`, calls unchanged
+public `append` exactly once (still returning None), then returns that sequence
+and actual `_chain.previous` only after the entire call succeeds, recorder remains
+healthy/open and count advances exactly one. Failed write/flush/count drift returns
+no receipt; exceptions propagate. No intervening append is allowed. Chain
+advancement before writing is insufficient. Do not add per-diagnostic growing-
+prefix hash-retrieval scans, raw-history caches or trust issuers. These producer-
+supplied references are not crash-durable proof.
+
+e owns local structural/arithmetic validation and an independent bounded current-
+pair stream comparison. f resolves ALL references against actual fixed bytes,
+including sequence/hash/parent/operation/input/clock bindings, reconciles
+408 physical/768 logical cells and exact PRE reuse, rejects duplicate/orphan/
+missing links and drains EOF before assessment. Source authentication,
+post-factory rehash, anchor recipe, native-map and existing EOF checks remain.
+Native anchor replay proves black retention only, separately from response repeats.
+
+Minimal e scope: producer, analysis, schema, narrow recorder structural dispatch/
+reference helper and existing tests; no core/grid/public-freeze/terminal changes.
+Progress through nine paired-cohort comparisons, 51 full-cohort comparisons,
+then separately budgeted 408. Keep operational cap4096 and intended 1602-checkpoint
+bound; cap activation and g's actual controlled unprofiled capacity remain separate.
 
 ## One truthful terminal and sealed-only freezing
 

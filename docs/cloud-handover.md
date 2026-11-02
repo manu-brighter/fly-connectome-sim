@@ -2,8 +2,8 @@
 
 Use `origin` of `manu-brighter/fly-connectome-sim`, branch
 `feat/connectome-experiment-core`, latest pushed feature commit. The latest
-reviewed checkpoint is Task7B4c.2b, the authenticated grid reader. The project
-remains WIP, not v1.
+reviewed checkpoint is Task7B4d, caller-owned selected native production.
+The project remains WIP, not v1.
 
 Continue autonomously on the original Windows workstation, including reviewed
 feature commits and explicit feature pushes, without pausing at each checkpoint.
@@ -58,55 +58,73 @@ conversion. Unavailable counts stay unavailable; no gate tolerance was added.
 NumPy 2.4.6's private header API supports NPY1/2/3; lossy structured/subarray
 extension templates are rejected. Protocol/raw formats and native core remain.
 
-**Task7B4c.2b passed independent source review and Windows runtime acceptance.**
-The private engine-free grid component reconstructs authenticated grid-only
-prefix/seal evidence; public freezing and selected-evidence integration remain
-unfinished. Incomplete available evidence stays inconclusive; malformed content
-is an error. Selected activity is explicitly outside this initial component.
-The exact contract, including fail-closed later-window and physical final-branch
-ownership limits, is in the tracked strict contract above.
+**Task7B4d passed independent source review and Windows runtime acceptance.**
+The private caller-owned producer accepts plain qualification declarations and
+an exact authenticated baseline, preserves genuine confirmation wrappers and
+native candidate-only transfer checks, and uses bounded source lookup through
+EOF. Fresh prefix/sealed verification checks actual current engine groups.
+The source finding and later test-only bookkeeping correction passed independent
+review. This is an intermediate producer, not formal source freeze or qualification.
 
 Accepted checkpoint's Windows model-source identity:
-`64041111c7cf3edfaf51128e071b79d939875937f810790c00d1425458c6e60e`.
+`48af9d39b3ae8f0c9e965dbac6d0e987e0e23dda8fa68895f3807a6f98684ac3`.
 Schema SHA256 remains
 `c56a64f91bf08b2f3c379a4720d4be3a5c2d1743c1c09394d2483f23d61af115`.
-The corrected source passed independent review without Critical/Important/Minor
-findings. A final formatting-only cleanup was independently checked for exact
-single-LF removal and unchanged AST before runtime acceptance. This is not the formal source freeze.
+All 30 packaged source members and the applicable frozen source/test paths
+matched before and after each acceptance run. R1 focused: **124 passed, one declared opt-in skip in
+1,271.88 s**. R1 ordinary: **2,333 passed, seven declared opt-in skips in
+1,909.58 s**, no errors/failures; four actual MaleCNS graph cases separately
+passed in **26.31 s**. R2 then changed only two test files: two native accounting
+regressions passed in **210.06 s**. Package/schema stayed unchanged; the whole
+ordinary suite was not repeated on R2 tests. R1/R2 collection each found 2,340
+cases. Both R2 matrix cases below passed without skips/errors/failures.
 
-Actual acceptance on unchanged reviewed bytes:
+Baseline authentication adds one quiescent restore on the existing preflight
+engine, without another factory, observation or clock advance. The 64 actual
+acquisition/PRE baseline trials stay separate from this authentication-only
+restore; the legacy matrix still asserted **625 production factories**, excluding
+verification factories.
 
-- Actual MaleCNS graph tests: **4 passed in 25.42 s**.
-- Ordinary suite: **2,286 passed, six declared opt-in skips in 1,703.31 s**,
-  no failures/errors. The skips are the four separately passed graph cases,
-  the all-eight matrix and the exact96 case. All-eight was not repeated.
-- Complete tiny-native grid prefix/seal test: **1 passed in 5,124.53 s**, no
-  skips/errors/failures. All 96 units/144 points reconstruct identically from
-  separately native-verified prefix and seal, with the expected negative outcome.
-  The actual artifact has 89,831 events, 1,478 checkpoints and 3,594,389,820 event
-  bytes. Its zero-anchor verifications check genuine maps/context; they do not
-  independently replay training.
+| Actual R2 matrix | Selected qualification producer | Legacy confirmation owner |
+| --- | ---: | ---: |
+| Pytest result | 1 passed, exit0, 1,532.18 s | 1 passed, exit0, 1,721.32 s |
+| Trainings / interventions / anchors / logical responses | 40 / 24 / 128 / 768 | 40 / 24 / 128 / 768 |
+| Checkpoints / bytes | 65 / 598,094 | 67 / 616,476 |
+| Events / bytes | 14,048 / 28,305,472 | 14,048 / 28,219,135 |
+| Scientific outcome | Unavailable: f not integrated | Unsupported, 136 negative gates |
 
-The ordinary suite includes the expanded one-unit/all-T and eight-factor/12-point
-prefix tests, discarded-source attacks and lifetime/drain checks. A development
-grid run on an earlier source was deliberately interrupted and is never counted
-as acceptance. No fullgraph qualification, config or whole-assay capacity follows
-from this tiny-native grid or the four graph compatibility cases.
+Both use declared **eight-cell native fixtures**, not formal MaleCNS qualification.
+The 768 logical cells comprise 384 POST originals and 24 physical PRE trials,
+each PRE reused sixteen times. Selected checkpoints are 64 source occurrences
+plus one caller baseline; its artifact remains an unsealed prefix without
+terminal/run.json/configuration. Real prefix verification asserted 128 native
+black-retention anchors; legacy prefix and seal each asserted the same genuine
+anchor inventory. These checks authenticate black retention/maps, not upstream
+training or response history. Response-repeat measurement remains e.
 
-The subsequent [detail-on fullgraph first-training-prefix sample](experiments/2026-11-02-fullgraph-detail-prefix-pilot.md)
-completed on the same model at commit `21f788342b276e1d8a323f572e37e248542948d6`,
-exit 0; independent measurement review passed with no findings. It produced
-38 calls/45 events/two checkpoints and reduced inconclusive with one evidenced
-unit, no points/selection and zero training-replay anchors. The final resource
-sample was 630.546 s, 55,267,543 dedicated bytes and 1,089,613,824 bytes lifetime
-peak working set, within unchanged limits; later metadata writing/exit are
-excluded. Global profiling dispatched 1,617,776,145 events; its partial callback
-overhead measurement cannot correct these durations. Continue bounded d/e/f;
-controlled unprofiled timing remains mandatory before runtime/capacity decisions
-in g. This is no complete grid/assay capacity or scientific approval.
+Independent original-file/count audits passed both artifacts; they reissued no
+native proof. Event SHA256: selected
+`ad4484543ee69959a524261352afefb31c5e7c0128524e663737845160c6470b`;
+legacy `e15c8f459501d4a75d5812a7901c3690d20464586ad46dd5ea4060cb2ed3d779`.
+Both bound all eight factors and seven input hashes. Raw artifacts remain
+local-only. No formal qualification, production configuration or whole-assay
+capacity follows from these matrices or the graph compatibility cases.
 
 ## Historical evidence — not current-source acceptance
 
+- Accepted c.2b source:
+  `64041111c7cf3edfaf51128e071b79d939875937f810790c00d1425458c6e60e`.
+  Its complete96 tiny-native prefix/seal case passed in **5,124.53 s**:
+  96 units/144 points, 89,831 events, 1,478 checkpoints and 3,594,389,820 event
+  bytes; zero-anchor checks authenticated maps/context, not training replay.
+  This costly case was **not repeated on d source**.
+- The [detail-on fullgraph prefix sample](experiments/2026-11-02-fullgraph-detail-prefix-pilot.md)
+  used that same c.2b source at commit `21f788342b276e1d8a323f572e37e248542948d6`.
+  Its final sample was 630.546 s / 55,267,543 dedicated bytes /
+  1,089,613,824 bytes lifetime peak working set, within 30 min/8 GiB/4 GiB limits;
+  later report writing/exit are excluded. The 1,617,776,145 profiler dispatches
+  have unmeasured dispatch overhead; timings cannot establish unprofiled
+  throughput/capacity. g requires a controlled unprofiled follow-up.
 - Task8 complete Windows opt-in acceptance: **1,449 passed in 3,237.62 s**,
   no skips/errors/failures, including the genuine all-eight case. Source identity:
   `3c712e0b6b30dc83e3048db2bab18a12f8918c87b5723a52c17bceb73a88faa9`.
@@ -126,8 +144,9 @@ in g. This is no complete grid/assay capacity or scientific approval.
 Reports retain exact source/schema/native/checkpoint/recipe bindings. Their raw
 artifacts are local-only; use matching source bytes to reverify them. On a new
 compiler/platform generate new evidence, never relabel Windows identity as Linux.
-Repeat the complete all-factor matrix at selected-producer integration/final
-source-bearing acceptance; historical unsupported results cannot satisfy that gate.
+Repeat relevant complete matrices after later source-bearing integration;
+historical unsupported results cannot satisfy a new source's acceptance gate.
+Interrupted development runs are never counted as passes.
 
 ## Live remaining work
 
@@ -136,8 +155,9 @@ source-bearing acceptance; historical unsupported results cannot satisfy that ga
 - [x] Execute, independently review and publish the bounded actual MaleCNS
   detail-on first-training prefix with fresh context verification and reduction.
   The linked report preserves exact workload, identities and sampling limits.
-- [ ] 7B4d: caller-owned selected native execution with exact baseline/occurrence
-  authentication; preserve confirmation wrappers and native transfer checks.
+- [x] 7B4d: caller-owned selected native execution, exact baseline/occurrence
+  authentication, preserved confirmation wrappers/native transfer checks and
+  actual selected-eight/legacy confirmation-eight acceptance.
 - [ ] 7B4e: measure all 408 physical response repeats and actual state resolution;
   bind exact independent parents/raw bins. Never borrow frozen tolerance or invent 0.
 - [ ] 7B4f: integrate selected inventory with authenticated grid assessment, one
