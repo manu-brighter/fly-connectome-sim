@@ -21,7 +21,7 @@ follow [`2026-10-03-candidate-state-digest-contract.md`](../specs/2026-10-03-can
 [`2026-11-01-strict-qualification-contract.md`](../specs/2026-11-01-strict-qualification-contract.md).
 The [six-slice f implementation plan](2026-11-02-strict-qualification-integration.md)
 records exact contracts and ownership. f.1/f.2/f.3a/f.3b are accepted;
-f.3c–f.3d/f.4–f.6/g remain open. f.3c preparation is not a ratified API/source release.
+f.3c design is ratified; C1 is parked local uncommitted/unreviewed WIP, not accepted; later gates remain open.
 
 ## Current checkpoint and live remaining work — 2026-11-02
 
@@ -46,10 +46,9 @@ Independent pre-extraction capture: **14 passed in 1.48 s**, all seven fields/bo
 families; missing-API RED **40 failed/14 passed in 5.30 s**, real exit1.
 All three moved blocks/prefix/suffix preserved; no production arithmetic fix.
 
-Next ratify/review f.3c preparation before source release, then f.3d combined
-evaluation/final-role/cap proof. No new f.3c API, current grid configuration/96/408,
-whole-project/full MaleCNS assay, positive eligible-grid→selected lifecycle,
-history attestation, capacity/configuration or formal freeze is accepted here.
+The [unprofiled first-training prefix](../../experiments/2026-11-02-fullgraph-unprofiled-prefix-pilot.md) completed exit0:83.785s,55,257,563 bytes,peak WS1,124,093,952 bytes. PRE MBON11 is zero in all three windows; context with zero anchors is no training replay.
+The [PARTIAL base + T10 diagnostic](../../experiments/2026-11-02-fullgraph-partial-retention-pilot.md) completed exit0:785.922s,368,399,953 bytes,peak WS1,908,953,088 bytes. A exactly matches frozen/matched controls; no complete controlled A−B effect or learning proof.
+**User-approved product sequence, 2026-11-02:** actual compact measurement recording/export → smooth3D Replay v1 BEFORE the full formal assay; LLM later. Scientific gates/claims are unchanged. C1 is locally preserved, uncommitted/unreviewed/unaccepted, not a cloud dependency; formal integration is paused, without automatic additional assay/qualification runs or inventory return. Separately bounded real Replay v1 observation recording is allowed.
 
 Historical f.3a source:
 `b8f0fcee7115f387f34a13d8e9651064290dc70626ed649f8f8bed32cce62ebb`;
@@ -207,8 +206,9 @@ historical on source
 `64041111c7cf3edfaf51128e071b79d939875937f810790c00d1425458c6e60e`.
 The costly96 case was not repeated for d/e.1/e.2/e.3/f.1/f.2/f.3a/f.3b. Profiled durations require a controlled
 unprofiled follow-up before runtime/capacity decisions. Continue on the original
-Windows workstation after f.3b acceptance, with planned unreleased
-f.3c–f.3d, then f.4–f.6/g. Earlier e/e.3 9/51/408 evidence stays source-specific.
+Windows workstation with the approved measured-data Replay v1, LLM later;
+formal integration stays parked until separately needed/released.
+Earlier e/e.3 9/51/408 evidence stays source-specific.
 The actual True producer remains private; production global
 reconciliation/final lifecycle and integrated capacity remain unimplemented.
 This is no current whole-project/complete96-grid/full MaleCNS assay acceptance.
@@ -232,8 +232,10 @@ Cloud setup below applies only to a future fresh checkout, not local continuatio
 - [x] Implement/accept the corrected bounded pair checker and full-EOF adapter (f.2).
 - [x] Accept f.3a composable standalone grid measurements and bounded one-configuration check.
 - [x] Accept f.3b explicit-sequence accumulator and bounded analysis/related checks.
-- [ ] Review/ratify prepared f.3c design before source release, then f.3d brief;
-  no monolithic f.3 release or new component API is established.
+- [x] Complete the bounded unprofiled first-training diagnostic; report linked above.
+- [x] Complete/review the bounded PARTIAL T10 diagnostic within its recorded scientific limits.
+- [ ] Build the approved measured-data Replay v1 vertical slice; no fabricated activity or semantic/dopamine claims.
+  Parked C1/unreleased C2 do not complete f.3c; resume formal integration only when separately needed/released.
 - [ ] Integrate public frozen-config lifecycle and implement the real assay CLI;
   current CLI lacks `assay` (f/g).
 - [ ] Resolve discarded-grid training ancestry without mistaking black-retention
@@ -241,7 +243,7 @@ Cloud setup below applies only to a future fresh checkout, not local continuatio
 - [x] Complete Task 8's motor-only readout and its complete opt-in acceptance.
 - [ ] Perform Task 9 source freeze/formal qualification; create a production
   frozen config only if all gates pass, before held-out confirmation.
-- [ ] Complete reviewed confirmation/reproducibility before viewer/LLM phases.
+- [ ] Complete reviewed confirmation/reproducibility for scientific claims; approved measured-data Replay v1 may precede it, LLM later.
 
 ## Global Constraints
 
@@ -255,7 +257,7 @@ Cloud setup below applies only to a future fresh checkout, not local continuatio
 - Raw data, prepared arrays, checkpoints, pilot/qualification/confirmatory runs and benchmark files stay in ignored runtime locations. Never add them to Git.
 - `model_fingerprint()` hashes every packaged `.py`/`.cpp` file. Formal qualification, its checkpoints, the frozen config and confirmation therefore happen only after all source-bearing tasks in this plan are committed. Any later package-source fix invalidates those artifacts and restarts the source-freeze gate.
 - Use test-first RED/GREEN per task. After each GREEN, run `.venv/Scripts/python.exe -m pytest`; report any failures. Each commit uses the repository's English `<type> / <title> : Description` convention and explicit paths. Never push a protected branch.
-- Do not implement viewer or LLM code in this plan.
+- User-approved2026-11-02 exception: measured-data Replay v1 precedes the full formal assay as a separate product slice; LLM remains later. Scientific gates are not waived.
 
 ## File ownership map
 
@@ -1025,8 +1027,8 @@ inconclusive/one evidenced unit/no points/no selection. Final sampling recorded
 set; later report writing/exit are excluded. These are earlier-source measurements,
 not current d acceptance. The 1,617,776,145 global profiler
 dispatches have unmeasured dispatch overhead, so these durations cannot establish
-unprofiled throughput or justify optimization/capacity projections. Proceed e/f;
-include controlled unprofiled timing in g before runtime/capacity decisions.
+unprofiled throughput or justify optimization/capacity projections. The unprofiled
+diagnostic follow-up now precedes further integration; g still owns integrated capacity.
 
 The completed predeclared route and limits were: before d/e/f source edits, measure
 the first canonical grid0/seed11/pairedA/orderAB prefix through its first paired
@@ -1146,7 +1148,7 @@ Follow the [six-slice integration plan](2026-11-02-strict-qualification-integrat
   genuinely neutral gaps and one-shot finish; bounded source/runtime acceptance passed.
 - [ ] f.3c: selected component using f.2/f.3b, exact inventories/controls and late watches.
 - [ ] f.3d: genuine combined same-two-pass evaluator, archive/final binding and cap proof.
-  Remaining slices need sequential briefs; f.3c preparation is not ratified/source-released.
+  Remaining slices need sequential briefs; C1 is locally parked/unaccepted, C2 UNRELEASED; no automatic resumption after the completed measurement checkpoint.
 - [ ] Independently reconcile all selected physical/logical references, sources,
   PRE reuse and EOF in the production shared evaluator; e's test oracle does not
   implement this f requirement.
@@ -1225,4 +1227,4 @@ acceptance on the normalized state; mixed line endings and a workstation's
 
 - [ ] Verify source/runtime locks and full pytest, plus the opt-in full-graph suite with `FLY_CONNECTOME_SIM_FULL_TEST=1`. Compare artifact hashes after deterministic rerun; exclude wall-clock fields only.
 - [ ] Review the held-out report against the approved claim boundary. If any primary gate fails, state which one and report an unsupported or inconclusive model experiment. If all pass, use only the design spec's model-specific wording and the demonstrated T and T+60 duration. Report MBON07 state, endogenous DAN, motor results and runtime separately.
-- [ ] Do not begin viewer or LLM work until the assay result and artifact contract have their own review. Neither can upgrade a failed scientific gate.
+- [ ] Measured-data Replay v1 may proceed first under the explicit2026-11-02 product decision; LLM and scientific interpretation remain gated. Replay cannot upgrade failed scientific gates.

@@ -10,7 +10,16 @@
 
 **Spec:** [Strict qualification contract](../specs/2026-11-01-strict-qualification-contract.md), alongside the [current assay plan](2026-09-24-associative-plasticity-assay.md) and [continuation record](../../cloud-handover.md).
 
-**Status:** f.3b is accepted on source `89c7b75442ae8c74fe731d178f54cc03349a81eb58cb5c23f208260fbe502a1b`, schema unchanged. f.3a'sb8f0…, f.2's17e784…, f.1's73994… and e.3 acceptance remain historical/source-specific. f.3c preparation is NOT a ratified API/source release; f.3d/f.4–f.6/g/formal gates remain future. Unchecked commands are planned checks.
+**Status:** f.3b is accepted on source `89c7b75442ae8c74fe731d178f54cc03349a81eb58cb5c23f208260fbe502a1b`, schema unchanged. f.3a/f.2/f.1/e.3 evidence stays historical/source-specific. f.3c design is ratified; C1 local uncommitted/unreviewed DEV26 RED→GREEN is parked, not accepted. C2 is UNRELEASED; f.3d/f.4–f.6/g/formal gates remain open.
+
+Both bounded diagnostics completed: [first prefix](../../experiments/2026-11-02-fullgraph-unprofiled-prefix-pilot.md)
+83.785s and [PARTIAL base + T10](../../experiments/2026-11-02-fullgraph-partial-retention-pilot.md)
+785.922s, actual exit0. A matches frozen/matched controls; no learning/history/integrated-capacity support.
+**User-approved2026-11-02:** actual compact measurement recording/export → smooth3D Replay v1 before
+the full formal assay; LLM later. This product-sequence change waives no scientific criteria.
+Formal integration is paused: C1 locally preserved, uncommitted/unreviewed/unaccepted, not a cloud dependency;
+C2/f.3d stay deferred until separately needed/released, with no automatic return or additional assay/qualification runs.
+The approved Replay v1 slice allows separately bounded real observation recording.
 
 ## Global Constraints
 
@@ -126,7 +135,7 @@ Historical corrected f.2 source17e784…: focus118/117.82 s overlaps full378/242
 ### f.3a–f.3d: Sequential Composition
 
 These are bounded sequential slices, not a monolithic release. f.3a/f.3b are
-accepted; f.3c preparation needs design ratification before source release.
+accepted; C1 is parked/unaccepted and C2/f.3d expansion stays deferred after the completed diagnostics.
 Later component APIs need bounded briefs. No framework or trusted selection shortcut.
 
 #### f.3a: Composable Grid Ownership

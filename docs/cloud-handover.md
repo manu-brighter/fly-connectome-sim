@@ -82,12 +82,24 @@ preserved all three moved blocks and prefix/suffix; no production arithmetic fix
 The source review preceded full-run completion; final acceptance separately
 confirmed the completed full result, XML and unchanged identities.
 
-Next: review/ratify the prepared f.3c design before any source release, then
-f.3d genuine combined evaluation/final-role/cap proof. No f.3c API is established
-here. Budget complete96 only after f.3d stabilizes. No new current-source grid
-configuration/96/408/whole-project/full MaleCNS assay, positive eligible-grid→selected
-lifecycle, history attestation, capacity, freeze or production configuration.
-THREE verification boundaries and f.4–f.6/g/LF/Task9 remain open.
+User-approved priority, 2026-11-02: **measured-data Replay v1 before the full formal
+assay; LLM later**. This changes product sequencing, not scientific criteria/claims.
+C1 DEV26 RED→GREEN remains locally preserved, uncommitted/unreviewed/unaccepted;
+it is not a cloud-continuation dependency. Formal integration is a paused workstream.
+- [x] Bounded unprofiled first-training prefix completed exit0 on isolated accepted
+  bytes: [83.785 s / 55,257,563 bytes / peak WS1,124,093,952 bytes](experiments/2026-11-02-fullgraph-unprofiled-prefix-pilot.md).
+  PRE A/B/C/A-replay MBON11 is zero in all three windows; zero-anchor context is not training replay.
+- [x] [PARTIAL base + T10](experiments/2026-11-02-fullgraph-partial-retention-pilot.md)
+  completed exit0:785.922s,368,399,953 bytes,peak WS1,908,953,088 bytes; A exactly
+  matches frozen/matched controls in all three windows. No complete controlled A−B effect.
+- [ ] Next: actual recorded/exported compact measurements → smooth3D replay,
+  following the [Measured Replay v1 plan](superpowers/plans/2026-11-02-measured-replay-v1.md).
+  No fabricated activity/dopamine interpretation/semantics or automatic assay/qualification runs/C1 return.
+  Replay v1 allows a separately bounded real observation recording.
+Diagnostics grant no integrated capacity/history/config/freeze; no causal comparison
+with profiled630s or automatic inventory return. One allocation/call may exceed guards.
+The prior Viewer timing gate is superseded only for this explicitly approved replay slice; LLM stays later.
+THREE verification boundaries and all f/g/LF/formal gates remain open.
 
 ## Historical evidence — not current-source acceptance
 
@@ -444,8 +456,8 @@ Interrupted development runs are never counted as passes.
   acceptance; complete96 remains deferred to stable f.3d.
 - [x] 7B4f.3b: explicit-sequence accumulator, preserved arithmetic/caps/EOF wrappers;
   bounded analysis/recorder/replay/actual map-context acceptance recorded above.
-- [ ] 7B4f.3c/d: ratify selected-component preparation before source release,
-  then genuine combined evaluation. No new API or global implementation is established.
+- [ ] 7B4f.3c/d: parked local C1 WIP; resume only if needed under a separate
+  explicit release, not automatically after diagnostics or Replay v1.
   Keep genuine partial/native checks separate from internal declared fixtures;
   positive eligible-grid→selected native integration remains unavailable.
 - [ ] 7B4f: integrate selected inventory with authenticated grid assessment, one
@@ -465,7 +477,7 @@ Interrupted development runs are never counted as passes.
   If all gates pass, review/commit a genuine production config before reading
   held-out confirmation; otherwise publish the honest negative/inconclusive result.
 - [ ] Execute/independently verify frozen confirmation and reproducibility.
-  Viewer/LLM work remains later, after assay/artifact gates and their review.
+  User-approved measured-data Replay v1 may precede this; LLM and scientific claims remain separately gated.
 
 Any packaged .py/.cpp change invalidates formal qualification/config/confirmation
 identities and restarts the source-freeze gate. Content hashes are not proof of
