@@ -49,8 +49,11 @@ correction also passed fresh Astra review, ordinary acceptance (2,230 passed,
 four opt-in skips) and three actual graph tests. The authenticated c.2b reader
 also passed independent review, ordinary acceptance (2,286 passed, six opt-in
 skips), four actual graph cases and the complete96 tiny-native prefix/seal test.
-Next is the bounded detail-on fullgraph resource sample before selected native
-production. No production configuration or formal qualification is established.
+The bounded detail-on fullgraph first-training-prefix sample then completed on
+the same source and passed independent measurement review; its instrumented
+timings require an unprofiled control before runtime/capacity decisions. Next is
+bounded selected native production d, then e/f. No production configuration or
+formal qualification is established.
 The cloud setup item below applies
 only when moving to a fresh cloud checkout, not as a gate on local continuation.
 
@@ -59,8 +62,9 @@ only when moving to a fresh cloud checkout, not as a gate on local continuation.
 - [x] Measure a separately bounded longer-retention fullgraph anchor/replay pilot.
 - [ ] After integration, measure the actual detail-enabled grid path and bound
   complete qualification storage/events/verification costs before formal freeze.
-- [ ] After c.2b acceptance, first measure one bounded actual MaleCNS detailed
-  training prefix before d/e/f, as described below. This does not replace g.
+- [x] Execute, independently review and publish the bounded actual MaleCNS
+  detailed first-training prefix before d/e/f, as described below. This does not
+  replace g or its required unprofiled controlled measurement.
 - [ ] Complete strict selected qualification controls/interventions, frozen-config
   integration and the real assay CLI; current CLI lacks `assay`.
 - [ ] Resolve discarded-grid training ancestry without mistaking black-retention
@@ -840,7 +844,19 @@ directly; public sealed-only freezing and arithmetic-fixture migration stay in
   simulated duration is 385,844,000 ticks across restored branches, not one
   continuous animal trajectory. These measurements are not fullgraph capacity.
 
-**Early detail-on resource sample after c.2b.** Before d/e/f source edits, measure
+**Early detail-on resource sample after c.2b — completed and reviewed.**
+The [published Windows report](../../experiments/2026-11-02-fullgraph-detail-prefix-pilot.md)
+records exit 0 and independent measurement review with no findings on source
+`64041111c7cf3edfaf51128e071b79d939875937f810790c00d1425458c6e60e`,
+commit `21f788342b276e1d8a323f572e37e248542948d6`: 38 calls/45 events/two checkpoints,
+inconclusive/one evidenced unit/no points/no selection. Final sampling recorded
+630.546 s, 55,267,543 dedicated bytes and 1,089,613,824 bytes lifetime peak working
+set; later report writing/exit are excluded. The 1,617,776,145 global profiler
+dispatches have unmeasured dispatch overhead, so these durations cannot establish
+unprofiled throughput or justify optimization/capacity projections. Proceed d/e/f;
+include controlled unprofiled timing in g before runtime/capacity decisions.
+
+The completed predeclared route and limits were: before d/e/f source edits, measure
 the first canonical grid0/seed11/pairedA/orderAB prefix through its first paired
 training checkpoint: actual baseline, A/B/C pre-trials, pre-replay and training,
 including detailed 500-ms calls. Preserve every scheduled interval and stop as
@@ -859,7 +875,7 @@ This exposes immediate capture/format/reader costs early;
 it does not establish complete grid/assay capacity, native training replay or
 scientific support. A measured failure requires its own bounded design review;
 do not drop ancestry, controls or gates. Integrated g remains mandatory.
-- [ ] Execute, independently review and publish this bounded Windows sample
+- [x] Execute, independently review and publish this bounded Windows sample
   after the accepted c.2b checkpoint; keep its source identity explicit.
 
 **7B4d — caller-owned selected native execution.** Own `assay.py`, qualification
@@ -921,8 +937,11 @@ overwrite/bad identity/config, rather than returning a preconstructed engine.
 - [ ] RED/GREEN: actual CLI routing, strict native negative qualification and
   sealed verification. Do not create a positive config to continue a negative run.
 - [ ] Benchmark actual detail-enabled grid/archive I/O and both verifications,
-  conservatively account for the fixed complete grammar, review and complete
-  source-bearing acceptance. Only then enter Task9; no capacity approval is
+  including a controlled unprofiled follow-up with coarse phase wall/process CPU
+  and boundary memory/file samples before runtime, optimization or capacity
+  decisions; do not extrapolate or subtract partial overhead from the profiled
+  early sample. Conservatively account for the fixed complete grammar, review
+  and complete source-bearing acceptance. Only then enter Task9; no capacity approval is
   inferred from the existing False/False resource samples.
 
 ### Task 8: Add a motor-only adapter without a behavioral claim

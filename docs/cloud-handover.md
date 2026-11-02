@@ -19,7 +19,8 @@ checkout, not a gate on current local work. Never push main/master/develop.
 3. [Strict qualification integration contract](superpowers/specs/2026-11-01-strict-qualification-contract.md).
 4. [Replay contract](superpowers/specs/2026-10-02-replay-anchor-contract.md) and
    [candidate-state digest contract](superpowers/specs/2026-10-03-candidate-state-digest-contract.md).
-5. [70-second resource report](experiments/2026-11-01-fullgraph-retention-pilot.md)
+5. [Detail-on first-training-prefix report](experiments/2026-11-02-fullgraph-detail-prefix-pilot.md),
+   [70-second resource report](experiments/2026-11-01-fullgraph-retention-pilot.md)
    and [earlier short-retention report](experiments/2026-10-08-fullgraph-anchor-pilot.md).
 
 The older connectome-core plan is background. This tracked handover and current
@@ -92,6 +93,18 @@ grid run on an earlier source was deliberately interrupted and is never counted
 as acceptance. No fullgraph qualification, config or whole-assay capacity follows
 from this tiny-native grid or the four graph compatibility cases.
 
+The subsequent [detail-on fullgraph first-training-prefix sample](experiments/2026-11-02-fullgraph-detail-prefix-pilot.md)
+completed on the same model at commit `21f788342b276e1d8a323f572e37e248542948d6`,
+exit 0; independent measurement review passed with no findings. It produced
+38 calls/45 events/two checkpoints and reduced inconclusive with one evidenced
+unit, no points/selection and zero training-replay anchors. The final resource
+sample was 630.546 s, 55,267,543 dedicated bytes and 1,089,613,824 bytes lifetime
+peak working set, within unchanged limits; later metadata writing/exit are
+excluded. Global profiling dispatched 1,617,776,145 events; its partial callback
+overhead measurement cannot correct these durations. Continue bounded d/e/f;
+controlled unprofiled timing remains mandatory before runtime/capacity decisions
+in g. This is no complete grid/assay capacity or scientific approval.
+
 ## Historical evidence — not current-source acceptance
 
 - Task8 complete Windows opt-in acceptance: **1,449 passed in 3,237.62 s**,
@@ -120,9 +133,9 @@ source-bearing acceptance; historical unsupported results cannot satisfy that ga
 
 - [x] Complete c.2b source review, ordinary/actual graph/full tiny-native grid
   acceptance and exact reviewed-source checks.
-- [ ] Before d/e/f, measure one bounded actual MaleCNS detail-on first-training
-  prefix through fresh context verification and reduction. See the plan for the
-  exact workload/limits; this complements the later integrated capacity gate.
+- [x] Execute, independently review and publish the bounded actual MaleCNS
+  detail-on first-training prefix with fresh context verification and reduction.
+  The linked report preserves exact workload, identities and sampling limits.
 - [ ] 7B4d: caller-owned selected native execution with exact baseline/occurrence
   authentication; preserve confirmation wrappers and native transfer checks.
 - [ ] 7B4e: measure all 408 physical response repeats and actual state resolution;
@@ -131,7 +144,9 @@ source-bearing acceptance; historical unsupported results cannot satisfy that ga
   evidence-bound terminal and independently checked seal; sealed-only engine-free
   public freezing. Complete valid negatives never create a production config.
 - [ ] 7B4g: actual assay CLI/fresh-factory routing and integrated detail-enabled
-  grid/archive/stream/two-verification capacity. Current CLI lacks `assay`.
+  grid/archive/stream/two-verification capacity. Include controlled unprofiled
+  phase/resource measurement before runtime or capacity decisions; profiled pilot
+  durations cannot establish throughput. Current CLI lacks `assay`.
 - [ ] Prove selected/replay emissions fit the intended 4850 branches/1602
   checkpoints/8099 relevant events before enabling qualification-only cap 5120.
   Operational cap 4096 and limits of 2048 checkpoints/10000 relevant events
