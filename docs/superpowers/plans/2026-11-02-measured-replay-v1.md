@@ -11,12 +11,16 @@ one six-cycle/12s actual fullgraph observation was sealed/verified/exported in
 208.125s (240s budget), with independent raw audit and actual frontend-parser
 checks. Source model `f70722c4c253d48b6496e772a2780e3f6aba3474aca13a7a799bcd5941463b46`
 has 31 members; schema is unchanged. Backend 44 tests, recorder/replay 622 passed
-with one opt-in skip, viewer 42 tests/build0. These are separate scoped results,
+with one opt-in skip. These are historical separate scoped results,
 not complete scientific acceptance. Chrome real-file/play/pause/speed/seek/Home,
-source disclosure, sampled telemetry and desktop/mobile checks passed. The corrected
-video decoded and its final measured overlay was inspected: bounded vertical
-check complete, experimental WIP remains in pacing/precision/accessibility/
-cross-browser polish. Use the SAME recording. See the
+source disclosure, sampled telemetry and desktop/mobile checks passed. The old
+video's final overlay was inspected, but 17 frames/13.326s failed the actual
+animation/smoothness requirement. Phase 1 now has reviewed timestamped export
+and illustrative motion, 44 viewer tests/build0/audit0 and an independently
+decoded 375-frame/12.5s actual export. Real reel input/motor-driven scrolling are
+not implemented. Continue under the
+[animated replay plan](2026-11-02-animated-measured-replay.md) using the SAME A/B
+recording for visual work. See the
 [observation report](../../experiments/2026-11-02-measured-replay-observation.md).
 
 ## Smallest useful vertical slice
@@ -94,22 +98,23 @@ the viewer also bounds input file size. Do not introduce a second trust issuer.
 - [x] **Real browser check:** load that SAME export, then verify play/pause/seek,
   sampled displayed values and desktop/mobile behavior. Code/UI iterations reuse the resulting data;
   no repeated fullgraph runs for styling. No formal capacity claim follows.
-- [x] **Bounded vertical check:** verify exported numbers against displayed sampled frames,
-  inspect desktop/mobile screenshots, build and run focused tests. Provide
-  browser-supported video export of the same measured replay, including a
-  readable telemetry overlay; feature-detect unsupported capture. Review the
-  final bounded vertical slice and update README/handover.
-- [ ] **Product polish:** dedicated foreground frame-pacing/export-precision,
-  accessibility and cross-browser checks as needed before product completion.
-  No exact 12s/30fps export guarantee follows from this bounded check.
+- [x] **Historical measurement/end-pixel check only:** source numbers, sampled
+  displayed values and terminal pixels checked; this did not establish smooth
+  animation. The old 17-frame clip failed the user's quality requirement.
+- [x] **Phase 1 export/motion:** timestamped 900x900/30fps encoding; 360 measured
+  samples plus 15 labelled hold frames for 12s input. Actual375-frame encoded
+  output has 33/34ms PTS spacing and 12.5s duration; decoded fly poses differ.
+- [ ] **Next product slice:** genuine-video neural input and recorded motor-driven
+  scrolling after separate contract review; broader accessibility/cross-browser QA.
 
 The user manually enabled Chrome local-file access; no automated settings write
-occurred. Real-file playback/sample/layout and corrected video-end checks passed.
-The corrected WebM visibly includes 12.000/12.000s black/last measurements; its
-actual media duration is 13.326s because capture includes browser timing/final-frame
-hold. An earlier short clip was interrupted and is not acceptance evidence;
-its duration is not attributed solely to the corrected render-order defect.
-This remains an experimental WIP checkpoint, not whole-project v1 completion.
+occurred. Real-file numerical/layout/end-pixel checks remain historical evidence.
+The old 17-frame export was not smooth animation. The replacement's explicit
+frame schedule was checked against actual encoded bytes/PTS and decoded images,
+not just an fps declaration. A presentation hold advances no simulation time;
+fly motion is illustrative, with no invented neural decisions or feed swipe.
+One real reel rendition has been downloaded for the next slice, but no video
+observation or motor-scroll behavior has run. This remains experimental WIP.
 Commit code/lockfiles/docs only; never recordings/checkpoints/exported pixels/videos.
 
 Backend and viewer workers own disjoint paths and share this format. Keep

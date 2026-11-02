@@ -10,8 +10,10 @@ schema remains `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13
 Only existing cli.py and new measured_replay.py differ from accepted f.3b;
 the other 29 package source files are exact. Earlier assay evidence remains
 historical/source-specific; f.3c–f.3d/f.4–f.6/g remain open. The project and Replay
-v1 remain experimental WIP; the bounded real-file/browser/video-end check passed,
-with foreground frame pacing/export precision/accessibility/cross-browser polish open.
+v1 remain experimental WIP. Earlier measurement/end-pixel checks remain valid,
+but the previous 17-frame video failed the user's animation/smoothness gate.
+Phase 1 corrects timestamped export and illustrative motion; real-video input
+and recorded motor-driven scrolling are next, not implemented or accepted.
 
 Continue autonomously on the original Windows workstation, including reviewed
 feature commits and explicit feature pushes, without pausing at each checkpoint.
@@ -33,6 +35,7 @@ checkout, not a gate on current local work. Never push main/master/develop.
    and [earlier short-retention report](experiments/2026-10-08-fullgraph-anchor-pilot.md).
 6. [Measured Replay v1 plan](superpowers/plans/2026-11-02-measured-replay-v1.md)
    and [current observation report](experiments/2026-11-02-measured-replay-observation.md).
+7. [Animated replay and genuine-video continuation](superpowers/plans/2026-11-02-animated-measured-replay.md).
 
 The older connectome-core plan is background. This tracked handover and current
 plan orient a fresh checkout; private local SDD notes/chats/scripts are not
@@ -62,12 +65,13 @@ this document. Do not claim to reverify unavailable bytes.
 Backend source review passed; focused native/CLI tests: **44 passed in 9.58s**.
 Current-source recorder/replay compatibility: **622 passed, one opt-in skip in
 48.97s**, exit0; the skipped full MaleCNS map-context test was not rerun here.
-Viewer source review closure has zero remaining findings. Its latest repeated
-checks after the terminal-render correction: **42 passed in 206.567ms**, build
-exit0, eleven frozen first-party files
-unchanged. The Three.js bundle still emits the >500kB advisory.
-Viewer eleven-file freeze SHA256:
-`1f8b1ab90648bb457bed87ba81968613f6578d1aa1d48d5bd8230b17fbcb4f48`.
+Those backend/compatibility results are historical checks on the unchanged
+31-member model; no native tests or recording were rerun for this viewer phase.
+Current viewer source review closure has zero Critical/Important/Minor findings
+after the load/export-race fix. Fresh repeated checks: 44 tests passed in 234.9783ms,
+build exit0; all 16 viewer files and model 31 matched before/after both commands.
+Worker npm audit also exited 0. The bundle-size advisory persists. The 16-file viewer freeze is
+`1f768481cc4652a06056f66bbdb2ade3738debf58b671f3f06be475cb263166c`.
 
 The single fixed six-cycle/12s actual observation completed in **208.125s**
 within its 240s wall budget, then ordinary verify/export both completed exit0.
@@ -85,14 +89,27 @@ Chrome local-file permission, the real export loaded. Play at 0.5x advanced;
 pause held 3.660s. Seek/Home, source disclosure and sampled MBON11/KC values
 matched the raw bins. Desktop 650px and mobile 375px layouts were observed without
 clipped motor labels or horizontal overflow. No automated setting write occurred.
-After a reviewed test-first terminal-render correction, the same data exported
-a 110,864-byte WebM that decoded 650x660 without error and visibly includes the
-last black 12.000/12.000s sample/overlay. Media duration 13.326s includes browser
-capture timing/final-frame hold; no exact 12s/30fps guarantee follows. Malformed
-JSON rejects with an actionable message while retaining the previous recording.
-The initial interrupted short clip is not acceptance evidence or a performance
-comparison. Continue dedicated foreground frame-pacing/export-precision and
-accessibility/cross-browser polish before claiming a finished product.
+The old 110,864-byte clip has only 17 VP9 frames/13.326s, median spacing 1003ms
+and maximum 1008ms. End-pixel inspection did not satisfy animation quality;
+the user's complaint is independently confirmed. Source/artifact checks are not
+retrospectively upgraded into smoothness evidence.
+
+Phase 1 replaces wall-clock capture with Mediabunny 1.65.0/WebCodecs timestamped
+encoding at 900x900. The actual UI export is 4,113,326 bytes, SHA256
+`2d670f3cd06c3f0fe2db023ea930fdbc80a7177663d879a95eb6578e1a739ee3`:
+375 VP9 frames, seven clusters, 33/34ms spacing, PTS 0..12467ms and explicit
+last end 12500ms. Independent PyAV decoding confirmed 375 frames/12.5s/900 square;
+frames 0/8 visibly change body/wings within the same A segment. The final 15 frames
+are a labelled presentation hold of source tick 120000, not new measurements.
+The pose is absolute-time/reduced-motion-aware illustration, not validated behavior.
+
+Next: implement the separately reviewed real-video input and recorded motor-scroll
+contract after this Phase 1 checkpoint. Five genuine reel URLs were supplied;
+the first downloaded rendition is 1080x1920 VP9, 12,771,185 bytes, SHA256
+`8cfa586a94b5e40ad00b197a57da348080bf4aa4490618ce9f5cf6778c0103fa`,
+downloaded without browser cookies. This is source intake only, not a clip fed
+through the engine or a motor-driven scroll demonstration. Do not pair that video
+with old A/B neural measurements. Accessibility/cross-browser checks remain open.
 LLM work and scientific gates remain later. A fresh checkout must regenerate
 its own missing runtime/recording before such a check; private notes are optional.
 
@@ -144,10 +161,12 @@ it is not a cloud-continuation dependency. Formal integration is a paused workst
   pixels/counts through the actual frontend parser.
 - [x] Load the SAME recording in Chrome; check play/pause/speed/seek/Home, source
   mode, sampled telemetry and desktop/mobile layouts.
-- [x] Export/decode the corrected same-recording video and inspect its final
-  measured black 12.000/12.000s overlay; complete the bounded vertical check.
-- [ ] Next: foreground frame-pacing/export-precision/accessibility/cross-browser polish,
-  following the [Measured Replay v1 plan](superpowers/plans/2026-11-02-measured-replay-v1.md).
+- [x] Preserve historical numerical/end-pixel checks; correct the earlier
+  overbroad visual acceptance (17 frames did not meet smooth-animation quality).
+- [x] Phase 1: timestamped 30fps export/illustrative motion, reviewed race fix,
+  actual 375-frame/PTS/decode/visible-pose checks using the SAME recording.
+- [ ] Next: reviewed real-video observation/motor-scroll contract and implementation,
+  following the [animated replay plan](superpowers/plans/2026-11-02-animated-measured-replay.md).
   No fabricated activity/dopamine interpretation/semantics or automatic assay/qualification runs/C1 return.
   The authorized single bounded real observation is already complete.
 Diagnostics grant no integrated capacity/history/config/freeze; no causal comparison
@@ -487,9 +506,11 @@ Interrupted development runs are never counted as passes.
 - [x] Implement/review measured observation recording/export and viewer source;
   complete bounded real fullgraph recording/export and independent raw/parser checks.
 - [x] Complete same-recording Chrome playback/sample/desktop/mobile QA.
-- [x] Complete corrected-video terminal-frame and bounded vertical checks.
-- [ ] Finish dedicated foreground frame-pacing/export-precision/accessibility/
-  cross-browser checks as needed for product completion; preserve experimental WIP status.
+- [x] Correct prior video-quality acceptance and complete Phase 1 timestamped
+  export/motion/source/actual encoded-file checks without another native run.
+- [ ] Implement reviewed genuine-video input and recorded motor-driven scrolling;
+  downloaded source material is not accepted engine input yet.
+- [ ] Complete broader accessibility/cross-browser checks; preserve experimental WIP.
 - [x] Complete c.2b source review, ordinary/actual graph/full tiny-native grid
   acceptance and exact reviewed-source checks.
 - [x] Execute, independently review and publish the bounded actual MaleCNS

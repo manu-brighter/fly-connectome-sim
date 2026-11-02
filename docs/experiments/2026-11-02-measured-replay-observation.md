@@ -1,10 +1,12 @@
 # Measured Replay observation — 2026-11-02
 
 One genuine sealed fullgraph observation is available as local replay data.
-Recording/export and source/parser checks passed; **Replay v1 remains WIP**.
-Real-file browser playback, sampled displayed values and desktop/mobile checks
-passed; the corrected video decoded with its final measured overlay visible.
-The bounded vertical check passed, with further product polish open. This reward-free observation is not a training assay,
+Recording/export and source/parser checks passed; **Replay remains WIP**.
+The earlier end-pixel video check did not meet the user's animation requirement:
+the clip has only 17 frames/13.326s. Phase 1 replaces that capture with timestamped
+encoding and visible illustrative fly motion; the actual replacement contains
+375 decoded frames/12.5s. Real-video engine input and recorded motor scrolling
+are not implemented. This reward-free A/B observation is not a training assay,
 native-history attestation, scientific qualification or capacity result.
 
 ## Protocol and exact source
@@ -96,22 +98,25 @@ despite no external stimulation; those spikes are model population activity,
 not dopamine concentration, receptor activity or an injected reward. Nothing
 here establishes associative learning or validated motor behavior.
 
-Backend source review passed. Focused actual tiny-native/CLI tests: 44 passed
+Historical backend source review passed. Focused actual tiny-native/CLI tests: 44 passed
 in 9.58s, exit 0. Separate current-source recorder/replay compatibility: 622 passed,
 one skipped in 48.97s, exit 0. The skip is the opt-in full MaleCNS map-context
 integration; it was not rerun in this slice. Earlier full-analysis/408/grid
-checks remain historical and were not repeated.
+checks remain historical and were not repeated. Packaged source 31/schema are
+unchanged in Phase 1; no native test or recording was rerun for this correction.
 
-Viewer review closure has zero remaining findings. Final repeated checks used
-Node 24.21.0/npm 11.19.0: 42 tests passed in 206.567ms and TypeScript/Vite build
-exit 0; all eleven first-party viewer files remained frozen. The bundled
-Three.js output retains the >500kB advisory. Earlier 39-test runs are superseded
-by this corrected 42-test source; runs overlap and are not additive. Independent
-source-review closure has zero Critical/Important/Minor findings after the
-terminal-render correction. The eleven-file viewer freeze JSON SHA256 is
-`1f8b1ab90648bb457bed87ba81968613f6578d1aa1d48d5bd8230b17fbcb4f48`.
+Current Phase 1 viewer source review closure has zero Critical/Important/Minor
+findings after fixing a pending-load/export texture race. Worker checks used
+Node 24.21.0/npm 11.19.0: 44 tests passed, TypeScript/Vite build and npm audit exited 0.
+The bundled output retains the >500kB advisory (785.06kB JS). The 16-file viewer
+freeze JSON SHA256 is
+`1f768481cc4652a06056f66bbdb2ade3738debf58b671f3f06be475cb263166c`.
+Earlier 42-test/eleven-file receipts are historical, not the current viewer source.
+Fresh repeated checks passed 44 tests in 234.9783ms and build exit0; all 16 viewer
+files and the 31-member model matched before/after both commands. No native run
+was part of these checks.
 
-## Actual browser and video checks
+## Historical browser and end-pixel checks
 
 The user manually enabled Chrome extension local-file access, after which the
 actual fullgraph export loaded. No automated settings write occurred. Empty and
@@ -144,8 +149,11 @@ media duration is 13.326s, including terminal-frame hold/browser capture timing;
 this is not an exact 12s/30fps guarantee. The visible last frame shows input
 black, 12.000/12.000s, KC 1.87 and MBON11=0 with telemetry included. The app ended
 on black, event 24, 12.000/12.000s with controls reenabled and the success note.
-The corrected clip passes this bounded terminal-frame/overlay check; no
-quantitative pacing, export precision or causal performance comparison follows.
+That clip passed a terminal-frame/overlay check only. Independent later byte
+inspection found 17 VP9 frames, median spacing 1003ms and maximum 1008ms across
+13.326s. The user's poor-animation complaint is confirmed: the old visual
+acceptance was too broad, and the smoothness/animation gate was not met.
+Its source-count/pixel/integrity checks remain valid within their stated scope.
 The verified retained screenshot is local `final-desktop.png` in the vertical
 evidence directory (B at1.390s, MBON11=150.00/KC=8.37 and source disclosure).
 The loaded mobile view above was observed inline with viewport/stage geometry;
@@ -153,16 +161,65 @@ no valid loaded-mobile screenshot was retained on disk. The saved
 `final-mobile.png` repeats desktop bytes and `mobile.png` is an earlier empty
 state, so neither file is loaded-mobile evidence.
 
-The bounded real recording/parser/browser/video-end vertical check is complete.
-Continue with the SAME `runs/measured-replay-v1-fullgraph.json` for dedicated
-foreground frame-pacing/export-precision/accessibility/cross-browser checks as
-needed for product completion. The project remains experimental WIP. No automatic second
-fullgraph run, assay/qualification, parked C1 return or LLM work is authorized by
-this report. Scientific gates and claims stay unchanged. Follow the
-[Replay plan](../superpowers/plans/2026-11-02-measured-replay-v1.md) and
+## Phase 1: actual timestamped animated export
+
+The replacement exports sequential 900x900 frames with Mediabunny 1.65.0 and
+WebCodecs, explicit frame-index timestamps and awaited encoder backpressure.
+There is no silent real-time fallback. Camera/dimensions are held during export;
+progress/cancel and error cleanup do not publish a successful partial video.
+The operation gate blocks export during file loading and blocks texture
+replacement during export. No packaged Python or native source was changed.
+
+For the same 12s A/B recording, 360 measured samples cover [0,12), followed by 15
+explicit presentation-only frames holding the actual terminal sample at source
+tick 120000. That hold advances no simulation time or bin. Absolute-time body,
+head, wing and leg pose is illustrative, reproducible on seek and respects
+reduced motion; it is not measured movement or validated motor behavior.
+
+The actual UI-exported `animated-replay-30fps.webm` is 4,113,326 bytes, SHA256
+`2d670f3cd06c3f0fe2db023ea930fdbc80a7177663d879a95eb6578e1a739ee3`.
+An independent container audit found 375 VP9 frames in seven clusters, 33/34ms
+spacing, timestamps 0..12467ms, explicit last block end 12500ms and declared 12.5s.
+Independent PyAV 19.0.2 decoding confirmed 375 frames, 12,500,000us duration and
+900x900 RGB images of the same exact file hash.
+
+Decoded frames 0 and 8 (source 0.0000s/0.2666s, both A) visibly differ in body/wing
+pose. A fixed fly-region comparison excluding the phone and bottom overlay
+also changed; the animation is not just changing labels. Decoded frame 374
+shows black, 12.000/12.000s, KC 1.87/MBON11=0 and an explicit presentation-hold
+caption. These encoded/decoded checks establish this file's frame schedule and
+visible pose changes, not universal live-browser smoothness, scientific behavior
+or any causal performance comparison with the old clip.
+
+The SAME input JSON retains SHA256
+`c362c7a7dc3e8d25054b6c644e293b85e6d7ce52a087724d564bfb6a3b256602`.
+No further native recording was needed. Current video/decoded images/audits stay
+local under ignored `viewer/test-output/` and `.tools/replay-export-motion/`.
+
+## Next: authentic video input and recorded actions
+
+Five user-selected Instagram links were supplied; the first downloaded
+[reel rendition](https://www.instagram.com/reel/DcTiO6Ls3HT/) is 1080x1920 VP9,
+12,771,185 bytes, SHA256
+`8cfa586a94b5e40ad00b197a57da348080bf4aa4490618ce9f5cf6778c0103fa`.
+The receipt records yt-dlp 2026.10.26 and no browser cookies. It is a downloaded
+rendition, not the original upload master; no source interval/decoder-frame
+contract or engine observation is claimed from the download alone.
+
+Next comes implementation of the separately reviewed genuine-video observation
+and recorded motor-scroll contract after the Phase 1 checkpoint. Real video has not been fed through the
+engine, and no causal feed scrolling is implemented or accepted. Do not combine
+that reel with the old A/B neural measurements. Reuse the SAME A/B JSON for
+visual work; new native video observation follows only after its source/tests/
+protocol review. Accessibility/cross-browser checks remain open. LLM work,
+formal science and parked C1 stay separate/paused. Follow the
+[animated replay plan](../superpowers/plans/2026-11-02-animated-measured-replay.md),
+[original Replay plan](../superpowers/plans/2026-11-02-measured-replay-v1.md) and
 [fresh-checkout commands](../getting-started.md#measured-observation-and-local-replay).
 
-Raw receipt/logs/audit/parser JSON are local under
+Phase 1 encoded/decoded audits, frame images and worker checks are local under
+`.tools/replay-export-motion/`; genuine-source intake is in
+`.tools/reels-source/source-receipt.json`. Historical receipt/logs/audit/parser JSON are under
 `.tools/measured-replay-vertical-r1/`; backend receipts under
 `.tools/measured-replay-backend/`; viewer root/review logs under
 `.tools/measured-replay-viewer/`. Runs/checkpoints/exported pixels/videos are

@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { decodePixels, type Recording, type Stimulus, type sampleAtTick } from './replay.ts';
+import { EXPORT_SIZE } from './export.ts';
+import { flyPose } from './motion.ts';
 
 type Sample = ReturnType<typeof sampleAtTick>;
 const INK = '#172B3A';
 
-export function drawOverlay(context: CanvasRenderingContext2D, width: number, height: number, logicalWidth: number, recording: Recording | null, sample: Sample | null) {
+export function drawOverlay(context: CanvasRenderingContext2D, width: number, height: number, logicalWidth: number, recording: Recording | null, sample: Sample | null, terminalHold = false) {
   const inputLine = sample && recording ? `Input ${sample.segment.stimulus}   •   ${(sample.tick / 10000).toFixed(3)} / ${(recording.duration_ticks / 10000).toFixed(3)} s` : '';
   const populationLine = sample ? `MBON11 ${sample.rates.mbon11.toFixed(2)}   KC ${sample.rates.kc.toFixed(2)}` : '';
   const motorLine = sample ? `L ${sample.rates.motor_left.toFixed(2)}   R ${sample.rates.motor_right.toFixed(2)} Hz/cell` : '';
@@ -21,9 +23,9 @@ export function drawOverlay(context: CanvasRenderingContext2D, width: number, he
   const w = logicalWidth, h = height / scale;
   context.fillStyle = INK;
   context.font = `500 ${narrow ? 11 : 15}px Bahnschrift, Aptos, sans-serif`;
-  context.fillText('Recorded simulation / illustrative fruit fly', 22, h - (narrow ? 126 : 116));
+  context.fillText(terminalHold ? 'Recorded simulation / illustrative fruit fly / presentation hold' : 'Recorded simulation / illustrative fruit fly', 22, h - (narrow ? 126 : 116));
   context.font = '12px Bahnschrift, Aptos, sans-serif'; context.fillStyle = '#597083';
-  if (!narrow) context.fillText('Geometry and pose are illustrative, not anatomical or measured movement.', 22, h - 94);
+  if (!narrow) context.fillText(terminalHold ? 'Presentation hold: terminal recorded sample; no simulation time advances.' : 'Geometry and pose are illustrative, not anatomical or measured movement.', 22, h - 94);
   const overlayHeight = narrow ? 108 : 76;
   context.fillStyle = 'rgba(243,247,250,.96)'; context.fillRect(0, h - overlayHeight, w, overlayHeight);
   context.strokeStyle = '#bdceda'; context.beginPath(); context.moveTo(0, h - overlayHeight); context.lineTo(w, h - overlayHeight); context.stroke();
@@ -42,27 +44,6 @@ export function drawOverlay(context: CanvasRenderingContext2D, width: number, he
     context.fillText(narrow ? 'Stimulation: none · learning: false · stored: integrity-only' : flagsLine, narrow ? 22 : populationX, h - (narrow ? 12 : 23));
   }
   context.restore();
-}
-
-export function wireCaptureEvents(target: MediaRecorder, onError: () => void, onStop: () => void, onReady: (chunks: Blob[]) => void) {
-  const chunks: Blob[] = [];
-  let failed = false;
-  target.addEventListener('dataavailable', (event) => { if (event.data.size) chunks.push(event.data); });
-  target.addEventListener('error', () => { failed = true; onError(); });
-  target.addEventListener('stop', () => { onStop(); if (!failed) onReady(chunks); }, { once: true });
-  return () => { failed = true; };
-}
-
-export function createCaptureFinisher(target: MediaRecorder, schedule: (callback: () => void) => void = (callback) => requestAnimationFrame(() => setTimeout(callback, 100))) {
-  let pending = false;
-  return (paint: () => void) => {
-    paint();
-    if (pending || target.state !== 'recording') return;
-    pending = true;
-    // Hold the measured terminal composite through a browser paint and a short
-    // capture grace. Canvas capture still has no exact FPS/frame guarantee.
-    schedule(() => { if (target.state === 'recording') target.stop(); });
-  };
 }
 
 export function createStage(canvas: HTMLCanvasElement) {
@@ -109,10 +90,11 @@ export function createStage(canvas: HTMLCanvasElement) {
     const width = .37 * (1 - i * .115);
     sphere(fly, i % 2 ? band : shell, [0, -.045 - i * .025, -.48 - i * .19], [width, .29 - i * .025, .25]);
   }
-  sphere(fly, dark, [0, .05, .65], [.36, .3, .3]);
+  const head = new THREE.Group(); fly.add(head);
+  sphere(head, dark, [0, .05, .65], [.36, .3, .3]);
   for (const side of [-1, 1]) {
     const eye = new THREE.Mesh(new THREE.IcosahedronGeometry(.29, 3), side < 0 ? eyeDark : eyeMaterial);
-    eye.position.set(side * .27, .08, .76); eye.scale.set(.8, 1, .9); eye.castShadow = true; fly.add(eye);
+    eye.position.set(side * .27, .08, .76); eye.scale.set(.8, 1, .9); eye.castShadow = true; head.add(eye);
   }
   function line(parent: THREE.Group, points: THREE.Vector3[], color: string, opacity = 1) {
     const curve = new THREE.CatmullRomCurve3(points);
@@ -121,6 +103,7 @@ export function createStage(canvas: HTMLCanvasElement) {
     parent.add(new THREE.Line(geometry, material));
   }
   // These six legs and wing veins are illustrative construction, never mapped neurons.
+  const legs: THREE.Group[] = [], wings: Array<{ side: number; group: THREE.Group }> = [];
   for (const side of [-1, 1]) {
     for (let leg = 0; leg < 3; leg += 1) {
       const start = new THREE.Vector3(side * .25, -.1, .25 - leg * .35);
@@ -128,19 +111,20 @@ export function createStage(canvas: HTMLCanvasElement) {
       const ankle = new THREE.Vector3(side * (1.16 + leg * .035), -.77, .9 - leg * .95);
       const points = [start, knee, ankle, new THREE.Vector3(ankle.x + side * .18, -.81, ankle.z + .12)];
       const legMesh = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 16, .021, 5, false), dark);
-      legMesh.castShadow = true; fly.add(legMesh);
+      const legGroup = new THREE.Group(); legMesh.castShadow = true; legGroup.add(legMesh); fly.add(legGroup); legs.push(legGroup);
     }
+    const wingGroup = new THREE.Group(); fly.add(wingGroup); wings.push({ side, group: wingGroup });
     const shape = new THREE.Shape();
     shape.moveTo(side * .13, -.08);
     shape.bezierCurveTo(side * .65, -.08, side * 1.95, -.65, side * 1.98, -1.42);
     shape.bezierCurveTo(side * 1.91, -1.91, side * .73, -1.39, side * .13, -.08);
     const wingMaterial = new THREE.MeshPhysicalMaterial({ color: '#d2e4ed', roughness: .2, metalness: .05, transparent: true, opacity: .53, side: THREE.DoubleSide, depthWrite: false });
     const wing = new THREE.Mesh(new THREE.ShapeGeometry(shape, 24), wingMaterial);
-    wing.rotation.x = Math.PI / 2; wing.position.y = .3; wing.position.z = -.05; fly.add(wing);
+    wing.rotation.x = Math.PI / 2; wing.position.y = .3; wing.position.z = -.05; wingGroup.add(wing);
     const outline = shape.getPoints(45).map((p) => new THREE.Vector3(p.x, .31, p.y - .05));
-    line(fly, outline, '#6d8796', .55);
+    line(wingGroup, outline, '#6d8796', .55);
     for (let vein = 0; vein < 4; vein += 1) {
-      line(fly, [new THREE.Vector3(side * .16, .315, -.15), new THREE.Vector3(side * (.55 + vein * .15), .315, -.65), new THREE.Vector3(side * (1.65 - vein * .19), .315, -1.55 + vein * .1)], '#7d929b', .5);
+      line(wingGroup, [new THREE.Vector3(side * .16, .315, -.15), new THREE.Vector3(side * (.55 + vein * .15), .315, -.65), new THREE.Vector3(side * (1.65 - vein * .19), .315, -1.55 + vein * .1)], '#7d929b', .5);
     }
     line(fly, [new THREE.Vector3(side * .12, .1, .88), new THREE.Vector3(side * .19, .14, 1.12), new THREE.Vector3(side * .37, .23, 1.19)], '#342e29');
     for (let hair = 0; hair < 10; hair += 1) {
@@ -161,6 +145,7 @@ export function createStage(canvas: HTMLCanvasElement) {
   let recording: Recording | null = null;
   let sample: Sample | null = null;
   let currentStimulus: Stimulus | null = null;
+  let exporting = false;
   function setRecording(next: Recording) {
     Object.values(textures).forEach((texture) => texture.dispose()); textures = {};
     recording = next;
@@ -176,10 +161,11 @@ export function createStage(canvas: HTMLCanvasElement) {
     }
     currentStimulus = null;
   }
-  function render() {
+  function render(terminalHold = false) {
     const rect = canvas.getBoundingClientRect();
     const ratio = Math.min(devicePixelRatio, 1.75);
-    const width = Math.max(1, Math.round(rect.width * ratio)), height = Math.max(1, Math.round(rect.height * ratio));
+    const width = exporting ? EXPORT_SIZE : Math.max(1, Math.round(rect.width * ratio));
+    const height = exporting ? EXPORT_SIZE : Math.max(1, Math.round(rect.height * ratio));
     if (canvas.width !== width || canvas.height !== height) {
       canvas.width = width; canvas.height = height; renderer.setSize(width, height, false);
       camera.aspect = width / height; camera.updateProjectionMatrix();
@@ -188,8 +174,16 @@ export function createStage(canvas: HTMLCanvasElement) {
       currentStimulus = sample.segment.stimulus;
       const material = pixelsScreen.material as THREE.MeshBasicMaterial; material.map = textures[currentStimulus]!; material.color.set('#ffffff'); material.needsUpdate = true;
     }
-    controls.update(); renderer.render(scene, camera);
-    context.drawImage(renderer.domElement, 0, 0, width, height); drawOverlay(context, width, height, Math.min(900, canvas.clientWidth), recording, sample);
+    if (sample) {
+      const pose = flyPose(sample.tick, matchMedia('(prefers-reduced-motion: reduce)').matches);
+      fly.position.y = .85 + pose.bob; fly.rotation.x = pose.bodyPitch; head.rotation.y = pose.headYaw;
+      wings.forEach(({ side, group }) => { group.rotation.z = side * pose.wingAngle; });
+      legs.forEach((group, index) => { group.rotation.z = (index % 2 ? -1 : 1) * pose.legAngle; });
+    }
+    if (!exporting) controls.update();
+    renderer.render(scene, camera);
+    context.drawImage(renderer.domElement, 0, 0, width, height);
+    drawOverlay(context, width, height, exporting ? EXPORT_SIZE : Math.min(900, canvas.clientWidth), recording, sample, terminalHold);
   }
   function dispose() {
     renderer.setAnimationLoop(null); controls.dispose();
@@ -201,5 +195,5 @@ export function createStage(canvas: HTMLCanvasElement) {
     });
     Object.values(textures).forEach((texture) => texture.dispose()); renderer.dispose();
   }
-  return { renderer, render, setRecording, setSample: (next: Sample) => { sample = next; }, dispose };
+  return { renderer, render, setRecording, setSample: (next: Sample) => { sample = next; }, setExporting: (value: boolean) => { exporting = value; controls.enabled = !value; }, dispose };
 }

@@ -31,7 +31,7 @@
           <div class="transport">
             <div class="transport-top"><button id="play" class="play" disabled aria-label="Play recording">Play</button><output id="time">0.000 / — s</output><label class="speed">Speed <select id="speed" disabled><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label><button id="video" disabled>Export video</button></div>
             <div class="timeline-wrap"><div id="segments" class="segments" aria-hidden="true"></div><input id="seek" type="range" min="0" max="1" step="1" value="0" disabled aria-label="Playback position" /><div class="timeline-ticks"><span>0 s</span><span id="timeline-end">—</span></div></div>
-            <p id="video-note" class="video-note" aria-live="polite">Video includes the measured overlay. Browser timing may skip presentation frames.</p>
+            <p id="video-note" class="video-note" aria-live="polite">Checking WebCodecs video encoding support…</p>
           </div>
         </section>
         <section id="source-panel" class="source-panel" hidden><h2>Recorded source</h2><p>Stored source verification mode: <strong id="source-mode"></strong>. The browser checks this file’s structure and pixel hashes; it cannot reverify the original artifact or attest native history.</p><pre id="source-json"></pre></section>

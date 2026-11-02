@@ -19,3 +19,18 @@ downloaded into ignored local storage and is not redistributed by this repositor
 
 The wiring data and adapted physiology do not establish accurate receptor
 kinetics, subjective experience, attention, addiction or semantic understanding.
+
+## Browser video export dependency
+
+The viewer uses the unmodified npm package **Mediabunny 1.65.0**, by Vanilagy and
+contributors, for timestamped WebM export. It is **MPL-2.0**, not MIT. Upstream
+source is available in the [Mediabunny repository](https://github.com/Vanilagy/mediabunny);
+the installed package includes its source files and LICENSE. Its source notice
+identifies `Copyright (c) 2026-present, Vanilagy and contributors` and states:
+
+> This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+
+The complete license and official notice are available from
+[Mozilla's MPL 2.0 text](https://www.mozilla.org/en-US/MPL/2.0/). The dependency
+version/integrity is pinned in `viewer/package-lock.json`. No Mediabunny source
+modifications are included in this repository.

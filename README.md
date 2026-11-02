@@ -32,18 +32,20 @@ left/right preference.
 | Experiment state | Checkpoint restore, complete-state hashes, reset determinism, candidate-memory interventions and authenticated native map/schema context | A qualified production frozen configuration |
 | Assay evidence | Caller-owned native production, source-specific 408-pair tiny-native repeats, shared declaration arithmetic and a bounded pair checker with full EOF validation | Global grid/selected-evidence reconciliation/public freezing, fullgraph held-out confirmation and the `assay` CLI |
 | Resource pilots | Fullgraph components, trained 10-/70-second one-anchor pilots with isolated native replay, and a [reviewed detail-on first-training-prefix sample](docs/experiments/2026-11-02-fullgraph-detail-prefix-pilot.md) | Unprofiled controlled timing, complete grid/assay capacity and a tested cloud/Linux environment |
-| Product | Optional motor-only readout; actual observation recording/export and local 3D replay with bounded Chrome/video checks | Playback/export precision, accessibility/cross-browser polish, motor validation and LLM event planning |
+| Product | Actual A/B observation replay; illustrative fly motion and timestamped 30fps export checked on one encoded file | Real-video neural input, recorded motor-driven scrolling, accessibility/cross-browser polish and LLM event planning |
 
 The motor readout is an engineered display policy with an uncalibrated 1 Hz
 threshold. It uses measured lateral motor rates and leaves the primary MBON11
 classification unchanged; it does not establish learned behavior.
 
 Measured Replay v1 remains WIP: one [12-second fullgraph observation](docs/experiments/2026-11-02-measured-replay-observation.md)
-was sealed, verified, exported and loaded in Chrome. Sampled values, play/pause,
-speed, seek, desktop/mobile and exported-video terminal-frame checks passed.
-This is an experimental WIP checkpoint; exact frame pacing/export precision and
-broader browser/accessibility checks remain. Continue with that recording; no
-further native run is needed for UI work. See
+was sealed, verified, exported and loaded in Chrome. The previous video passed
+end-pixel checks but failed animation quality: only 17 frames in 13.326s.
+The corrected 900x900 export has 375 decoded frames at 33/34ms timestamps:
+12s measured replay plus 0.5s explicitly labelled presentation hold. Body/wing
+motion is illustrative; real reel input and motor-driven feed scrolling are
+not implemented. Continue with the SAME recording for visual work. See the
+[next product plan](docs/superpowers/plans/2026-11-02-animated-measured-replay.md) and
 [recording and viewer commands](docs/getting-started.md#measured-observation-and-local-replay).
 
 Implementation and verification details live in the

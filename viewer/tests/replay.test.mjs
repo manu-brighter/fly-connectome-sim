@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
 import { parseRecording, sampleAtTick, advancePlayback } from '../src/replay.ts';
-import { createCaptureFinisher, drawOverlay, wireCaptureEvents } from '../src/stage.ts';
+import { drawOverlay } from '../src/stage.ts';
 
 // INTERNAL fixture only. This is never bundled or offered as a recording.
 function fixture() {
@@ -157,54 +157,18 @@ test('captured telemetry fits mobile, intermediate and desktop canvas widths', a
   }
 });
 
-test('capture error followed by stop cannot publish partial chunks as success', () => {
-  const target = new EventTarget(), results = [];
-  let stopped = 0, errors = 0;
-  wireCaptureEvents(target, () => { errors += 1; }, () => { stopped += 1; }, (chunks) => { results.push(chunks); });
-  const data = new Event('dataavailable'); Object.defineProperty(data, 'data', { value: new Blob(['partial']) });
-  target.dispatchEvent(data); target.dispatchEvent(new Event('error')); target.dispatchEvent(new Event('stop'));
-  assert.equal(errors, 1); assert.equal(stopped, 1); assert.deepEqual(results, []);
-});
-
-test('ordinary user stop retains the recorded video chunks', () => {
-  const target = new EventTarget(), results = [];
-  wireCaptureEvents(target, () => assert.fail('Unexpected capture error'), () => {}, (chunks) => { results.push(chunks); });
-  const data = new Event('dataavailable'); Object.defineProperty(data, 'data', { value: new Blob(['recorded']) });
-  target.dispatchEvent(data); target.dispatchEvent(new Event('stop'));
-  assert.equal(results.length, 1); assert.equal(results[0][0].size, 8);
-});
-
-test('normal video completion paints the terminal composite before scheduling recorder stop', () => {
-  const events = [], scheduled = [];
-  const target = { state: 'recording', stop() { events.push('stop'); this.state = 'inactive'; } };
-  const finish = createCaptureFinisher(target, (callback) => { events.push('scheduled'); scheduled.push(callback); });
-  finish(() => { events.push('terminal composite'); });
-  assert.deepEqual(events, ['terminal composite', 'scheduled']);
-  scheduled[0]();
-  assert.deepEqual(events, ['terminal composite', 'scheduled', 'stop']);
-});
-
-test('repeated terminal frames schedule one stop and cannot stop a later export', () => {
-  const scheduled = [];
-  let stops = 0, paints = 0;
-  const target = { state: 'recording', stop() { stops += 1; this.state = 'inactive'; } };
-  const finish = createCaptureFinisher(target, (callback) => { scheduled.push(callback); });
-  finish(() => { paints += 1; }); finish(() => { paints += 1; });
-  assert.equal(scheduled.length, 1); assert.equal(paints, 2); assert.equal(stops, 0);
-  target.stop(); // Ordinary user stop remains immediate.
-  const later = { state: 'recording' };
-  scheduled[0](); scheduled[0]();
-  assert.equal(stops, 1); assert.equal(later.state, 'recording');
-});
-
-test('capture error cleanup before deferred stop does not stop an inactive recorder again', () => {
-  const scheduled = [];
-  let stops = 0;
-  const target = { state: 'recording', stop() { stops += 1; } };
-  const finish = createCaptureFinisher(target, (callback) => { scheduled.push(callback); });
-  finish(() => {});
-  assert.equal(scheduled.length, 1);
-  target.state = 'inactive'; // Browser error/stop cleanup happened during the paint grace.
-  scheduled[0]();
-  assert.equal(stops, 0);
+test('terminal export overlay labels the hold without changing sampled values', async () => {
+  const recording = await parse(fixture());
+  const sample = sampleAtTick(recording, recording.duration_ticks);
+  const before = JSON.stringify(sample);
+  const lines = [];
+  const context = {
+    font: '', save() {}, restore() {}, scale() {}, fillRect() {}, beginPath() {}, moveTo() {}, lineTo() {}, stroke() {},
+    measureText(text) { return { width: text.length * 7 }; },
+    fillText(text) { lines.push(text); },
+  };
+  drawOverlay(context, 900, 900, 900, recording, sample, true);
+  assert.ok(lines.some((line) => line.includes('presentation hold')));
+  assert.ok(lines.some((line) => line.includes('no simulation time advances')));
+  assert.equal(JSON.stringify(sample), before);
 });

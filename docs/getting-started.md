@@ -96,8 +96,11 @@ Local chat notes and visual references remain outside Git.
 ## Measured observation and local replay
 
 The observation recorder/exporter and viewer source are implemented and reviewed;
-bounded real-file browser/sample/video terminal-frame checks passed. Experimental
-WIP remains in frame pacing/export precision and broader accessibility/browser checks. The
+real-file measurement checks remain valid. The previous end-pixel video check
+did not establish smooth animation (17 frames/13.326s). Phase 1 now uses explicit
+frame timestamps and illustrative motion; one actual export decoded 375 frames
+at 30fps scheduling. Real-video neural input and motor-driven scrolling remain
+separate future work. The
 [recorded fullgraph checkpoint](experiments/2026-11-02-measured-replay-observation.md)
 contains the exact current results and limitations. Existing local UI work must
 reuse `runs/measured-replay-v1-fullgraph.json`, rather than record another run.
@@ -138,10 +141,20 @@ Open the localhost URL printed by Vite, then **Open recording** and choose the
 exported JSON. The viewer reads the file locally; it has no upload, model call
 or fabricated activity fallback. The fly/pose is illustrative, not measured
 anatomy or tracked movement. Its telemetry uses the recorded integer bin counts,
-actual population and bin duration without smoothing. Video export is
-feature-detected; one Chrome WebM was decoded and its final measured overlay
-checked. Browser capture is not an exact 12s/30fps export guarantee. Foreground
-frame pacing, export precision and broader accessibility/browser checks remain.
+actual population and bin duration without smoothing. **Export video** now
+encodes 900x900 frames sequentially at explicit 30fps timestamps, with progress
+and cancellation; it requires supported WebCodecs encoding and reports failure
+without a real-time fallback. For 12s of data it writes 360 source samples plus 15
+labelled terminal-hold frames (12.5s media total). The hold advances no simulation
+time. Interactive pause/seek reproduce an absolute-time illustrative pose;
+reduced motion is respected. No pose is a measured motor trajectory.
+
+An actual exported file was independently decoded and its375 frames/33–34ms
+container timestamps checked. This does not guarantee live-browser frame pacing
+or every browser/codec combination. Real Instagram material has been obtained
+locally for the next protocol; the current viewer's A/B pixels and measurements
+are not reel observations, and there is no recorded causal feed-scroll policy.
+See the [next product plan](superpowers/plans/2026-11-02-animated-measured-replay.md).
 
 For a built preview, use `npm --prefix viewer run preview` after the build.
 Unix/native reproduction and browser capture availability require their own
