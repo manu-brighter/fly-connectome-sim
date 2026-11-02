@@ -11,45 +11,20 @@ and implementation choices below are builder decisions. The user supplied genuin
 reel URLs; the first two downloaded renditions are locally hashed. Do not substitute unrelated
 video or claim the old A/B measurements came from a reel.
 
-## Current video-source checkpoint
+## Historical standard-video checkpoint; current continuation
 
-Phase 1 `4467431` is reviewed/pushed. Current genuine-video source has 33 packaged
-Python/C++ members, model identity
-`e8d0e046e890418541ee9f0bb84065966228e756834f5bd7fb084f9ff5005ba8`;
-schema is unchanged at
-`3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
-The [video-feed contract](../specs/2026-11-02-video-observation-feed.md) fixes
-90x160 RGB/30Hz first 4s clip windows, causal rolling 300ms/100ms motor evaluation,
-1s dwell, 4s clip cap and 8s session cap. This is an engineered reward-free policy.
-
-Focused video tests: 81 passed in 42.49s. Three independent Astra decoder findings
-are fixed; independent closure is C0/I0/M0. Pre-decoder-fix candidate `8f69b283` recorder/replay compatibility: 621 passed,
-2 skipped in 84.09s (sandbox junction/fullgraph opt-in); normal-host junction
-subset 2 passed/401 deselected in 0.14s. Only video_observation.py changed afterward; other 32 packaged sources/schema
-stayed exact. Final 81 focus covers the fixes; no current whole-suite/fullgraph
-compatibility rerun is claimed.
-Viewer 57 tests/build exit0; independent Sol review C0/I0/M0 on 18-file freeze
-`10ba7c3bacb748434ddebc17d60bf56b66ce2a7e698f1615b4eb654c92b8e5fc`.
-
-The [single actual fullgraph video observation](../../experiments/2026-11-02-video-feed-observation.md)
-completed exit0 in 35.843s (240s wall budget): 105 input frames/420 bins/3.5s.
-Ordinary verify/export and independent source-PTS/RGB/count/clock/policy audit
-passed with unchanged 33-member source. A recorded motor-right advance at 2.3s
-selected the second clip's actual next input; playlist exhaustion stopped the
-session at 3.5s with motor-right trigger. This is an engineered policy result,
-not learning or validated preference.
-
-Actual parser/Chrome file loading, play/pause, boundary seek, terminal labels
-and export-position restoration passed. The actual UI export independently
-decoded to 120 VP9 frames/900x900/4.0s, 33/34ms spacing: 3.5s measured plus 15
-labelled hold frames. Sampled poses changed; the foreleg gesture followed the
-recorded advance and clip1 content matched actual inputs, including near-black
-early frames. See the report for artifact hashes and exact boundary values.
-
-The bounded runtime/raw/browser/file acceptance is complete. Broader mobile,
-accessibility/cross-browser/live-FPS and longer-feed work remain open; LLM/formal
-assay/C1 stay parked. Reuse the SAME artifact for presentation work; no automatic
-new native run. Raw clips, downloaded data, runs and media outputs stay ignored.
+This plan records the completed A/B animation correction and original 1×/v1
+video slice. The actual 3.5s standard-video run, reviews and 120-frame/4.0s export
+are historical/source-specific; see its [report](../../experiments/2026-11-02-video-feed-observation.md).
+The user subsequently requested 5× content, 3–4s watch time and a quick swipe.
+Continue under the [fast-feed plan](2026-11-02-fast-reel-feed.md) and
+[contract](../specs/2026-11-02-fast-reel-feed.md). Current source review/tests, the actual 7s pilot/raw/parser audit and
+same-artifact Chrome/encoded-file acceptance passed.
+The [handover](../../cloud-handover.md) and
+[fast-feed report](../../experiments/2026-11-02-fast-reel-feed-observation.md)
+track current identities/results. Reuse the validated current artifact for
+presentation work. Do not substitute old 1× measurements for fast-feed content.
+Broader browser/mobile/accessibility checks remain open; C1/formal/LLM stay parked.
 
 ## 1. Correct export and visible motion first
 

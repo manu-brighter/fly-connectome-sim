@@ -14,7 +14,7 @@
         <input id="file" type="file" accept=".json,application/json" hidden />
       </header>
       <main>
-        <div class="heading"><div><h1>A window into the recording.</h1><p id="recording-name">Open a measured-replay/v1 file to explore recorded simulation activity.</p></div><span id="status" class="status">No recording loaded</span></div>
+        <div class="heading"><div><h1>A window into the recording.</h1><p id="recording-name">Open a measured-replay/v1 or measured-video-replay/v1 or /v2 file.</p></div><span id="status" class="status">No recording loaded</span></div>
         <p id="error" role="alert" hidden></p>
         <section class="experiment" aria-label="Recorded simulation replay">
           <div class="stage"><canvas id="stage" aria-label="Illustrative fruit fly, exact recorded stimulus and measured telemetry. Drag to orbit the scene." tabindex="0"></canvas><div class="stage-note">Illustrative geometry · drag to orbit</div></div>
@@ -26,11 +26,11 @@
             <div class="motor-readout"><div><span>Motor left</span><strong id="motor_left-rate">—</strong></div><div><span>Motor right</span><strong id="motor_right-rate">—</strong></div><small>Recorded DNa02 population Hz / cell</small></div>
             <details class="additional"><summary>Other recorded populations</summary><div id="additional-rates"></div></details>
             <p class="bin-note" id="bin-note">Rates use complete recorded bins. No measurements are shown until a file is loaded.</p>
-            <p class="clock">Source clock <b id="source-clock">—</b><br />Event <b id="event-sequence">—</b></p>
-            <div id="video-policy" class="policy-readout" hidden><span>Source PTS <b id="source-pts">—</b></span><a id="clip-url" target="_blank" rel="noopener noreferrer">Source reel page</a><strong id="policy-status">—</strong><small id="rolling-readout">—</small><small>Recorded right-scroll/v1 display policy; not validated fly behavior.</small></div>
+            <p class="clock">Simulation clock <b id="source-clock">—</b><br />Event <b id="event-sequence">—</b></p>
+            <div id="video-policy" class="policy-readout" hidden><span>Media PTS <b id="source-pts">—</b></span><a id="clip-url" target="_blank" rel="noopener noreferrer">Source reel page</a><strong id="policy-status">—</strong><small id="rolling-readout">—</small><small id="policy-note">Recorded right-scroll/v1 display policy; not validated fly behavior.</small></div>
           </aside>
           <div class="transport">
-            <div class="transport-top"><button id="play" class="play" disabled aria-label="Play recording">Play</button><output id="time">0.000 / — s</output><label class="speed">Speed <select id="speed" disabled><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label><button id="video" disabled>Export video</button></div>
+            <div class="transport-top"><button id="play" class="play" disabled aria-label="Play recording">Play</button><output id="time">0.000 / — s</output><label class="speed">Replay speed <select id="speed" disabled><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label><button id="video" disabled>Export video</button></div>
             <div class="timeline-wrap"><div id="segments" class="segments" aria-hidden="true"></div><input id="seek" type="range" min="0" max="1" step="1" value="0" disabled aria-label="Playback position" /><div class="timeline-ticks"><span>0 s</span><span id="timeline-end">—</span></div></div>
             <p id="video-note" class="video-note" aria-live="polite">Checking WebCodecs video encoding support…</p>
           </div>

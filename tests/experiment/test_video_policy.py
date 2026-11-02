@@ -13,7 +13,7 @@ def evidence(left=0, right=0):
 
 
 def evaluate(frame_index, *, counts=None, clip_index=0, clip_count=2,
-             clip_start_tick=0, end_tick=None, session_limit_tick=80000):
+             clip_start_tick=0, end_tick=None, session_limit_tick=80000, profile="standard"):
     from fly_connectome_sim.experiment.video_policy import evaluate_video_policy
 
     if counts is None:
@@ -25,7 +25,7 @@ def evaluate(frame_index, *, counts=None, clip_index=0, clip_count=2,
         populations={"motor_left": 1, "motor_right": 1},
         clip_index=clip_index, clip_count=clip_count,
         clip_start_tick=clip_start_tick, frame_index=frame_index,
-        end_tick=end_tick, session_limit_tick=session_limit_tick,
+        end_tick=end_tick, session_limit_tick=session_limit_tick, profile=profile,
     )
 
 
@@ -110,3 +110,38 @@ def test_policy_only_evaluates_at_three_frame_boundaries(index):
     else:
         with pytest.raises(ValueError):
             evaluate(index, counts=[evidence()] * (index + 1))
+
+
+@pytest.mark.parametrize("index,action,reason", [
+    (86, "watch", "minimum_dwell"),
+    (89, "advance", "motor_right"),
+    (119, "advance", "clip_window_end"),
+])
+def test_fast_feed_right_requires_three_seconds(index, action, reason):
+    result = evaluate(index, counts=[evidence(right=1)] * (index + 1),
+                      profile="fast-feed")
+    assert result["policy_version"] == "right-scroll/v2"
+    assert result["action"] == action and result["reason"] == reason
+    assert result["minimum_dwell_met"] is (index >= 89)
+    assert result["window"]["frame_count"] == 9
+    assert result["window"]["counts"] == {"motor_left": 0, "motor_right": 9}
+    assert result["readout"]["signed_difference_hz"] == 30.0
+
+
+def test_fast_feed_terminal_priority_and_exhaustion_preserve_trigger():
+    terminal = evaluate(119, counts=[evidence(right=1)] * 120, clip_index=1,
+                        clip_start_tick=40000, end_tick=80000, profile="fast-feed")
+    assert (terminal["action"], terminal["reason"], terminal["trigger"],
+            terminal["next_clip_index"]) == ("stop", "session_limit", "session_limit", None)
+    exhausted = evaluate(89, counts=[evidence(right=1)] * 90, clip_index=1,
+                         clip_start_tick=40000, end_tick=70000, profile="fast-feed")
+    assert (exhausted["action"], exhausted["reason"], exhausted["trigger"],
+            exhausted["next_clip_index"]) == ("stop", "playlist_exhausted", "motor_right", None)
+    following = evaluate(2, clip_index=1, clip_start_tick=30000,
+                         end_tick=31000, profile="fast-feed")
+    assert following["window"] is None and following["reason"] == "minimum_dwell"
+
+
+def test_unknown_video_policy_profile_is_rejected():
+    with pytest.raises(ValueError, match="profile"):
+        evaluate(29, profile="custom")

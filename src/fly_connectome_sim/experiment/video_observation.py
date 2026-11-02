@@ -18,7 +18,7 @@ from PIL import Image
 from ..engine import FlyEngine, _rgb_input_sha256
 from .measured_replay import GROUPS, _integer, _populations, _ticks
 from .recorder import DIGEST, RunArtifactError, RunRecorder, VerifiedRun, _canonical, _strict_load, verify_run
-from .video_policy import ADAPTER, POLICY_VERSION, evaluate_video_policy
+from .video_policy import ADAPTER, POLICY_VERSION, _profile_version, evaluate_video_policy
 
 
 ROOT_BRANCH = "video-observation/root"
@@ -50,6 +50,26 @@ VIDEO_RECIPE = {
     "pathway_detail": False,
     "qualification_detail": False,
 }
+
+
+def _video_recipe(profile: str) -> dict:
+    _profile_version(profile)
+    if profile == "standard":
+        return VIDEO_RECIPE
+    return {
+        **VIDEO_RECIPE, "policy_version": "right-scroll/v2",
+        "minimum_dwell_ticks": 30000,
+        "source_speed": [5, 1], "source_window_seconds": 20,
+    }
+
+
+def _stored_profile(metadata: dict) -> str:
+    if type(metadata) is dict:
+        if metadata.get("protocol_version") == "video-observation/v1":
+            return "standard"
+        if metadata.get("protocol_version") == "video-observation/v2":
+            return "fast-feed"
+    raise RunArtifactError("Unsupported video observation metadata")
 
 
 def _telemetry_ticks(value: object) -> int:
@@ -126,7 +146,12 @@ def _rgb(frame, transform: dict) -> np.ndarray:
     return result
 
 
-def _prepare_clip(path: Path, source_url: str, clip_index: int) -> PreparedClip:
+def _prepare_clip(
+    path: Path, source_url: str, clip_index: int, *, profile: str = "standard",
+) -> PreparedClip:
+    _profile_version(profile)
+    source_speed = 1 if profile == "standard" else 5
+    source_window_seconds = 4 * source_speed
     try:
         import av
     except ImportError as error:
@@ -192,22 +217,25 @@ def _prepare_clip(path: Path, source_url: str, clip_index: int) -> PreparedClip:
                 raise RunArtifactError("Negative source presentation time")
             coverage_end_pts = source_frame.pts
             last_duration = source_frame.duration
-            if elapsed < 4:
+            if elapsed < source_window_seconds:
                 if current is not None:
                     while (len(selected) < FRAMES_PER_CLIP
-                           and Fraction(len(selected), 30) < elapsed):
+                           and Fraction(source_speed * len(selected), 30) < elapsed):
                         selected.append(current)
                 current = (source_frame.pts, _rgb(source_frame, transform))
             else:
                 coverage_method = "following_pts"
                 break
         if (coverage_method is None and type(last_duration) is int and last_duration > 0
-                and (coverage_end_pts + last_duration - origin_pts) * time_base >= 4):
+                and (coverage_end_pts + last_duration - origin_pts) * time_base >= source_window_seconds):
             coverage_end_pts += last_duration
             coverage_method = "final_frame_duration"
         if (origin_pts is None or current is None or coverage_end_pts is None
-                or (coverage_end_pts - origin_pts) * time_base < 4):
-            raise RunArtifactError("Source video lacks complete four-second coverage")
+                or (coverage_end_pts - origin_pts) * time_base < source_window_seconds):
+            raise RunArtifactError(
+                "Source video lacks complete four-second coverage" if profile == "standard"
+                else "Source video lacks complete twenty-second coverage"
+            )
         while len(selected) < FRAMES_PER_CLIP:
             selected.append(current)
     if path.stat().st_size != size or _sha256_file(path) != digest_before:
@@ -242,8 +270,11 @@ def _prepare_clip(path: Path, source_url: str, clip_index: int) -> PreparedClip:
     return PreparedClip(metadata=metadata, frames=tuple(frames))
 
 
-def prepare_playlist(playlist_path: str | Path) -> tuple[PreparedClip, ...]:
-    """Read and hash all first-four-second windows before engine construction."""
+def prepare_playlist(
+    playlist_path: str | Path, *, profile: str = "standard",
+) -> tuple[PreparedClip, ...]:
+    """Read and hash all closed-profile source windows before engine construction."""
+    _profile_version(profile)
     declaration = Path(playlist_path)
     if not declaration.is_file() or declaration.stat().st_size > 16 * 1024:
         raise RunArtifactError("Missing or oversized local playlist declaration")
@@ -263,18 +294,21 @@ def prepare_playlist(playlist_path: str | Path) -> tuple[PreparedClip, ...]:
         paths.append(path.resolve())
     if len(set(paths)) != len(paths):
         raise RunArtifactError("Repeated local video source")
-    return tuple(_prepare_clip(path, entry["source_url"], index)
+    return tuple(_prepare_clip(path, entry["source_url"], index, profile=profile)
                  for index, (path, entry) in enumerate(zip(paths, entries, strict=True)))
 
 
-def _metadata(identity: dict, clips: tuple[PreparedClip, ...]) -> dict:
+def _metadata(
+    identity: dict, clips: tuple[PreparedClip, ...], *, profile: str = "standard",
+) -> dict:
+    version = _profile_version(profile)
     return {
         "engine_identity": identity,
-        "protocol_version": "video-observation/v1",
-        "stimulus_version": "decoded-video-rgb/v1",
+        "protocol_version": f"video-observation/{version}",
+        "stimulus_version": f"decoded-video-rgb/{version}",
         "family": "video-observation", "seeds": [],
         "factors": {"clip_count": len(clips)},
-        "video_recipe": VIDEO_RECIPE,
+        "video_recipe": _video_recipe(profile),
         "clips": [clip.metadata for clip in clips],
         "input_sha256": sorted({frame.sha256 for clip in clips for frame in clip.frames}),
     }
@@ -293,19 +327,19 @@ def _frame_payload(frame: PreparedFrame, clip_id: str) -> dict:
 
 def record_video_observation_run(
     output_dir: str | Path, *, playlist_path: str | Path,
-    engine_factory: Callable[[], FlyEngine],
+    engine_factory: Callable[[], FlyEngine], profile: str = "standard",
 ) -> VerifiedRun:
     """Seal one continuous actual native pilot driven by decoded video frames."""
     target = Path(output_dir)
     if target.exists() or target.is_symlink() or target.is_junction():
         raise FileExistsError(f"Output path already exists: {target}")
-    clips = prepare_playlist(playlist_path)
+    clips = prepare_playlist(playlist_path, profile=profile)
     engine = engine_factory()
     if (not isinstance(engine, FlyEngine) or engine.brain.cursor != 0
             or _ticks(float(engine.brain.sim_ms)) != 0 or engine.brain.dt != 0.1
             or engine.brain.weights_frozen):
         raise RunArtifactError("Video observation requires a fresh actual 0.1 ms engine")
-    metadata = _metadata(engine.identity(), clips)
+    metadata = _metadata(engine.identity(), clips, profile=profile)
     populations = {name: len(metadata["engine_identity"]["neural_groups"][name])
                    for name in ("motor_left", "motor_right")}
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -360,7 +394,7 @@ def record_video_observation_run(
                         counts=motor_counts, populations=populations,
                         clip_index=clip_index, clip_count=len(clips),
                         clip_start_tick=clip_start_tick, frame_index=frame_index,
-                        end_tick=end,
+                        end_tick=end, profile=profile,
                     )
                     event["video_policy"] = decision
                 recorder.append(event)
@@ -380,14 +414,18 @@ def record_video_observation_run(
 
 
 def _validated_metadata(metadata: dict) -> list[dict]:
+    profile = _stored_profile(metadata)
+    version = _profile_version(profile)
+    source_speed = 1 if profile == "standard" else 5
+    source_window_seconds = 4 * source_speed
     if (type(metadata) is not dict or set(metadata) != {
             "engine_identity", "protocol_version", "stimulus_version", "family",
             "seeds", "factors", "video_recipe", "clips", "input_sha256"}
-            or metadata["protocol_version"] != "video-observation/v1"
-            or metadata["stimulus_version"] != "decoded-video-rgb/v1"
+            or metadata["protocol_version"] != f"video-observation/{version}"
+            or metadata["stimulus_version"] != f"decoded-video-rgb/{version}"
             or metadata["family"] != "video-observation"
             or metadata["seeds"] != []
-            or _canonical(metadata["video_recipe"]) != _canonical(VIDEO_RECIPE)):
+            or _canonical(metadata["video_recipe"]) != _canonical(_video_recipe(profile))):
         raise RunArtifactError("Unsupported video observation metadata")
     clips = metadata["clips"]
     if (type(clips) is not list or not 1 <= len(clips) <= 5
@@ -421,7 +459,7 @@ def _validated_metadata(metadata: dict) -> list[dict]:
             raise RunArtifactError("Invalid source timebase")
         time_base = Fraction(*base)
         if (type(clip["origin_pts"]) is not int or type(clip["coverage_end_pts"]) is not int
-                or (clip["coverage_end_pts"] - clip["origin_pts"]) * time_base < 4):
+                or (clip["coverage_end_pts"] - clip["origin_pts"]) * time_base < source_window_seconds):
             raise RunArtifactError("Incomplete declared source coverage")
         if clip["coverage_method"] not in {"following_pts", "final_frame_duration"}:
             raise RunArtifactError("Unknown source coverage method")
@@ -450,7 +488,7 @@ def _validated_metadata(metadata: dict) -> list[dict]:
                     or type(frame["source_pts"]) is not int
                     or _canonical(frame["source_time_base"]) != _canonical(base)
                     or (frame["source_pts"] - clip["origin_pts"]) * time_base
-                    > Fraction(frame_index, 30)
+                    > Fraction(source_speed * frame_index, 30)
                     or (previous_pts is not None and frame["source_pts"] < previous_pts)):
                 raise RunArtifactError("Invalid prepared frame declaration or source PTS")
             if frame_index == 0 and frame["source_pts"] != clip["origin_pts"]:
@@ -581,6 +619,8 @@ def _export_data(run: VerifiedRun) -> dict:
         raise RunArtifactError("Only sealed root video observation pilots are supported")
     metadata = manifest["metadata"]
     clips = _validated_metadata(metadata)
+    profile = _stored_profile(metadata)
+    version = _profile_version(profile)
     identity = metadata["engine_identity"]
     groups = _populations(identity)
     populations = {name: groups[name] for name in ("motor_left", "motor_right")}
@@ -649,7 +689,7 @@ def _export_data(run: VerifiedRun) -> dict:
                 counts=motor_counts, populations=populations,
                 clip_index=clip_index, clip_count=len(clips),
                 clip_start_tick=clip_start_tick, frame_index=frame_index,
-                end_tick=end_tick,
+                end_tick=end_tick, profile=profile,
             )
             if _canonical(event["video_policy"]) != _canonical(expected):
                 raise RunArtifactError("Recorded feed decision differs from measured rolling policy")
@@ -668,7 +708,7 @@ def _export_data(run: VerifiedRun) -> dict:
     if not terminal or not seen_after or event_count != len(segments) + 2:
         raise RunArtifactError("Sealed video run ended before a legitimate terminal decision")
     return {
-        "version": "measured-video-replay/v1", "tick_ms": 0.1,
+        "version": f"measured-video-replay/{version}", "tick_ms": 0.1,
         "source": {
             **{name: manifest[name] for name in (
                 "run_kind", "schema_sha256", "run_metadata_sha256", "events_sha256",

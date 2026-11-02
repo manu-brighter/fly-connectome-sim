@@ -1,18 +1,17 @@
 # Continuation and cloud handover — 2026-11-02
 
 Use `origin` of `manu-brighter/fly-connectome-sim`, branch
-`feat/connectome-experiment-core`, latest pushed feature commit. The latest
-reviewed and pushed Phase 1 checkpoint is `4467431`: the historical A/B
-recording has an inspected 375-frame/12.5s timestamped export. The current
-video-source working freeze has 33 Python/C++ members, model identity
-`e8d0e046e890418541ee9f0bb84065966228e756834f5bd7fb084f9ff5005ba8`;
+`feat/connectome-experiment-core`, latest pushed feature commit. The prior
+standard-video checkpoint `639423f` and Phase 1 A/B checkpoint `4467431` are
+historical. Current fast-feed source has 33 Python/C++ members, model identity
+`132b9c00a2a7d3d5da15963024abf85a0a31209d7f59f5903dd4edd9298a0ac2`;
 schema remains `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
-Genuine-video preparation, production, compact export and viewer support are
-implemented under the [video-feed contract](superpowers/specs/2026-11-02-video-observation-feed.md).
-Independent backend review closed C0/I0/M0; the single actual video fullgraph
-run, ordinary verification, compact export and independent raw audit passed.
-Actual Chrome playback/boundary and encoded-video checks passed. Earlier assay evidence is historical/source-specific;
-f.3c–f.3d/f.4–f.6/g, formal source freeze and LLM work remain open/parked.
+The [fast-feed contract](superpowers/specs/2026-11-02-fast-reel-feed.md) and
+[implementation plan](superpowers/plans/2026-11-02-fast-reel-feed.md) govern the
+current slice. Source review, focused tests, the single actual fast-feed pilot/raw/parser
+audit and same-artifact Chrome/encoded-file acceptance passed. Earlier assay evidence is
+historical/source-specific; formal qualification/freeze/confirmation, C1 and
+LLM work remain parked.
 
 Continue autonomously on the original Windows workstation, including reviewed
 feature commits and explicit feature pushes, without pausing at each checkpoint.
@@ -35,7 +34,9 @@ checkout, not a gate on current local work. Never push main/master/develop.
 6. [Measured Replay v1 plan](superpowers/plans/2026-11-02-measured-replay-v1.md)
    and [historical A/B observation report](experiments/2026-11-02-measured-replay-observation.md).
 7. [Animated replay and genuine-video continuation](superpowers/plans/2026-11-02-animated-measured-replay.md)
-   and [current video observation report](experiments/2026-11-02-video-feed-observation.md).
+   and [historical standard-video report](experiments/2026-11-02-video-feed-observation.md).
+8. [Current fast-feed plan](superpowers/plans/2026-11-02-fast-reel-feed.md)
+   and [fast-feed observation report](experiments/2026-11-02-fast-reel-feed-observation.md).
 
 The older connectome-core plan is background. This tracked handover and current
 plan orient a fresh checkout; private local SDD notes/chats/scripts are not
@@ -60,57 +61,77 @@ this document. Do not claim to reverify unavailable bytes.
   confirmation exists. Missing evidence is not an authenticated scientific negative.
   Never fabricate successful gates/configuration to continue a negative run.
 
-## Current video-source checkpoint and actual observation
+## Current fast-feed checkpoint
 
-The 33-member backend freeze above implements two first-4s source windows,
-90x160 exact RGB at 30Hz and at most 8s continuous reward-free observation.
-The predeclared `right-scroll/v1` policy evaluates causal rolling 300ms counts
-every 100ms, with 1s minimum dwell and 4s clip cap. Decisions change subsequent
-input during production; zero/left/defer do not force a motor advance.
+Explicit `observe-video --profile fast-feed` selects the closed v2 protocol,
+stimulus, policy and compact-format quartet: source speed `[5,1]`, 20s source
+coverage and 30000-tick minimum dwell. Default `standard` preserves the exact
+v1/1× protocol, 4s coverage and 1s dwell. Both advance actual 90x160 RGB inputs
+at normal 30Hz simulation time, at most 120 frames/4s per clip and 8s total.
+Fast-feed samples source time `5*j/30`; it does not process every original frame.
+No external stimulation or learning is enabled; passive evolution is unchanged.
 
-Focused video checks: **81 passed in 42.49s**. Independent Astra review found
-three decoder issues, subsequently fixed; independent closure is C0/I0/M0. Pre-decoder-fix candidate `8f69b283`
-recorder/replay compatibility: **621 passed, 2 skipped in 84.09s** (sandbox junction
-and opt-in fullgraph cases); the normal-host junction subset separately passed
-**2 tests, 401 deselected in 0.14s**. Only video_observation.py changed afterward; the other 32 packaged sources
-and schema stayed exact. The final 81 focused tests cover those fixes; no current
-whole-suite or fullgraph compatibility rerun is claimed.
-Viewer: **57 tests passed; build exit0**. Independent Sol review closed with
-zero Critical/Important/Minor findings on the 18-file freeze
-`10ba7c3bacb748434ddebc17d60bf56b66ce2a7e698f1615b4eb654c92b8e5fc`.
+The existing 1Hz lateral motor threshold, causal 300ms counts/100ms evaluations
+and session > clip-window > motor-right > watch priority remain. Fast-feed
+allows motor advance at 3s or later; the 4s clip-window limit is external.
+No result is tuned to force a neural action. The 200ms swipe uses the last fed
+outgoing frame and current actual incoming frame; its composite/foreleg motion
+is illustrative, not another neural input. STOP/reduced motion do not swipe.
+Media PTS, native simulation time and Replay Speed remain distinct.
 
-The single actual run completed exit0 in **35.843s** within its 240s wall budget;
-ordinary verify/export completed exit0 in 1.094s/1.766s. All 33 packaged sources
-remained unchanged. Actual session: 107 events, 105 consumed frames, 420 bins,
-35000ticks/3.5s. The compact JSON is 6,266,520 bytes, SHA256
-`ca85478dbe65edf64b4d60d579699b672aed54bc34f833a9d7c7837d3183e6f5`.
-Independent audit matched all 240 prepared source PTS/RGB hashes and all 105
-consumed pixels, counts, clocks and policy evidence windows.
+Focused backend/CLI tests: **114 passed in 94.32s**, covering 81 existing and 33
+new tests. Viewer: **63 passed; build exit0**. Independent Astra source/integrity
+review closed C0/I0/M0, including 240 actual source PTS/RGB hashes and 19,360
+pure policy cases. Independent Sol viewer review closed C0/I0/M0 on 18-file freeze
+`41423f850430b40c1447c6d508efbbef6682e36f563d864d03014aac3e30e00f`.
+Historical actual v1-video and A/B re-exports remain byte-identical; the strict
+reader was not loosened. Source tests alone do not establish native runtime.
 
-The recorded policy made 33 watch decisions, one motor-right advance at 2.3s
-(rolling 300ms counts left 0/right 2; difference 6.6667Hz), then stopped at 3.5s
-with `playlist_exhausted`, trigger `motor_right` (left 3/right 4;3.3333Hz).
-Clip1 frame0 was the actual next input after the advance; no input was
-retroactively rearranged. These are engineered policy actions, not evidence of
-learning, semantic understanding or validated preference. See the
-[video observation report](experiments/2026-11-02-video-feed-observation.md).
+The single actual pilot completed exit0 in **76.734s** (240s subprocess wall
+budget); ordinary verify/export passed in 1.203s/2.250s. All 33 source members
+stayed exact. Actual session: **7.0s/70000 ticks, 210 inputs, 840 bins, 212 events**.
+Clip0 consumed 90 frames/3s (first 15s media); clip1 consumed 120 frames/4s
+(first 20s media). Independent re-decode matched all 240 prepared RGB/PTS hashes
+and all 210 consumed inputs/counts/clocks/policy windows. Compact JSON:
+12,443,795 bytes, SHA256
+`fa9565bea925a66b2afaccb6e337a8dd5c3c2d0b52e65524575325e936b29323`.
 
-Actual frontend parsing and Chrome file loading/play/pause/seek/terminal checks
-passed. Tick22999 showed clip0/frame68 with WATCH; tick23000 selected
-clip1/frame0 with ADVANCE and unavailable current-clip rolling evidence.
-Tick23100 MBON11=50.00/KC2.41 matched bins. Export restored that paused position.
-The actual UI WebM is 1,246,462 bytes, SHA256
-`96278f99e516e7330b30a06eed3e8b111adb6900fdaf0c5ef70acf5fb1b69fd5`.
-Independent byte/decoder checks confirmed 120 VP9 frames, 900x900, 4.0s,
-33/34ms PTS spacing and explicit 4000ms end: 3.5s measured plus 15 labelled
-hold frames. Samples showed changing illustrative pose, a foreleg gesture after
-the recorded advance and actual second-clip content. Near-black early second-
-clip frames matched source pixels. No extra native run occurred.
+The recorded policy has 68 WATCH, one ADVANCE and one STOP. At tick30000,
+`motor_right` advanced (300ms left3/right6, +10Hz difference). At tick70000,
+`playlist_exhausted` stopped with trigger `clip_window_end` (left6/right3,
+−10Hz). That terminal trigger is the external 4s clip cap, not neural rejection
+or preference. Actual frontend parsing accepts this v2 and historical real v1/A/B
+files: tick29999 outgoing/no swipe; tick30000 incoming frame0/gesture;
+tick30667 incoming frame2; tick32000 incoming frame6/no swipe.
 
-Reuse the same ignored `runs/measured-video-replay-reels-20261102.json` for
-presentation work. Longer feed sessions and broader mobile/accessibility/cross-
-browser/live-FPS checks remain open. No automatic native recording, qualification,
-assay, parked C1 return or LLM work follows this bounded acceptance.
+Actual Chrome file loading, play/pause, boundary/terminal labels and the clipped
+swipe passed. At tick30667 incoming frame2 had PTS5120/15360, MBON11=50.00Hz
+and KC=3.10Hz; tick32000 showed the full incoming frame without swipe. Playback
+at 1× advanced, pause held tick10994 and export restored tick30667 paused.
+Independent EBML/PyAV inspection of the actual UI WebM confirmed **225 VP9
+frames, 900x900, 7.500s**: 210 measured frames/7s plus 15 labelled hold frames.
+PTS span 0–7467ms with 33/34ms intervals and explicit end7500ms. Decoded frame92
+showed the mid-swipe/current incoming frame2; frame96 ended the swipe at3.2s;
+frame224 was labelled terminal hold/STOP without swipe. The video is 2,486,947
+bytes, SHA256
+`1f21825de97cadb8645ddc46124ba7ad2e53ef3debcfcefc2c30b8803bf40e4c`.
+
+Reuse the same ignored
+`runs/measured-video-replay-fast-reels-20261102.json` for presentation work;
+never pair 5× footage with old 1× measurements. Exact results/limitations belong
+in the [fast-feed report](experiments/2026-11-02-fast-reel-feed-observation.md).
+Raw media/runs/acceptance tools remain ignored. Broader mobile/accessibility/
+cross-browser/live-FPS checks stay open; C1/formal/LLM work remain parked.
+
+## Historical standard-video observation
+
+The earlier 1×/v1 run used model
+`e8d0e046e890418541ee9f0bb84065966228e756834f5bd7fb084f9ff5005ba8`,
+with 105 inputs/420 bins over 3.5s and motor-right advance at 2.3s. Its actual
+Chrome/UI export decoded to 120 VP9 frames/4.0s, including 15 labelled terminal
+hold frames. Its source-specific tests, reviews, identities and exact artifact
+hashes are preserved in the [standard-video report](experiments/2026-11-02-video-feed-observation.md).
+This historical evidence does not accept the new fast-feed runtime or viewer.
 
 ## Historical Phase 1 A/B observation and export
 
@@ -202,7 +223,7 @@ it is not a cloud-continuation dependency. Formal integration is a paused workst
 - [x] Implement the reviewed real-video observation/motor-scroll contract,
   following the [animated replay plan](superpowers/plans/2026-11-02-animated-measured-replay.md).
   No fabricated activity/dopamine interpretation/semantics or automatic assay/qualification runs/C1 return.
-  Historical A/B and current genuine-video raw/runtime/browser/encoded-file checks passed.
+  Historical A/B and standard-video raw/runtime/browser/encoded-file checks passed.
 Diagnostics grant no integrated capacity/history/config/freeze; no causal comparison
 with profiled630s or automatic inventory return. One allocation/call may exceed guards.
 The prior Viewer timing gate is superseded only for this explicitly approved replay slice; LLM stays later.
@@ -546,8 +567,11 @@ Interrupted development runs are never counted as passes.
 - [x] Close independent backend review and complete one bounded video fullgraph run,
   ordinary verification/compact export and independent raw/source-policy audit.
 - [x] Complete actual browser/parser and encoded-file acceptance using that same artifact.
-- [ ] Continue presentation polish/longer-feed work when requested; reuse current data
-  for UI changes and keep LLM/formal integration separately gated.
+- [x] Implement/review closed 5× fast-feed/v2 and deterministic 200ms swipe; preserve v1.
+- [x] Close one bounded actual fast-feed pilot and independent raw/parser audit.
+- [x] Close same-artifact Chrome/boundary and encoded-file QA: 225 frames/7.5s.
+- [ ] Continue longer-feed work when requested; reuse validated current data for UI
+  changes and keep LLM/formal integration separately gated.
 - [ ] Complete broader accessibility/cross-browser checks; preserve experimental WIP.
 - [x] Complete c.2b source review, ordinary/actual graph/full tiny-native grid
   acceptance and exact reviewed-source checks.

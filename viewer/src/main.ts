@@ -4,7 +4,7 @@ import { BufferTarget, CanvasSource, Output, WebMOutputFormat, canEncodeVideo } 
 import { EXPORT_FPS, EXPORT_SIZE, quantizeVideoTick, writeFrames } from './export.ts';
 import { createStage } from './stage.ts';
 import { createOperationGate } from './operation.ts';
-import { parseAnyRecording, sampleVideoAtTick, videoInputLabel, videoPolicyLabel, videoTimelineBlocks, type VideoRecording } from './video-replay.ts';
+import { isVideoRecording, parseAnyRecording, sampleVideoAtTick, videoInputLabel, videoPolicyLabel, videoSpeedLabel, videoTimelineBlocks, type VideoRecording } from './video-replay.ts';
 
 function element<T extends HTMLElement>(id: string): T {
   return document.getElementById(id) as T;
@@ -52,7 +52,7 @@ for (const name of ['pam11', 'ppl101', 'mbon07'] as const) {
 function showError(message: string) { errorElement.textContent = message; errorElement.hidden = false; }
 if (stageError) showError(stageError);
 function sampleAt(record: Recording | VideoRecording, position: number) {
-  return record.version === 'measured-video-replay/v1' ? sampleVideoAtTick(record, position) : sampleAtTick(record, position);
+  return isVideoRecording(record) ? sampleVideoAtTick(record, position) : sampleAtTick(record, position);
 }
 
 const traceBases: Partial<Record<'kc' | 'mbon11', HTMLCanvasElement>> = {};
@@ -92,7 +92,7 @@ function update() {
   const sample = sampleAt(recording, tick);
   stage?.setSample(sample);
   const video = 'input' in sample;
-  element('input-caption').textContent = video ? 'Fed video frame' : 'Recorded input';
+  element('input-caption').textContent = video ? `Fed video frame · ${videoSpeedLabel(recording)}` : 'Recorded input';
   element('stimulus').textContent = video ? videoInputLabel(sample.input) : sample.segment.stimulus === 'black' ? 'Black' : sample.segment.stimulus;
   element('stimulation').textContent = sample.segment.stimulation === null ? 'None' : 'Present';
   element('learning').textContent = String(sample.segment.learning);
@@ -102,9 +102,10 @@ function update() {
   element('video-policy').hidden = !video;
   if (video) {
     element('source-pts').textContent = `${sample.input.source_pts} × ${sample.input.source_time_base[0]}/${sample.input.source_time_base[1]} s`;
-    if (recording.version === 'measured-video-replay/v1') {
+    if (isVideoRecording(recording)) {
       const clips = recording.source.metadata.clips as Array<{ source_url: string }>;
       element<HTMLAnchorElement>('clip-url').href = clips[Number(sample.input.clip_id.slice(5))].source_url;
+      element('policy-note').textContent = `Recorded right-scroll/${recording.version === 'measured-video-replay/v2' ? 'v2' : 'v1'} display policy; not validated fly behavior.`;
     }
     element('policy-status').textContent = videoPolicyLabel(sample.policy);
     const current = sample.clipPolicy;
@@ -146,7 +147,7 @@ file.addEventListener('change', async () => {
     videoButton.disabled = !videoCodec || !stage;
     element('timeline-end').textContent = `${(parsed.duration_ticks / 10000).toFixed(1)} s`;
     const segments = element('segments'); segments.replaceChildren();
-    if (parsed.version === 'measured-video-replay/v1') {
+    if (isVideoRecording(parsed)) {
       for (const block of videoTimelineBlocks(parsed)) {
         const item = document.createElement('span'); item.className = `stimulus-video-${Number(block.clipId.slice(5)) % 2}`;
         item.style.flexGrow = String(block.duration); item.textContent = `Clip ${Number(block.clipId.slice(5)) + 1}`; segments.append(item);
@@ -209,7 +210,7 @@ videoButton.addEventListener('click', async () => {
       add: (timestamp, duration) => source.add(timestamp, duration),
       finalize: async () => { await output!.finalize(); return target.buffer; },
       cancel: () => output!.cancel(),
-    }, controller.signal, (done, total) => { videoNote.textContent = `Encoding ${done}/${total} frames…`; }, sourceRecording.version === 'measured-video-replay/v1' ? quantizeVideoTick : undefined);
+    }, controller.signal, (done, total) => { videoNote.textContent = `Encoding ${done}/${total} frames…`; }, isVideoRecording(sourceRecording) ? quantizeVideoTick : undefined);
     if (!completed?.byteLength) throw new Error('Encoder produced an empty video.');
     const url = URL.createObjectURL(new Blob([completed], { type: 'video/webm' }));
     const link = document.createElement('a'); link.href = url; link.download = 'measured-replay.webm'; link.click();

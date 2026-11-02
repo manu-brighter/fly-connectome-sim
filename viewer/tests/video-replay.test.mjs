@@ -3,7 +3,8 @@ import { createHash } from 'node:crypto';
 import test from 'node:test';
 import { advanceGestureAtTick, parseAnyRecording, parseVideoRecording, sampleVideoAtTick, videoInputLabel, videoPlaneHeight, videoPolicyLabel, videoTimelineBlocks, visiblePolicyAtTick } from '../src/video-replay.ts';
 import { quantizeVideoTick } from '../src/export.ts';
-import { drawOverlay } from '../src/stage.ts';
+import * as stage from '../src/stage.ts';
+const { drawOverlay } = stage;
 
 const counts = { kc: 0, pam11: 0, ppl101: 0, mbon07: 0, mbon11: 0, motor_left: 0, motor_right: 0 };
 const groups = Object.fromEntries(Object.keys(counts).map((name) => [name, 1]));
@@ -164,6 +165,11 @@ test('new reader binds a recorded clip-window advance to the following input', a
   assert.equal(sample.policy.reason, 'clip_window_end');
   assert.equal(sample.clipPolicy, null);
   assert.equal(sample.gesture.reason, 'clip_window_end');
+  const fast = await parseVideoRecording(JSON.stringify(fastFixture(structuredClone(value))));
+  assert.equal(sampleVideoAtTick(fast, 40000).input.clip_id, 'clip-1');
+  assert.equal(sampleVideoAtTick(fast, 40000).policy.trigger, 'clip_window_end');
+  assert.equal(sampleVideoAtTick(fast, 80000).policy.reason, 'session_limit');
+  assert.equal(sampleVideoAtTick(fast, 80000).gesture, null);
 });
 
 test('new reader rejects unknown policy, pixel mutation and premature decision', async () => {
@@ -186,4 +192,163 @@ test('new reader rejects unknown policy, pixel mutation and premature decision',
 
 test('version dispatch preserves the strict original reader', async () => {
   await assert.rejects(parseAnyRecording(JSON.stringify({ ...fixture(), version: 'measured-replay/v1' })));
+});
+
+function fastFixture(value = fixture()) {
+  const metadata = value.source.metadata;
+  value.version = 'measured-video-replay/v2';
+  metadata.protocol_version = 'video-observation/v2'; metadata.stimulus_version = 'decoded-video-rgb/v2';
+  Object.assign(metadata.video_recipe, { policy_version: 'right-scroll/v2', minimum_dwell_ticks: 30000, source_speed: [5, 1], source_window_seconds: 20 });
+  for (const clip of metadata.clips) {
+    clip.coverage_end_pts = 600;
+    clip.frames.forEach((frame) => { frame.source_pts *= 5; });
+  }
+  Object.values(value.inputs).forEach((input) => { input.source_pts *= 5; });
+  for (const segment of value.segments) if (segment.video_policy) {
+    const decision = segment.video_policy;
+    decision.policy_version = 'right-scroll/v2'; decision.minimum_dwell_met = segment.frame_index >= 89;
+    if (decision.action === 'watch') decision.reason = decision.minimum_dwell_met ? 'motor_left_or_defer' : 'minimum_dwell';
+  }
+  return value;
+}
+
+test('v2 dispatch accepts 20s media in 4s simulation and the 3s dwell boundary', async () => {
+  const parsed = await parseAnyRecording(JSON.stringify(fastFixture()));
+  assert.equal(parsed.version, 'measured-video-replay/v2');
+  assert.equal(parsed.duration_ticks, 40000);
+  assert.equal(parsed.inputs['clip-0/frame-119'].source_pts, 595);
+  assert.equal(parsed.segments[86].video_policy.minimum_dwell_met, false);
+  assert.equal(parsed.segments[86].video_policy.reason, 'minimum_dwell');
+  assert.equal(parsed.segments[89].video_policy.minimum_dwell_met, true);
+  assert.equal(parsed.segments[89].video_policy.reason, 'motor_left_or_defer');
+});
+
+test('v2 rejects mixed versions, nonclosed speed/recipe, short coverage, future media and early dwell', async () => {
+  for (const mutate of [
+    (v) => { v.version = 'measured-video-replay/v1'; },
+    (v) => { v.source.metadata.protocol_version = 'video-observation/v1'; },
+    (v) => { v.source.metadata.stimulus_version = 'decoded-video-rgb/v1'; },
+    (v) => { v.source.metadata.video_recipe.policy_version = 'right-scroll/v1'; },
+    (v) => { v.source.metadata.video_recipe.minimum_dwell_ticks = 10000; },
+    (v) => { v.source.metadata.video_recipe.source_speed = [4, 1]; },
+    (v) => { v.source.metadata.video_recipe.source_window_seconds = 4; },
+    (v) => { delete v.source.metadata.video_recipe.source_speed; },
+    (v) => { v.source.metadata.video_recipe.speed = 5; },
+    (v) => { v.source.metadata.clips[0].coverage_end_pts = 599; },
+    (v) => { v.source.metadata.clips[0].frames[119].source_pts = 596; },
+    (v) => { v.inputs['clip-0/frame-119'].source_pts = 119; },
+    (v) => { v.segments[86].video_policy.minimum_dwell_met = true; },
+    (v) => { v.segments[89].video_policy.policy_version = 'right-scroll/v1'; },
+    (v) => { v.segments[119].video_policy.action = 'advance'; },
+  ]) {
+    const value = fastFixture(); mutate(value);
+    await assert.rejects(parseAnyRecording(JSON.stringify(value)));
+  }
+  const v1 = fixture(); v1.source.metadata.video_recipe.source_speed = [1, 1];
+  await assert.rejects(parseAnyRecording(JSON.stringify(v1)));
+});
+
+test('v2 measured right readout watches through 2.9s then causally advances at 3s', async () => {
+  const value = fastFixture(), metadata = value.source.metadata, second = structuredClone(metadata.clips[0]);
+  second.clip_id = 'clip-1'; second.frames.forEach((frame) => { frame.frame_id = frame.frame_id.replace('clip-0', 'clip-1'); });
+  metadata.clips.push(second); metadata.factors.clip_count = 2;
+  value.segments = value.segments.slice(0, 90);
+  for (const id of Object.keys(value.inputs)) if (value.inputs[id].frame_index >= 90) delete value.inputs[id];
+  for (const segment of value.segments) {
+    segment.bins[0].group_spikes.motor_right = 1;
+    if (segment.video_policy?.window) {
+      segment.video_policy.window.counts.motor_right = 9;
+      segment.video_policy.readout = { adapter_version: 'lateral-motor-adapter/v1', signed_difference_hz: 30, evidence_strength: 1, action: 'inspect_right' };
+    }
+  }
+  Object.assign(value.segments[89].video_policy, { action: 'advance', reason: 'motor_right', trigger: 'motor_right', next_clip_index: 1 });
+  for (const segment of value.segments.slice()) {
+    const next = structuredClone(segment);
+    next.event_sequence += 90; next.clip_id = 'clip-1'; next.frame_id = next.frame_id.replace('clip-0', 'clip-1');
+    for (const key of ['source_start_tick', 'source_end_tick', 'playback_start_tick', 'playback_end_tick']) next[key] += 30000;
+    next.bins.forEach((bin) => { bin.end_tick += 30000; });
+    if (next.video_policy) {
+      next.video_policy.effective_tick += 30000; next.video_policy.next_clip_index = 1;
+      if (next.video_policy.window) { next.video_policy.window.start_tick += 30000; next.video_policy.window.end_tick += 30000; }
+      if (next.frame_index === 89) Object.assign(next.video_policy, { action: 'stop', reason: 'playlist_exhausted', next_clip_index: null });
+    }
+    value.inputs[next.frame_id] = { ...value.inputs[segment.frame_id], clip_id: 'clip-1' };
+    value.segments.push(next);
+  }
+  value.duration_ticks = 60000;
+  const parsed = await parseVideoRecording(JSON.stringify(value));
+  assert.equal(parsed.segments[86].video_policy.readout.action, 'inspect_right');
+  assert.equal(parsed.segments[86].video_policy.action, 'watch');
+  assert.equal(sampleVideoAtTick(parsed, 29999).input.clip_id, 'clip-0');
+  const incoming = sampleVideoAtTick(parsed, 30000);
+  assert.equal(incoming.input.clip_id, 'clip-1'); assert.equal(incoming.input.frame_index, 0);
+  assert.equal(incoming.policy.action, 'advance'); assert.equal(incoming.policy.effective_tick, 30000);
+  assert.equal(sampleVideoAtTick(parsed, 60000).policy.reason, 'playlist_exhausted');
+  assert.equal(sampleVideoAtTick(parsed, 60000).gesture, null);
+  for (const mutate of [
+    (v) => { v.segments[86].video_policy.action = 'advance'; v.segments[86].video_policy.reason = 'motor_right'; },
+    (v) => { v.segments[90].frame_id = 'clip-0/frame-0'; },
+    (v) => { v.segments[89].video_policy.next_clip_index = 0; },
+  ]) {
+    const changed = structuredClone(value); mutate(changed); await assert.rejects(parseVideoRecording(JSON.stringify(changed)));
+  }
+});
+
+test('200ms transition binds last actually fed outgoing and current incoming across seek', () => {
+  const value = structuredClone(recording), incoming = value.segments[1];
+  incoming.playback_end_tick = incoming.source_end_tick = 1333;
+  for (let index = 1; index < 7; index += 1) {
+    const id = `incoming-${index}`, start = 1000 + Math.round(index * 1000 / 3), end = 1000 + Math.round((index + 1) * 1000 / 3);
+    value.inputs[id] = { ...value.inputs.second, frame_index: index };
+    value.segments.push({ ...incoming, frame_id: id, frame_index: index, playback_start_tick: start, source_start_tick: start, playback_end_tick: end, source_end_tick: end });
+  }
+  value.duration_ticks = 3333;
+  assert.equal(advanceGestureAtTick(value, 999), null);
+  assert.deepEqual(advanceGestureAtTick(value, 1000), { reason: 'motor_right', progress: 0, outgoingFrameId: 'first', incomingFrameId: 'second' });
+  assert.equal(advanceGestureAtTick(value, 1700).incomingFrameId, 'incoming-2');
+  assert.equal(advanceGestureAtTick(value, 2999).incomingFrameId, 'incoming-5');
+  assert.equal(advanceGestureAtTick(value, 3000), null);
+  assert.equal(advanceGestureAtTick(value, 1000).progress, 0);
+  assert.equal(advanceGestureAtTick(value, 1500).progress, .25);
+  assert.equal(advanceGestureAtTick(value, 1500, true), null);
+  assert.equal(sampleVideoAtTick(value, 1700).input, value.inputs['incoming-2']);
+});
+
+test('swipe surface clips both images, reuses its texture and releases it', () => {
+  const calls = [], context = {
+    save() { calls.push(['save']); }, restore() { calls.push(['restore']); },
+    beginPath() {}, rect(...args) { calls.push(['rect', ...args]); }, clip() { calls.push(['clip']); },
+    clearRect(...args) { calls.push(['clear', ...args]); }, drawImage(...args) { calls.push(['draw', ...args]); },
+  };
+  const canvas = { width: 90, height: 160, getContext() { return context; } };
+  const surface = stage.createVideoSwipeSurface(canvas), texture = surface.texture;
+  const outgoing = { id: 'last-fed' }, incoming = { id: 'current-fed' };
+  surface.draw(outgoing, incoming, .25);
+  assert.deepEqual(calls, [['save'], ['rect', 0, 0, 90, 160], ['clip'], ['clear', 0, 0, 90, 160], ['draw', outgoing, 0, -40, 90, 160], ['draw', incoming, 0, 120, 90, 160], ['restore']]);
+  assert.equal(context.imageSmoothingEnabled, false);
+  surface.draw(outgoing, { id: 'next-current-fed' }, .5);
+  assert.equal(surface.texture, texture);
+  let disposed = 0; texture.addEventListener('dispose', () => { disposed += 1; });
+  surface.dispose(); assert.equal(disposed, 1); assert.equal(canvas.width, 1); assert.equal(canvas.height, 1);
+});
+
+test('v2 capture labels speed and distinguishes simulation clock from media PTS and swipe', () => {
+  const value = { ...recording, version: 'measured-video-replay/v2' }, calls = [];
+  const context = { font: '', save() {}, restore() {}, scale() {}, fillRect() {}, beginPath() {}, moveTo() {}, lineTo() {}, stroke() {},
+    measureText(text) { return { width: text.length * Number(this.font.match(/(\d+)px/)[1]) * .55 }; },
+    fillText(text, x) { calls.push({ text, x, width: this.measureText(text).width }); },
+  };
+  drawOverlay(context, 320, 600, 320, value, sampleVideoAtTick(value, 1000));
+  assert.ok(calls.some(({ text }) => text.includes('Reel 5×')));
+  assert.ok(calls.some(({ text }) => text.includes('Sim ') && text.includes('media PTS')));
+  assert.ok(calls.some(({ text }) => text.includes('Illustrative swipe')));
+  for (const call of calls) assert.ok(call.x + call.width <= 320, `Clipped: ${call.text}`);
+  calls.length = 0;
+  drawOverlay(context, 900, 900, 900, value, sampleVideoAtTick(value, 1000));
+  assert.ok(calls.some(({ text }) => text.includes('Reel 5×')));
+  assert.ok(calls.some(({ text }) => text.includes('Illustrative swipe')));
+  for (const call of calls) assert.ok(call.x + call.width <= 900, `Clipped: ${call.text}`);
+  calls.length = 0;
+  drawOverlay(context, 900, 900, 900, value, sampleVideoAtTick(value, 1000), false, true);
+  assert.ok(!calls.some(({ text }) => text.includes('Illustrative swipe')));
 });

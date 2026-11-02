@@ -107,6 +107,7 @@ def main(argv: list[str] | None = None) -> int:
     export_parser.add_argument("--output", type=Path, default=Path("runs/measured-replay.json"))
     video_parser = commands.add_parser("observe-video")
     video_parser.add_argument("--playlist", type=Path, required=True)
+    video_parser.add_argument("--profile", choices=("standard", "fast-feed"), default="standard")
     video_parser.add_argument("--output-dir", type=Path, default=Path("runs/video-observation"))
     video_export_parser = commands.add_parser("export-video-replay")
     video_export_parser.add_argument("path", type=Path)
@@ -129,7 +130,7 @@ def main(argv: list[str] | None = None) -> int:
                        "verification_mode": replay["source"]["verification_mode"]}
         elif args.command == "observe-video":
             summary = _verified_summary(record_video_observation_run(
-                args.output_dir, playlist_path=args.playlist,
+                args.output_dir, playlist_path=args.playlist, profile=args.profile,
                 engine_factory=FlyEngine.from_prepared_graph,
             ))
         elif args.command == "export-video-replay":

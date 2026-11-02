@@ -3,7 +3,7 @@ import { quantizeVideoTick } from './export.ts';
 
 export type VideoInput = Input & { clip_id: string; frame_index: number; source_pts: number; source_time_base: [number, number] };
 export type VideoPolicy = {
-  policy_version: 'right-scroll/v1'; effective_tick: number;
+  policy_version: 'right-scroll/v1' | 'right-scroll/v2'; effective_tick: number;
   window: null | { start_tick: number; end_tick: number; frame_count: 9; counts: { motor_left: number; motor_right: number }; populations: { motor_left: number; motor_right: number } };
   readout: null | { adapter_version: 'lateral-motor-adapter/v1'; signed_difference_hz: number; evidence_strength: number; action: 'inspect_left' | 'inspect_right' | 'defer' };
   minimum_dwell_met: boolean; action: 'watch' | 'advance' | 'stop';
@@ -16,8 +16,15 @@ export type VideoSegment = {
   playback_start_tick: number; playback_end_tick: number; bins: Bin[]; video_policy: VideoPolicy | null;
 };
 export type VideoRecording = Omit<Recording, 'version' | 'inputs' | 'segments'> & {
-  version: 'measured-video-replay/v1'; inputs: Record<string, VideoInput>; segments: VideoSegment[];
+  version: 'measured-video-replay/v1' | 'measured-video-replay/v2'; inputs: Record<string, VideoInput>; segments: VideoSegment[];
 };
+
+export function isVideoRecording(recording: Recording | VideoRecording): recording is VideoRecording {
+  return recording.version === 'measured-video-replay/v1' || recording.version === 'measured-video-replay/v2';
+}
+export function videoSpeedLabel(recording: Recording | VideoRecording) {
+  return recording.version === 'measured-video-replay/v2' ? 'Reel 5×' : 'Reel 1×';
+}
 
 export function videoPlaneHeight(width: number, inputWidth: number, inputHeight: number) { return width * inputHeight / inputWidth; }
 export function videoInputLabel(input: Pick<VideoInput, 'clip_id' | 'frame_index'>) {
@@ -43,7 +50,7 @@ export function videoTimelineBlocks(recording: { segments: Array<Pick<VideoSegme
 export async function parseAnyRecording(text: string): Promise<Recording | VideoRecording> {
   check(new TextEncoder().encode(text).length <= 32 * 1024 * 1024, 'Recording exceeds 32 MiB.');
   const value = JSON.parse(text) as { version?: unknown };
-  return value?.version === 'measured-video-replay/v1' ? parseVideoRecording(text) : parseRecording(text);
+  return value?.version === 'measured-video-replay/v1' || value?.version === 'measured-video-replay/v2' ? parseVideoRecording(text) : parseRecording(text);
 }
 
 const DIGEST = /^[0-9a-f]{64}$/;
@@ -84,9 +91,9 @@ function strictJson(text: string): unknown {
   return parsed;
 }
 
-function validateRecipe(raw: unknown) {
-  const recipe = keys(raw, ['policy_version', 'adapter_version', 'action_threshold_hz', 'sample_fps', 'sample_time_origin', 'tick_quantization', 'window_ticks', 'session_limit_ticks', 'rolling_window_ticks', 'minimum_dwell_ticks', 'input_width', 'input_height', 'audio_input', 'stimulation', 'learning', 'pathway_detail', 'qualification_detail'], 'Video recipe');
-  const expected = { policy_version: 'right-scroll/v1', adapter_version: 'lateral-motor-adapter/v1', action_threshold_hz: 1, sample_fps: [30, 1], sample_time_origin: 'first-decoded-pts', tick_quantization: 'nearest-0.1ms-half-up-cumulative/v1', window_ticks: 40000, session_limit_ticks: 80000, rolling_window_ticks: 3000, minimum_dwell_ticks: 10000, input_width: 90, input_height: 160, audio_input: false, stimulation: null, learning: false, pathway_detail: false, qualification_detail: false };
+function validateRecipe(raw: unknown, fast: boolean) {
+  const expected = { policy_version: fast ? 'right-scroll/v2' : 'right-scroll/v1', adapter_version: 'lateral-motor-adapter/v1', action_threshold_hz: 1, sample_fps: [30, 1], sample_time_origin: 'first-decoded-pts', tick_quantization: 'nearest-0.1ms-half-up-cumulative/v1', window_ticks: 40000, session_limit_ticks: 80000, rolling_window_ticks: 3000, minimum_dwell_ticks: fast ? 30000 : 10000, input_width: 90, input_height: 160, audio_input: false, stimulation: null, learning: false, pathway_detail: false, qualification_detail: false, ...(fast ? { source_speed: [5, 1], source_window_seconds: 20 } : {}) };
+  const recipe = keys(raw, Object.keys(expected), 'Video recipe');
   for (const [name, value] of Object.entries(expected)) equal(recipe[name], value, `Video recipe ${name}`);
 }
 
@@ -118,7 +125,7 @@ function checkPolicy(raw: unknown, expected: VideoPolicy) {
   }
 }
 
-function expectedPolicy(end: number, frameIndex: number, clipIndex: number, clipCount: number, clipStart: number, motorFrames: Array<{ motor_left: number; motor_right: number }>, populations: { motor_left: number; motor_right: number }): VideoPolicy {
+function expectedPolicy(end: number, frameIndex: number, clipIndex: number, clipCount: number, clipStart: number, motorFrames: Array<{ motor_left: number; motor_right: number }>, populations: { motor_left: number; motor_right: number }, fast: boolean): VideoPolicy {
   const windowCounts = { motor_left: 0, motor_right: 0 };
   if (frameIndex >= 8) for (const row of motorFrames.slice(-9)) { windowCounts.motor_left += row.motor_left; windowCounts.motor_right += row.motor_right; }
   const window: VideoPolicy['window'] = frameIndex < 8 ? null : { start_tick: end - 3000, end_tick: end, frame_count: 9, counts: windowCounts, populations };
@@ -128,7 +135,7 @@ function expectedPolicy(end: number, frameIndex: number, clipIndex: number, clip
     const diff = right - left, scale = Math.max(left, right);
     readout = { adapter_version: 'lateral-motor-adapter/v1', signed_difference_hz: diff, evidence_strength: scale ? Math.abs(diff / scale) / (right / scale + left / scale) : 0, action: diff > 1 ? 'inspect_right' : diff < -1 ? 'inspect_left' : 'defer' };
   }
-  const minimum_dwell_met = end - clipStart >= 10000;
+  const minimum_dwell_met = end - clipStart >= (fast ? 30000 : 10000);
   let action: VideoPolicy['action'], reason: VideoPolicy['reason'], trigger: VideoPolicy['trigger'], next_clip_index: number | null;
   if (end === 80000) { action = 'stop'; reason = 'session_limit'; trigger = 'session_limit'; next_clip_index = null; }
   else {
@@ -137,19 +144,20 @@ function expectedPolicy(end: number, frameIndex: number, clipIndex: number, clip
     else if (clipIndex + 1 === clipCount) { action = 'stop'; reason = 'playlist_exhausted'; next_clip_index = null; }
     else { action = 'advance'; reason = trigger; next_clip_index = clipIndex + 1; }
   }
-  return { policy_version: 'right-scroll/v1', effective_tick: end, window, readout, minimum_dwell_met, action, reason, trigger, next_clip_index };
+  return { policy_version: fast ? 'right-scroll/v2' : 'right-scroll/v1', effective_tick: end, window, readout, minimum_dwell_met, action, reason, trigger, next_clip_index };
 }
 
 export async function parseVideoRecording(text: string): Promise<VideoRecording> {
   check(new TextEncoder().encode(text).length <= 32 * 1024 * 1024, 'Video recording exceeds 32 MiB.');
   const item = keys(strictJson(text), ['version', 'tick_ms', 'source', 'groups', 'inputs', 'segments', 'duration_ticks'], 'Video recording');
-  check(item.version === 'measured-video-replay/v1' && item.tick_ms === .1, 'Unsupported video replay version or tick size.');
+  check((item.version === 'measured-video-replay/v1' || item.version === 'measured-video-replay/v2') && item.tick_ms === .1, 'Unsupported video replay version or tick size.');
+  const fast = item.version === 'measured-video-replay/v2';
   const source = keys(item.source, ['run_kind', 'verification_mode', 'schema_sha256', 'run_metadata_sha256', 'events_sha256', 'final_scientific_sha256', 'metadata'], 'Source');
   check(source.run_kind === 'pilot' && source.verification_mode === 'integrity-only', 'Only integrity-only pilot video recordings are supported.');
   for (const name of ['schema_sha256', 'run_metadata_sha256', 'events_sha256', 'final_scientific_sha256']) check(typeof source[name] === 'string' && DIGEST.test(source[name]), `Invalid source ${name}.`);
   const metadata = keys(source.metadata, ['engine_identity', 'protocol_version', 'stimulus_version', 'family', 'seeds', 'factors', 'video_recipe', 'clips', 'input_sha256'], 'Metadata');
-  check(metadata.family === 'video-observation' && metadata.protocol_version === 'video-observation/v1' && metadata.stimulus_version === 'decoded-video-rgb/v1', 'Unsupported video observation protocol.');
-  validateRecipe(metadata.video_recipe);
+  check(metadata.family === 'video-observation' && metadata.protocol_version === `video-observation/v${fast ? 2 : 1}` && metadata.stimulus_version === `decoded-video-rgb/v${fast ? 2 : 1}`, 'Unsupported video observation protocol.');
+  validateRecipe(metadata.video_recipe, fast);
   const identity = object(metadata.engine_identity, 'Engine identity'), maps = object(identity.neural_groups, 'Neural-group maps');
   const groups = keys(item.groups, GROUPS, 'Groups');
   for (const name of GROUPS) {
@@ -169,7 +177,7 @@ export async function parseVideoRecording(text: string): Promise<VideoRecording>
     int(clip.source_size, 1, 512 * 1024 * 1024, 'Source size'); int(clip.source_width, 1, 8192, 'Source width'); int(clip.source_height, 1, 8192, 'Source height');
     check(JSON.stringify(clip.source_sample_aspect_ratio) === '[0,1]' || JSON.stringify(clip.source_sample_aspect_ratio) === '[1,1]', 'Unsupported source pixel aspect ratio.');
     const base = rational(clip.source_time_base, 'Clip time base'); int(clip.origin_pts, Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, 'Origin PTS'); int(clip.coverage_end_pts, Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, 'Coverage PTS');
-    check((clip.coverage_end_pts - clip.origin_pts) * base[0] >= 4 * base[1] && typeof clip.source_path === 'string' && clip.source_path.length > 0, 'Invalid clip coverage or path label.');
+    check((clip.coverage_end_pts - clip.origin_pts) * base[0] >= (fast ? 20 : 4) * base[1] && typeof clip.source_path === 'string' && clip.source_path.length > 0, 'Invalid clip coverage or path label.');
     check(clip.coverage_method === 'following_pts' || clip.coverage_method === 'final_frame_duration', 'Unknown source coverage method.');
     const decoder = keys(clip.decoder, ['pyav_version', 'ffmpeg_libraries'], 'Decoder');
     check(decoder.pyav_version === '19.0.2', 'Unsupported decoder declaration.');
@@ -187,7 +195,7 @@ export async function parseVideoRecording(text: string): Promise<VideoRecording>
       const frame = keys(rawFrame, ['frame_id', 'frame_index', 'sha256', 'source_pts', 'source_time_base'], `Prepared frame ${index}`);
       check(frame.frame_id === `${clipId}/frame-${index}` && frame.frame_index === index && typeof frame.sha256 === 'string' && DIGEST.test(frame.sha256), 'Invalid prepared frame identity.');
       int(frame.source_pts, Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, 'Prepared frame PTS');
-      check((previousPts === null ? frame.source_pts === clip.origin_pts : frame.source_pts >= previousPts) && (frame.source_pts - clip.origin_pts) * base[0] * 30 <= index * base[1], 'Prepared frame PTS differs from source sampling.'); previousPts = frame.source_pts;
+      check((previousPts === null ? frame.source_pts === clip.origin_pts : frame.source_pts >= previousPts) && (frame.source_pts - clip.origin_pts) * base[0] * 30 <= (fast ? 5 : 1) * index * base[1], 'Prepared frame PTS differs from source sampling.'); previousPts = frame.source_pts;
       equal(rational(frame.source_time_base, 'Prepared frame time base'), base, 'Prepared frame time base');
       declaredHashes.add(frame.sha256 as string);
       prepared.set(frame.frame_id as string, { clip_id: clipId, frame_index: index, sha256: frame.sha256 as string, source_pts: frame.source_pts, source_time_base: base });
@@ -236,7 +244,7 @@ export async function parseVideoRecording(text: string): Promise<VideoRecording>
     check(binStart === end, 'Video bins do not cover the observation.'); motorFrames.push(motor);
     tick = end;
     if (frameIndex % 3 === 2) {
-      const expected = expectedPolicy(end, frameIndex, clipIndex, metadata.clips.length, clipStart, motorFrames, populations);
+      const expected = expectedPolicy(end, frameIndex, clipIndex, metadata.clips.length, clipStart, motorFrames, populations, fast);
       checkPolicy(segment.video_policy, expected);
       if (expected.action === 'advance') { clipIndex += 1; frameIndex = 0; clipStart = end; motorFrames = []; }
       else if (expected.action === 'stop') { stopped = true; check(index === item.segments.length - 1, 'Frames follow recorded stop.'); }
@@ -257,10 +265,14 @@ export function currentClipPolicyAtTick(recording: VideoRecording, tick: number,
   return recording.segments.findLast((segment) => segment.clip_id === clipId && segment.video_policy !== null && segment.video_policy.effective_tick <= tick)?.video_policy ?? null;
 }
 
-export function advanceGestureAtTick(recording: VideoRecording, tick: number) {
-  const policy = recording.segments.findLast((segment) => segment.video_policy?.action === 'advance' && segment.video_policy.effective_tick <= tick)?.video_policy;
-  if (!policy || tick >= policy.effective_tick + 2500) return null;
-  return { reason: policy.reason, progress: (tick - policy.effective_tick) / 2500 };
+export function advanceGestureAtTick(recording: VideoRecording, tick: number, reducedMotion = false) {
+  if (reducedMotion) return null;
+  const outgoing = recording.segments.findLast((segment) => segment.video_policy?.action === 'advance' && segment.video_policy.effective_tick <= tick);
+  const policy = outgoing?.video_policy;
+  if (!outgoing || !policy || tick >= policy.effective_tick + 2000) return null;
+  const incoming = recording.segments.find((segment) => segment.playback_start_tick <= tick && tick < segment.playback_end_tick);
+  if (!incoming || incoming.clip_id === outgoing.clip_id) return null;
+  return { reason: policy.reason, progress: (tick - policy.effective_tick) / 2000, outgoingFrameId: outgoing.frame_id, incomingFrameId: incoming.frame_id };
 }
 
 export function sampleVideoAtTick(recording: VideoRecording, requestedTick: number) {

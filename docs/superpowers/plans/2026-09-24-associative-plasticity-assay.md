@@ -25,33 +25,20 @@ f.3c design is ratified; C1 is parked local uncommitted/unreviewed WIP, not acce
 
 ## Current checkpoint and live remaining work — 2026-11-02
 
-Current video-source working freeze has 33 Python/C++ members, model identity
-`e8d0e046e890418541ee9f0bb84065966228e756834f5bd7fb084f9ff5005ba8`,
-schema unchanged at `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
-Genuine-video preparation/production/export and recorded motor-policy replay
-are implemented under the [video-feed contract](../specs/2026-11-02-video-observation-feed.md).
-Focused video tests: 81 passed in 42.49s. Backend review identified three decoder
-issues, now fixed; independent closure is C0/I0/M0. Pre-decoder-fix candidate `8f69b283` recorder/replay
-compatibility: 621 passed, 2 skipped in 84.09s (sandbox junction/fullgraph opt-in);
-normal-host junction subset 2 passed/401 deselected in 0.14s. No fullgraph
-compatibility rerun is claimed. Only video_observation.py changed afterward;
-other 32 packaged sources/schema stayed exact. Final 81 focus covers the fixes. Viewer 57 tests/build exit0; independent review
-closed C0/I0/M0 on 18-file freeze
-`10ba7c3bacb748434ddebc17d60bf56b66ce2a7e698f1615b4eb654c92b8e5fc`.
-
-The single [actual video observation](../../experiments/2026-11-02-video-feed-observation.md)
-completed exit0 in 35.843s (240s budget), sealed/verified/exported: 105 input
-frames, 420 bins, 3.5s, with independently audited pixels/source PTS/counts/clocks
-and causal policy windows. A motor-right advance occurred at 2.3s; the session
-stopped at 3.5s with `playlist_exhausted`, trigger `motor_right`. Actual parser/Chrome playback/boundary/terminal and encoded-video checks
-passed: 120 decoded 900x900 VP9 frames/4.0s, including 15 labelled hold frames.
-Broader mobile/accessibility/cross-browser/live-FPS checks remain open; reuse
-this artifact. Historical Phase 1 checkpoint
-`4467431` remains separate A/B evidence in its
-[observation report](../../experiments/2026-11-02-measured-replay-observation.md).
-See the [current product plan](2026-11-02-animated-measured-replay.md).
-C1, formal qualification/freeze/confirmation and LLM remain parked; video
-integrity checks confer no scientific support or validated motor behavior.
+Current product work follows the [fast-feed plan](2026-11-02-fast-reel-feed.md):
+explicit 5× media sampling, 3–4s per clip and a 200ms illustrative recorded-action
+swipe, with normal simulation time. Default standard/v1 remains compatible.
+The current 33-member model is
+`132b9c00a2a7d3d5da15963024abf85a0a31209d7f59f5903dd4edd9298a0ac2`;
+schema remains `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
+Source review/focused tests, the actual 7s fast-feed pilot/raw/parser audit
+and same-artifact Chrome/encoded-file checks passed. The [handover](../../cloud-handover.md)
+and [fast-feed report](../../experiments/2026-11-02-fast-reel-feed-observation.md)
+are authoritative for current evidence and TODOs. Historical [standard-video](../../experiments/2026-11-02-video-feed-observation.md)
+and [A/B](../../experiments/2026-11-02-measured-replay-observation.md) results
+remain separate/source-specific. C1, formal qualification/freeze/confirmation
+and LLM stay parked; integrity checks confer no scientific support or validated
+motor behavior.
 
 The early task-level RED/GREEN boxes are historical execution instructions, not
 the current backlog. Tasks 1–6, strict analysis 7A, motor-only Task8 and source

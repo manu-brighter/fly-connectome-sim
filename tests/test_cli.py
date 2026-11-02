@@ -143,3 +143,25 @@ def test_qualify_cli_uses_fixed_declaration_and_refuses_overwrite(tmp_path, monk
     assert len(calls) == 1
     assert main(["verify-run", str(target)]) == 0
     assert json.loads(capsys.readouterr().out)["event_count"] == 3
+
+
+
+def test_video_cli_selects_closed_profile_before_native_construction(tmp_path, monkeypatch, capsys):
+    import pytest
+    from fly_connectome_sim import cli
+
+    profiles = []
+    def capture(output_dir, *, playlist_path, engine_factory, profile):
+        profiles.append(profile)
+        raise ValueError("profile selected before native")
+    monkeypatch.setattr(cli, "record_video_observation_run", capture)
+    common = ["observe-video", "--playlist", str(tmp_path / "missing.json")]
+    assert main(common) == 1
+    assert main([*common, "--profile", "fast-feed"]) == 1
+    assert main([*common, "--profile", "standard"]) == 1
+    assert profiles == ["standard", "fast-feed", "standard"]
+    with pytest.raises(SystemExit) as error:
+        main([*common, "--profile", "custom"])
+    assert error.value.code == 2
+    assert profiles == ["standard", "fast-feed", "standard"]
+    capsys.readouterr()

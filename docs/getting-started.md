@@ -154,7 +154,7 @@ An actual exported file was independently decoded and its375 frames/33–34ms
 container timestamps checked. This does not guarantee live-browser frame pacing
 or every browser/codec combination. The historical A/B measurements remain
 separate from the new genuine-video protocol; never pair reel footage with
-those A/B measurements. See the [current product plan](superpowers/plans/2026-11-02-animated-measured-replay.md).
+those A/B measurements. See the [current product plan](superpowers/plans/2026-11-02-fast-reel-feed.md).
 
 For a built preview, use `npm --prefix viewer run preview` after the build.
 Unix/native reproduction and browser capture availability require their own
@@ -179,40 +179,47 @@ Create an ignored local playlist JSON with one to five ordered local files:
 ```
 
 Paths identify actual local decoder inputs; URLs are provenance labels. The
-command downloads nothing and reads no browser cookies. Each source must cover
-its complete first four seconds. Preparation hashes the source and declares
-the exact 90x160 RGB frames, selected source PTS, decoder and resize recipe
-before engine construction. Audio is not neural input.
+command downloads nothing and reads no browser cookies. With `fast-feed`, each
+source must cover its complete first **20 seconds**. Preparation hashes the
+source and declares 120 exact 90x160 RGB frames sampled at media time `5*j/30`,
+selected source PTS and decoder/resize recipe before engine construction.
+Audio is not neural input. Short sources are rejected; no padding or looping.
 
 ```powershell
-.venv/Scripts/python.exe -m fly_connectome_sim.cli observe-video --playlist runs/my-playlist.json --output-dir runs/my-video-observation
-.venv/Scripts/python.exe -m fly_connectome_sim.cli verify-run runs/my-video-observation
-.venv/Scripts/python.exe -m fly_connectome_sim.cli export-video-replay runs/my-video-observation --output runs/my-video-replay.json
+.venv/Scripts/python.exe -m fly_connectome_sim.cli observe-video --profile fast-feed --playlist runs/my-playlist.json --output-dir runs/my-fast-video-observation
+.venv/Scripts/python.exe -m fly_connectome_sim.cli verify-run runs/my-fast-video-observation
+.venv/Scripts/python.exe -m fly_connectome_sim.cli export-video-replay runs/my-fast-video-observation --output runs/my-fast-video-replay.json
 ```
 
-Choose that JSON through **Open recording** in the same viewer. The separate
-`measured-video-replay/v1` reader shows the exact fed portrait frames, source PTS
-and recorded policy. Original `measured-replay/v1` A/B files remain supported.
-Outputs must be new and remain ignored. Unix uses `.venv/bin/python`; that
-platform still requires its own native and decoder verification.
+Omitting `--profile` (or using `--profile standard`) preserves the original
+1×/v1 protocol: full first **4 seconds** of each source and 1s minimum dwell.
+Fast-feed uses the closed v2 protocol with 5× source sampling and 3s minimum
+dwell. Both have a 4s clip cap/8s session cap; simulation advances at normal
+30Hz with no external stimulation, `learning=False` and normal passive evolution.
 
-The reward-free engine advances every selected frame with no external
-stimulation and `learning=False`. The predeclared `right-scroll/v1` display
-policy uses actual 300ms lateral motor counts, evaluated every100ms. After a
-one-second dwell, `inspect_right` advances to the next clip; left/defer watches.
-A four-second clip-window limit can also advance the feed, explicitly labelled
-as an external presentation limit. The session stops by eight seconds or
-playlist exhaustion. A swipe illustrates a recorded advance; it is not a
-measured limb trajectory, semantic reaction or validated biological behavior.
-See the [video-feed contract](superpowers/specs/2026-11-02-video-observation-feed.md).
+Choose the exported JSON through **Open recording** in the same viewer.
+Both `measured-video-replay/v1` and `/v2` show actual fed portrait frames,
+media PTS and recorded policy; original A/B `measured-replay/v1` remains supported.
+`Reel 5×` describes media sampling, independently of native simulation time and
+Replay Speed. Outputs must be new and ignored. Unix uses `.venv/bin/python`;
+that platform needs its own native/decoder verification.
 
-The bounded Windows pilot observed the first two user-selected reels for3.5s;
-the recorded motor policy advanced at2.3s and exhausted the playlist at3.5s.
-Its actual UI export decoded to120 frames/4.0s, including the labelled0.5s hold.
-Use the existing ignored `runs/measured-video-replay-reels-20261102.json` for
-further local video-viewer work. A fresh checkout must create its own missing
-sources/runtime/recording. Exact results and limitations are in the
-[video observation report](experiments/2026-11-02-video-feed-observation.md).
+The engineered right-scroll policy uses actual 300ms lateral motor counts,
+evaluated every 100ms. After the profile's minimum dwell, `inspect_right` may
+advance; left/defer watches. The 4s clip-window limit can also advance, explicitly
+labelled external. A recorded ADVANCE starts a 200ms illustrative swipe using
+the last fed outgoing frame and current actual incoming frame. The composite
+and foreleg gesture are presentation, not extra neural input or measured limb
+motion. STOP does not swipe; reduced motion immediately shows incoming input.
+No semantic reaction, learned preference or validated biological behavior is claimed.
+
+For current local UI work, reuse the validated fast-feed artifact
+`runs/measured-video-replay-fast-reels-20261102.json`. Its bounded actual
+runtime/raw/Chrome/encoded-file acceptance passed. The [fast-feed report](experiments/2026-11-02-fast-reel-feed-observation.md)
+and [handover](cloud-handover.md) record current results/limitations. The earlier
+[3.5s standard-video pilot](experiments/2026-11-02-video-feed-observation.md)
+is separate historical 1× evidence. A fresh checkout must provide its missing
+sources/runtime/recording. See the [fast-feed contract](superpowers/specs/2026-11-02-fast-reel-feed.md).
 
 ## Separate assay commands
 

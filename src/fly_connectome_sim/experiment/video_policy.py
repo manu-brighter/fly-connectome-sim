@@ -12,12 +12,21 @@ POLICY_VERSION = "right-scroll/v1"
 ADAPTER = LateralMotorAdapter()
 
 
+def _profile_version(profile: str) -> str:
+    if type(profile) is not str or profile not in {"standard", "fast-feed"}:
+        raise RunArtifactError("Unsupported video observation profile")
+    return "v1" if profile == "standard" else "v2"
+
+
 def evaluate_video_policy(
     *, counts: list[dict[str, int]], populations: dict[str, int],
     clip_index: int, clip_count: int, clip_start_tick: int,
     frame_index: int, end_tick: int, session_limit_tick: int = 80000,
+    profile: str = "standard",
 ) -> dict:
     """Evaluate after one complete 100 ms boundary using only this clip's frames."""
+    version = _profile_version(profile)
+    minimum_dwell_ticks = 10000 if profile == "standard" else 30000
     if (type(frame_index) is not int or not 0 <= frame_index < 120
             or frame_index % 3 != 2 or len(counts) != frame_index + 1
             or type(clip_index) is not int or type(clip_count) is not int
@@ -44,7 +53,7 @@ def evaluate_video_policy(
         readout = asdict(ADAPTER.adapt({"rates_hz": {
             name: sums[name] / (populations[name] * 0.3) for name in populations
         }}))
-    dwell_met = end_tick - clip_start_tick >= 10000
+    dwell_met = end_tick - clip_start_tick >= minimum_dwell_ticks
     if end_tick == session_limit_tick:
         action, reason, trigger, next_index = "stop", "session_limit", "session_limit", None
     else:
@@ -62,7 +71,7 @@ def evaluate_video_policy(
         else:
             action, reason, next_index = "advance", trigger, clip_index + 1
     return {
-        "policy_version": POLICY_VERSION,
+        "policy_version": f"right-scroll/{version}",
         "effective_tick": end_tick,
         "window": window,
         "readout": readout,

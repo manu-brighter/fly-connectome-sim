@@ -38,18 +38,20 @@ The motor readout is an engineered display policy with an uncalibrated 1 Hz
 threshold. It uses measured lateral motor rates and leaves the primary MBON11
 classification unchanged; it does not establish learned behavior.
 
-Measured Replay remains experimental WIP. The historical [12-second A/B observation](docs/experiments/2026-11-02-measured-replay-observation.md)
-has an independently decoded 375-frame/12.5s export, including a labelled 0.5s
-presentation hold. The new [video-feed contract](docs/superpowers/specs/2026-11-02-video-observation-feed.md)
-uses exact 90x160 RGB frames at 30Hz, reward-free observation and a predeclared
-rolling motor policy; clip-window advances are distinguished from motor actions.
-Independent source review passed; one [actual video observation](docs/experiments/2026-11-02-video-feed-observation.md)
-completed in 35.843s, with a recorded motor-right advance at 2.3s and
-playlist-exhaustion stop at 3.5s. Chrome playback/boundary checks passed; the
-actual export decoded to 120 frames/4.0s, including a labelled 0.5s hold.
-This engineered policy does not establish learned preference.
-See the [current product plan](docs/superpowers/plans/2026-11-02-animated-measured-replay.md)
+Measured Replay remains experimental WIP. The current [fast-feed contract](docs/superpowers/specs/2026-11-02-fast-reel-feed.md)
+adds an explicit `fast-feed` profile: 5× source-content sampling, 3s minimum
+watch time, a 4s clip cap and a 200ms illustrative swipe after recorded ADVANCE.
+Simulation stays at normal time; media PTS and replay speed are separate clocks.
+Default `standard` preserves the original 1×/v1 protocol. The swipe combines
+actual fed outgoing/incoming frames for presentation; it is not neural input.
+Source review, focused tests and the actual 7s fast-feed pilot/raw/parser audit
+passed. Chrome/boundary checks and the actual 225-frame/7.5s export passed,
+including a labelled 0.5s presentation hold. See the [current handover](docs/cloud-handover.md),
+[fast-feed plan](docs/superpowers/plans/2026-11-02-fast-reel-feed.md)
 and [video commands](docs/getting-started.md#local-video-observation-and-recorded-feed-actions).
+The earlier [12s A/B](docs/experiments/2026-11-02-measured-replay-observation.md)
+and [3.5s standard-video](docs/experiments/2026-11-02-video-feed-observation.md)
+observations are separate historical evidence, not fast-feed measurements.
 
 Implementation and verification details live in the
 [assay plan](docs/superpowers/plans/2026-09-24-associative-plasticity-assay.md).
