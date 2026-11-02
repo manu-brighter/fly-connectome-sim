@@ -1,9 +1,10 @@
 import './style.css';
-import { GROUPS, MAX_FILE_BYTES, advancePlayback, parseRecording, sampleAtTick, type Recording } from './replay.ts';
+import { GROUPS, advancePlayback, sampleAtTick, type Recording } from './replay.ts';
 import { BufferTarget, CanvasSource, Output, WebMOutputFormat, canEncodeVideo } from 'mediabunny';
-import { EXPORT_FPS, EXPORT_SIZE, writeFrames } from './export.ts';
+import { EXPORT_FPS, EXPORT_SIZE, quantizeVideoTick, writeFrames } from './export.ts';
 import { createStage } from './stage.ts';
 import { createOperationGate } from './operation.ts';
+import { parseAnyRecording, sampleVideoAtTick, videoInputLabel, videoPolicyLabel, videoTimelineBlocks, type VideoRecording } from './video-replay.ts';
 
 function element<T extends HTMLElement>(id: string): T {
   return document.getElementById(id) as T;
@@ -18,7 +19,7 @@ const openButton = element<HTMLButtonElement>('open');
 const sourceButton = element<HTMLButtonElement>('source-toggle');
 const errorElement = element<HTMLParagraphElement>('error');
 const videoNote = element<HTMLParagraphElement>('video-note');
-let recording: Recording | null = null;
+let recording: Recording | VideoRecording | null = null;
 let tick = 0, playing = false, lastTime = performance.now();
 const operations = createOperationGate();
 let exportController: AbortController | null = null;
@@ -50,6 +51,9 @@ for (const name of ['pam11', 'ppl101', 'mbon07'] as const) {
 
 function showError(message: string) { errorElement.textContent = message; errorElement.hidden = false; }
 if (stageError) showError(stageError);
+function sampleAt(record: Recording | VideoRecording, position: number) {
+  return record.version === 'measured-video-replay/v1' ? sampleVideoAtTick(record, position) : sampleAtTick(record, position);
+}
 
 const traceBases: Partial<Record<'kc' | 'mbon11', HTMLCanvasElement>> = {};
 function drawTrace(name: 'kc' | 'mbon11') {
@@ -85,17 +89,30 @@ function drawTrace(name: 'kc' | 'mbon11') {
 
 function update() {
   if (!recording) return;
-  const sample = sampleAtTick(recording, tick);
+  const sample = sampleAt(recording, tick);
   stage?.setSample(sample);
-  element('stimulus').textContent = sample.segment.stimulus === 'black' ? 'Black' : sample.segment.stimulus;
+  const video = 'input' in sample;
+  element('input-caption').textContent = video ? 'Fed video frame' : 'Recorded input';
+  element('stimulus').textContent = video ? videoInputLabel(sample.input) : sample.segment.stimulus === 'black' ? 'Black' : sample.segment.stimulus;
   element('stimulation').textContent = sample.segment.stimulation === null ? 'None' : 'Present';
   element('learning').textContent = String(sample.segment.learning);
   for (const name of GROUPS) element(`${name}-rate`).textContent = sample.rates[name].toFixed(2);
   element('source-clock').textContent = `${(sample.sourceTick / 10000).toFixed(4)} s`;
   element('event-sequence').textContent = String(sample.segment.event_sequence);
+  element('video-policy').hidden = !video;
+  if (video) {
+    element('source-pts').textContent = `${sample.input.source_pts} × ${sample.input.source_time_base[0]}/${sample.input.source_time_base[1]} s`;
+    if (recording.version === 'measured-video-replay/v1') {
+      const clips = recording.source.metadata.clips as Array<{ source_url: string }>;
+      element<HTMLAnchorElement>('clip-url').href = clips[Number(sample.input.clip_id.slice(5))].source_url;
+    }
+    element('policy-status').textContent = videoPolicyLabel(sample.policy);
+    const current = sample.clipPolicy;
+    element('rolling-readout').textContent = current?.window && current.readout ? `${current.readout.action} · Δ ${current.readout.signed_difference_hz.toFixed(2)} Hz · L ${current.window.counts.motor_left} / R ${current.window.counts.motor_right} spikes over 300 ms` : 'Unavailable until 300 ms of this clip has been observed';
+  }
   element('bin-note').textContent = `Hz / cell = integer spikes ÷ population ÷ ${(sample.bin.duration_ticks / 10).toFixed(1)} ms. Complete recorded-bin values; traces hold each bin without smoothing.`;
   element('time').textContent = `${(sample.tick / 10000).toFixed(3)} / ${(recording.duration_ticks / 10000).toFixed(3)} s`;
-  seek.value = String(sample.tick); seek.setAttribute('aria-valuetext', `${(sample.tick / 10000).toFixed(3)} seconds, input ${sample.segment.stimulus}`);
+  seek.value = String(sample.tick); seek.setAttribute('aria-valuetext', `${(sample.tick / 10000).toFixed(3)} seconds, input ${video ? videoInputLabel(sample.input) : sample.segment.stimulus}`);
   play.textContent = playing ? 'Pause' : 'Play'; play.setAttribute('aria-label', playing ? 'Pause recording' : 'Play recording');
   drawTrace('kc'); drawTrace('mbon11');
 }
@@ -115,8 +132,8 @@ file.addEventListener('change', async () => {
   playing = false; update();
   loadingControls(true);
   try {
-    if (selected.size > MAX_FILE_BYTES) throw new Error('File exceeds 8 MiB. Export a shorter observation recording.');
-    const parsed = await parseRecording(await selected.text());
+    if (selected.size > 32 * 1024 * 1024) throw new Error('File exceeds 32 MiB. Export a shorter observation recording.');
+    const parsed = await parseAnyRecording(await selected.text());
     if (!operations.isCurrentLoad(generation)) return;
     recording = parsed; tick = 0;
     delete traceBases.kc; delete traceBases.mbon11;
@@ -129,7 +146,12 @@ file.addEventListener('change', async () => {
     videoButton.disabled = !videoCodec || !stage;
     element('timeline-end').textContent = `${(parsed.duration_ticks / 10000).toFixed(1)} s`;
     const segments = element('segments'); segments.replaceChildren();
-    for (const segment of parsed.segments) {
+    if (parsed.version === 'measured-video-replay/v1') {
+      for (const block of videoTimelineBlocks(parsed)) {
+        const item = document.createElement('span'); item.className = `stimulus-video-${Number(block.clipId.slice(5)) % 2}`;
+        item.style.flexGrow = String(block.duration); item.textContent = `Clip ${Number(block.clipId.slice(5)) + 1}`; segments.append(item);
+      }
+    } else for (const segment of parsed.segments) {
       const item = document.createElement('span'); item.className = `stimulus-${segment.stimulus}`;
       item.style.flexGrow = String(segment.playback_end_tick - segment.playback_start_tick);
       item.textContent = segment.stimulus === 'black' ? '' : segment.stimulus; segments.append(item);
@@ -183,11 +205,11 @@ videoButton.addEventListener('click', async () => {
     await output.start();
     controller.signal.throwIfAborted();
     const completed = await writeFrames(sourceRecording.duration_ticks, {
-      paint: (frame) => { sourceStage.setSample(sampleAtTick(sourceRecording, frame.tick)); sourceStage.render(frame.terminalHold); },
+      paint: (frame) => { sourceStage.setSample(sampleAt(sourceRecording, frame.tick)); sourceStage.render(frame.terminalHold); },
       add: (timestamp, duration) => source.add(timestamp, duration),
       finalize: async () => { await output!.finalize(); return target.buffer; },
       cancel: () => output!.cancel(),
-    }, controller.signal, (done, total) => { videoNote.textContent = `Encoding ${done}/${total} frames…`; });
+    }, controller.signal, (done, total) => { videoNote.textContent = `Encoding ${done}/${total} frames…`; }, sourceRecording.version === 'measured-video-replay/v1' ? quantizeVideoTick : undefined);
     if (!completed?.byteLength) throw new Error('Encoder produced an empty video.');
     const url = URL.createObjectURL(new Blob([completed], { type: 'video/webm' }));
     const link = document.createElement('a'); link.href = url; link.download = 'measured-replay.webm'; link.click();

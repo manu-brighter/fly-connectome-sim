@@ -9,3 +9,8 @@ export function flyPose(tick: number, reducedMotion: boolean) {
     legAngle: Math.sin(time * 2 * Math.PI * 1.4) * .055,
   };
 }
+
+export function advancePose(progress: number, reducedMotion = false) {
+  const phase = reducedMotion || progress <= 0 || progress >= 1 ? 0 : Math.sin(Math.PI * progress);
+  return { lift: phase * .75, reach: phase * .3 };
+}

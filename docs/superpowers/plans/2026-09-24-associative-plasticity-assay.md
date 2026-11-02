@@ -25,23 +25,33 @@ f.3c design is ratified; C1 is parked local uncommitted/unreviewed WIP, not acce
 
 ## Current checkpoint and live remaining work — 2026-11-02
 
-Current reviewed Replay WIP source has 31 Python/C++ members, model identity
-`f70722c4c253d48b6496e772a2780e3f6aba3474aca13a7a799bcd5941463b46`,
+Current video-source working freeze has 33 Python/C++ members, model identity
+`e8d0e046e890418541ee9f0bb84065966228e756834f5bd7fb084f9ff5005ba8`,
 schema unchanged at `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
-The approved product slice adds only cli.py/new measured_replay.py to the
-accepted f.3b source; other 29 remain exact. Backend 44 focused tests pass;
-current recorder/replay compatibility: 622 passed/one opt-in skip in 48.97s.
-Reviewed viewer source has 42 passing tests/build0. A single six-cycle/12s actual
-observation completed in 208.125s (240s budget), sealed/verified/exported; raw
-audit and actual frontend parser checked 24 segments/1200 bins. Actual Chrome
-file loading/play/pause/speed/seek/Home/source, sampled values and desktop/mobile
-checks passed. The corrected WebM decoded and its final 12.000/12.000s black
-measured overlay was inspected; bounded vertical checks passed. Experimental
-WIP remains in foreground frame pacing/export precision/accessibility/cross-browser
-checks; no exact 12s/30fps export or complete-product claim follows.
-Reuse that recording for UI work; no new native run or C1 return is automatic.
-The [observation report](../../experiments/2026-11-02-measured-replay-observation.md)
-retains identities and limits. LLM/scientific work remains separately gated.
+Genuine-video preparation/production/export and recorded motor-policy replay
+are implemented under the [video-feed contract](../specs/2026-11-02-video-observation-feed.md).
+Focused video tests: 81 passed in 42.49s. Backend review identified three decoder
+issues, now fixed; independent closure is C0/I0/M0. Pre-decoder-fix candidate `8f69b283` recorder/replay
+compatibility: 621 passed, 2 skipped in 84.09s (sandbox junction/fullgraph opt-in);
+normal-host junction subset 2 passed/401 deselected in 0.14s. No fullgraph
+compatibility rerun is claimed. Only video_observation.py changed afterward;
+other 32 packaged sources/schema stayed exact. Final 81 focus covers the fixes. Viewer 57 tests/build exit0; independent review
+closed C0/I0/M0 on 18-file freeze
+`10ba7c3bacb748434ddebc17d60bf56b66ce2a7e698f1615b4eb654c92b8e5fc`.
+
+The single [actual video observation](../../experiments/2026-11-02-video-feed-observation.md)
+completed exit0 in 35.843s (240s budget), sealed/verified/exported: 105 input
+frames, 420 bins, 3.5s, with independently audited pixels/source PTS/counts/clocks
+and causal policy windows. A motor-right advance occurred at 2.3s; the session
+stopped at 3.5s with `playlist_exhausted`, trigger `motor_right`. Actual parser/Chrome playback/boundary/terminal and encoded-video checks
+passed: 120 decoded 900x900 VP9 frames/4.0s, including 15 labelled hold frames.
+Broader mobile/accessibility/cross-browser/live-FPS checks remain open; reuse
+this artifact. Historical Phase 1 checkpoint
+`4467431` remains separate A/B evidence in its
+[observation report](../../experiments/2026-11-02-measured-replay-observation.md).
+See the [current product plan](2026-11-02-animated-measured-replay.md).
+C1, formal qualification/freeze/confirmation and LLM remain parked; video
+integrity checks confer no scientific support or validated motor behavior.
 
 The early task-level RED/GREEN boxes are historical execution instructions, not
 the current backlog. Tasks 1–6, strict analysis 7A, motor-only Task8 and source

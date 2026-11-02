@@ -32,21 +32,24 @@ left/right preference.
 | Experiment state | Checkpoint restore, complete-state hashes, reset determinism, candidate-memory interventions and authenticated native map/schema context | A qualified production frozen configuration |
 | Assay evidence | Caller-owned native production, source-specific 408-pair tiny-native repeats, shared declaration arithmetic and a bounded pair checker with full EOF validation | Global grid/selected-evidence reconciliation/public freezing, fullgraph held-out confirmation and the `assay` CLI |
 | Resource pilots | Fullgraph components, trained 10-/70-second one-anchor pilots with isolated native replay, and a [reviewed detail-on first-training-prefix sample](docs/experiments/2026-11-02-fullgraph-detail-prefix-pilot.md) | Unprofiled controlled timing, complete grid/assay capacity and a tested cloud/Linux environment |
-| Product | Actual A/B observation replay; illustrative fly motion and timestamped 30fps export checked on one encoded file | Real-video neural input, recorded motor-driven scrolling, accessibility/cross-browser polish and LLM event planning |
+| Product | A/B replay with inspected 30fps export; genuine-video preparation, recording/export and recorded motor-policy replay implemented | Longer feed sessions, accessibility/cross-browser polish and LLM event planning |
 
 The motor readout is an engineered display policy with an uncalibrated 1 Hz
 threshold. It uses measured lateral motor rates and leaves the primary MBON11
 classification unchanged; it does not establish learned behavior.
 
-Measured Replay v1 remains WIP: one [12-second fullgraph observation](docs/experiments/2026-11-02-measured-replay-observation.md)
-was sealed, verified, exported and loaded in Chrome. The previous video passed
-end-pixel checks but failed animation quality: only 17 frames in 13.326s.
-The corrected 900x900 export has 375 decoded frames at 33/34ms timestamps:
-12s measured replay plus 0.5s explicitly labelled presentation hold. Body/wing
-motion is illustrative; real reel input and motor-driven feed scrolling are
-not implemented. Continue with the SAME recording for visual work. See the
-[next product plan](docs/superpowers/plans/2026-11-02-animated-measured-replay.md) and
-[recording and viewer commands](docs/getting-started.md#measured-observation-and-local-replay).
+Measured Replay remains experimental WIP. The historical [12-second A/B observation](docs/experiments/2026-11-02-measured-replay-observation.md)
+has an independently decoded 375-frame/12.5s export, including a labelled 0.5s
+presentation hold. The new [video-feed contract](docs/superpowers/specs/2026-11-02-video-observation-feed.md)
+uses exact 90x160 RGB frames at 30Hz, reward-free observation and a predeclared
+rolling motor policy; clip-window advances are distinguished from motor actions.
+Independent source review passed; one [actual video observation](docs/experiments/2026-11-02-video-feed-observation.md)
+completed in 35.843s, with a recorded motor-right advance at 2.3s and
+playlist-exhaustion stop at 3.5s. Chrome playback/boundary checks passed; the
+actual export decoded to 120 frames/4.0s, including a labelled 0.5s hold.
+This engineered policy does not establish learned preference.
+See the [current product plan](docs/superpowers/plans/2026-11-02-animated-measured-replay.md)
+and [video commands](docs/getting-started.md#local-video-observation-and-recorded-feed-actions).
 
 Implementation and verification details live in the
 [assay plan](docs/superpowers/plans/2026-09-24-associative-plasticity-assay.md).

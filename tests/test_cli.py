@@ -63,6 +63,30 @@ def test_export_replay_cli_missing_source_is_fail_closed(tmp_path, capsys):
     assert output.out == "" and output.err
 
 
+def test_video_observation_cli_rejects_missing_playlist_before_engine(tmp_path, monkeypatch, capsys):
+    from fly_connectome_sim import cli
+
+    def forbidden():
+        raise AssertionError("invalid video request constructed an engine")
+
+    monkeypatch.setattr(cli.FlyEngine, "from_prepared_graph", forbidden)
+    target = tmp_path / "video-run"
+    assert main(["observe-video", "--playlist", str(tmp_path / "missing.json"),
+                 "--output-dir", str(target)]) == 1
+    assert not target.exists()
+    output = capsys.readouterr()
+    assert output.out == "" and "playlist" in output.err.lower()
+
+
+def test_export_video_replay_cli_missing_source_is_fail_closed(tmp_path, capsys):
+    target = tmp_path / "video-replay.json"
+    assert main(["export-video-replay", str(tmp_path / "missing"),
+                 "--output", str(target)]) == 1
+    assert not target.exists()
+    output = capsys.readouterr()
+    assert output.out == "" and output.err
+
+
 def test_qualify_cli_uses_fixed_declaration_and_refuses_overwrite(tmp_path, monkeypatch, capsys):
     from fly_connectome_sim import cli
 

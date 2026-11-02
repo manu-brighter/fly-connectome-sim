@@ -24,6 +24,7 @@ from .experiment.qualification import (
 )
 from .experiment.recorder import RunRecorder, verify_run
 from .experiment.measured_replay import export_measured_replay, record_observation_run
+from .experiment.video_observation import export_video_replay, record_video_observation_run
 from .experiment.stimuli import AssayStimuli
 
 
@@ -104,6 +105,13 @@ def main(argv: list[str] | None = None) -> int:
     export_parser = commands.add_parser("export-replay")
     export_parser.add_argument("path", type=Path)
     export_parser.add_argument("--output", type=Path, default=Path("runs/measured-replay.json"))
+    video_parser = commands.add_parser("observe-video")
+    video_parser.add_argument("--playlist", type=Path, required=True)
+    video_parser.add_argument("--output-dir", type=Path, default=Path("runs/video-observation"))
+    video_export_parser = commands.add_parser("export-video-replay")
+    video_export_parser.add_argument("path", type=Path)
+    video_export_parser.add_argument("--output", type=Path,
+                                     default=Path("runs/measured-video-replay.json"))
     args = parser.parse_args(argv)
     try:
         if args.command == "verify-run":
@@ -115,6 +123,17 @@ def main(argv: list[str] | None = None) -> int:
             ))
         elif args.command == "export-replay":
             replay = export_measured_replay(args.path, args.output)
+            summary = {"path": str(args.output), "version": replay["version"],
+                       "duration_ticks": replay["duration_ticks"],
+                       "segment_count": len(replay["segments"]),
+                       "verification_mode": replay["source"]["verification_mode"]}
+        elif args.command == "observe-video":
+            summary = _verified_summary(record_video_observation_run(
+                args.output_dir, playlist_path=args.playlist,
+                engine_factory=FlyEngine.from_prepared_graph,
+            ))
+        elif args.command == "export-video-replay":
+            replay = export_video_replay(args.path, args.output)
             summary = {"path": str(args.output), "version": replay["version"],
                        "duration_ticks": replay["duration_ticks"],
                        "segment_count": len(replay["segments"]),

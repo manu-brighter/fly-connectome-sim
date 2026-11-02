@@ -16,6 +16,9 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest>=8,<10"]
+media = [
+    "av==19.0.2",
+]
 
 [project.scripts]
 fly-connectome-sim = "fly_connectome_sim.cli:main"

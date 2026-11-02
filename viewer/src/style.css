@@ -334,6 +334,12 @@ h1 {
 .segments .stimulus-black {
   background:#d9e2ea
 }
+.segments .stimulus-video-0 { background:#bacbee }
+.segments .stimulus-video-1 { background:#c4dcd9 }
+.policy-readout { grid-column:1/-1; border-top:1px solid #c9d9e5; margin-top:16px; padding-top:12px; display:grid; gap:4px; font-size:11px; color:#597083; overflow-wrap:anywhere }
+.policy-readout strong { color:#172b3a; font-size:14px; font-weight:500 }
+.policy-readout small { line-height:1.4 }
+.policy-readout b { font-weight:400; color:#172b3a }
 #seek {
   position:absolute;
   top:-2px;

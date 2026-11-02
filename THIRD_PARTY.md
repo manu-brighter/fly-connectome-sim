@@ -34,3 +34,13 @@ The complete license and official notice are available from
 [Mozilla's MPL 2.0 text](https://www.mozilla.org/en-US/MPL/2.0/). The dependency
 version/integrity is pinned in `viewer/package-lock.json`. No Mediabunny source
 modifications are included in this repository.
+
+## Optional video input dependency
+
+The `media` extra pins **PyAV 19.0.2**, distributed under **BSD-3-Clause**.
+Its installed distribution includes `LICENSE.txt` and author notices; upstream
+source is available in the [PyAV repository](https://github.com/PyAV-Org/PyAV).
+The decoder uses FFmpeg libraries supplied by the selected installation. Their
+versions are recorded in each prepared clip's metadata. This repository does
+not redistribute PyAV/FFmpeg binaries or the downloaded Instagram renditions;
+dependency archive hashes are pinned in `uv.lock`.

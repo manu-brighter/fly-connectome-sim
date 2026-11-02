@@ -2,18 +2,17 @@
 
 Use `origin` of `manu-brighter/fly-connectome-sim`, branch
 `feat/connectome-experiment-core`, latest pushed feature commit. The latest
-reviewed WIP checkpoint adds the measured-observation recorder/exporter and
-local viewer source, plus one sealed/exported real fullgraph observation.
-Current 31-member model-source identity:
-`f70722c4c253d48b6496e772a2780e3f6aba3474aca13a7a799bcd5941463b46`;
+reviewed and pushed Phase 1 checkpoint is `4467431`: the historical A/B
+recording has an inspected 375-frame/12.5s timestamped export. The current
+video-source working freeze has 33 Python/C++ members, model identity
+`e8d0e046e890418541ee9f0bb84065966228e756834f5bd7fb084f9ff5005ba8`;
 schema remains `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
-Only existing cli.py and new measured_replay.py differ from accepted f.3b;
-the other 29 package source files are exact. Earlier assay evidence remains
-historical/source-specific; f.3c–f.3d/f.4–f.6/g remain open. The project and Replay
-v1 remain experimental WIP. Earlier measurement/end-pixel checks remain valid,
-but the previous 17-frame video failed the user's animation/smoothness gate.
-Phase 1 corrects timestamped export and illustrative motion; real-video input
-and recorded motor-driven scrolling are next, not implemented or accepted.
+Genuine-video preparation, production, compact export and viewer support are
+implemented under the [video-feed contract](superpowers/specs/2026-11-02-video-observation-feed.md).
+Independent backend review closed C0/I0/M0; the single actual video fullgraph
+run, ordinary verification, compact export and independent raw audit passed.
+Actual Chrome playback/boundary and encoded-video checks passed. Earlier assay evidence is historical/source-specific;
+f.3c–f.3d/f.4–f.6/g, formal source freeze and LLM work remain open/parked.
 
 Continue autonomously on the original Windows workstation, including reviewed
 feature commits and explicit feature pushes, without pausing at each checkpoint.
@@ -34,8 +33,9 @@ checkout, not a gate on current local work. Never push main/master/develop.
    [70-second resource report](experiments/2026-11-01-fullgraph-retention-pilot.md)
    and [earlier short-retention report](experiments/2026-10-08-fullgraph-anchor-pilot.md).
 6. [Measured Replay v1 plan](superpowers/plans/2026-11-02-measured-replay-v1.md)
-   and [current observation report](experiments/2026-11-02-measured-replay-observation.md).
-7. [Animated replay and genuine-video continuation](superpowers/plans/2026-11-02-animated-measured-replay.md).
+   and [historical A/B observation report](experiments/2026-11-02-measured-replay-observation.md).
+7. [Animated replay and genuine-video continuation](superpowers/plans/2026-11-02-animated-measured-replay.md)
+   and [current video observation report](experiments/2026-11-02-video-feed-observation.md).
 
 The older connectome-core plan is background. This tracked handover and current
 plan orient a fresh checkout; private local SDD notes/chats/scripts are not
@@ -60,18 +60,59 @@ this document. Do not claim to reverify unavailable bytes.
   confirmation exists. Missing evidence is not an authenticated scientific negative.
   Never fabricate successful gates/configuration to continue a negative run.
 
-## Current measured Replay checkpoint and next continuation
+## Current video-source checkpoint and actual observation
 
-Backend source review passed; focused native/CLI tests: **44 passed in 9.58s**.
-Current-source recorder/replay compatibility: **622 passed, one opt-in skip in
-48.97s**, exit0; the skipped full MaleCNS map-context test was not rerun here.
-Those backend/compatibility results are historical checks on the unchanged
-31-member model; no native tests or recording were rerun for this viewer phase.
-Current viewer source review closure has zero Critical/Important/Minor findings
-after the load/export-race fix. Fresh repeated checks: 44 tests passed in 234.9783ms,
-build exit0; all 16 viewer files and model 31 matched before/after both commands.
-Worker npm audit also exited 0. The bundle-size advisory persists. The 16-file viewer freeze is
-`1f768481cc4652a06056f66bbdb2ade3738debf58b671f3f06be475cb263166c`.
+The 33-member backend freeze above implements two first-4s source windows,
+90x160 exact RGB at 30Hz and at most 8s continuous reward-free observation.
+The predeclared `right-scroll/v1` policy evaluates causal rolling 300ms counts
+every 100ms, with 1s minimum dwell and 4s clip cap. Decisions change subsequent
+input during production; zero/left/defer do not force a motor advance.
+
+Focused video checks: **81 passed in 42.49s**. Independent Astra review found
+three decoder issues, subsequently fixed; independent closure is C0/I0/M0. Pre-decoder-fix candidate `8f69b283`
+recorder/replay compatibility: **621 passed, 2 skipped in 84.09s** (sandbox junction
+and opt-in fullgraph cases); the normal-host junction subset separately passed
+**2 tests, 401 deselected in 0.14s**. Only video_observation.py changed afterward; the other 32 packaged sources
+and schema stayed exact. The final 81 focused tests cover those fixes; no current
+whole-suite or fullgraph compatibility rerun is claimed.
+Viewer: **57 tests passed; build exit0**. Independent Sol review closed with
+zero Critical/Important/Minor findings on the 18-file freeze
+`10ba7c3bacb748434ddebc17d60bf56b66ce2a7e698f1615b4eb654c92b8e5fc`.
+
+The single actual run completed exit0 in **35.843s** within its 240s wall budget;
+ordinary verify/export completed exit0 in 1.094s/1.766s. All 33 packaged sources
+remained unchanged. Actual session: 107 events, 105 consumed frames, 420 bins,
+35000ticks/3.5s. The compact JSON is 6,266,520 bytes, SHA256
+`ca85478dbe65edf64b4d60d579699b672aed54bc34f833a9d7c7837d3183e6f5`.
+Independent audit matched all 240 prepared source PTS/RGB hashes and all 105
+consumed pixels, counts, clocks and policy evidence windows.
+
+The recorded policy made 33 watch decisions, one motor-right advance at 2.3s
+(rolling 300ms counts left 0/right 2; difference 6.6667Hz), then stopped at 3.5s
+with `playlist_exhausted`, trigger `motor_right` (left 3/right 4;3.3333Hz).
+Clip1 frame0 was the actual next input after the advance; no input was
+retroactively rearranged. These are engineered policy actions, not evidence of
+learning, semantic understanding or validated preference. See the
+[video observation report](experiments/2026-11-02-video-feed-observation.md).
+
+Actual frontend parsing and Chrome file loading/play/pause/seek/terminal checks
+passed. Tick22999 showed clip0/frame68 with WATCH; tick23000 selected
+clip1/frame0 with ADVANCE and unavailable current-clip rolling evidence.
+Tick23100 MBON11=50.00/KC2.41 matched bins. Export restored that paused position.
+The actual UI WebM is 1,246,462 bytes, SHA256
+`96278f99e516e7330b30a06eed3e8b111adb6900fdaf0c5ef70acf5fb1b69fd5`.
+Independent byte/decoder checks confirmed 120 VP9 frames, 900x900, 4.0s,
+33/34ms PTS spacing and explicit 4000ms end: 3.5s measured plus 15 labelled
+hold frames. Samples showed changing illustrative pose, a foreleg gesture after
+the recorded advance and actual second-clip content. Near-black early second-
+clip frames matched source pixels. No extra native run occurred.
+
+Reuse the same ignored `runs/measured-video-replay-reels-20261102.json` for
+presentation work. Longer feed sessions and broader mobile/accessibility/cross-
+browser/live-FPS checks remain open. No automatic native recording, qualification,
+assay, parked C1 return or LLM work follows this bounded acceptance.
+
+## Historical Phase 1 A/B observation and export
 
 The single fixed six-cycle/12s actual observation completed in **208.125s**
 within its 240s wall budget, then ordinary verify/export both completed exit0.
@@ -82,9 +123,8 @@ These are integrity/implementation checks, not scientific or capacity evidence.
 See the [observation report](experiments/2026-11-02-measured-replay-observation.md)
 for exact source bindings, counts and commands.
 
-Continue browser QA using the SAME local ignored
-`runs/measured-replay-v1-fullgraph.json`; do not automatically run another native
-recording, qualification, assay or parked C1 work. After the user manually enabled
+Phase 1 browser QA used the local ignored
+`runs/measured-replay-v1-fullgraph.json`. After the user manually enabled
 Chrome local-file permission, the real export loaded. Play at 0.5x advanced;
 pause held 3.660s. Seek/Home, source disclosure and sampled MBON11/KC values
 matched the raw bins. Desktop 650px and mobile 375px layouts were observed without
@@ -103,15 +143,9 @@ frames 0/8 visibly change body/wings within the same A segment. The final 15 fra
 are a labelled presentation hold of source tick 120000, not new measurements.
 The pose is absolute-time/reduced-motion-aware illustration, not validated behavior.
 
-Next: implement the separately reviewed real-video input and recorded motor-scroll
-contract after this Phase 1 checkpoint. Five genuine reel URLs were supplied;
-the first downloaded rendition is 1080x1920 VP9, 12,771,185 bytes, SHA256
-`8cfa586a94b5e40ad00b197a57da348080bf4aa4490618ce9f5cf6778c0103fa`,
-downloaded without browser cookies. This is source intake only, not a clip fed
-through the engine or a motor-driven scroll demonstration. Do not pair that video
-with old A/B neural measurements. Accessibility/cross-browser checks remain open.
-LLM work and scientific gates remain later. A fresh checkout must regenerate
-its own missing runtime/recording before such a check; private notes are optional.
+The genuine-video continuation now has source implementation and tests as
+recorded above. Downloaded renditions and all raw runs/checkpoints/video outputs
+remain ignored; do not pair reel footage with old A/B neural measurements.
 
 ## Implemented scientific foundation
 
@@ -165,10 +199,10 @@ it is not a cloud-continuation dependency. Formal integration is a paused workst
   overbroad visual acceptance (17 frames did not meet smooth-animation quality).
 - [x] Phase 1: timestamped 30fps export/illustrative motion, reviewed race fix,
   actual 375-frame/PTS/decode/visible-pose checks using the SAME recording.
-- [ ] Next: reviewed real-video observation/motor-scroll contract and implementation,
+- [x] Implement the reviewed real-video observation/motor-scroll contract,
   following the [animated replay plan](superpowers/plans/2026-11-02-animated-measured-replay.md).
   No fabricated activity/dopamine interpretation/semantics or automatic assay/qualification runs/C1 return.
-  The authorized single bounded real observation is already complete.
+  Historical A/B and current genuine-video raw/runtime/browser/encoded-file checks passed.
 Diagnostics grant no integrated capacity/history/config/freeze; no causal comparison
 with profiled630s or automatic inventory return. One allocation/call may exceed guards.
 The prior Viewer timing gate is superseded only for this explicitly approved replay slice; LLM stays later.
@@ -508,8 +542,12 @@ Interrupted development runs are never counted as passes.
 - [x] Complete same-recording Chrome playback/sample/desktop/mobile QA.
 - [x] Correct prior video-quality acceptance and complete Phase 1 timestamped
   export/motion/source/actual encoded-file checks without another native run.
-- [ ] Implement reviewed genuine-video input and recorded motor-driven scrolling;
-  downloaded source material is not accepted engine input yet.
+- [x] Implement genuine-video input and recorded motor-policy replay; viewer review passed.
+- [x] Close independent backend review and complete one bounded video fullgraph run,
+  ordinary verification/compact export and independent raw/source-policy audit.
+- [x] Complete actual browser/parser and encoded-file acceptance using that same artifact.
+- [ ] Continue presentation polish/longer-feed work when requested; reuse current data
+  for UI changes and keep LLM/formal integration separately gated.
 - [ ] Complete broader accessibility/cross-browser checks; preserve experimental WIP.
 - [x] Complete c.2b source review, ordinary/actual graph/full tiny-native grid
   acceptance and exact reviewed-source checks.

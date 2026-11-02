@@ -99,10 +99,11 @@ The observation recorder/exporter and viewer source are implemented and reviewed
 real-file measurement checks remain valid. The previous end-pixel video check
 did not establish smooth animation (17 frames/13.326s). Phase 1 now uses explicit
 frame timestamps and illustrative motion; one actual export decoded 375 frames
-at 30fps scheduling. Real-video neural input and motor-driven scrolling remain
-separate future work. The
+at 30fps scheduling. Genuine-video input and recorded motor-driven feed actions
+now have a separate [bounded actual pilot](experiments/2026-11-02-video-feed-observation.md)
+and [commands below](#local-video-observation-and-recorded-feed-actions). The
 [recorded fullgraph checkpoint](experiments/2026-11-02-measured-replay-observation.md)
-contains the exact current results and limitations. Existing local UI work must
+contains historical A/B results and limitations. A/B-specific local UI work must
 reuse `runs/measured-replay-v1-fullgraph.json`, rather than record another run.
 That generated file is ignored and is absent in a fresh checkout.
 
@@ -151,14 +152,67 @@ reduced motion is respected. No pose is a measured motor trajectory.
 
 An actual exported file was independently decoded and its375 frames/33–34ms
 container timestamps checked. This does not guarantee live-browser frame pacing
-or every browser/codec combination. Real Instagram material has been obtained
-locally for the next protocol; the current viewer's A/B pixels and measurements
-are not reel observations, and there is no recorded causal feed-scroll policy.
-See the [next product plan](superpowers/plans/2026-11-02-animated-measured-replay.md).
+or every browser/codec combination. The historical A/B measurements remain
+separate from the new genuine-video protocol; never pair reel footage with
+those A/B measurements. See the [current product plan](superpowers/plans/2026-11-02-animated-measured-replay.md).
 
 For a built preview, use `npm --prefix viewer run preview` after the build.
 Unix/native reproduction and browser capture availability require their own
 checks; current evidence is from the Windows environment described above.
+
+## Local video observation and recorded feed actions
+
+For genuine video input, install the optional locked decoder after the graph
+preparation above:
+
+```powershell
+.tools/uv/uv.exe sync --locked --extra media --extra test --cache-dir .tools/uv-cache
+```
+
+Create an ignored local playlist JSON with one to five ordered local files:
+
+```json
+[
+  {"path":"C:/media/first-reel.mp4","source_url":"https://www.instagram.com/reel/DcTiO6Ls3HT/"},
+  {"path":"C:/media/second-reel.mp4","source_url":"https://www.instagram.com/reel/DZHp4mtNvJb/"}
+]
+```
+
+Paths identify actual local decoder inputs; URLs are provenance labels. The
+command downloads nothing and reads no browser cookies. Each source must cover
+its complete first four seconds. Preparation hashes the source and declares
+the exact 90x160 RGB frames, selected source PTS, decoder and resize recipe
+before engine construction. Audio is not neural input.
+
+```powershell
+.venv/Scripts/python.exe -m fly_connectome_sim.cli observe-video --playlist runs/my-playlist.json --output-dir runs/my-video-observation
+.venv/Scripts/python.exe -m fly_connectome_sim.cli verify-run runs/my-video-observation
+.venv/Scripts/python.exe -m fly_connectome_sim.cli export-video-replay runs/my-video-observation --output runs/my-video-replay.json
+```
+
+Choose that JSON through **Open recording** in the same viewer. The separate
+`measured-video-replay/v1` reader shows the exact fed portrait frames, source PTS
+and recorded policy. Original `measured-replay/v1` A/B files remain supported.
+Outputs must be new and remain ignored. Unix uses `.venv/bin/python`; that
+platform still requires its own native and decoder verification.
+
+The reward-free engine advances every selected frame with no external
+stimulation and `learning=False`. The predeclared `right-scroll/v1` display
+policy uses actual 300ms lateral motor counts, evaluated every100ms. After a
+one-second dwell, `inspect_right` advances to the next clip; left/defer watches.
+A four-second clip-window limit can also advance the feed, explicitly labelled
+as an external presentation limit. The session stops by eight seconds or
+playlist exhaustion. A swipe illustrates a recorded advance; it is not a
+measured limb trajectory, semantic reaction or validated biological behavior.
+See the [video-feed contract](superpowers/specs/2026-11-02-video-observation-feed.md).
+
+The bounded Windows pilot observed the first two user-selected reels for3.5s;
+the recorded motor policy advanced at2.3s and exhausted the playlist at3.5s.
+Its actual UI export decoded to120 frames/4.0s, including the labelled0.5s hold.
+Use the existing ignored `runs/measured-video-replay-reels-20261102.json` for
+further local video-viewer work. A fresh checkout must create its own missing
+sources/runtime/recording. Exact results and limitations are in the
+[video observation report](experiments/2026-11-02-video-feed-observation.md).
 
 ## Separate assay commands
 

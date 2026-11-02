@@ -51,6 +51,11 @@ All raw media, source receipts, checkpoints, runs and video outputs remain ignor
   through4.000s using a decoded following PTS or valid final-frame duration,
   rather than stopping after the sample at3.966...s. Event frame bindings must
   equal this prepared metadata map, not merely another self-consistent hash.
+- Keep preparation memory bounded by incremental last-PTS selection: retain the
+  120 selected frames plus the current source frame, rather than all decoded
+  frames. Reject more than4096 decoded frames per clip. Freeze initial geometry
+  and pixel aspect ratio and reject changes before engine/output construction.
+  Benign H.264 SEI side data is supported; display matrices remain rejected.
 
 ## Production and predeclared policy
 

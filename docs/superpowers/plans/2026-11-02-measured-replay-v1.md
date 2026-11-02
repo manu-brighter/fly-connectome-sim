@@ -6,22 +6,34 @@ changes product order, not scientific criteria. The existing simulator,
 provenance locks and artifact reader remain. Parked selected-inventory work is
 outside this milestone.
 
-**Reviewed WIP checkpoint:** recorder/exporter and viewer source are implemented;
-one six-cycle/12s actual fullgraph observation was sealed/verified/exported in
-208.125s (240s budget), with independent raw audit and actual frontend-parser
-checks. Source model `f70722c4c253d48b6496e772a2780e3f6aba3474aca13a7a799bcd5941463b46`
-has 31 members; schema is unchanged. Backend 44 tests, recorder/replay 622 passed
-with one opt-in skip. These are historical separate scoped results,
-not complete scientific acceptance. Chrome real-file/play/pause/speed/seek/Home,
-source disclosure, sampled telemetry and desktop/mobile checks passed. The old
-video's final overlay was inspected, but 17 frames/13.326s failed the actual
-animation/smoothness requirement. Phase 1 now has reviewed timestamped export
-and illustrative motion, 44 viewer tests/build0/audit0 and an independently
-decoded 375-frame/12.5s actual export. Real reel input/motor-driven scrolling are
-not implemented. Continue under the
-[animated replay plan](2026-11-02-animated-measured-replay.md) using the SAME A/B
-recording for visual work. See the
-[observation report](../../experiments/2026-11-02-measured-replay-observation.md).
+**Current status:** historical Phase 1 checkpoint `4467431` is reviewed/pushed.
+Its actual 12s A/B observation and 375-frame/12.5s export remain source-specific
+history; the old 17-frame export failed smoothness acceptance. Current genuine-
+video preparation/production/export and recorded policy replay are implemented
+under the [video-feed contract](../specs/2026-11-02-video-observation-feed.md).
+The 33-member model freeze is
+`e8d0e046e890418541ee9f0bb84065966228e756834f5bd7fb084f9ff5005ba8`;
+schema remains `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
+Final focused video 81 passed/42.49s; preceding `8f69b283` candidate recorder/replay
+621 passed, 2 skipped/84.09s
+(sandbox junction/fullgraph opt-in), with normal-host junction subset 2 passed/
+401 deselected/0.14s. Only the decoder changed afterward; other 32 packaged
+sources/schema stayed exact. No current whole-suite/fullgraph compatibility rerun. Viewer 57 tests/build exit0;
+independent viewer review closed C0/I0/M0 on 18-file freeze
+`10ba7c3bacb748434ddebc17d60bf56b66ce2a7e698f1615b4eb654c92b8e5fc`.
+Three backend decoder findings are fixed; independent closure is C0/I0/M0.
+The [single actual video observation](../../experiments/2026-11-02-video-feed-observation.md)
+completed in 35.843s, with 105 inputs/420 bins over 3.5s, a recorded motor-right
+advance at 2.3s and terminal playlist exhaustion. Ordinary verify/export and
+independent raw/source-policy audit and actual parser/Chrome playback/boundary
+checks passed. The actual UI export independently decoded to 120 VP9 frames,
+900x900/4.0s with 15 labelled hold frames. Broader mobile/accessibility/cross-
+browser/live-FPS checks stay open. Continue under the
+[animated replay plan](2026-11-02-animated-measured-replay.md). Formal science,
+C1 and LLM work stay parked.
+
+The remaining protocol and checklist below describe the historical A/B slice;
+current genuine-video status is tracked in the linked continuation plan.
 
 ## Smallest useful vertical slice
 
@@ -104,8 +116,8 @@ the viewer also bounds input file size. Do not introduce a second trust issuer.
 - [x] **Phase 1 export/motion:** timestamped 900x900/30fps encoding; 360 measured
   samples plus 15 labelled hold frames for 12s input. Actual375-frame encoded
   output has 33/34ms PTS spacing and 12.5s duration; decoded fly poses differ.
-- [ ] **Next product slice:** genuine-video neural input and recorded motor-driven
-  scrolling after separate contract review; broader accessibility/cross-browser QA.
+- [x] **Genuine-video continuation:** implemented and accepted in the linked
+  continuation plan/report; broader accessibility/cross-browser QA remains open.
 
 The user manually enabled Chrome local-file access; no automated settings write
 occurred. Real-file numerical/layout/end-pixel checks remain historical evidence.
@@ -113,8 +125,8 @@ The old 17-frame export was not smooth animation. The replacement's explicit
 frame schedule was checked against actual encoded bytes/PTS and decoded images,
 not just an fps declaration. A presentation hold advances no simulation time;
 fly motion is illustrative, with no invented neural decisions or feed swipe.
-One real reel rendition has been downloaded for the next slice, but no video
-observation or motor-scroll behavior has run. This remains experimental WIP.
+This historical A/B milestone preceded the genuine-video observation now
+recorded in the continuation plan/report. The product remains experimental WIP.
 Commit code/lockfiles/docs only; never recordings/checkpoints/exported pixels/videos.
 
 Backend and viewer workers own disjoint paths and share this format. Keep

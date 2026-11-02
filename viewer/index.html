@@ -19,7 +19,7 @@
         <section class="experiment" aria-label="Recorded simulation replay">
           <div class="stage"><canvas id="stage" aria-label="Illustrative fruit fly, exact recorded stimulus and measured telemetry. Drag to orbit the scene." tabindex="0"></canvas><div class="stage-note">Illustrative geometry · drag to orbit</div></div>
           <aside class="telemetry" aria-label="Measured population telemetry">
-            <div class="stimulus-line"><span>Recorded input</span><strong id="stimulus">—</strong></div>
+            <div class="stimulus-line"><span id="input-caption">Recorded input</span><strong id="stimulus">—</strong></div>
             <div class="flags"><span>External stimulation <b id="stimulation">—</b></span><span>Learning flag <b id="learning">—</b></span></div>
             <div class="readout primary-readout"><span>MBON11</span><div><strong id="mbon11-rate">—</strong><small>Hz / cell</small></div><canvas id="mbon11-trace" aria-label="Recorded MBON11 bin rates"></canvas></div>
             <div class="readout"><span>Kenyon cells</span><div><strong id="kc-rate">—</strong><small>Hz / cell</small></div><canvas id="kc-trace" aria-label="Recorded KC bin rates"></canvas></div>
@@ -27,6 +27,7 @@
             <details class="additional"><summary>Other recorded populations</summary><div id="additional-rates"></div></details>
             <p class="bin-note" id="bin-note">Rates use complete recorded bins. No measurements are shown until a file is loaded.</p>
             <p class="clock">Source clock <b id="source-clock">—</b><br />Event <b id="event-sequence">—</b></p>
+            <div id="video-policy" class="policy-readout" hidden><span>Source PTS <b id="source-pts">—</b></span><a id="clip-url" target="_blank" rel="noopener noreferrer">Source reel page</a><strong id="policy-status">—</strong><small id="rolling-readout">—</small><small>Recorded right-scroll/v1 display policy; not validated fly behavior.</small></div>
           </aside>
           <div class="transport">
             <div class="transport-top"><button id="play" class="play" disabled aria-label="Play recording">Play</button><output id="time">0.000 / — s</output><label class="speed">Speed <select id="speed" disabled><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label><button id="video" disabled>Export video</button></div>
