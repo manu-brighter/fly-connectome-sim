@@ -156,6 +156,11 @@ or every browser/codec combination. The historical A/B measurements remain
 separate from the new genuine-video protocol; never pair reel footage with
 those A/B measurements. See the [current product plan](superpowers/plans/2026-11-02-fast-reel-feed.md).
 
+Event-choice recordings use the same viewer, with a landscape board and a bound
+plan revealed only at the final recorded decision. Their 2s source recording has
+90 labelled terminal-hold frames, producing a 150-frame/5s video at30fps. The
+hold advances no simulation time; older formats retain their15-frame hold.
+
 For a built preview, use `npm --prefix viewer run preview` after the build.
 Unix/native reproduction and browser capture availability require their own
 checks; current evidence is from the Windows environment described above.
@@ -221,6 +226,38 @@ and [handover](cloud-handover.md) record current results/limitations. The earlie
 is separate historical 1× evidence. A fresh checkout must provide its missing
 sources/runtime/recording. See the [fast-feed contract](superpowers/specs/2026-11-02-fast-reel-feed.md).
 
+## Local event proposals and measured selection
+
+After the graph/toolchain setup, use the authored example or prepare a strict
+proposal with the [copyable prompt](event-proposal-prompt.md). No API key,
+live LLM call or API charge is involved. Example budgets are not verified offers.
+
+```powershell
+.venv/Scripts/python.exe -m fly_connectome_sim.cli event-choice --proposal examples/event-options.json --output-dir runs/my-event-choice
+.venv/Scripts/python.exe -m fly_connectome_sim.cli verify-run runs/my-event-choice
+.venv/Scripts/python.exe -m fly_connectome_sim.cli export-event-replay runs/my-event-choice --output runs/my-event-replay.json
+.venv/Scripts/python.exe -m fly_connectome_sim.cli export-event-plan runs/my-event-choice --output runs/my-event-plan.json
+```
+
+Use new output paths; existing files/runs are never replaced. Four500ms calls
+feed the same actual paired384x216 RGB image to a fresh engine, without external
+stimulation or learning. The first1500ms settle; the final500ms integer lateral
+motor counts determine left/right/defer at2s with the existing strict1Hz policy.
+There is no winner override and no automatic retry to obtain a selection.
+
+Open `runs/my-event-replay.json` in the viewer. Pending has no selected plan;
+at2s the selected proposal appears unchanged, or the viewer reports deferred.
+**Download bound plan** exports that same recorded object, including its source
+and decision references. This fresh pilot does not continue reel history or
+establish semantic understanding, visual specificity or learned behavior.
+
+The exporter checks sealed integrity and complete semantic consistency; it does
+not attest native execution history. Import only your own bounded run artifacts:
+generic raw-run verification currently lacks an allocation bound for arbitrary
+oversized manifests/JSONL lines. The proposal reader and compact replay reader
+have separate explicit byte bounds. See the
+[contract](superpowers/specs/2026-11-02-event-choice-milestone.md) for the trust model.
+
 ## Separate assay commands
 
 The existing qualification command remains separate from Replay v1 and is not
@@ -238,7 +275,8 @@ After preparing and verifying the graph, on Windows:
 On Linux/macOS, replace `.venv/Scripts/python.exe` with `.venv/bin/python`.
 `verify-run` checks integrity only; native replay verification is a separate
 Python API path. Native cohort production is currently exposed through Python
-APIs; the `assay` CLI and LLM event planner remain pending. Replay's recorder and
+APIs; the `assay` CLI and live LLM transport remain pending. Event proposals can
+already be imported and bound to a measured selection. Replay's recorder and
 renderer source passed the bounded real-file/video-end check and remain experimental WIP.
 
 See the [assay implementation plan](superpowers/plans/2026-09-24-associative-plasticity-assay.md)

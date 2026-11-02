@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import test from 'node:test';
 import { advanceGestureAtTick, parseAnyRecording, parseVideoRecording, sampleVideoAtTick, videoInputLabel, videoPlaneHeight, videoPolicyLabel, videoTimelineBlocks, visiblePolicyAtTick } from '../src/video-replay.ts';
 import { quantizeVideoTick } from '../src/export.ts';
+import { parseAnyRecording as parseAllRecording } from '../src/recording.ts';
 import * as stage from '../src/stage.ts';
 const { drawOverlay } = stage;
 
@@ -88,7 +89,7 @@ test('captured stop labels preserve both playlist exhaustion triggers without a 
   }
 });
 
-test('empty captured overlay names both accepted recording formats', () => {
+test('empty captured overlay names all accepted recording formats', () => {
   for (const width of [320, 900]) {
     const context = { font: '', save() {}, restore() {}, scale() {}, fillRect() {}, beginPath() {}, moveTo() {}, lineTo() {}, stroke() {},
       measureText(text) { return { width: text.length * Number(this.font.match(/(\d+)px/)[1]) * .55 }; },
@@ -98,6 +99,7 @@ test('empty captured overlay names both accepted recording formats', () => {
     drawOverlay(context, width, 600, width, null, null);
     assert.ok(context.calls.some(({ text }) => text.includes('measured-replay/v1')));
     assert.ok(context.calls.some(({ text }) => text.includes('measured-video-replay/v1')));
+    assert.ok(context.calls.some(({ text }) => text.includes('event-choice-replay/v1')));
     for (const call of context.calls) assert.ok(call.x + call.width <= width, `Clipped: ${call.text}`);
   }
 });
@@ -132,6 +134,7 @@ function fixture() {
 
 test('new reader accepts exact portrait pixels and a complete recorded stop', async () => {
   const parsed = await parseVideoRecording(JSON.stringify(fixture()));
+  assert.deepEqual(await parseAllRecording(JSON.stringify(fixture())), parsed);
   assert.equal(parsed.segments.length, 120);
   assert.equal(parsed.inputs['clip-0/frame-0'].width, 90);
   assert.equal(parsed.inputs['clip-0/frame-0'].height, 160);
@@ -192,6 +195,7 @@ test('new reader rejects unknown policy, pixel mutation and premature decision',
 
 test('version dispatch preserves the strict original reader', async () => {
   await assert.rejects(parseAnyRecording(JSON.stringify({ ...fixture(), version: 'measured-replay/v1' })));
+  await assert.rejects(parseAllRecording(JSON.stringify({ ...fixture(), version: 'measured-replay/v1' })));
 });
 
 function fastFixture(value = fixture()) {
@@ -214,6 +218,7 @@ function fastFixture(value = fixture()) {
 
 test('v2 dispatch accepts 20s media in 4s simulation and the 3s dwell boundary', async () => {
   const parsed = await parseAnyRecording(JSON.stringify(fastFixture()));
+  assert.deepEqual(await parseAllRecording(JSON.stringify(fastFixture())), parsed);
   assert.equal(parsed.version, 'measured-video-replay/v2');
   assert.equal(parsed.duration_ticks, 40000);
   assert.equal(parsed.inputs['clip-0/frame-119'].source_pts, 595);

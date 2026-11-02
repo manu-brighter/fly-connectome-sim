@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import test from 'node:test';
 import { parseRecording, sampleAtTick, advancePlayback } from '../src/replay.ts';
 import { drawOverlay } from '../src/stage.ts';
+import { parseAnyRecording, sampleAnyAtTick } from '../src/recording.ts';
 
 // INTERNAL fixture only. This is never bundled or offered as a recording.
 function fixture() {
@@ -33,6 +34,8 @@ const parse = (value) => parseRecording(JSON.stringify(value));
 
 test('raw population counts become Hz; zero remains an available measured zero', async () => {
   const recording = await parse(fixture());
+  assert.deepEqual(await parseAnyRecording(JSON.stringify(fixture())), recording);
+  assert.deepEqual(sampleAnyAtTick(recording, 0), sampleAtTick(recording, 0));
   const first = sampleAtTick(recording, 0);
   assert.equal(first.rates.kc, 100);
   assert.equal(first.rates.mbon11, 100);

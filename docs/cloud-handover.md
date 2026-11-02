@@ -2,18 +2,21 @@
 
 Use `origin` of `manu-brighter/fly-connectome-sim`, branch
 `feat/connectome-experiment-core`, latest pushed feature commit. The prior
-standard-video checkpoint `639423f` and Phase 1 A/B checkpoint `4467431` are
-historical. Current fast-feed source has 33 Python/C++ members, model identity
-`132b9c00a2a7d3d5da15963024abf85a0a31209d7f59f5903dd4edd9298a0ac2`;
+standard-video checkpoint `639423f`, Phase 1 A/B checkpoint `4467431` and
+screen-contact checkpoint `877fbe2` are historical. Current event-choice source
+has35 Python/C++ members, model identity
+`e0bfc0ef08b44beafababa8598a0f902a9dcdc75e71d07f626f79fe5ed2c1275`;
 schema remains `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
-The [fast-feed contract](superpowers/specs/2026-11-02-fast-reel-feed.md) and
-[implementation plan](superpowers/plans/2026-11-02-fast-reel-feed.md) govern the
-current slice. Source review, focused tests, the single actual fast-feed pilot/raw/parser
-audit and same-artifact Chrome/encoded-file acceptance passed. Earlier assay evidence is
-historical/source-specific; formal qualification/freeze/confirmation, C1 and
-LLM work remain parked.
+The [event-choice contract](superpowers/specs/2026-11-02-event-choice-milestone.md)
+and [implementation plan](superpowers/plans/2026-11-02-event-choice-milestone.md)
+govern the current slice. The user released this bounded product milestone:
+import two proposals, observe actual visual cards, make a measured left/right/
+defer selection and export an unchanged bound plan. The chosen first provider
+integration is strict imported JSON, with no live API calls or costs. Formal
+qualification/freeze/confirmation, C1, live LLM transport and reel-history
+integration remain parked. Earlier assay/reel evidence remains source-specific.
 
-The current viewer-only [screen-contact correction](experiments/2026-11-02-screen-contact-swipe.md)
+The prior viewer-only [screen-contact correction](experiments/2026-11-02-screen-contact-swipe.md)
 reuses that exact7s recording. The foreground leg now visibly reaches onto the
 screen, strokes upward and retracts in400ms; only the middle200ms scrolls the
 content. Actual encoded lower/mid/upper contact frames were inspected. Viewer
@@ -22,7 +25,8 @@ run was repeated. This supersedes the earlier small whole-leg tilt's visual
 acceptance, not its data/frame checks.
 
 Continue autonomously on the original Windows workstation, including reviewed
-feature commits and explicit feature pushes, without pausing at each checkpoint.
+feature commits and explicit feature pushes. Pause after the next sensible
+reviewed commit/push to report the result, as required by AGENTS.md.
 No PR, merge or deployment is authorized. Cloud setup is for a future fresh
 checkout, not a gate on current local work. Never push main/master/develop.
 
@@ -45,11 +49,55 @@ checkout, not a gate on current local work. Never push main/master/develop.
    and [historical standard-video report](experiments/2026-11-02-video-feed-observation.md).
 8. [Current fast-feed plan](superpowers/plans/2026-11-02-fast-reel-feed.md)
    and [fast-feed observation report](experiments/2026-11-02-fast-reel-feed-observation.md).
+9. [Current event-choice plan](superpowers/plans/2026-11-02-event-choice-milestone.md),
+   [contract](superpowers/specs/2026-11-02-event-choice-milestone.md) and
+   [proposal handoff](event-proposal-prompt.md).
 
 The older connectome-core plan is background. This tracked handover and current
 plan orient a fresh checkout; private local SDD notes/chats/scripts are not
 required and do not travel through Git. Local raw evidence is not replaced by
 this document. Do not claim to reverify unavailable bytes.
+
+## Current event-choice checkpoint
+
+Strict `event-options/v1` import renders two actual384x216 RGB cards; a fresh
+engine observes four500ms intervals, without external stimulation or learning.
+The first1500ms settle; unchanged strict1Hz lateral policy selects from final
+500ms integer motor counts at20000ticks. The plan is the exact selected proposal
+or explicit defer, bound to actual observe sequence/hash and source artifact.
+No winner override, live API, old trained/reel checkpoint restore or retry loop.
+The tracked example is authored; it is not a fabricated live LLM request.
+
+Independent backend review closed C0/I0/M1 for the own bounded pilot; the foreign
+raw-run allocation-hardening Minor stays open below. Initial viewer review
+C0/I1/M2 was corrected test-first and independently closed C0/I0/M0. Backend
+focused307passed/310deselected39.29s and separately79passed85.88s overlap at CLI;
+no skips/failures. Viewer83passed/0skip10.263s,build0; known bundle-size and
+test-only Node experimental notices remain. All40 backend freeze paths and23
+viewer paths matched reviewed SHA256/size. No whole-project/assay pass claimed.
+
+Exactly one actual2s MaleCNS pilot completed exit0 in14.687s/120s wall budget;
+verify/replay export/plan export all exited0, with model/proposal exact throughout.
+The6events/200bins original-byte audit found final left2/right1 spikes,
+populations1/1:4Hz/2Hz,difference−2Hz → `inspect_left`, `sunset-house`.
+The copied plan is Sunset House,rooftop/House,CHF4800,100guests,capacity120,
+240minutes,programme0Welcome drinks/60DJ and dancing. No semantic or learned
+preference, visual specificity or native-history attestation is established.
+
+Actual Chrome checked pending19999/selected20000, reverse seek, bound JSON
+download equality, play/pause and export. The same-artifact movie independently
+decodes to150VP9 frames/900x900/5s,33–34ms intervals:2s source plus3s labelled
+terminal plan hold. Frame59 remains pending;60/149 show selected plan/left outline.
+The native video player reports5s and no media error. Broader platforms/live FPS
+remain unverified. Full commands, source/artifact hashes and limits are in the
+[event-choice report](experiments/2026-11-02-event-choice-observation.md).
+
+Reuse local ignored `runs/event-choice-replay-v1-mvp-20261102.json`,
+`runs/event-plan-v1-mvp-20261102.json` and
+`viewer/test-output/event-choice-replay-30fps.webm` for presentation work;
+these are absent in a fresh cloud checkout. Reproduce with the
+[tracked example](../examples/event-options.json) and
+[commands](getting-started.md#local-event-proposals-and-measured-selection).
 
 ## Scientific and provenance boundaries
 
@@ -69,7 +117,12 @@ this document. Do not claim to reverify unavailable bytes.
   confirmation exists. Missing evidence is not an authenticated scientific negative.
   Never fabricate successful gates/configuration to continue a negative run.
 
-## Current fast-feed checkpoint
+## Historical fast-feed checkpoint
+
+This checkpoint used the33-member model
+`132b9c00a2a7d3d5da15963024abf85a0a31209d7f59f5903dd4edd9298a0ac2`.
+Its original files remain viewable, but new packaged source does not upgrade this
+historical evidence into current-source qualification or native attestation.
 
 Explicit `observe-video --profile fast-feed` selects the closed v2 protocol,
 stimulus, policy and compact-format quartet: source speed `[5,1]`, 20s source
@@ -579,9 +632,24 @@ Interrupted development runs are never counted as passes.
 - [x] Implement/review closed 5× fast-feed/v2 and deterministic 200ms swipe; preserve v1.
 - [x] Close one bounded actual fast-feed pilot and independent raw/parser audit.
 - [x] Close same-artifact Chrome/boundary and encoded-file QA: 225 frames/7.5s.
+- [x] Implement strict imported event proposals, actual paired-card observation,
+  measured selection and immutable plan; close source reviews and one bounded
+  actual2s pilot/raw audit with left2/right1 → Sunset House.
+- [x] Close same-artifact event Chrome boundary/plan download and150frame/5s video
+  acceptance. Preserve strict old readers and the authored-example/API distinction.
 - [ ] Continue longer-feed work when requested; reuse validated current data for UI
-  changes and keep LLM/formal integration separately gated.
-- [ ] Complete broader accessibility/cross-browser checks; preserve experimental WIP.
+  changes and keep live LLM/formal integration separately gated.
+- [ ] Harden event-export raw-run intake with pre-allocation manifest/JSONL
+  bounds before accepting arbitrary foreign runs. Current local exporter uses
+  generic verify_run before its output-size bound; oversized foreign inputs can
+  exhaust memory. No service/deployment or arbitrary hostile-run safety claim.
+- [ ] Add live LLM proposal transport and optional narrative continuation only
+  with explicit key/cost configuration; keep selected plan immutable and retain
+  JSON import. Do not relabel the authored example as a live model request.
+- [ ] Define integration with previous reel observations/trained state before
+  connecting histories; the current event pilot deliberately uses a fresh engine.
+- [ ] Complete broader accessibility/cross-browser checks and separate the
+  interactive orbit hint from the event overlay's top edge; preserve experimental WIP.
 - [x] Complete c.2b source review, ordinary/actual graph/full tiny-native grid
   acceptance and exact reviewed-source checks.
 - [x] Execute, independently review and publish the bounded actual MaleCNS

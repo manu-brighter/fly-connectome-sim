@@ -25,10 +25,22 @@ f.3c design is ratified; C1 is parked local uncommitted/unreviewed WIP, not acce
 
 ## Current checkpoint and live remaining work — 2026-11-02
 
-Current product work follows the [fast-feed plan](2026-11-02-fast-reel-feed.md):
+Current product work follows the [event-choice plan](2026-11-02-event-choice-milestone.md):
+strict imported proposals become actual paired visual cards and a measured
+left/right/defer selection with an immutable plan. The user released this bounded
+product slice; live LLM transport and formal science stay separate. Current
+35-member model is
+`e0bfc0ef08b44beafababa8598a0f902a9dcdc75e71d07f626f79fe5ed2c1275`;
+schema unchanged. This source-bearing addition invalidates old formal evidence
+identities; no qualification or learning claim is made.
+Independent reviews closed, one actual2s run chose left from2:1 motor spikes,
+and same-artifact Chrome/150frame5s export acceptance passed. See the
+[event-choice report](../../experiments/2026-11-02-event-choice-observation.md).
+
+The historical [fast-feed plan](2026-11-02-fast-reel-feed.md) delivered
 explicit 5× media sampling, 3–4s per clip and a 200ms illustrative recorded-action
 swipe, with normal simulation time. Default standard/v1 remains compatible.
-The current 33-member model is
+Its historical33-member model is
 `132b9c00a2a7d3d5da15963024abf85a0a31209d7f59f5903dd4edd9298a0ac2`;
 schema remains `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
 Source review/focused tests, the actual 7s fast-feed pilot/raw/parser audit
@@ -37,7 +49,7 @@ and [fast-feed report](../../experiments/2026-11-02-fast-reel-feed-observation.m
 are authoritative for current evidence and TODOs. Historical [standard-video](../../experiments/2026-11-02-video-feed-observation.md)
 and [A/B](../../experiments/2026-11-02-measured-replay-observation.md) results
 remain separate/source-specific. C1, formal qualification/freeze/confirmation
-and LLM stay parked; integrity checks confer no scientific support or validated
+and live LLM transport stay parked; integrity checks confer no scientific support or validated
 motor behavior.
 
 The early task-level RED/GREEN boxes are historical execution instructions, not

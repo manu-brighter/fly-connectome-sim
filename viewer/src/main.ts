@@ -1,10 +1,12 @@
 import './style.css';
-import { GROUPS, advancePlayback, sampleAtTick, type Recording } from './replay.ts';
+import { GROUPS, advancePlayback } from './replay.ts';
 import { BufferTarget, CanvasSource, Output, WebMOutputFormat, canEncodeVideo } from 'mediabunny';
 import { EXPORT_FPS, EXPORT_SIZE, quantizeVideoTick, writeFrames } from './export.ts';
 import { createStage } from './stage.ts';
 import { createOperationGate } from './operation.ts';
-import { isVideoRecording, parseAnyRecording, sampleVideoAtTick, videoInputLabel, videoPolicyLabel, videoSpeedLabel, videoTimelineBlocks, type VideoRecording } from './video-replay.ts';
+import { isVideoRecording, videoInputLabel, videoPolicyLabel, videoSpeedLabel, videoTimelineBlocks } from './video-replay.ts';
+import { parseAnyRecording, sampleAnyAtTick as sampleAt, type AnyRecording } from './recording.ts';
+import { EVENT_HOLD_FRAMES, eventPlanJson, eventPresentation, isEventRecording, sampleEventAtTick } from './event-replay.ts';
 
 function element<T extends HTMLElement>(id: string): T {
   return document.getElementById(id) as T;
@@ -19,7 +21,8 @@ const openButton = element<HTMLButtonElement>('open');
 const sourceButton = element<HTMLButtonElement>('source-toggle');
 const errorElement = element<HTMLParagraphElement>('error');
 const videoNote = element<HTMLParagraphElement>('video-note');
-let recording: Recording | VideoRecording | null = null;
+const planButton = element<HTMLButtonElement>('download-plan');
+let recording: AnyRecording | null = null;
 let tick = 0, playing = false, lastTime = performance.now();
 const operations = createOperationGate();
 let exportController: AbortController | null = null;
@@ -38,7 +41,7 @@ if (stage && typeof VideoEncoder !== 'undefined') {
         if (await canEncodeVideo(candidate, { width: EXPORT_SIZE, height: EXPORT_SIZE, frameRate: EXPORT_FPS })) { videoCodec = candidate; break; }
       }
       videoButton.disabled = !recording || !videoCodec || operations.loading || operations.exporting;
-      videoNote.textContent = videoCodec ? 'Video export: 900×900, 30 timestamped frames/s. Last 0.5 s holds the measured terminal sample for presentation.' : 'Video export unavailable: this browser cannot encode VP9 or VP8 with WebCodecs at 900×900.';
+      videoNote.textContent = videoCodec ? `Video export: 900×900, 30 timestamped frames/s. Last ${holdSeconds(recording)} s holds the measured terminal sample${recording && isEventRecording(recording) ? ' and locked plan' : ''} for presentation.` : 'Video export unavailable: this browser cannot encode VP9 or VP8 with WebCodecs at 900×900.';
     } catch { videoNote.textContent = 'Video export unavailable: WebCodecs capability check failed.'; }
   })();
 } else videoNote.textContent = 'Video export unavailable: WebGL and WebCodecs video encoding are required.';
@@ -51,9 +54,7 @@ for (const name of ['pam11', 'ppl101', 'mbon07'] as const) {
 
 function showError(message: string) { errorElement.textContent = message; errorElement.hidden = false; }
 if (stageError) showError(stageError);
-function sampleAt(record: Recording | VideoRecording, position: number) {
-  return isVideoRecording(record) ? sampleVideoAtTick(record, position) : sampleAtTick(record, position);
-}
+function holdSeconds(record: AnyRecording | null) { return record && isEventRecording(record) ? 3 : .5; }
 
 const traceBases: Partial<Record<'kc' | 'mbon11', HTMLCanvasElement>> = {};
 function drawTrace(name: 'kc' | 'mbon11') {
@@ -92,14 +93,24 @@ function update() {
   const sample = sampleAt(recording, tick);
   stage?.setSample(sample);
   const video = 'input' in sample;
-  element('input-caption').textContent = video ? `Fed video frame · ${videoSpeedLabel(recording)}` : 'Recorded input';
-  element('stimulus').textContent = video ? videoInputLabel(sample.input) : sample.segment.stimulus === 'black' ? 'Black' : sample.segment.stimulus;
+  const event = 'decision' in sample;
+  element('input-caption').textContent = event ? 'Exact fed paired RGB · 384×216' : video ? `Fed video frame · ${videoSpeedLabel(recording)}` : 'Recorded input';
+  element('stimulus').textContent = event ? 'Event options' : video ? videoInputLabel(sample.input) : sample.segment.stimulus === 'black' ? 'Black' : sample.segment.stimulus;
   element('stimulation').textContent = sample.segment.stimulation === null ? 'None' : 'Present';
   element('learning').textContent = String(sample.segment.learning);
   for (const name of GROUPS) element(`${name}-rate`).textContent = sample.rates[name].toFixed(2);
   element('source-clock').textContent = `${(sample.sourceTick / 10000).toFixed(4)} s`;
   element('event-sequence').textContent = String(sample.segment.event_sequence);
   element('video-policy').hidden = !video;
+  element('event-plan').hidden = !event;
+  if (event) {
+    const view = eventPresentation(sample);
+    element('event-status').textContent = view.status;
+    element('event-title').textContent = view.title;
+    element('event-details').textContent = view.lines.join('\n');
+    element('event-measurement').textContent = view.measurement;
+    planButton.disabled = !view.canDownload || operations.loading || operations.exporting;
+  } else planButton.disabled = true;
   if (video) {
     element('source-pts').textContent = `${sample.input.source_pts} × ${sample.input.source_time_base[0]}/${sample.input.source_time_base[1]} s`;
     if (isVideoRecording(recording)) {
@@ -113,7 +124,7 @@ function update() {
   }
   element('bin-note').textContent = `Hz / cell = integer spikes ÷ population ÷ ${(sample.bin.duration_ticks / 10).toFixed(1)} ms. Complete recorded-bin values; traces hold each bin without smoothing.`;
   element('time').textContent = `${(sample.tick / 10000).toFixed(3)} / ${(recording.duration_ticks / 10000).toFixed(3)} s`;
-  seek.value = String(sample.tick); seek.setAttribute('aria-valuetext', `${(sample.tick / 10000).toFixed(3)} seconds, input ${video ? videoInputLabel(sample.input) : sample.segment.stimulus}`);
+  seek.value = String(sample.tick); seek.setAttribute('aria-valuetext', `${(sample.tick / 10000).toFixed(3)} seconds, input ${event ? 'paired event options' : video ? videoInputLabel(sample.input) : sample.segment.stimulus}`);
   play.textContent = playing ? 'Pause' : 'Play'; play.setAttribute('aria-label', playing ? 'Pause recording' : 'Play recording');
   drawTrace('kc'); drawTrace('mbon11');
 }
@@ -123,6 +134,7 @@ function loadingControls(loading: boolean) {
   openButton.disabled = loading; file.disabled = loading;
   play.disabled = loading || !recording; seek.disabled = loading || !recording; speed.disabled = loading || !recording;
   videoButton.disabled = loading || !recording || !videoCodec || !stage;
+  planButton.disabled = loading || !recording || !isEventRecording(recording) || tick < recording.decision.effective_tick;
   openButton.textContent = loading ? 'Opening…' : 'Open recording';
 }
 file.addEventListener('change', async () => {
@@ -147,7 +159,9 @@ file.addEventListener('change', async () => {
     videoButton.disabled = !videoCodec || !stage;
     element('timeline-end').textContent = `${(parsed.duration_ticks / 10000).toFixed(1)} s`;
     const segments = element('segments'); segments.replaceChildren();
-    if (isVideoRecording(parsed)) {
+    if (isEventRecording(parsed)) {
+      const item = document.createElement('span'); item.className = 'stimulus-event'; item.style.flexGrow = '1'; item.textContent = 'Paired options · 1.5 s settling + 0.5 s decision'; segments.append(item);
+    } else if (isVideoRecording(parsed)) {
       for (const block of videoTimelineBlocks(parsed)) {
         const item = document.createElement('span'); item.className = `stimulus-video-${Number(block.clipId.slice(5)) % 2}`;
         item.style.flexGrow = String(block.duration); item.textContent = `Clip ${Number(block.clipId.slice(5)) + 1}`; segments.append(item);
@@ -159,6 +173,7 @@ file.addEventListener('change', async () => {
     }
     element('source-mode').textContent = parsed.source.verification_mode;
     element('source-json').textContent = JSON.stringify(parsed.source, null, 2);
+    if (videoCodec) videoNote.textContent = `Video export: 900×900, 30 timestamped frames/s. Last ${holdSeconds(parsed)} s holds the measured terminal sample${isEventRecording(parsed) ? ' and locked plan' : ''} for presentation.`;
     update(); stage?.render();
   } catch (error) {
     if (operations.isCurrentLoad(generation)) showError(`Cannot open recording. ${error instanceof Error ? error.message : 'Invalid file.'} Choose the JSON produced by export-replay.${recording ? ' The previous recording remains loaded.' : ''}`);
@@ -168,6 +183,14 @@ file.addEventListener('change', async () => {
 sourceButton.addEventListener('click', () => {
   const panel = element('source-panel'); panel.hidden = !panel.hidden;
   sourceButton.setAttribute('aria-expanded', String(!panel.hidden));
+});
+planButton.addEventListener('click', () => {
+  if (!recording || !isEventRecording(recording) || operations.loading || operations.exporting) return;
+  const json = eventPlanJson(sampleEventAtTick(recording, tick), operations);
+  if (!json) return;
+  const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+  const link = document.createElement('a'); link.href = url; link.download = 'event-plan.json'; link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
 });
 play.addEventListener('click', () => {
   if (!recording) return;
@@ -188,6 +211,7 @@ function exportControls(exporting: boolean) {
   openButton.disabled = exporting; file.disabled = exporting; play.disabled = exporting; seek.disabled = exporting; speed.disabled = exporting;
   videoButton.textContent = exporting ? 'Cancel export' : 'Export video';
   videoButton.disabled = !exporting && (!recording || !videoCodec || !stage);
+  planButton.disabled = exporting || !recording || !isEventRecording(recording) || tick < recording.decision.effective_tick;
 }
 
 videoButton.addEventListener('click', async () => {
@@ -210,12 +234,12 @@ videoButton.addEventListener('click', async () => {
       add: (timestamp, duration) => source.add(timestamp, duration),
       finalize: async () => { await output!.finalize(); return target.buffer; },
       cancel: () => output!.cancel(),
-    }, controller.signal, (done, total) => { videoNote.textContent = `Encoding ${done}/${total} frames…`; }, isVideoRecording(sourceRecording) ? quantizeVideoTick : undefined);
+    }, controller.signal, (done, total) => { videoNote.textContent = `Encoding ${done}/${total} frames…`; }, isVideoRecording(sourceRecording) ? quantizeVideoTick : undefined, isEventRecording(sourceRecording) ? EVENT_HOLD_FRAMES : undefined);
     if (!completed?.byteLength) throw new Error('Encoder produced an empty video.');
     const url = URL.createObjectURL(new Blob([completed], { type: 'video/webm' }));
     const link = document.createElement('a'); link.href = url; link.download = 'measured-replay.webm'; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 30000);
-    videoNote.textContent = 'Video exported. The final 0.5 s holds the measured terminal sample for presentation; no simulation time is added.';
+    videoNote.textContent = `Video exported. The final ${holdSeconds(sourceRecording)} s holds the measured terminal sample${isEventRecording(sourceRecording) ? ' and locked plan' : ''} for presentation; no simulation time is added.`;
   } catch (error) {
     if (output && output.state !== 'canceled' && output.state !== 'finalized') try { await output.cancel(); } catch { /* Preserve export error. */ }
     if (controller.signal.aborted) videoNote.textContent = 'Video export canceled. No video was saved.';

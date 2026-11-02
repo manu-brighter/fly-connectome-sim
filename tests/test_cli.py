@@ -41,6 +41,63 @@ def test_verify_run_cli_fails_closed(tmp_path, capsys):
     assert output.err.strip()
 
 
+def test_event_choice_cli_validates_import_before_engine(tmp_path, monkeypatch, capsys):
+    from fly_connectome_sim import cli
+
+    def forbidden():
+        raise AssertionError("Invalid proposal constructed an engine")
+
+    monkeypatch.setattr(cli.FlyEngine, "from_prepared_graph", forbidden)
+    target = tmp_path / "event-run"
+    assert main(["event-choice", "--proposal", str(tmp_path / "missing.json"),
+                 "--output-dir", str(target)]) == 1
+    assert not target.exists()
+    assert capsys.readouterr().err
+
+
+def test_event_export_cli_commands_fail_closed(tmp_path, capsys):
+    for command in ("export-event-replay", "export-event-plan"):
+        output = tmp_path / f"{command}.json"
+        assert main([command, str(tmp_path / "missing"), "--output", str(output)]) == 1
+        assert not output.exists()
+        assert capsys.readouterr().err
+
+
+def test_event_cli_has_no_selection_or_threshold_override(tmp_path, capsys):
+    import pytest
+
+    for name in ("--selected-option-id", "--action-threshold-hz", "--cycles"):
+        with pytest.raises(SystemExit) as error:
+            main(["event-choice", "--proposal", "options.json", "--output-dir", str(tmp_path / "run"), name, "1"])
+        assert error.value.code == 2
+    capsys.readouterr()
+
+
+def test_event_export_cli_reports_bound_plan_and_replay(tmp_path, monkeypatch, capsys):
+    from fly_connectome_sim import cli
+
+    calls = []
+    def replay(source, output):
+        calls.append(("replay", source, output))
+        return {"version": "event-choice-replay/v1", "duration_ticks": 20000,
+                "segments": [{}, {}, {}, {}], "source": {"verification_mode": "integrity-only"}}
+    def plan(source, output):
+        calls.append(("plan", source, output))
+        return {"version": "event-plan/v1", "status": "deferred", "selected_option_id": None,
+                "source": {"verification_mode": "integrity-only"}}
+    monkeypatch.setattr(cli, "export_event_replay", replay)
+    monkeypatch.setattr(cli, "export_event_plan", plan)
+    source = tmp_path / "source"
+    output = tmp_path / "output.json"
+    assert main(["export-event-replay", str(source), "--output", str(output)]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["duration_ticks"] == 20000 and result["segment_count"] == 4
+    assert main(["export-event-plan", str(source), "--output", str(output)]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["status"] == "deferred" and result["selected_option_id"] is None
+    assert calls == [("replay", source, output), ("plan", source, output)]
+
+
 def test_observation_cli_rejects_invalid_cycles_before_engine(tmp_path, monkeypatch, capsys):
     from fly_connectome_sim import cli
 

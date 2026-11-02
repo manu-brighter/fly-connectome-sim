@@ -14,7 +14,7 @@
         <input id="file" type="file" accept=".json,application/json" hidden />
       </header>
       <main>
-        <div class="heading"><div><h1>A window into the recording.</h1><p id="recording-name">Open a measured-replay/v1 or measured-video-replay/v1 or /v2 file.</p></div><span id="status" class="status">No recording loaded</span></div>
+        <div class="heading"><div><h1>A window into the recording.</h1><p id="recording-name">Open measured-replay/v1, measured-video-replay/v1 or /v2, or event-choice-replay/v1.</p></div><span id="status" class="status">No recording loaded</span></div>
         <p id="error" role="alert" hidden></p>
         <section class="experiment" aria-label="Recorded simulation replay">
           <div class="stage"><canvas id="stage" aria-label="Illustrative fruit fly, exact recorded stimulus and measured telemetry. Drag to orbit the scene." tabindex="0"></canvas><div class="stage-note">Illustrative geometry · drag to orbit</div></div>
@@ -28,6 +28,7 @@
             <p class="bin-note" id="bin-note">Rates use complete recorded bins. No measurements are shown until a file is loaded.</p>
             <p class="clock">Simulation clock <b id="source-clock">—</b><br />Event <b id="event-sequence">—</b></p>
             <div id="video-policy" class="policy-readout" hidden><span>Media PTS <b id="source-pts">—</b></span><a id="clip-url" target="_blank" rel="noopener noreferrer">Source reel page</a><strong id="policy-status">—</strong><small id="rolling-readout">—</small><small id="policy-note">Recorded right-scroll/v1 display policy; not validated fly behavior.</small></div>
+            <section id="event-plan" class="event-plan" aria-label="Locked event plan" hidden><small id="event-status"></small><h2 id="event-title"></h2><p id="event-details"></p><small id="event-measurement"></small><button id="download-plan" disabled>Download bound plan</button><small>Engineered selection policy; no semantic preference or venue feasibility is established.</small></section>
           </aside>
           <div class="transport">
             <div class="transport-top"><button id="play" class="play" disabled aria-label="Play recording">Play</button><output id="time">0.000 / — s</output><label class="speed">Replay speed <select id="speed" disabled><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label><button id="video" disabled>Export video</button></div>

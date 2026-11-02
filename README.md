@@ -32,7 +32,18 @@ left/right preference.
 | Experiment state | Checkpoint restore, complete-state hashes, reset determinism, candidate-memory interventions and authenticated native map/schema context | A qualified production frozen configuration |
 | Assay evidence | Caller-owned native production, source-specific 408-pair tiny-native repeats, shared declaration arithmetic and a bounded pair checker with full EOF validation | Global grid/selected-evidence reconciliation/public freezing, fullgraph held-out confirmation and the `assay` CLI |
 | Resource pilots | Fullgraph components, trained 10-/70-second one-anchor pilots with isolated native replay, and a [reviewed detail-on first-training-prefix sample](docs/experiments/2026-11-02-fullgraph-detail-prefix-pilot.md) | Unprofiled controlled timing, complete grid/assay capacity and a tested cloud/Linux environment |
-| Product | A/B replay with inspected 30fps export; genuine-video preparation, recording/export and recorded motor-policy replay implemented | Longer feed sessions, accessibility/cross-browser polish and LLM event planning |
+| Product | A/B and real-video replay with inspected 30fps export; strict event proposals, measured motor selection and bound event-plan export | Live LLM transport, longer feed sessions and accessibility/cross-browser polish |
+
+The [event-choice contract](docs/superpowers/specs/2026-11-02-event-choice-milestone.md)
+adds two imported event concepts, deterministic visual cards and a fresh 2s
+reward-free observation. The final 500ms motor counts select the left or right
+proposal, or explicitly defer. The exported plan retains the chosen proposal
+exactly; an LLM cannot override that selection. Start with the small
+[example](examples/event-options.json) or [proposal prompt](docs/event-proposal-prompt.md).
+This imports JSON; it makes no live model/API call or paid request.
+One bounded actual run selected Sunset House from final left2/right1 spikes;
+same-artifact Chrome/plan-download and150-frame/5s export checks passed. See the
+[event-choice report](docs/experiments/2026-11-02-event-choice-observation.md).
 
 The motor readout is an engineered display policy with an uncalibrated 1 Hz
 threshold. It uses measured lateral motor rates and leaves the primary MBON11
@@ -59,7 +70,7 @@ Implementation and verification details live in the
 [assay plan](docs/superpowers/plans/2026-09-24-associative-plasticity-assay.md).
 The [assay design](docs/superpowers/specs/2026-09-24-associative-plasticity-pivot-design.md)
 defines the scientific boundaries; the [product specification](docs/specs/fly-event-planner.md)
-describes the future event planner.
+describes the broader event-planning goal; live LLM transport remains open.
 
 For a fresh cloud checkout, start with the versioned
 [cloud handover and live TODOs](docs/cloud-handover.md). Local runtime data,

@@ -25,6 +25,7 @@ from .experiment.qualification import (
 from .experiment.recorder import RunRecorder, verify_run
 from .experiment.measured_replay import export_measured_replay, record_observation_run
 from .experiment.video_observation import export_video_replay, record_video_observation_run
+from .experiment.event_choice import export_event_plan, export_event_replay, record_event_choice_run
 from .experiment.stimuli import AssayStimuli
 
 
@@ -113,6 +114,13 @@ def main(argv: list[str] | None = None) -> int:
     video_export_parser.add_argument("path", type=Path)
     video_export_parser.add_argument("--output", type=Path,
                                      default=Path("runs/measured-video-replay.json"))
+    event_parser = commands.add_parser("event-choice")
+    event_parser.add_argument("--proposal", type=Path, required=True)
+    event_parser.add_argument("--output-dir", type=Path, required=True)
+    for command in ("export-event-replay", "export-event-plan"):
+        event_export_parser = commands.add_parser(command)
+        event_export_parser.add_argument("path", type=Path)
+        event_export_parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
         if args.command == "verify-run":
@@ -139,6 +147,20 @@ def main(argv: list[str] | None = None) -> int:
                        "duration_ticks": replay["duration_ticks"],
                        "segment_count": len(replay["segments"]),
                        "verification_mode": replay["source"]["verification_mode"]}
+        elif args.command == "event-choice":
+            summary = _verified_summary(record_event_choice_run(
+                args.output_dir, proposal_path=args.proposal,
+                engine_factory=FlyEngine.from_prepared_graph,
+            ))
+        elif args.command in {"export-event-replay", "export-event-plan"}:
+            exporter = export_event_plan if args.command == "export-event-plan" else export_event_replay
+            result = exporter(args.path, args.output)
+            summary = {"path": str(args.output), "version": result["version"],
+                       "verification_mode": result["source"]["verification_mode"]}
+            if args.command == "export-event-plan":
+                summary.update(status=result["status"], selected_option_id=result["selected_option_id"])
+            else:
+                summary.update(duration_ticks=result["duration_ticks"], segment_count=len(result["segments"]))
         else:
             if args.output_dir.exists() or args.output_dir.is_symlink() \
                     or args.output_dir.is_junction():

@@ -6,6 +6,37 @@
   font-weight:400;
   line-height:1.45
 }
+.event-plan {
+  grid-column:1/-1;
+  margin-top:16px;
+  border-top:1px solid #bdceda;
+  padding-top:16px
+}
+.event-plan[hidden] {
+  display:none
+}
+.event-plan h2 {
+  margin:6px 0;
+  font-size:20px;
+  font-weight:500
+}
+.event-plan p {
+  white-space:pre-line;
+  margin:8px 0;
+  font-size:13px
+}
+.event-plan small {
+  display:block;
+  color:#597083;
+  font-size:11px
+}
+.event-plan button {
+  margin:12px 0
+}
+.stimulus-event {
+  background:#d6e5dd;
+  color:#24513b
+}
 * {
   box-sizing:border-box
 }

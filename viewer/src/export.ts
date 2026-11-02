@@ -7,13 +7,14 @@ export function quantizeVideoTick(index: number) {
   return Math.floor((index * 10000 + 15) / EXPORT_FPS);
 }
 
-export function frameCount(durationTicks: number) {
-  return Math.ceil(durationTicks * EXPORT_FPS / 10000) + TERMINAL_HOLD_FRAMES;
+export function frameCount(durationTicks: number, terminalHoldFrames = TERMINAL_HOLD_FRAMES) {
+  if (!Number.isSafeInteger(durationTicks) || durationTicks <= 0 || !Number.isSafeInteger(terminalHoldFrames) || terminalHoldFrames < 1 || terminalHoldFrames > 90) throw new RangeError('Invalid export duration or presentation hold.');
+  return Math.ceil(durationTicks * EXPORT_FPS / 10000) + terminalHoldFrames;
 }
 
-export function frameAt(index: number, durationTicks: number, sourceTickForFrame: (index: number) => number = (frame) => Math.floor(frame * 10000 / EXPORT_FPS)) {
+export function frameAt(index: number, durationTicks: number, sourceTickForFrame: (index: number) => number = (frame) => Math.floor(frame * 10000 / EXPORT_FPS), terminalHoldFrames = TERMINAL_HOLD_FRAMES) {
   const sourceFrames = Math.ceil(durationTicks * EXPORT_FPS / 10000);
-  if (!Number.isSafeInteger(index) || index < 0 || index >= sourceFrames + TERMINAL_HOLD_FRAMES) throw new RangeError('Frame index is outside the export.');
+  if (!Number.isSafeInteger(index) || index < 0 || index >= frameCount(durationTicks, terminalHoldFrames)) throw new RangeError('Frame index is outside the export.');
   const terminalHold = index >= sourceFrames;
   return {
     index,
@@ -32,12 +33,12 @@ type Writer<T> = {
   cancel: () => Promise<void>;
 };
 
-export async function writeFrames<T>(durationTicks: number, writer: Writer<T>, signal?: AbortSignal, onProgress?: (done: number, total: number) => void, sourceTickForFrame?: (index: number) => number): Promise<T> {
-  const total = frameCount(durationTicks);
+export async function writeFrames<T>(durationTicks: number, writer: Writer<T>, signal?: AbortSignal, onProgress?: (done: number, total: number) => void, sourceTickForFrame?: (index: number) => number, terminalHoldFrames = TERMINAL_HOLD_FRAMES): Promise<T> {
+  const total = frameCount(durationTicks, terminalHoldFrames);
   try {
     for (let index = 0; index < total; index += 1) {
       signal?.throwIfAborted();
-      const frame = frameAt(index, durationTicks, sourceTickForFrame);
+      const frame = frameAt(index, durationTicks, sourceTickForFrame, terminalHoldFrames);
       await writer.paint(frame);
       signal?.throwIfAborted();
       await writer.add(frame.timestamp, frame.duration);

@@ -19,10 +19,10 @@ export type VideoRecording = Omit<Recording, 'version' | 'inputs' | 'segments'> 
   version: 'measured-video-replay/v1' | 'measured-video-replay/v2'; inputs: Record<string, VideoInput>; segments: VideoSegment[];
 };
 
-export function isVideoRecording(recording: Recording | VideoRecording): recording is VideoRecording {
+export function isVideoRecording(recording: { version: string }): recording is VideoRecording {
   return recording.version === 'measured-video-replay/v1' || recording.version === 'measured-video-replay/v2';
 }
-export function videoSpeedLabel(recording: Recording | VideoRecording) {
+export function videoSpeedLabel(recording: { version: string }) {
   return recording.version === 'measured-video-replay/v2' ? 'Reel 5×' : 'Reel 1×';
 }
 

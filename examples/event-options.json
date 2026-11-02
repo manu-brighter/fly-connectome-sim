@@ -1,0 +1,22 @@
+{
+  "version": "event-options/v1",
+  "brief": {"title": "Summer team party", "guests": 100, "max_budget_chf": 5000},
+  "options": [
+    {
+      "id": "sunset-house", "title": "Sunset House", "setting": "rooftop",
+      "music": "House", "budget_chf": 4800, "capacity": 120, "duration_minutes": 240,
+      "programme": [
+        {"start_minute": 0, "label": "Welcome drinks"},
+        {"start_minute": 60, "label": "DJ and dancing"}
+      ]
+    },
+    {
+      "id": "warehouse-techno", "title": "Warehouse Techno", "setting": "warehouse",
+      "music": "Techno", "budget_chf": 4500, "capacity": 150, "duration_minutes": 300,
+      "programme": [
+        {"start_minute": 0, "label": "Doors and food"},
+        {"start_minute": 90, "label": "Techno set"}
+      ]
+    }
+  ]
+}

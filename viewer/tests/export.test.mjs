@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { frameAt, quantizeVideoTick, writeFrames } from '../src/export.ts';
+import { frameAt, frameCount, quantizeVideoTick, writeFrames } from '../src/export.ts';
 import { flyPose } from '../src/motion.ts';
 
 test('12 second export has 360 source samples and 15 terminal presentation frames', () => {
@@ -51,4 +51,19 @@ test('illustrative pose depends on absolute replay time and reduced motion', () 
   assert.deepEqual(flyPose(2500, false), flyPose(2500, false));
   assert.notDeepEqual(flyPose(2500, false), flyPose(5000, false));
   assert.deepEqual(flyPose(2500, true), flyPose(5000, true));
+});
+
+test('event export holds only the terminal sample for 90 frames without extending source clocks', async () => {
+  assert.equal(frameCount(20000, 90), 150);
+  assert.equal(frameCount(20000), 75);
+  const frames = [];
+  await writeFrames(20000, {
+    paint: (frame) => { frames.push(frame); }, add: async () => {},
+    finalize: async () => true, cancel: async () => {},
+  }, undefined, undefined, undefined, 90);
+  assert.equal(frames.length, 150);
+  assert.ok(frames.slice(0, 60).every((frame) => !frame.terminalHold && frame.tick < 20000));
+  assert.ok(frames.slice(60).every((frame) => frame.terminalHold && frame.tick === 20000));
+  assert.equal(frames.at(-1).timestamp + frames.at(-1).duration, 5);
+  for (const hold of [-1, 0, 1.5, 91, Infinity]) assert.throws(() => frameCount(20000, hold));
 });
