@@ -32,11 +32,19 @@ left/right preference.
 | Experiment state | Checkpoint restore, complete-state hashes, reset determinism, candidate-memory interventions and authenticated native map/schema context | A qualified production frozen configuration |
 | Assay evidence | Caller-owned native production, source-specific 408-pair tiny-native repeats, shared declaration arithmetic and a bounded pair checker with full EOF validation | Global grid/selected-evidence reconciliation/public freezing, fullgraph held-out confirmation and the `assay` CLI |
 | Resource pilots | Fullgraph components, trained 10-/70-second one-anchor pilots with isolated native replay, and a [reviewed detail-on first-training-prefix sample](docs/experiments/2026-11-02-fullgraph-detail-prefix-pilot.md) | Unprofiled controlled timing, complete grid/assay capacity and a tested cloud/Linux environment |
-| Product | Optional, separately labelled motor-only readout | Motor validation, offline 3D replay and LLM event planning |
+| Product | Optional motor-only readout; actual observation recording/export and local 3D replay with bounded Chrome/video checks | Playback/export precision, accessibility/cross-browser polish, motor validation and LLM event planning |
 
 The motor readout is an engineered display policy with an uncalibrated 1 Hz
 threshold. It uses measured lateral motor rates and leaves the primary MBON11
 classification unchanged; it does not establish learned behavior.
+
+Measured Replay v1 remains WIP: one [12-second fullgraph observation](docs/experiments/2026-11-02-measured-replay-observation.md)
+was sealed, verified, exported and loaded in Chrome. Sampled values, play/pause,
+speed, seek, desktop/mobile and exported-video terminal-frame checks passed.
+This is an experimental WIP checkpoint; exact frame pacing/export precision and
+broader browser/accessibility checks remain. Continue with that recording; no
+further native run is needed for UI work. See
+[recording and viewer commands](docs/getting-started.md#measured-observation-and-local-replay).
 
 Implementation and verification details live in the
 [assay plan](docs/superpowers/plans/2026-09-24-associative-plasticity-assay.md).
@@ -71,10 +79,11 @@ separate verification path; an intact artifact is not evidence of learning.
 
 ## Getting started
 
-The exercised Windows environment uses **Python 3.12.14**, **uv 0.12.15**,
-**Zig 0.16.0** and **Node.js 25.9.0**. The numerical kernel uses C++17; Python
-coordinates data preparation, protocols and analysis. Node.js downloads the
-released data.
+The native/data Windows workflow was exercised with **Python 3.12.14**,
+**uv 0.12.15**, **Zig 0.16.0** and **Node.js 25.9.0**. The replay viewer was
+checked separately with **Node.js 24.21.0 / npm 11.19.0** and requires Node >=24.
+The numerical kernel uses C++17; Python coordinates experiments and Node.js
+downloads the released data and serves/builds the local viewer.
 
 Follow [Getting started](docs/getting-started.md) for the complete toolchain
 setup, locked data download and verification, preparation, experiment commands

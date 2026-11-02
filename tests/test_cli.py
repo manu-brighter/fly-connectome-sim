@@ -41,6 +41,28 @@ def test_verify_run_cli_fails_closed(tmp_path, capsys):
     assert output.err.strip()
 
 
+def test_observation_cli_rejects_invalid_cycles_before_engine(tmp_path, monkeypatch, capsys):
+    from fly_connectome_sim import cli
+
+    def forbidden():
+        raise AssertionError("invalid request must not construct an engine")
+
+    monkeypatch.setattr(cli.FlyEngine, "from_prepared_graph", forbidden)
+    target = tmp_path / "invalid"
+    assert main(["observe", "--output-dir", str(target), "--cycles", "11"]) == 1
+    assert not target.exists()
+    output = capsys.readouterr()
+    assert output.out == "" and "cycles" in output.err
+
+
+def test_export_replay_cli_missing_source_is_fail_closed(tmp_path, capsys):
+    target = tmp_path / "replay.json"
+    assert main(["export-replay", str(tmp_path / "missing"), "--output", str(target)]) == 1
+    assert not target.exists()
+    output = capsys.readouterr()
+    assert output.out == "" and output.err
+
+
 def test_qualify_cli_uses_fixed_declaration_and_refuses_overwrite(tmp_path, monkeypatch, capsys):
     from fly_connectome_sim import cli
 

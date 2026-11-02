@@ -2,9 +2,16 @@
 
 Use `origin` of `manu-brighter/fly-connectome-sim`, branch
 `feat/connectome-experiment-core`, latest pushed feature commit. The latest
-accepted work is Task7B4f.3b, the explicit-sequence declared accumulator.
-Earlier e/f.1/f.2/f.3a evidence is source-specific; f.3c–f.3d/f.4–f.6/g remain open.
-The project remains WIP, not v1.
+reviewed WIP checkpoint adds the measured-observation recorder/exporter and
+local viewer source, plus one sealed/exported real fullgraph observation.
+Current 31-member model-source identity:
+`f70722c4c253d48b6496e772a2780e3f6aba3474aca13a7a799bcd5941463b46`;
+schema remains `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
+Only existing cli.py and new measured_replay.py differ from accepted f.3b;
+the other 29 package source files are exact. Earlier assay evidence remains
+historical/source-specific; f.3c–f.3d/f.4–f.6/g remain open. The project and Replay
+v1 remain experimental WIP; the bounded real-file/browser/video-end check passed,
+with foreground frame pacing/export precision/accessibility/cross-browser polish open.
 
 Continue autonomously on the original Windows workstation, including reviewed
 feature commits and explicit feature pushes, without pausing at each checkpoint.
@@ -24,6 +31,8 @@ checkout, not a gate on current local work. Never push main/master/develop.
 5. [Detail-on first-training-prefix report](experiments/2026-11-02-fullgraph-detail-prefix-pilot.md),
    [70-second resource report](experiments/2026-11-01-fullgraph-retention-pilot.md)
    and [earlier short-retention report](experiments/2026-10-08-fullgraph-anchor-pilot.md).
+6. [Measured Replay v1 plan](superpowers/plans/2026-11-02-measured-replay-v1.md)
+   and [current observation report](experiments/2026-11-02-measured-replay-observation.md).
 
 The older connectome-core plan is background. This tracked handover and current
 plan orient a fresh checkout; private local SDD notes/chats/scripts are not
@@ -48,7 +57,46 @@ this document. Do not claim to reverify unavailable bytes.
   confirmation exists. Missing evidence is not an authenticated scientific negative.
   Never fabricate successful gates/configuration to continue a negative run.
 
-## Implemented foundation and latest reviewed checkpoint
+## Current measured Replay checkpoint and next continuation
+
+Backend source review passed; focused native/CLI tests: **44 passed in 9.58s**.
+Current-source recorder/replay compatibility: **622 passed, one opt-in skip in
+48.97s**, exit0; the skipped full MaleCNS map-context test was not rerun here.
+Viewer source review closure has zero remaining findings. Its latest repeated
+checks after the terminal-render correction: **42 passed in 206.567ms**, build
+exit0, eleven frozen first-party files
+unchanged. The Three.js bundle still emits the >500kB advisory.
+Viewer eleven-file freeze SHA256:
+`1f8b1ab90648bb457bed87ba81968613f6578d1aa1d48d5bd8230b17fbcb4f48`.
+
+The single fixed six-cycle/12s actual observation completed in **208.125s**
+within its 240s wall budget, then ordinary verify/export both completed exit0.
+It has 26 events, 24 segments, 1200 bins; export 218,993 bytes,
+SHA256 `c362c7a7dc3e8d25054b6c644e293b85e6d7ce52a087724d564bfb6a3b256602`.
+Independent raw-count/pixel/source checks and the actual frontend parser passed.
+These are integrity/implementation checks, not scientific or capacity evidence.
+See the [observation report](experiments/2026-11-02-measured-replay-observation.md)
+for exact source bindings, counts and commands.
+
+Continue browser QA using the SAME local ignored
+`runs/measured-replay-v1-fullgraph.json`; do not automatically run another native
+recording, qualification, assay or parked C1 work. After the user manually enabled
+Chrome local-file permission, the real export loaded. Play at 0.5x advanced;
+pause held 3.660s. Seek/Home, source disclosure and sampled MBON11/KC values
+matched the raw bins. Desktop 650px and mobile 375px layouts were observed without
+clipped motor labels or horizontal overflow. No automated setting write occurred.
+After a reviewed test-first terminal-render correction, the same data exported
+a 110,864-byte WebM that decoded 650x660 without error and visibly includes the
+last black 12.000/12.000s sample/overlay. Media duration 13.326s includes browser
+capture timing/final-frame hold; no exact 12s/30fps guarantee follows. Malformed
+JSON rejects with an actionable message while retaining the previous recording.
+The initial interrupted short clip is not acceptance evidence or a performance
+comparison. Continue dedicated foreground frame-pacing/export-precision and
+accessibility/cross-browser polish before claiming a finished product.
+LLM work and scientific gates remain later. A fresh checkout must regenerate
+its own missing runtime/recording before such a check; private notes are optional.
+
+## Implemented scientific foundation
 
 Completed reviewed source slices provide native checkpoint restore/reset,
 candidate-only interventions, complete/candidate/noncandidate hashes, bounded
@@ -69,7 +117,7 @@ genuinely neutral gaps; first-seen branches and checkpoint-name records remain
 causal. Embedded sequence framing gains no arithmetic authority. Single-use
 finish closes before reconciliation and certifies no EOF or native proof.
 
-Current model-source identity:
+Historical f.3b model-source identity (not the current replay source):
 `89c7b75442ae8c74fe731d178f54cc03349a81eb58cb5c23f208260fbe502a1b`;
 schema unchanged. Full analysis: **432 passed in 249.14 s**; focused **86 passed
 in 5.04 s** overlaps it. Normal-host recorder/replay: **622 passed, one graph
@@ -92,10 +140,16 @@ it is not a cloud-continuation dependency. Formal integration is a paused workst
 - [x] [PARTIAL base + T10](experiments/2026-11-02-fullgraph-partial-retention-pilot.md)
   completed exit0:785.922s,368,399,953 bytes,peak WS1,908,953,088 bytes; A exactly
   matches frozen/matched controls in all three windows. No complete controlled A−B effect.
-- [ ] Next: actual recorded/exported compact measurements → smooth3D replay,
+- [x] Record/export one genuine 12s fullgraph observation and check its compact
+  pixels/counts through the actual frontend parser.
+- [x] Load the SAME recording in Chrome; check play/pause/speed/seek/Home, source
+  mode, sampled telemetry and desktop/mobile layouts.
+- [x] Export/decode the corrected same-recording video and inspect its final
+  measured black 12.000/12.000s overlay; complete the bounded vertical check.
+- [ ] Next: foreground frame-pacing/export-precision/accessibility/cross-browser polish,
   following the [Measured Replay v1 plan](superpowers/plans/2026-11-02-measured-replay-v1.md).
   No fabricated activity/dopamine interpretation/semantics or automatic assay/qualification runs/C1 return.
-  Replay v1 allows a separately bounded real observation recording.
+  The authorized single bounded real observation is already complete.
 Diagnostics grant no integrated capacity/history/config/freeze; no causal comparison
 with profiled630s or automatic inventory return. One allocation/call may exceed guards.
 The prior Viewer timing gate is superseded only for this explicitly approved replay slice; LLM stays later.
@@ -430,6 +484,12 @@ Interrupted development runs are never counted as passes.
 
 ## Live remaining work
 
+- [x] Implement/review measured observation recording/export and viewer source;
+  complete bounded real fullgraph recording/export and independent raw/parser checks.
+- [x] Complete same-recording Chrome playback/sample/desktop/mobile QA.
+- [x] Complete corrected-video terminal-frame and bounded vertical checks.
+- [ ] Finish dedicated foreground frame-pacing/export-precision/accessibility/
+  cross-browser checks as needed for product completion; preserve experimental WIP status.
 - [x] Complete c.2b source review, ordinary/actual graph/full tiny-native grid
   acceptance and exact reviewed-source checks.
 - [x] Execute, independently review and publish the bounded actual MaleCNS
@@ -488,8 +548,10 @@ training history. No sample checkpoint-size multiplication establishes capacity.
 Local .venv, Windows Zig/DLL, graph data, prepared arrays, checkpoints, runs and
 .tools probes are intentionally absent. Prerequisites: Python 3.12.14, uv, Node.js
 and a C++17 compiler exposing c++. The exercised Windows versions are uv 0.12.15,
-Zig 0.16.0 and Node 25.9.0; Unix compiler/platform execution is not yet locally
-verified or pinned. See [Getting started](getting-started.md) for platform setup.
+Zig 0.16.0 and historically Node 25.9.0 for the native/data workflow; the viewer
+was checked with Node 24.21.0/npm 11.19.0 and requires Node >=24. Unix
+compiler/platform execution is not yet locally verified or pinned. See
+[Getting started](getting-started.md) for platform setup.
 These are instructions, not new Linux results; record actual versions/limitations.
 
 ```sh

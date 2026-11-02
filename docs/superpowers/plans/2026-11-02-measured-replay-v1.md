@@ -6,6 +6,19 @@ changes product order, not scientific criteria. The existing simulator,
 provenance locks and artifact reader remain. Parked selected-inventory work is
 outside this milestone.
 
+**Reviewed WIP checkpoint:** recorder/exporter and viewer source are implemented;
+one six-cycle/12s actual fullgraph observation was sealed/verified/exported in
+208.125s (240s budget), with independent raw audit and actual frontend-parser
+checks. Source model `f70722c4c253d48b6496e772a2780e3f6aba3474aca13a7a799bcd5941463b46`
+has 31 members; schema is unchanged. Backend 44 tests, recorder/replay 622 passed
+with one opt-in skip, viewer 42 tests/build0. These are separate scoped results,
+not complete scientific acceptance. Chrome real-file/play/pause/speed/seek/Home,
+source disclosure, sampled telemetry and desktop/mobile checks passed. The corrected
+video decoded and its final measured overlay was inspected: bounded vertical
+check complete, experimental WIP remains in pacing/precision/accessibility/
+cross-browser polish. Use the SAME recording. See the
+[observation report](../../experiments/2026-11-02-measured-replay-observation.md).
+
 ## Smallest useful vertical slice
 
 Record a short genuine observation, seal its ordinary pilot artifact, export
@@ -65,26 +78,39 @@ the viewer also bounds input file size. Do not introduce a second trust issuer.
 
 ## Implementation and ownership
 
-- [ ] **Record/export:** add `experiment/measured_replay.py`, focused tests and
+- [x] **Record/export source:** add `experiment/measured_replay.py`, focused tests and
   narrow `observe` / `export-replay` CLI commands. Reuse engine/stimuli/recorder;
   no qualification `_Run`, core/schema changes or second simulator. Existing
   executor drops full telemetry, so a small recorder loop is intentional.
   A genuine pilot seal needs emitted/ingested before and after checkpoints, not
   a scientific result terminal. CLI defaults write under ignored `runs/`.
-- [ ] **Viewer:** separate `viewer/` with vanilla TypeScript, Three.js and a small
+- [x] **Viewer source:** separate `viewer/` with vanilla TypeScript, Three.js and a small
   Vite build. Pin dependencies/lockfile. Local file input, play/pause, seek,
   speed, recorded stimulus, learning/stimulation flags and population telemetry.
   No uploads, remote model calls, fabricated demo data or imported anatomy.
-- [ ] **Real vertical check:** after backend review, record one bounded actual
+- [x] **Real recording/export/parser check:** after backend review, record one bounded actual
   fullgraph observation (fixed six cycles/12s; 240s wall budget), verify/export
-  it, then load it in the browser. Code/UI iterations reuse the resulting data;
+  it and check its raw bytes/counts/pixels and actual frontend parser.
+- [x] **Real browser check:** load that SAME export, then verify play/pause/seek,
+  sampled displayed values and desktop/mobile behavior. Code/UI iterations reuse the resulting data;
   no repeated fullgraph runs for styling. No formal capacity claim follows.
-- [ ] **Finish:** verify exported numbers against displayed sampled frames,
+- [x] **Bounded vertical check:** verify exported numbers against displayed sampled frames,
   inspect desktop/mobile screenshots, build and run focused tests. Provide
   browser-supported video export of the same measured replay, including a
   readable telemetry overlay; feature-detect unsupported capture. Review the
-  final vertical slice and update README/handover. Commit code/lockfiles/docs,
-  never recordings, checkpoints, exported pixels or generated videos.
+  final bounded vertical slice and update README/handover.
+- [ ] **Product polish:** dedicated foreground frame-pacing/export-precision,
+  accessibility and cross-browser checks as needed before product completion.
+  No exact 12s/30fps export guarantee follows from this bounded check.
+
+The user manually enabled Chrome local-file access; no automated settings write
+occurred. Real-file playback/sample/layout and corrected video-end checks passed.
+The corrected WebM visibly includes 12.000/12.000s black/last measurements; its
+actual media duration is 13.326s because capture includes browser timing/final-frame
+hold. An earlier short clip was interrupted and is not acceptance evidence;
+its duration is not attributed solely to the corrected render-order defect.
+This remains an experimental WIP checkpoint, not whole-project v1 completion.
+Commit code/lockfiles/docs only; never recordings/checkpoints/exported pixels/videos.
 
 Backend and viewer workers own disjoint paths and share this format. Keep
 integrity/timing review focused on real risks. Do not repeat the complete assay

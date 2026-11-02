@@ -25,9 +25,27 @@ f.3c design is ratified; C1 is parked local uncommitted/unreviewed WIP, not acce
 
 ## Current checkpoint and live remaining work — 2026-11-02
 
+Current reviewed Replay WIP source has 31 Python/C++ members, model identity
+`f70722c4c253d48b6496e772a2780e3f6aba3474aca13a7a799bcd5941463b46`,
+schema unchanged at `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
+The approved product slice adds only cli.py/new measured_replay.py to the
+accepted f.3b source; other 29 remain exact. Backend 44 focused tests pass;
+current recorder/replay compatibility: 622 passed/one opt-in skip in 48.97s.
+Reviewed viewer source has 42 passing tests/build0. A single six-cycle/12s actual
+observation completed in 208.125s (240s budget), sealed/verified/exported; raw
+audit and actual frontend parser checked 24 segments/1200 bins. Actual Chrome
+file loading/play/pause/speed/seek/Home/source, sampled values and desktop/mobile
+checks passed. The corrected WebM decoded and its final 12.000/12.000s black
+measured overlay was inspected; bounded vertical checks passed. Experimental
+WIP remains in foreground frame pacing/export precision/accessibility/cross-browser
+checks; no exact 12s/30fps export or complete-product claim follows.
+Reuse that recording for UI work; no new native run or C1 return is automatic.
+The [observation report](../../experiments/2026-11-02-measured-replay-observation.md)
+retains identities and limits. LLM/scientific work remains separately gated.
+
 The early task-level RED/GREEN boxes are historical execution instructions, not
 the current backlog. Tasks 1–6, strict analysis 7A, motor-only Task8 and source
-slices 7B4a–e/f.1/f.2/f.3a/f.3b are implemented and accepted. Current f.3b source:
+slices 7B4a–e/f.1/f.2/f.3a/f.3b are implemented and accepted. Historical f.3b source:
 `89c7b75442ae8c74fe731d178f54cc03349a81eb58cb5c23f208260fbe502a1b`;
 schema unchanged. One explicit-sequence accumulator preserves existing declaration
 validation/arithmetic/reconciliation, all seven fields, copy depth and caps.
@@ -234,7 +252,14 @@ Cloud setup below applies only to a future fresh checkout, not local continuatio
 - [x] Accept f.3b explicit-sequence accumulator and bounded analysis/related checks.
 - [x] Complete the bounded unprofiled first-training diagnostic; report linked above.
 - [x] Complete/review the bounded PARTIAL T10 diagnostic within its recorded scientific limits.
-- [ ] Build the approved measured-data Replay v1 vertical slice; no fabricated activity or semantic/dopamine claims.
+- [x] Implement/review Replay recorder/exporter/viewer source and record/export
+  the bounded real fullgraph observation; independently check raw data/parser.
+- [x] Complete the SAME recording's Chrome playback, sampled values, source-mode
+  disclosure and desktop/mobile layout checks.
+- [x] Complete corrected-video terminal-frame and bounded vertical checks.
+- [ ] Finish foreground frame-pacing/export-precision/accessibility/cross-browser
+  polish as needed for product completion; Replay stays experimental WIP.
+  No fabricated activity or semantic/dopamine claims.
   Parked C1/unreleased C2 do not complete f.3c; resume formal integration only when separately needed/released.
 - [ ] Integrate public frozen-config lifecycle and implement the real assay CLI;
   current CLI lacks `assay` (f/g).

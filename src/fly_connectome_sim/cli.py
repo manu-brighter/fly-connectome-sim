@@ -23,6 +23,7 @@ from .experiment.qualification import (
     qualify,
 )
 from .experiment.recorder import RunRecorder, verify_run
+from .experiment.measured_replay import export_measured_replay, record_observation_run
 from .experiment.stimuli import AssayStimuli
 
 
@@ -96,10 +97,28 @@ def main(argv: list[str] | None = None) -> int:
     qualify_parser.add_argument("--output-dir", type=Path, required=True)
     verify_parser = commands.add_parser("verify-run")
     verify_parser.add_argument("path", type=Path)
+    observe_parser = commands.add_parser("observe")
+    observe_parser.add_argument("--output-dir", type=Path, default=Path("runs/measured-observation"))
+    observe_parser.add_argument("--seed", type=int, default=11)
+    observe_parser.add_argument("--cycles", type=int, default=3)
+    export_parser = commands.add_parser("export-replay")
+    export_parser.add_argument("path", type=Path)
+    export_parser.add_argument("--output", type=Path, default=Path("runs/measured-replay.json"))
     args = parser.parse_args(argv)
     try:
         if args.command == "verify-run":
             summary = _verified_summary(verify_run(args.path))
+        elif args.command == "observe":
+            summary = _verified_summary(record_observation_run(
+                args.output_dir, engine_factory=FlyEngine.from_prepared_graph,
+                seed=args.seed, cycles=args.cycles,
+            ))
+        elif args.command == "export-replay":
+            replay = export_measured_replay(args.path, args.output)
+            summary = {"path": str(args.output), "version": replay["version"],
+                       "duration_ticks": replay["duration_ticks"],
+                       "segment_count": len(replay["segments"]),
+                       "verification_mode": replay["source"]["verification_mode"]}
         else:
             if args.output_dir.exists() or args.output_dir.is_symlink() \
                     or args.output_dir.is_junction():
