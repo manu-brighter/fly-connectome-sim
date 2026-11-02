@@ -29,6 +29,179 @@ METADATA = {
 ZERO = "0" * 64
 
 
+def test_append_reference_matches_actual_prefix_bytes_and_preserves_public_append(tmp_path):
+    recorder = RunRecorder(tmp_path / "references", run_kind="pilot", metadata=METADATA,
+                           root_branch_id="root")
+    try:
+        payload = event(value="first", compute_seconds=12.5)
+        first = recorder._append_reference(payload)
+        assert recorder.append(event(value="middle")) is None
+        second = recorder._append_reference(event(value="last", kernel_seconds=9.0))
+        payload["value"] = "caller changed"
+        prefix = recorder.validate_prefix()
+        events = list(prefix.iter_events())  # Fully drain real fixed-byte validation.
+        raw = [json.loads(line) for line in (recorder.path / "events.jsonl").read_bytes().splitlines()]
+        assert [item["sequence"] for item in events] == [0, 1, 2]
+        for reference, index in ((first, 0), (second, 2)):
+            body = {key: value for key, value in raw[index].items()
+                    if key not in {"scientific_sha256", "compute_seconds", "kernel_seconds"}}
+            digest = sha256(canonical_json(body)).hexdigest()
+            assert type(reference) is dict and set(reference) == {"sequence", "scientific_sha256"}
+            assert reference == {"sequence": index, "scientific_sha256": digest}
+            assert reference["scientific_sha256"] == events[index]["scientific_sha256"]
+        assert events[0]["value"] == "first"
+        first.update(sequence=99, scientific_sha256=ZERO)
+        assert second == {"sequence": 2, "scientific_sha256": events[2]["scientific_sha256"]}
+        assert recorder.validate_prefix().scientific_prefix == prefix.scientific_prefix
+        assert recorder._raw_digest.hexdigest() == sha256((recorder.path / "events.jsonl").read_bytes()).hexdigest()
+    finally:
+        recorder.__exit__(RuntimeError, RuntimeError("unsealed recorder fixture"), None)
+
+
+def test_append_reference_calls_public_append_once_without_prefix_scan(tmp_path, monkeypatch):
+    from fly_connectome_sim.experiment import recorder as recorder_module
+    recorder = RunRecorder(tmp_path / "one-reference", run_kind="pilot", metadata=METADATA,
+                           root_branch_id="root")
+    append = recorder.append
+    calls = []
+    def tracked(payload):
+        calls.append(payload)
+        result = append(payload)
+        assert result is None
+        assert recorder._raw_digest.hexdigest() == sha256((recorder.path / "events.jsonl").read_bytes()).hexdigest()
+        return result
+    def forbidden(*args, **kwargs):
+        pytest.fail("Append reference scanned growing history")
+    monkeypatch.setattr(recorder, "append", tracked)
+    monkeypatch.setattr(recorder, "validate_prefix", forbidden)
+    monkeypatch.setattr(recorder_module, "validate_prefix", forbidden)
+    monkeypatch.setattr(recorder_module, "_scan_chain", forbidden)
+    try:
+        payload = event(value="one append")
+        reference = recorder._append_reference(payload)
+        assert len(calls) == 1 and calls[0] is payload
+        actual = json.loads((recorder.path / "events.jsonl").read_bytes())
+        assert reference == {key: actual[key] for key in ("sequence", "scientific_sha256")}
+    finally:
+        recorder.__exit__(RuntimeError, RuntimeError("unsealed recorder fixture"), None)
+
+
+@pytest.mark.parametrize("method", ["append", "_append_reference"])
+@pytest.mark.parametrize("failure", ["write", "flush"])
+def test_append_reference_io_failure_never_returns_advanced_chain_as_success(tmp_path, method, failure):
+    recorder = RunRecorder(tmp_path / "io-failure", run_kind="pilot", metadata=METADATA,
+                           root_branch_id="root")
+    stream, stages = recorder._stream, []
+    class FailingStream:
+        def write(self, line):
+            stages.append(("write", recorder.next_sequence))
+            if failure == "write":
+                raise OSError("injected write failure")
+            return stream.write(line)
+
+        def flush(self):
+            stages.append(("flush", recorder.next_sequence))
+            if failure == "flush":
+                raise OSError("injected flush failure")
+            return stream.flush()
+    recorder._stream = FailingStream()
+    reference = None
+    try:
+        with pytest.raises(RunArtifactError, match=f"Event append failed: injected {failure} failure") as error:
+            reference = getattr(recorder, method)(event(value="failed append"))
+        assert isinstance(error.value.__cause__, OSError)
+        assert reference is None and recorder._failed
+        assert recorder.next_sequence == 1 and recorder._chain.previous != ZERO
+        assert stages == ([("write", 1)] if failure == "write" else [("write", 1), ("flush", 1)])
+        assert recorder._raw_digest.hexdigest() == sha256(b"").hexdigest()
+        with pytest.raises(RunArtifactError, match="closed or failed"):
+            recorder._append_reference(event())
+    finally:
+        stream.close()
+
+
+@pytest.mark.parametrize("state", ["closed", "failed"])
+def test_append_reference_refuses_unhealthy_recorder_before_append(tmp_path, monkeypatch, state):
+    recorder = RunRecorder(tmp_path / "unhealthy-reference", run_kind="pilot", metadata=METADATA,
+                           root_branch_id="root")
+    if state == "closed":
+        recorder.__exit__(RuntimeError, RuntimeError(), None)
+    else:
+        recorder._failed = True
+    def forbidden(*args, **kwargs):
+        pytest.fail("Unhealthy recorder reached append")
+    monkeypatch.setattr(recorder, "append", forbidden)
+    try:
+        with pytest.raises(RunArtifactError, match="closed or failed"):
+            recorder._append_reference(event())
+        assert (recorder.path / "events.jsonl").read_bytes() == b""
+    finally:
+        recorder.__exit__(RuntimeError, RuntimeError(), None)
+
+
+@pytest.mark.parametrize("position", [False, True, 0.0, -1, "0", None])
+def test_append_reference_rejects_invalid_initial_position_without_writing(tmp_path, monkeypatch, position):
+    recorder = RunRecorder(tmp_path / "invalid-reference-position", run_kind="pilot", metadata=METADATA,
+                           root_branch_id="root")
+    recorder._chain.count = position
+    def forbidden(*args, **kwargs):
+        pytest.fail("Invalid reference position reached append")
+    monkeypatch.setattr(recorder, "append", forbidden)
+    try:
+        with pytest.raises(RunArtifactError, match="position"):
+            recorder._append_reference(event())
+        assert (recorder.path / "events.jsonl").read_bytes() == b""
+    finally:
+        recorder.__exit__(RuntimeError, RuntimeError(), None)
+
+
+@pytest.mark.parametrize("mutation", ["extra_append", "closed", "failed", "boolean_count"])
+def test_append_reference_refuses_drift_after_real_successful_append(tmp_path, monkeypatch, mutation):
+    recorder = RunRecorder(tmp_path / "changed-reference-boundary", run_kind="pilot", metadata=METADATA,
+                           root_branch_id="root")
+    append = recorder.append
+    def changed(payload):
+        append(payload)
+        if mutation == "extra_append":
+            append(event(value="unexpected extra append"))
+        elif mutation == "closed":
+            recorder.__exit__(RuntimeError, RuntimeError(), None)
+        elif mutation == "failed":
+            recorder._failed = True
+        else:
+            recorder._chain.count = True
+    monkeypatch.setattr(recorder, "append", changed)
+    reference = None
+    try:
+        with pytest.raises(RunArtifactError, match="boundary"):
+            reference = recorder._append_reference(event(value="original append"))
+        assert reference is None
+        raw = [json.loads(line) for line in (recorder.path / "events.jsonl").read_bytes().splitlines()]
+        assert len(raw) == (2 if mutation == "extra_append" else 1)
+        if mutation == "extra_append":
+            assert [item["value"] for item in recorder.validate_prefix().iter_events()] == [
+                "original append", "unexpected extra append",
+            ]
+    finally:
+        recorder.__exit__(RuntimeError, RuntimeError(), None)
+
+
+@pytest.mark.parametrize("field", ["sequence", "scientific_sha256", "previous_scientific_sha256", "run_metadata_sha256"])
+def test_append_reference_preserves_owned_fields_and_allows_valid_retry(tmp_path, field):
+    recorder = RunRecorder(tmp_path / "owned-reference", run_kind="pilot", metadata=METADATA,
+                           root_branch_id="root")
+    try:
+        with pytest.raises(RunArtifactError, match="Recorder-owned event field"):
+            recorder._append_reference(event(**{field: ZERO}))
+        assert (recorder.path / "events.jsonl").read_bytes() == b""
+        reference = recorder._append_reference(event(value="valid retry"))
+        recorded = list(recorder.validate_prefix().iter_events())
+        assert len(recorded) == 1
+        assert reference == {key: recorded[0][key] for key in ("sequence", "scientific_sha256")}
+    finally:
+        recorder.__exit__(RuntimeError, RuntimeError(), None)
+
+
 def test_next_sequence_is_authoritative_readonly_and_rejected_append_does_not_advance(tmp_path):
     recorder = RunRecorder(tmp_path / "position", run_kind="pilot", metadata=METADATA,
                            root_branch_id="root")

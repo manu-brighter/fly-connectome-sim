@@ -2,7 +2,7 @@
 
 Use `origin` of `manu-brighter/fly-connectome-sim`, branch
 `feat/connectome-experiment-core`, latest pushed feature commit. The latest
-reviewed checkpoint is Task7B4d, caller-owned selected native production.
+reviewed checkpoint is Task7B4e.1, the private successful-append reference helper.
 The project remains WIP, not v1.
 
 Continue autonomously on the original Windows workstation, including reviewed
@@ -58,6 +58,36 @@ conversion. Unavailable counts stay unavailable; no gate tolerance was added.
 NumPy 2.4.6's private header API supports NPY1/2/3; lossy structured/subarray
 extension templates are rejected. Protocol/raw formats and native core remain.
 
+**Task7B4e.1 passed independent source review and bounded Windows acceptance.**
+Only recorder.py gained the private `_append_reference` helper; public `append`
+and its None return remain byte-for-byte unchanged. The helper returns claimed
+`{sequence, scientific_sha256}` after exactly one complete successful append,
+including write/flush/raw-digest update, with healthy/open and exact +1 position
+checks. Failures/drift return no reference. It adds no cache, prefix scan, trust
+issuer, crash-durability guarantee or proof; f must authenticate actual bytes.
+
+Current Windows model-source identity:
+`293c8a721f0a18ba9dcf0baf726437b8455133d67cf343bb9fb1c69ca617a060`.
+Schema remains
+`c56a64f91bf08b2f3c379a4720d4be3a5c2d1743c1c09394d2483f23d61af115`.
+Recorder/replay compatibility: **592 passed, one declared opt-in skip in 41.95 s**,
+exit0. The sole skipped fullgraph zero-anchor qualification-context case passed
+separately on actual MaleCNS: **1 passed in 7.93 s**, exit0, no skips/errors.
+All three junction cases passed on the normal host; an earlier sandbox permission
+skip is not a junction pass. All 30 source members and both frozen source/test
+paths matched before/after these runs. No whole ordinary suite, all-eight matrix
+or complete96 grid was repeated on this source.
+
+The helper is not wired into measured production. No qualification_replay event,
+schema, analysis, assay or core change and no 408 repeats were implemented here.
+Parent e remains open: e.2 diagnostics/projections/independent comparison and
+e.3 lockstep production require their own bounded briefs/releases. No scientific
+support, formal freeze/configuration or full-assay capacity follows from e.1.
+
+## Historical evidence — not current-source acceptance
+
+### Task7B4d — accepted production on earlier source
+
 **Task7B4d passed independent source review and Windows runtime acceptance.**
 The private caller-owned producer accepts plain qualification declarations and
 an exact authenticated baseline, preserves genuine confirmation wrappers and
@@ -66,7 +96,7 @@ EOF. Fresh prefix/sealed verification checks actual current engine groups.
 The source finding and later test-only bookkeeping correction passed independent
 review. This is an intermediate producer, not formal source freeze or qualification.
 
-Accepted checkpoint's Windows model-source identity:
+Historical d Windows model-source identity:
 `48af9d39b3ae8f0c9e965dbac6d0e987e0e23dda8fa68895f3807a6f98684ac3`.
 Schema SHA256 remains
 `c56a64f91bf08b2f3c379a4720d4be3a5c2d1743c1c09394d2483f23d61af115`.
@@ -110,14 +140,14 @@ Both bound all eight factors and seven input hashes. Raw artifacts remain
 local-only. No formal qualification, production configuration or whole-assay
 capacity follows from these matrices or the graph compatibility cases.
 
-## Historical evidence — not current-source acceptance
+### Earlier grid and resource evidence
 
 - Accepted c.2b source:
   `64041111c7cf3edfaf51128e071b79d939875937f810790c00d1425458c6e60e`.
   Its complete96 tiny-native prefix/seal case passed in **5,124.53 s**:
   96 units/144 points, 89,831 events, 1,478 checkpoints and 3,594,389,820 event
   bytes; zero-anchor checks authenticated maps/context, not training replay.
-  This costly case was **not repeated on d source**.
+  This costly case was **not repeated on d or e.1 source**.
 - The [detail-on fullgraph prefix sample](experiments/2026-11-02-fullgraph-detail-prefix-pilot.md)
   used that same c.2b source at commit `21f788342b276e1d8a323f572e37e248542948d6`.
   Its final sample was 630.546 s / 55,267,543 dedicated bytes /
@@ -158,8 +188,12 @@ Interrupted development runs are never counted as passes.
 - [x] 7B4d: caller-owned selected native execution, exact baseline/occurrence
   authentication, preserved confirmation wrappers/native transfer checks and
   actual selected-eight/legacy confirmation-eight acceptance.
+- [x] 7B4e.1: private successful-append reference foundation; public append unchanged.
 - [ ] 7B4e: measure all 408 physical response repeats and actual state resolution;
   bind exact independent parents/raw bins. Never borrow frozen tolerance or invent 0.
+  Planned e.2 covers closed diagnostics/projections/schema and independent pair
+  comparison; e.3 covers lockstep 9/51/408 production. Full repeat production
+  remains unreleased until explicit bounded briefs.
 - [ ] 7B4f: integrate selected inventory with authenticated grid assessment, one
   evidence-bound terminal and independently checked seal; sealed-only engine-free
   public freezing. Complete valid negatives never create a production config.

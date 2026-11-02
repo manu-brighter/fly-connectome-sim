@@ -4,7 +4,9 @@
 map context (Tasks7B4a/b), authenticated grid reconstruction (Task7B4c.2b) and
 caller-owned selected native production (Task7B4d) are implemented and accepted.
 d passed independent source review and actual tiny-native selected/legacy
-confirmation matrices. Selected response repeats (e), public assessment/freeze
+confirmation matrices on its earlier source. Private successful-append reference
+helper e.1 is accepted with unchanged public append; it is not wired into repeat
+production. Full selected response repeats (parent e), public assessment/freeze
 integration (f), CLI/capacity (g) and formal qualification remain open.
 This is no source-freeze or scientific approval. **Date:** 2026-11-01.
 **Updated:** 2026-11-02.
@@ -227,7 +229,8 @@ siblings. Selected evidence comprises 40 acquisitions, 24 interventions,
 Legacy selected-control summaries derive from actual new raw T cells; do not
 execute a second inconsistent control protocol.
 
-**Planned e contract; no source release or runtime acceptance.** Accept only exact
+**Parent e contract remains planned; only helper e.1 is accepted. Full repeat
+production is not released or runtime-accepted.** Accept only exact
 Boolean `measure_replay`; True is qualification-only. False preserves absent
 qualification fields and confirmation's genuine legacy scalar. Repeat all
 **408 physical trials: 24 PRE + 384 POST**, including both T. Each full-matrix PRE
@@ -268,8 +271,8 @@ attest full native history.
 
 Closed diagnostics bind physical key/version, identity/input/window declarations,
 both branches, exact parent occurrence/anchor, ordered observation sequence/hash
-references, clock/state boundaries, projections and derived resolutions. Private
-recorder `_append_reference` checks healthy/open state, captures integer
+references, clock/state boundaries, projections and derived resolutions. Accepted
+private recorder helper e.1 `_append_reference` checks healthy/open state, captures integer
 `next_sequence`, calls unchanged
 public `append` exactly once (still returning None), then returns that sequence
 and actual `_chain.previous` only after the entire call succeeds, recorder remains
@@ -278,6 +281,11 @@ no receipt; exceptions propagate. No intervening append is allowed. Chain
 advancement before writing is insufficient. Do not add per-diagnostic growing-
 prefix hash-retrieval scans, raw-history caches or trust issuers. These producer-
 supplied references are not crash-durable proof.
+
+e.1's isolated helper acceptance does not implement diagnostics/projections/schema
+or independent pair comparison (planned e.2), nor lockstep native production
+(planned e.3). Those steps require final bounded briefs; no 408 repeats have been
+measured and no new native/history trust authority exists.
 
 e owns local structural/arithmetic validation and an independent bounded current-
 pair stream comparison. f resolves ALL references against actual fixed bytes,

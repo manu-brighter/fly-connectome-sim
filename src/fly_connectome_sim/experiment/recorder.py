@@ -752,6 +752,19 @@ class RunRecorder:
                 raise RunArtifactError(f"Event append failed: {error}") from error
             raise
 
+    def _append_reference(self, event: dict) -> dict:
+        """Return a claimed wire reference only after one complete successful append."""
+        if self._closed or self._failed:
+            raise RunArtifactError("Recorder is closed or failed")
+        sequence = self.next_sequence
+        if type(sequence) is not int or sequence < 0:
+            raise RunArtifactError("Invalid append reference position")
+        self.append(event)
+        position = self.next_sequence
+        if self._closed or self._failed or type(position) is not int or position != sequence + 1:
+            raise RunArtifactError("Append reference boundary changed")
+        return {"sequence": sequence, "scientific_sha256": self._chain.previous}
+
     def flush(self) -> None:
         if self._closed:
             raise RunArtifactError("Recorder is closed")

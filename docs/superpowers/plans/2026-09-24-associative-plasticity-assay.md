@@ -25,10 +25,20 @@ It is not implemented or a source-freeze/qualification approval.
 
 The early task-level RED/GREEN boxes are historical execution instructions, not
 the current backlog. Tasks 1–6, strict analysis 7A, motor-only Task8 and source
-slices 7B4a–d are implemented and independently reviewed. Latest accepted d
-model-source identity:
-`48af9d39b3ae8f0c9e965dbac6d0e987e0e23dda8fa68895f3807a6f98684ac3`;
+slices 7B4a–d are implemented and independently reviewed. Latest accepted e.1
+is only the private successful-append reference helper, not parent e completion.
+Current model-source identity:
+`293c8a721f0a18ba9dcf0baf726437b8455133d67cf343bb9fb1c69ca617a060`;
 schema `c56a64f91bf08b2f3c379a4720d4be3a5c2d1743c1c09394d2483f23d61af115`.
+Independent source review passed. Actual recorder/replay compatibility was
+**592 passed, one declared opt-in skip in 41.95 s**; that sole fullgraph
+zero-anchor qualification-context case separately **passed in 7.93 s** on actual
+MaleCNS, with no errors/skips. All three normal-host junction cases passed;
+an earlier sandbox permission skip is separate. Source/test hashes matched
+before/after. No whole ordinary/all-eight/complete96 repeat occurred on e.1.
+
+Historical accepted d model-source identity:
+`48af9d39b3ae8f0c9e965dbac6d0e987e0e23dda8fa68895f3807a6f98684ac3`.
 Windows R1 ordinary acceptance was **2,333 passed, seven declared opt-in skips
 in 1,909.58 s**, plus four actual MaleCNS graph cases in **26.31 s**. R2 changed
 only two tests: two native bookkeeping cases passed in **210.06 s**, followed by
@@ -49,9 +59,10 @@ attestation. Detailed actual inventories/hashes are in the
 The c.2b complete96 grid and reviewed detail-on fullgraph prefix sample remain
 historical on source
 `64041111c7cf3edfaf51128e071b79d939875937f810790c00d1425458c6e60e`.
-The costly96 case was not repeated for d. Profiled durations require a controlled
+The costly96 case was not repeated for d/e.1. Profiled durations require a controlled
 unprofiled follow-up before runtime/capacity decisions. Continue on the original
-Windows workstation with planned e, then f/g; no e source release is implied.
+Windows workstation with planned e.2/e.3, then f/g; full repeat production is not
+released by helper acceptance.
 No production config, formal source freeze or qualification is established.
 Cloud setup below applies only to a future fresh checkout, not local continuation.
 
@@ -65,6 +76,7 @@ Cloud setup below applies only to a future fresh checkout, not local continuatio
   replace g or its required unprofiled controlled measurement.
 - [x] Complete caller-owned selected controls/interventions and actual eight-factor
   selected/legacy confirmation production acceptance (d).
+- [x] Accept private successful-append reference helper (e.1); public append unchanged.
 - [ ] Measure selected response repeats, integrate public frozen-config lifecycle
   and implement the real assay CLI; current CLI lacks `assay`.
 - [ ] Resolve discarded-grid training ancestry without mistaking black-retention
@@ -692,7 +704,8 @@ capacity, scientific support or formal qualification. No new complete suite ran.
 
 #### Task7B4: strict qualification integration after Task8
 
-Keep the same plan/workspace. Source slices a–d are accepted; e–g remain planned,
+Keep the same plan/workspace. Source slices a–d and helper e.1 are accepted;
+parent e remains open, with e.2/e.3 and f/g planned,
 without permission to run formal qualification now. Preserve all existing confirmation
 routes and scientific gates. Concrete per-slice briefs must settle exact data
 shapes before implementation; do not bootstrap with a fabricated frozen object.
@@ -923,12 +936,21 @@ handover. The extra quiescent restore changes neither 64 actual baseline trials
 nor the asserted 625 legacy production factories. This completes d production,
 not e's response-resolution evidence, f's public lifecycle or g's capacity gate.
 
-**7B4e — actual replay-resolution measurements (planned; no source release).**
+**7B4e — actual replay-resolution measurements (open; full repeat production unreleased).**
 Follow the [strict selected-repeat contract](../specs/2026-11-01-strict-qualification-contract.md).
 Own producer/analysis/schema, narrow recorder dispatch/reference helper and
 existing tests. Exact qualification-only True enables independently restored
 lockstep pairs; preserve False/confirmation behavior. Use deterministic `/repeat`
 IDs, real window-stop Hz/W metrics, complete tails and closed diagnostics.
+
+- [x] e.1: standalone private `_append_reference` after successful public append;
+  unchanged None-return append, actual sequence/hash, healthy/+1 guards and no
+  cache/scan/proof issuer. Independent review and recorder/replay plus actual
+  fullgraph context acceptance passed on the current source recorded above.
+  The helper is not wired to True production; no repeats or diagnostic wire exist.
+- [ ] e.2: closed diagnostics/W projections/schema and independent current-pair
+  stream comparison under a final bounded brief; preserve ratified map/byte rules.
+- [ ] e.3: lockstep fresh-parent native production under its own bounded brief.
 
 - [ ] RED: copied zero, missing late T, altered whole telemetry/tail/state/maps,
   failed append receipts/count drift, rehashed references, PRE over-reuse and EOF.
