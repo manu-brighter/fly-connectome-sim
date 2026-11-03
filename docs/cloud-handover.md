@@ -1,20 +1,22 @@
-# Continuation and cloud handover — 2026-11-02
+# Continuation and cloud handover — 2026-11-03
 
 Use `origin` of `manu-brighter/fly-connectome-sim`, branch
 `feat/connectome-experiment-core`, latest pushed feature commit. The prior
 standard-video checkpoint `639423f`, Phase 1 A/B checkpoint `4467431` and
-screen-contact checkpoint `877fbe2` are historical. Current event-choice source
-has35 Python/C++ members, model identity
-`e0bfc0ef08b44beafababa8598a0f902a9dcdc75e71d07f626f79fe5ed2c1275`;
+screen-contact checkpoint `877fbe2` and standalone event-choice checkpoint
+`d97e1e8` are historical. Current continuous-session source has36 Python/C++
+members, model identity
+`d4b72b01f14c4c4ec1266f976692fa6bf7dc91b3b83ed40f6f5540ab25a7ec9c`;
 schema remains `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
-The [event-choice contract](superpowers/specs/2026-11-02-event-choice-milestone.md)
-and [implementation plan](superpowers/plans/2026-11-02-event-choice-milestone.md)
-govern the current slice. The user released this bounded product milestone:
-import two proposals, observe actual visual cards, make a measured left/right/
-defer selection and export an unchanged bound plan. The chosen first provider
-integration is strict imported JSON, with no live API calls or costs. Formal
-qualification/freeze/confirmation, C1, live LLM transport and reel-history
-integration remain parked. Earlier assay/reel evidence remains source-specific.
+The [continuous-session contract](superpowers/specs/2026-11-03-feed-event-session.md)
+and [implementation plan](superpowers/plans/2026-11-03-feed-event-session.md)
+govern the current slice: one fresh engine observes the bounded fast feed then
+immediately the event cards, without reset/restore, and records a measured
+left/right/defer choice plus unchanged plan. Strict imported proposal JSON
+remains the first provider integration, with no live API calls or costs. Formal
+qualification/freeze/confirmation, C1, live LLM transport and old/trained-state
+integration remain parked. Earlier evidence remains source-specific; continuous
+production does not establish a causal content/learning effect.
 
 The prior viewer-only [screen-contact correction](experiments/2026-11-02-screen-contact-swipe.md)
 reuses that exact7s recording. The foreground leg now visibly reaches onto the
@@ -52,13 +54,60 @@ checkout, not a gate on current local work. Never push main/master/develop.
 9. [Current event-choice plan](superpowers/plans/2026-11-02-event-choice-milestone.md),
    [contract](superpowers/specs/2026-11-02-event-choice-milestone.md) and
    [proposal handoff](event-proposal-prompt.md).
+10. [Current continuous-session plan](superpowers/plans/2026-11-03-feed-event-session.md),
+    [contract](superpowers/specs/2026-11-03-feed-event-session.md) and
+    [observation report](experiments/2026-11-03-feed-event-session.md).
 
 The older connectome-core plan is background. This tracked handover and current
 plan orient a fresh checkout; private local SDD notes/chats/scripts are not
 required and do not travel through Git. Local raw evidence is not replaced by
 this document. Do not claim to reverify unavailable bytes.
 
-## Current event-choice checkpoint
+## Current continuous-session checkpoint
+
+`feed-event-session` creates one fresh engine/recorder/root; existing fast-feed
+STOP ends the feed phase only, immediately followed by four500ms card intervals
+in the same state. Global clocks/owned event references are preserved; no reset,
+restore, replacement engine, fake old-format run or intermediate hold. The new
+closed replay switches phone→board at feed STOP and reveals the exact bound
+plan only at the later decision. Old standalone readers/exporters remain strict;
+same old Event/Fast/Standard artifacts re-exported byte-identically after freeze.
+
+Independent architecture/frozen backend/fresh viewer reviews closed with no new
+Critical/Important/Minor finding. Known foreign raw-run allocation hardening is
+still open. Backend640passed/1junction skip215.58s; that exact test separately
+passed on the host in0.07s,after a corrected root test-directory setup error.
+Viewer91passed/0skip29.179s/build0; known bundle/type-strip notices remain.
+Backend39-path and viewer24-path raw freezes matched; no dependencies/core/
+adapter/recorder/schema changed. These are scoped checks, not a whole-assay pass.
+
+One actual source-frozen pilot exited0 in94.735s/240s wall budget:216events,
+214observations/1040bins,7s feed then2s cards. Feed ADVANCE at3s used motor-right;
+STOP at7s was external clip_window_end/playlist_exhausted. Final500ms L6/R2,
+pop1/1→12/4Hz,delta−8→inspect_left/Sunset House. Original240prepared source
+frames/210consumed frames and all raw/global counts/clocks/plan were audited.
+No causal/learned/semantic preference or native-history attestation is inferred.
+
+Actual Chrome passed69999/70000 phone→cards,89999/90000 pending→plan, reverse
+seek,play/pause83095 and bound JSON equality/export restoration. The actual
+combined UI movie decodes360VP9 frames/900x900/12s,33–34ms PTS intervals:
+9s measured source+3s labelled terminal plan hold. Decoded92shows foreleg swipe,
+209/210 feed→cards,269/270 pending→selection and359terminalhold. Native player
+reports12s/no media error. Broad platforms/liveFPS and orbit-hint polish stay open.
+Full source/artifact identities, commands and limits are in the
+[session report](experiments/2026-11-03-feed-event-session.md).
+
+Local ignored `runs/feed-event-replay-20261103.json`,
+`runs/feed-event-plan-20261103.json` and
+`viewer/test-output/feed-event-session-30fps.webm` can be reused for presentation.
+They are absent in cloud checkout; reproduce with the
+[continuous commands](getting-started.md#continuous-reels-and-event-choice),
+local source videos and tracked example. No live LLM/API call is configured.
+
+## Historical standalone event-choice checkpoint
+
+This source-specific checkpoint used35members/model
+`e0bfc0ef08b44beafababa8598a0f902a9dcdc75e71d07f626f79fe5ed2c1275`.
 
 Strict `event-options/v1` import renders two actual384x216 RGB cards; a fresh
 engine observes four500ms intervals, without external stimulation or learning.
@@ -637,6 +686,10 @@ Interrupted development runs are never counted as passes.
   actual2s pilot/raw audit with left2/right1 → Sunset House.
 - [x] Close same-artifact event Chrome boundary/plan download and150frame/5s video
   acceptance. Preserve strict old readers and the authored-example/API distinction.
+- [x] Join fast-feed and cards in one fresh continuous engine, close independent
+  source reviews and one actual9s pilot/raw audit; preserve old export bytes.
+- [x] Close same-artifact session Chrome/global-boundary/download and360frame/12s
+  combined movie acceptance; no intermediate hold or clock/state reset.
 - [ ] Continue longer-feed work when requested; reuse validated current data for UI
   changes and keep live LLM/formal integration separately gated.
 - [ ] Harden event-export raw-run intake with pre-allocation manifest/JSONL
@@ -646,8 +699,8 @@ Interrupted development runs are never counted as passes.
 - [ ] Add live LLM proposal transport and optional narrative continuation only
   with explicit key/cost configuration; keep selected plan immutable and retain
   JSON import. Do not relabel the authored example as a live model request.
-- [ ] Define integration with previous reel observations/trained state before
-  connecting histories; the current event pilot deliberately uses a fresh engine.
+- [ ] Define authenticated old/trained-state resumption separately if needed;
+  the current session starts fresh and retains state only within that one run.
 - [ ] Complete broader accessibility/cross-browser checks and separate the
   interactive orbit hint from the event overlay's top edge; preserve experimental WIP.
 - [x] Complete c.2b source review, ordinary/actual graph/full tiny-native grid

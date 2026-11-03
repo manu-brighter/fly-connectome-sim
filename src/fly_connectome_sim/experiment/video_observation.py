@@ -325,6 +325,67 @@ def _frame_payload(frame: PreparedFrame, clip_id: str) -> dict:
     }
 
 
+def _observe_video_phase(
+    engine: FlyEngine, clips: tuple[PreparedClip, ...], *, branch_id: str,
+    start_tick: int, profile: str,
+):
+    """Yield actual observations; the caller owns recording and engine lifecycle."""
+    if engine.brain.cursor != start_tick or start_tick != 0:
+        raise RunArtifactError("Feed phase requires the unchanged zero-origin engine")
+    populations = {name: len(engine.identity()["neural_groups"][name])
+                   for name in ("motor_left", "motor_right")}
+    clip_index = 0
+    frame_index = 0
+    clip_start_tick = 0
+    motor_counts: list[dict[str, int]] = []
+    while True:
+        clip = clips[clip_index]
+        frame = clip.frames[frame_index]
+        duration_ticks = frame_tick(frame_index + 1) - frame_tick(frame_index)
+        start = engine.brain.cursor
+        telemetry = engine.observe(
+            frame.rgb, duration_ticks / 10,
+            stimulation=None, learning=False,
+            pathway_detail=False, qualification_detail=False,
+        )
+        end = engine.brain.cursor
+        if end != start + duration_ticks or _telemetry_ticks(telemetry["sim_ms"]) != end:
+            raise RunArtifactError("Actual video observation clock mismatch")
+        motor_counts.append({
+            name: sum(bin_["group_spikes"][name] for bin_ in telemetry["bins"])
+            for name in populations
+        })
+        event = {
+            "type": "observe", "branch_id": branch_id,
+            "sim_ms": end / 10, "start_ms": start / 10, "end_ms": end / 10,
+            "start_tick": start, "end_tick": end,
+            "duration_ms": duration_ticks / 10, "duration_ticks": duration_ticks,
+            "stimulus": "video", "stimulation": None, "learning": False,
+            "pathway_detail": False, "qualification_detail": False,
+            "telemetry": telemetry,
+            "video_frame": _frame_payload(frame, clip.metadata["clip_id"]),
+        }
+        decision = None
+        if frame_index % 3 == 2:
+            decision = evaluate_video_policy(
+                counts=motor_counts, populations=populations,
+                clip_index=clip_index, clip_count=len(clips),
+                clip_start_tick=clip_start_tick, frame_index=frame_index,
+                end_tick=end, profile=profile,
+            )
+            event["video_policy"] = decision
+        yield event
+        if decision is not None and decision["action"] == "stop":
+            break
+        if decision is not None and decision["action"] == "advance":
+            clip_index = decision["next_clip_index"]
+            clip_start_tick = end
+            frame_index = 0
+            motor_counts = []
+        else:
+            frame_index += 1
+
+
 def record_video_observation_run(
     output_dir: str | Path, *, playlist_path: str | Path,
     engine_factory: Callable[[], FlyEngine], profile: str = "standard",
@@ -340,8 +401,6 @@ def record_video_observation_run(
             or engine.brain.weights_frozen):
         raise RunArtifactError("Video observation requires a fresh actual 0.1 ms engine")
     metadata = _metadata(engine.identity(), clips, profile=profile)
-    populations = {name: len(metadata["engine_identity"]["neural_groups"][name])
-                   for name in ("motor_left", "motor_right")}
     target.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=target.parent, prefix=".video-checkpoint-") as scratch:
         checkpoint = Path(scratch) / "brain.npz"
@@ -357,56 +416,10 @@ def record_video_observation_run(
                 })
 
             save("brain-before.npz")
-            clip_index = 0
-            frame_index = 0
-            clip_start_tick = 0
-            motor_counts: list[dict[str, int]] = []
-            while True:
-                clip = clips[clip_index]
-                frame = clip.frames[frame_index]
-                duration_ticks = frame_tick(frame_index + 1) - frame_tick(frame_index)
-                start = engine.brain.cursor
-                telemetry = engine.observe(
-                    frame.rgb, duration_ticks / 10,
-                    stimulation=None, learning=False,
-                    pathway_detail=False, qualification_detail=False,
-                )
-                end = engine.brain.cursor
-                if end != start + duration_ticks or _telemetry_ticks(telemetry["sim_ms"]) != end:
-                    raise RunArtifactError("Actual video observation clock mismatch")
-                motor_counts.append({
-                    name: sum(bin_["group_spikes"][name] for bin_ in telemetry["bins"])
-                    for name in populations
-                })
-                event = {
-                    "type": "observe", "branch_id": ROOT_BRANCH,
-                    "sim_ms": end / 10, "start_ms": start / 10, "end_ms": end / 10,
-                    "start_tick": start, "end_tick": end,
-                    "duration_ms": duration_ticks / 10, "duration_ticks": duration_ticks,
-                    "stimulus": "video", "stimulation": None, "learning": False,
-                    "pathway_detail": False, "qualification_detail": False,
-                    "telemetry": telemetry,
-                    "video_frame": _frame_payload(frame, clip.metadata["clip_id"]),
-                }
-                decision = None
-                if frame_index % 3 == 2:
-                    decision = evaluate_video_policy(
-                        counts=motor_counts, populations=populations,
-                        clip_index=clip_index, clip_count=len(clips),
-                        clip_start_tick=clip_start_tick, frame_index=frame_index,
-                        end_tick=end, profile=profile,
-                    )
-                    event["video_policy"] = decision
+            for event in _observe_video_phase(
+                engine, clips, branch_id=ROOT_BRANCH, start_tick=0, profile=profile,
+            ):
                 recorder.append(event)
-                if decision is not None and decision["action"] == "stop":
-                    break
-                if decision is not None and decision["action"] == "advance":
-                    clip_index = decision["next_clip_index"]
-                    clip_start_tick = end
-                    frame_index = 0
-                    motor_counts = []
-                else:
-                    frame_index += 1
             save("brain-after.npz")
     run = verify_run(target)
     _export_data(run)
@@ -416,8 +429,6 @@ def record_video_observation_run(
 def _validated_metadata(metadata: dict) -> list[dict]:
     profile = _stored_profile(metadata)
     version = _profile_version(profile)
-    source_speed = 1 if profile == "standard" else 5
-    source_window_seconds = 4 * source_speed
     if (type(metadata) is not dict or set(metadata) != {
             "engine_identity", "protocol_version", "stimulus_version", "family",
             "seeds", "factors", "video_recipe", "clips", "input_sha256"}
@@ -431,6 +442,19 @@ def _validated_metadata(metadata: dict) -> list[dict]:
     if (type(clips) is not list or not 1 <= len(clips) <= 5
             or _canonical(metadata["factors"]) != _canonical({"clip_count": len(clips)})):
         raise RunArtifactError("Invalid prepared clip inventory")
+    declared_hashes = _validated_clips(clips, profile=profile)
+    if metadata["input_sha256"] != sorted(declared_hashes):
+        raise RunArtifactError("Prepared RGB hash set differs from metadata")
+    return clips
+
+
+def _validated_clips(clips: list[dict], *, profile: str) -> set[str]:
+    """Validate the actual prepared inventory independently of a run envelope."""
+    _profile_version(profile)
+    if type(clips) is not list or not 1 <= len(clips) <= 5:
+        raise RunArtifactError("Invalid prepared clip inventory")
+    source_speed = 1 if profile == "standard" else 5
+    source_window_seconds = 4 * source_speed
     declared_hashes = set()
     for clip_index, clip in enumerate(clips):
         if type(clip) is not dict or set(clip) != {
@@ -495,14 +519,12 @@ def _validated_metadata(metadata: dict) -> list[dict]:
                 raise RunArtifactError("First prepared frame must bind the PTS origin")
             previous_pts = frame["source_pts"]
             declared_hashes.add(frame["sha256"])
-    if metadata["input_sha256"] != sorted(declared_hashes):
-        raise RunArtifactError("Prepared RGB hash set differs from metadata")
-    return clips
+    return declared_hashes
 
 
 def _segment(
     event: dict, frame_map: dict, *, clip_index: int, frame_index: int,
-    start_tick: int, groups: dict, identity: dict,
+    start_tick: int, groups: dict, identity: dict, branch_id: str = ROOT_BRANCH,
 ) -> tuple[dict, dict[str, int]]:
     expected_keys = {
         "type", "branch_id", "sim_ms", "start_ms", "end_ms", "start_tick",
@@ -514,7 +536,7 @@ def _segment(
     if frame_index % 3 == 2:
         expected_keys.add("video_policy")
     if (type(event) is not dict or set(event) != expected_keys
-            or event["type"] != "observe" or event["branch_id"] != ROOT_BRANCH
+            or event["type"] != "observe" or event["branch_id"] != branch_id
             or event["stimulus"] != "video" or event["stimulation"] is not None
             or event["learning"] is not False or event["pathway_detail"] is not False
             or event["qualification_detail"] is not False):
@@ -601,7 +623,7 @@ def _segment(
     _integer(telemetry["total_spikes"], "total spikes")
     return ({
         "event_sequence": _integer(event["sequence"], "event sequence"),
-        "branch_id": ROOT_BRANCH,
+        "branch_id": branch_id,
         "frame_id": frame_map["frame_id"], "clip_id": f"clip-{clip_index}",
         "frame_index": frame_index,
         "stimulation": None, "learning": False,

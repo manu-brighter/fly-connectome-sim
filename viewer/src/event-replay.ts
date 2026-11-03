@@ -7,35 +7,35 @@ type MotorCounts = { motor_left: number; motor_right: number };
 type Readout = { adapter_version: 'lateral-motor-adapter/v1'; signed_difference_hz: number; evidence_strength: number; action: 'inspect_left' | 'inspect_right' | 'defer' };
 type Source = { run_kind: 'pilot'; schema_sha256: string; run_metadata_sha256: string; events_sha256: string; final_scientific_sha256: string; verification_mode: 'integrity-only' };
 export type EventPlan = { version: 'event-plan/v1'; status: 'selected' | 'deferred'; brief: Brief; selected_option_id: string | null; selected_option: EventOption | null; decision_ref: { event_sequence: number; scientific_sha256: string; input_sha256: string; policy_version: 'event-card-choice/v1' }; source: Source };
-type Decision = { policy_version: 'event-card-choice/v1'; effective_tick: 20000; event_sequence: 4; event_scientific_sha256: string; window_start_tick: 15000; window_end_tick: 20000; counts: MotorCounts; populations: MotorCounts; readout: Readout; selected_option_id: string | null };
-export type EventSegment = { event_sequence: number; branch_id: 'event-choice/root'; frame_id: 'options'; stimulation: null; learning: false; source_start_tick: number; source_end_tick: number; playback_start_tick: number; playback_end_tick: number; bins: Bin[] };
+export type Decision = { policy_version: 'event-card-choice/v1'; effective_tick: number; event_sequence: number; event_scientific_sha256: string; window_start_tick: number; window_end_tick: number; counts: MotorCounts; populations: MotorCounts; readout: Readout; selected_option_id: string | null };
+export type EventSegment = { event_sequence: number; branch_id: string; frame_id: 'options'; stimulation: null; learning: false; source_start_tick: number; source_end_tick: number; playback_start_tick: number; playback_end_tick: number; bins: Bin[] };
 export type EventRecording = { version: 'event-choice-replay/v1'; tick_ms: .1; source: Source & { metadata: Record<string, unknown> & { proposal: Proposal } }; groups: Counts; inputs: { options: Input }; segments: EventSegment[]; duration_ticks: 20000; decision: Decision; plan: EventPlan };
 export const EVENT_HOLD_FRAMES = 90;
 const DIGEST = /^[0-9a-f]{64}$/;
 const SOURCE_KEYS = ['run_kind', 'schema_sha256', 'run_metadata_sha256', 'events_sha256', 'final_scientific_sha256', 'verification_mode'];
 const SIDES = ['motor_left', 'motor_right'] as const;
-function check(ok: unknown, message: string): asserts ok { if (!ok) throw new Error(message); }
-function object(value: unknown, path: string): Record<string, unknown> {
+export function check(ok: unknown, message: string): asserts ok { if (!ok) throw new Error(message); }
+export function object(value: unknown, path: string): Record<string, unknown> {
   check(value !== null && typeof value === 'object' && !Array.isArray(value), `${path}: expected object.`);
   return value as Record<string, unknown>;
 }
-function keys(value: unknown, names: readonly string[], path: string) {
+export function keys(value: unknown, names: readonly string[], path: string) {
   const item = object(value, path);
   check(Object.keys(item).length === names.length && names.every((name) => Object.hasOwn(item, name)), `${path}: missing or unsupported fields.`);
   return item;
 }
-function int(value: unknown, min: number, max: number, path: string): asserts value is number { check(typeof value === 'number' && Number.isSafeInteger(value) && value >= min && value <= max, `${path}: invalid integer.`); }
-function ascii(value: unknown, max: number, path: string): asserts value is string { check(typeof value === 'string' && value.length >= 1 && value.length <= max && /^[\x20-\x7e]+$/.test(value) && !/(?:[a-z][a-z0-9+.-]*:\/\/|www\.)/i.test(value), `${path}: expected printable ASCII text without URLs.`); }
-function digest(value: unknown, path: string) { check(typeof value === 'string' && DIGEST.test(value), `${path}: invalid SHA256.`); }
-function canonical(value: unknown): string {
+export function int(value: unknown, min: number, max: number, path: string): asserts value is number { check(typeof value === 'number' && Number.isSafeInteger(value) && value >= min && value <= max, `${path}: invalid integer.`); }
+export function ascii(value: unknown, max: number, path: string): asserts value is string { check(typeof value === 'string' && value.length >= 1 && value.length <= max && /^[\x20-\x7e]+$/.test(value) && !/(?:[a-z][a-z0-9+.-]*:\/\/|www\.)/i.test(value), `${path}: expected printable ASCII text without URLs.`); }
+export function digest(value: unknown, path: string) { check(typeof value === 'string' && DIGEST.test(value), `${path}: invalid SHA256.`); }
+export function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
   if (value !== null && typeof value === 'object') return `{${Object.keys(value).sort().map((name) => `${JSON.stringify(name)}:${canonical((value as Record<string, unknown>)[name])}`).join(',')}}`;
   return JSON.stringify(value);
 }
-function equal(a: unknown, b: unknown, path: string) { check(canonical(a) === canonical(b), `${path}: differs from bound evidence.`); }
-async function sha256(bytes: Uint8Array) { return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes as Uint8Array<ArrayBuffer>)), (byte) => byte.toString(16).padStart(2, '0')).join(''); }
+export function equal(a: unknown, b: unknown, path: string) { check(canonical(a) === canonical(b), `${path}: differs from bound evidence.`); }
+export async function sha256(bytes: Uint8Array) { return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes as Uint8Array<ArrayBuffer>)), (byte) => byte.toString(16).padStart(2, '0')).join(''); }
 
-function strictJson(text: string): unknown {
+export function strictJson(text: string): unknown {
   const value: unknown = JSON.parse(text), stack: Array<Set<string> | null> = [];
   const tokens = text.match(/"(?:[^"\\]|\\.)*"|[{}\[\]:,]|[^\s{}\[\]:,]+/g) ?? [];
   for (let i = 0; i < tokens.length; i += 1) {
@@ -51,7 +51,7 @@ function strictJson(text: string): unknown {
   return value;
 }
 
-function validateProposal(raw: unknown): Proposal {
+export function validateProposal(raw: unknown): Proposal {
   const proposal = keys(raw, ['version', 'brief', 'options'], 'Proposal'); equal(proposal.version, 'event-options/v1', 'Proposal version');
   const brief = keys(proposal.brief, ['title', 'guests', 'max_budget_chf'], 'Brief');
   ascii(brief.title, 48, 'Brief title'); int(brief.guests, 10, 500, 'Guests'); int(brief.max_budget_chf, 100, 100000, 'Maximum budget');
@@ -154,18 +154,18 @@ export function sampleEventAtTick(recording: EventRecording, requestedTick: numb
   const sourceTick = tick, bin = segment.bins.find((bin) => sourceTick < bin.end_tick) ?? segment.bins.at(-1)!;
   const rates = Object.fromEntries(GROUPS.map((name) => [name, bin.group_spikes[name] * 10000 / (recording.groups[name] * bin.duration_ticks)])) as Counts;
   const decision = tick >= recording.decision.effective_tick ? recording.decision : null;
-  return { tick, sourceTick, segment, bin, rates, decision, plan: decision ? recording.plan : null, leftOptionId: recording.source.metadata.proposal.options[0].id };
+  return { tick, sourceTick, segment, bin, rates, decisionTick: recording.decision.effective_tick, decision, plan: decision ? recording.plan : null, leftOptionId: recording.source.metadata.proposal.options[0].id };
 }
 
-export function eventPresentation(sample: ReturnType<typeof sampleEventAtTick>) {
+export function eventPresentation(sample: ReturnType<typeof sampleEventAtTick> & { feedContext?: string }) {
   const option = sample.plan?.selected_option;
   return {
-    status: !sample.decision ? 'Choice pending · final 500 ms decision at 2.000 s' : option ? 'Selected · engineered measured lateral policy' : 'Deferred · measured lateral difference stays within ±1 Hz/cell',
+    status: !sample.decision ? `Choice pending · final 500 ms decision at ${(sample.decisionTick / 10000).toFixed(3)} s` : option ? 'Selected · engineered measured lateral policy' : 'Deferred · measured lateral difference stays within ±1 Hz/cell',
     title: option?.title ?? (sample.decision ? 'No option selected' : 'Waiting for the recorded decision'),
     selectedSide: option ? option.id === sample.leftOptionId ? 'left' as const : 'right' as const : null,
     canDownload: sample.plan !== null,
     lines: option && sample.plan ? [`${option.setting} · ${option.music}`, `CHF ${option.budget_chf} · ${sample.plan.brief.guests} guests · capacity ${option.capacity}`, `${option.duration_minutes} minutes`, ...option.programme.map((entry) => `${entry.start_minute} min · ${entry.label}`)] : [],
-    measurement: sample.decision ? `Final 500 ms · L ${sample.decision.counts.motor_left} / R ${sample.decision.counts.motor_right} spikes · Δ ${sample.decision.readout.signed_difference_hz.toFixed(2)} Hz/cell · ${sample.decision.readout.action}` : '',
+    measurement: [sample.decision ? `Final 500 ms · L ${sample.decision.counts.motor_left} / R ${sample.decision.counts.motor_right} spikes · Δ ${sample.decision.readout.signed_difference_hz.toFixed(2)} Hz/cell · ${sample.decision.readout.action}` : '', sample.feedContext].filter(Boolean).join(' · '),
   };
 }
 export function eventPlanJson(sample: ReturnType<typeof sampleEventAtTick>, operations?: { loading: boolean; exporting: boolean }): string | null {

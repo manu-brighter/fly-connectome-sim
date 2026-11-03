@@ -25,10 +25,19 @@ f.3c design is ratified; C1 is parked local uncommitted/unreviewed WIP, not acce
 
 ## Current checkpoint and live remaining work — 2026-11-02
 
-Current product work follows the [event-choice plan](2026-11-02-event-choice-milestone.md):
+Current product work follows the [continuous session plan](2026-11-03-feed-event-session.md):
+one fresh engine observes fast-feed then event cards,without reset/restore; one
+actual9s run and360frame/12s combined movie passed source/raw/Chrome/encoded
+checks. Current36-member model is
+`d4b72b01f14c4c4ec1266f976692fa6bf7dc91b3b83ed40f6f5540ab25a7ec9c`;
+schema unchanged. This source-bearing integration invalidates old formal
+identities and proves no causal content/learning effect. Exact scope/evidence:
+[session report](../../experiments/2026-11-03-feed-event-session.md).
+
+The historical standalone [event-choice plan](2026-11-02-event-choice-milestone.md) delivered
 strict imported proposals become actual paired visual cards and a measured
 left/right/defer selection with an immutable plan. The user released this bounded
-product slice; live LLM transport and formal science stay separate. Current
+product slice; live LLM transport and formal science stay separate. Its historical
 35-member model is
 `e0bfc0ef08b44beafababa8598a0f902a9dcdc75e71d07f626f79fe5ed2c1275`;
 schema unchanged. This source-bearing addition invalidates old formal evidence

@@ -258,6 +258,38 @@ oversized manifests/JSONL lines. The proposal reader and compact replay reader
 have separate explicit byte bounds. See the
 [contract](superpowers/specs/2026-11-02-event-choice-milestone.md) for the trust model.
 
+## Continuous reels and event choice
+
+Use a local playlist prepared as above and the same strict event proposal file.
+This separate command constructs one fresh engine and retains it through both
+phases. Existing standalone video/event commands and formats remain available.
+
+```powershell
+.venv/Scripts/python.exe -m fly_connectome_sim.cli feed-event-session --playlist runs/my-playlist.json --proposal examples/event-options.json --output-dir runs/my-feed-event-session
+.venv/Scripts/python.exe -m fly_connectome_sim.cli verify-run runs/my-feed-event-session
+.venv/Scripts/python.exe -m fly_connectome_sim.cli export-session-replay runs/my-feed-event-session --output runs/my-session-replay.json
+.venv/Scripts/python.exe -m fly_connectome_sim.cli export-session-plan runs/my-feed-event-session --output runs/my-session-plan.json
+```
+
+Open `runs/my-session-replay.json` in the same viewer. The phone shows the actual
+5×-sampled feed, with its recorded motor policy and illustrative foreleg swipe.
+At the feed's recorded STOP tick T, the same native state immediately observes
+the event cards for2s. There is no reset, restore, replacement engine or hidden
+simulation gap. The first1.5s of cards settle; final0.5s counts select/defer with
+the unchanged1Hz rule. The plan appears only at T+2s, unchanged from its proposal.
+Backward seek restores the corresponding phase and hides later results.
+
+The feed lasts at most8s, cards exactly2s, with no external stimulation or
+learning. The8s session cap takes priority over minimum clip dwell; a third clip
+can therefore end after2s. Export adds one labelled3s terminal plan hold, with
+global30fps timestamps and no hold at the feed/cards boundary. It adds no neural
+measurements. One continuous state does not establish that reel content caused
+the choice, visual specificity or learning; no such effect is claimed.
+
+The closed [session contract](superpowers/specs/2026-11-03-feed-event-session.md)
+defines the exact source/count/plan/EOF validation. This uses imported JSON,
+not a live LLM/API call. Generated runs/media remain local and ignored.
+
 ## Separate assay commands
 
 The existing qualification command remains separate from Replay v1 and is not

@@ -23,7 +23,7 @@ export function isVideoRecording(recording: { version: string }): recording is V
   return recording.version === 'measured-video-replay/v1' || recording.version === 'measured-video-replay/v2';
 }
 export function videoSpeedLabel(recording: { version: string }) {
-  return recording.version === 'measured-video-replay/v2' ? 'Reel 5×' : 'Reel 1×';
+  return (recording.version === 'measured-video-replay/v2' || recording.version === 'feed-event-replay/v1') ? 'Reel 5×' : 'Reel 1×';
 }
 
 export function videoPlaneHeight(width: number, inputWidth: number, inputHeight: number) { return width * inputHeight / inputWidth; }
@@ -91,7 +91,7 @@ function strictJson(text: string): unknown {
   return parsed;
 }
 
-function validateRecipe(raw: unknown, fast: boolean) {
+export function validateRecipe(raw: unknown, fast: boolean) {
   const expected = { policy_version: fast ? 'right-scroll/v2' : 'right-scroll/v1', adapter_version: 'lateral-motor-adapter/v1', action_threshold_hz: 1, sample_fps: [30, 1], sample_time_origin: 'first-decoded-pts', tick_quantization: 'nearest-0.1ms-half-up-cumulative/v1', window_ticks: 40000, session_limit_ticks: 80000, rolling_window_ticks: 3000, minimum_dwell_ticks: fast ? 30000 : 10000, input_width: 90, input_height: 160, audio_input: false, stimulation: null, learning: false, pathway_detail: false, qualification_detail: false, ...(fast ? { source_speed: [5, 1], source_window_seconds: 20 } : {}) };
   const recipe = keys(raw, Object.keys(expected), 'Video recipe');
   for (const [name, value] of Object.entries(expected)) equal(recipe[name], value, `Video recipe ${name}`);
@@ -147,30 +147,12 @@ function expectedPolicy(end: number, frameIndex: number, clipIndex: number, clip
   return { policy_version: fast ? 'right-scroll/v2' : 'right-scroll/v1', effective_tick: end, window, readout, minimum_dwell_met, action, reason, trigger, next_clip_index };
 }
 
-export async function parseVideoRecording(text: string): Promise<VideoRecording> {
-  check(new TextEncoder().encode(text).length <= 32 * 1024 * 1024, 'Video recording exceeds 32 MiB.');
-  const item = keys(strictJson(text), ['version', 'tick_ms', 'source', 'groups', 'inputs', 'segments', 'duration_ticks'], 'Video recording');
-  check((item.version === 'measured-video-replay/v1' || item.version === 'measured-video-replay/v2') && item.tick_ms === .1, 'Unsupported video replay version or tick size.');
-  const fast = item.version === 'measured-video-replay/v2';
-  const source = keys(item.source, ['run_kind', 'verification_mode', 'schema_sha256', 'run_metadata_sha256', 'events_sha256', 'final_scientific_sha256', 'metadata'], 'Source');
-  check(source.run_kind === 'pilot' && source.verification_mode === 'integrity-only', 'Only integrity-only pilot video recordings are supported.');
-  for (const name of ['schema_sha256', 'run_metadata_sha256', 'events_sha256', 'final_scientific_sha256']) check(typeof source[name] === 'string' && DIGEST.test(source[name]), `Invalid source ${name}.`);
-  const metadata = keys(source.metadata, ['engine_identity', 'protocol_version', 'stimulus_version', 'family', 'seeds', 'factors', 'video_recipe', 'clips', 'input_sha256'], 'Metadata');
-  check(metadata.family === 'video-observation' && metadata.protocol_version === `video-observation/v${fast ? 2 : 1}` && metadata.stimulus_version === `decoded-video-rgb/v${fast ? 2 : 1}`, 'Unsupported video observation protocol.');
-  validateRecipe(metadata.video_recipe, fast);
-  const identity = object(metadata.engine_identity, 'Engine identity'), maps = object(identity.neural_groups, 'Neural-group maps');
-  const groups = keys(item.groups, GROUPS, 'Groups');
-  for (const name of GROUPS) {
-    int(groups[name], 1, Number.MAX_SAFE_INTEGER, `Population ${name}`);
-    check(Array.isArray(maps[name]) && maps[name].length === groups[name], `Population ${name} differs from recorded map.`);
-    for (const id of maps[name]) int(id, 0, Number.MAX_SAFE_INTEGER, `Map ${name}`);
-    check(new Set(maps[name]).size === groups[name], `Duplicate map entry for ${name}.`);
-  }
-  check(Array.isArray(metadata.clips) && metadata.clips.length >= 1 && metadata.clips.length <= 5, 'Expected 1–5 prepared clips.');
-  equal(metadata.seeds, [], 'Video seeds'); equal(metadata.factors, { clip_count: metadata.clips.length }, 'Video factors');
+export function validatePreparedVideoClips(raw: unknown, fast: boolean) {
+  check(Array.isArray(raw) && raw.length >= 1 && raw.length <= 5, 'Expected 1–5 prepared clips.');
+  const clips = raw;
   const prepared = new Map<string, { clip_id: string; frame_index: number; sha256: string; source_pts: number; source_time_base: [number, number] }>();
   const declaredHashes = new Set<string>();
-  for (const [clipIndex, rawClip] of metadata.clips.entries()) {
+  for (const [clipIndex, rawClip] of clips.entries()) {
     const clip = keys(rawClip, ['clip_id', 'source_url', 'source_path', 'source_sha256', 'source_size', 'source_width', 'source_height', 'source_sample_aspect_ratio', 'source_time_base', 'origin_pts', 'coverage_end_pts', 'coverage_method', 'decoder', 'transform', 'frames'], `Clip ${clipIndex}`);
     const clipId = `clip-${clipIndex}`;
     check(clip.clip_id === clipId && typeof clip.source_url === 'string' && /^https:\/\//.test(clip.source_url) && typeof clip.source_sha256 === 'string' && DIGEST.test(clip.source_sha256), 'Invalid clip identity or source provenance.');
@@ -201,8 +183,11 @@ export async function parseVideoRecording(text: string): Promise<VideoRecording>
       prepared.set(frame.frame_id as string, { clip_id: clipId, frame_index: index, sha256: frame.sha256 as string, source_pts: frame.source_pts, source_time_base: base });
     }
   }
-  equal(metadata.input_sha256, [...declaredHashes].sort(), 'Prepared RGB hash set');
-  const rawInputs = object(item.inputs, 'Inputs');
+  return { prepared, declaredHashes };
+}
+
+export async function validateVideoInputs(raw: unknown, prepared: ReturnType<typeof validatePreparedVideoClips>['prepared']) {
+  const rawInputs = object(raw, 'Inputs');
   check(Object.keys(rawInputs).length >= 1 && Object.keys(rawInputs).length <= 240, 'Video input count exceeds bounds.');
   for (const [frameId, raw] of Object.entries(rawInputs)) {
     const input = keys(raw, ['sha256', 'width', 'height', 'rgb_base64', 'clip_id', 'frame_index', 'source_pts', 'source_time_base'], `Input ${frameId}`);
@@ -218,15 +203,19 @@ export async function parseVideoRecording(text: string): Promise<VideoRecording>
     const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), (byte) => byte.toString(16).padStart(2, '0')).join('');
     check(digest === input.sha256, `Input ${frameId}: pixel SHA256 mismatch.`);
   }
-  check(Array.isArray(item.segments) && item.segments.length >= 1 && item.segments.length <= 240, 'Video segment count exceeds bounds.');
+  return rawInputs;
+}
+
+export function validateVideoPhase(segments: unknown, rawInputs: Record<string, unknown>, groups: Record<string, unknown>, durationTicks: unknown, context: { branchId: string; startTick: number; firstSequence: number; clipCount: number; fast: boolean }) {
+  check(Array.isArray(segments) && segments.length >= 1 && segments.length <= 240, 'Video segment count exceeds bounds.');
   const populations = { motor_left: groups.motor_left as number, motor_right: groups.motor_right as number };
-  let tick = 0, sequence = -1, clipIndex = 0, frameIndex = 0, clipStart = 0, binCount = 0, stopped = false;
+  let tick = context.startTick, sequence = context.firstSequence - 1, clipIndex = 0, frameIndex = 0, clipStart = context.startTick, binCount = 0, stopped = false;
   let motorFrames: Array<{ motor_left: number; motor_right: number }> = [];
   const used = new Set<string>();
-  for (const [index, rawSegment] of item.segments.entries()) {
+  for (const [index, rawSegment] of segments.entries()) {
     const segment = keys(rawSegment, ['event_sequence', 'branch_id', 'frame_id', 'clip_id', 'frame_index', 'stimulation', 'learning', 'source_start_tick', 'source_end_tick', 'playback_start_tick', 'playback_end_tick', 'bins', 'video_policy'], `Segment ${index}`);
-    int(segment.event_sequence, 0, Number.MAX_SAFE_INTEGER, 'Event sequence'); check(segment.event_sequence === index + 1 && segment.event_sequence > sequence, 'Events are reordered, missing or repeated.'); sequence = segment.event_sequence;
-    check(segment.branch_id === 'video-observation/root' && segment.stimulation === null && segment.learning === false, 'Unsupported branch, external stimulation or learning.');
+    int(segment.event_sequence, 0, Number.MAX_SAFE_INTEGER, 'Event sequence'); check(segment.event_sequence === index + context.firstSequence && segment.event_sequence > sequence, 'Events are reordered, missing or repeated.'); sequence = segment.event_sequence;
+    check(segment.branch_id === context.branchId && segment.stimulation === null && segment.learning === false, 'Unsupported branch, external stimulation or learning.');
     check(segment.clip_id === `clip-${clipIndex}` && segment.frame_index === frameIndex && segment.frame_id === `${segment.clip_id}/frame-${frameIndex}`, 'Video frame occurrence differs from recorded policy.');
     check(Object.hasOwn(rawInputs, segment.frame_id as string), 'Segment frame has no exact input.'); used.add(segment.frame_id as string);
     const end = tick + quantizeVideoTick(frameIndex + 1) - quantizeVideoTick(frameIndex);
@@ -244,28 +233,56 @@ export async function parseVideoRecording(text: string): Promise<VideoRecording>
     check(binStart === end, 'Video bins do not cover the observation.'); motorFrames.push(motor);
     tick = end;
     if (frameIndex % 3 === 2) {
-      const expected = expectedPolicy(end, frameIndex, clipIndex, metadata.clips.length, clipStart, motorFrames, populations, fast);
+      const expected = expectedPolicy(end, frameIndex, clipIndex, context.clipCount, clipStart, motorFrames, populations, context.fast);
       checkPolicy(segment.video_policy, expected);
       if (expected.action === 'advance') { clipIndex += 1; frameIndex = 0; clipStart = end; motorFrames = []; }
-      else if (expected.action === 'stop') { stopped = true; check(index === item.segments.length - 1, 'Frames follow recorded stop.'); }
+      else if (expected.action === 'stop') { stopped = true; check(index === segments.length - 1, 'Frames follow recorded stop.'); }
       else frameIndex += 1;
     } else { check(segment.video_policy === null, 'Policy decision appears before evaluation boundary.'); frameIndex += 1; }
   }
-  int(item.duration_ticks, 1, 80000, 'Video duration');
-  check(stopped && tick === item.duration_ticks, 'Video session lacks a complete recorded stop.');
+  int(durationTicks, 1, 80000, 'Video duration');
+  check(stopped && tick === durationTicks, 'Video session lacks a complete recorded stop.');
   check(used.size === Object.keys(rawInputs).length, 'Unused or unbound video input.');
+  return tick;
+}
+
+export async function parseVideoRecording(text: string): Promise<VideoRecording> {
+  check(new TextEncoder().encode(text).length <= 32 * 1024 * 1024, 'Video recording exceeds 32 MiB.');
+  const item = keys(strictJson(text), ['version', 'tick_ms', 'source', 'groups', 'inputs', 'segments', 'duration_ticks'], 'Video recording');
+  check((item.version === 'measured-video-replay/v1' || item.version === 'measured-video-replay/v2') && item.tick_ms === .1, 'Unsupported video replay version or tick size.');
+  const fast = item.version === 'measured-video-replay/v2';
+  const source = keys(item.source, ['run_kind', 'verification_mode', 'schema_sha256', 'run_metadata_sha256', 'events_sha256', 'final_scientific_sha256', 'metadata'], 'Source');
+  check(source.run_kind === 'pilot' && source.verification_mode === 'integrity-only', 'Only integrity-only pilot video recordings are supported.');
+  for (const name of ['schema_sha256', 'run_metadata_sha256', 'events_sha256', 'final_scientific_sha256']) check(typeof source[name] === 'string' && DIGEST.test(source[name]), `Invalid source ${name}.`);
+  const metadata = keys(source.metadata, ['engine_identity', 'protocol_version', 'stimulus_version', 'family', 'seeds', 'factors', 'video_recipe', 'clips', 'input_sha256'], 'Metadata');
+  check(metadata.family === 'video-observation' && metadata.protocol_version === `video-observation/v${fast ? 2 : 1}` && metadata.stimulus_version === `decoded-video-rgb/v${fast ? 2 : 1}`, 'Unsupported video observation protocol.');
+  validateRecipe(metadata.video_recipe, fast);
+  const identity = object(metadata.engine_identity, 'Engine identity'), maps = object(identity.neural_groups, 'Neural-group maps');
+  const groups = keys(item.groups, GROUPS, 'Groups');
+  for (const name of GROUPS) {
+    int(groups[name], 1, Number.MAX_SAFE_INTEGER, `Population ${name}`);
+    check(Array.isArray(maps[name]) && maps[name].length === groups[name], `Population ${name} differs from recorded map.`);
+    for (const id of maps[name]) int(id, 0, Number.MAX_SAFE_INTEGER, `Map ${name}`);
+    check(new Set(maps[name]).size === groups[name], `Duplicate map entry for ${name}.`);
+  }
+  check(Array.isArray(metadata.clips) && metadata.clips.length >= 1 && metadata.clips.length <= 5, 'Expected 1–5 prepared clips.');
+  equal(metadata.seeds, [], 'Video seeds'); equal(metadata.factors, { clip_count: metadata.clips.length }, 'Video factors');
+  const { prepared, declaredHashes } = validatePreparedVideoClips(metadata.clips, fast);
+  equal(metadata.input_sha256, [...declaredHashes].sort(), 'Prepared RGB hash set');
+  const rawInputs = await validateVideoInputs(item.inputs, prepared);
+  validateVideoPhase(item.segments, rawInputs, groups, item.duration_ticks, { branchId: 'video-observation/root', startTick: 0, firstSequence: 1, clipCount: metadata.clips.length, fast });
   return item as unknown as VideoRecording;
 }
 
-export function visiblePolicyAtTick(recording: VideoRecording, tick: number): VideoPolicy | null {
+export function visiblePolicyAtTick(recording: Pick<VideoRecording, 'segments'>, tick: number): VideoPolicy | null {
   return recording.segments.findLast((segment) => segment.video_policy !== null && segment.video_policy.effective_tick <= tick)?.video_policy ?? null;
 }
 
-export function currentClipPolicyAtTick(recording: VideoRecording, tick: number, clipId: string): VideoPolicy | null {
+export function currentClipPolicyAtTick(recording: Pick<VideoRecording, 'segments'>, tick: number, clipId: string): VideoPolicy | null {
   return recording.segments.findLast((segment) => segment.clip_id === clipId && segment.video_policy !== null && segment.video_policy.effective_tick <= tick)?.video_policy ?? null;
 }
 
-export function advanceGestureAtTick(recording: VideoRecording, tick: number, reducedMotion = false) {
+export function advanceGestureAtTick(recording: Pick<VideoRecording, 'segments'>, tick: number, reducedMotion = false) {
   if (reducedMotion || visiblePolicyAtTick(recording, tick)?.action === 'stop') return null;
   const outgoing = recording.segments.findLast((segment) => segment.video_policy?.action === 'advance' && segment.video_policy.effective_tick <= tick);
   const policy = outgoing?.video_policy;
@@ -276,7 +293,7 @@ export function advanceGestureAtTick(recording: VideoRecording, tick: number, re
   return { reason: policy.reason, progress: elapsed / 4000, screenProgress: Math.max(0, Math.min(1, (elapsed - 1000) / 2000)), outgoingFrameId: outgoing.frame_id, incomingFrameId: incoming.frame_id };
 }
 
-export function sampleVideoAtTick(recording: VideoRecording, requestedTick: number) {
+export function sampleVideoAtTick(recording: Pick<VideoRecording, 'segments' | 'inputs' | 'groups' | 'duration_ticks'>, requestedTick: number) {
   if (!Number.isFinite(requestedTick)) throw new Error('Invalid seek position.');
   const tick = Math.max(0, Math.min(recording.duration_ticks, Math.floor(requestedTick)));
   const segment = recording.segments.find((candidate) => tick < candidate.playback_end_tick) ?? recording.segments.at(-1)!;

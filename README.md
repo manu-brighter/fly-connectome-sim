@@ -32,7 +32,16 @@ left/right preference.
 | Experiment state | Checkpoint restore, complete-state hashes, reset determinism, candidate-memory interventions and authenticated native map/schema context | A qualified production frozen configuration |
 | Assay evidence | Caller-owned native production, source-specific 408-pair tiny-native repeats, shared declaration arithmetic and a bounded pair checker with full EOF validation | Global grid/selected-evidence reconciliation/public freezing, fullgraph held-out confirmation and the `assay` CLI |
 | Resource pilots | Fullgraph components, trained 10-/70-second one-anchor pilots with isolated native replay, and a [reviewed detail-on first-training-prefix sample](docs/experiments/2026-11-02-fullgraph-detail-prefix-pilot.md) | Unprofiled controlled timing, complete grid/assay capacity and a tested cloud/Linux environment |
-| Product | A/B and real-video replay with inspected 30fps export; strict event proposals, measured motor selection and bound event-plan export | Live LLM transport, longer feed sessions and accessibility/cross-browser polish |
+| Product | Continuous reel→event observation in one engine; measured choice/immutable plan and inspected30fps combined replay; standalone formats preserved | Live LLM transport, longer feed sessions and accessibility/cross-browser polish |
+
+The [continuous session](docs/superpowers/specs/2026-11-03-feed-event-session.md)
+uses one fresh engine for fast-feed reels and then2s of event cards, without
+reset/restore. One actual run recorded7s feed+2s cards and selected Sunset House
+from final6:2 motor spikes. Its combined film has360frames/12s at30fps, including
+one labelled3s terminal plan hold. See the
+[report](docs/experiments/2026-11-03-feed-event-session.md) and
+[commands](docs/getting-started.md#continuous-reels-and-event-choice).
+Continuous state does not establish that reel content caused the choice.
 
 The [event-choice contract](docs/superpowers/specs/2026-11-02-event-choice-milestone.md)
 adds two imported event concepts, deterministic visual cards and a fresh 2s
@@ -41,7 +50,7 @@ proposal, or explicitly defer. The exported plan retains the chosen proposal
 exactly; an LLM cannot override that selection. Start with the small
 [example](examples/event-options.json) or [proposal prompt](docs/event-proposal-prompt.md).
 This imports JSON; it makes no live model/API call or paid request.
-One bounded actual run selected Sunset House from final left2/right1 spikes;
+The historical standalone pilot selected Sunset House from final left2/right1 spikes;
 same-artifact Chrome/plan-download and150-frame/5s export checks passed. See the
 [event-choice report](docs/experiments/2026-11-02-event-choice-observation.md).
 

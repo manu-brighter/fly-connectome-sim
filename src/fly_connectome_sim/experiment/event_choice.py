@@ -115,9 +115,9 @@ def _groups(identity: dict) -> dict:
     return groups
 
 
-def _validate_metadata(metadata: dict) -> tuple[dict, dict, dict]:
-    proposal = validate_event_proposal(metadata["proposal"])
-    source = metadata["proposal_source"]
+def _validated_proposal_source(proposal: dict, source: dict) -> dict:
+    """Validate the original import directly, independently of its run envelope."""
+    proposal = validate_event_proposal(proposal)
     if (type(source) is not dict or set(source) != {"kind", "name", "size_bytes", "raw_sha256"}
             or source["kind"] != "imported-json"
             or type(source["raw_sha256"]) is not str or not DIGEST.fullmatch(source["raw_sha256"])):
@@ -126,6 +126,12 @@ def _validate_metadata(metadata: dict) -> tuple[dict, dict, dict]:
     if any(char in source["name"] for char in '/\\:') or source["name"] in {".", ".."}:
         raise RunArtifactError("Invalid proposal source basename")
     _integer(source["size_bytes"], "proposal bytes", minimum=1, maximum=MAX_PROPOSAL_BYTES)
+    return proposal
+
+
+def _validate_metadata(metadata: dict) -> tuple[dict, dict, dict]:
+    proposal = _validated_proposal_source(metadata["proposal"], metadata["proposal_source"])
+    source = metadata["proposal_source"]
     frame = _frame_payload(render_event_cards(proposal))
     expected = _metadata(metadata["engine_identity"], proposal, source, frame)
     if _canonical(metadata) != _canonical(expected):
@@ -139,17 +145,19 @@ def _same(actual: object, expected: object, message: str) -> None:
 
 
 def _segment(event: dict, index: int, *, identity: dict, groups: dict,
-             frame: dict, proposal: dict, recorded: bool = True) -> tuple[dict, dict]:
+             frame: dict, proposal: dict, recorded: bool = True,
+             branch_id: str = ROOT_BRANCH, start_tick: int = 0,
+             sequence_start: int = 1) -> tuple[dict, dict]:
     fields = OBSERVE_FIELDS | (OWNED if recorded else set())
     if index == 3:
         fields = fields | {"motor_readout", "event_choice"}
     if (type(event) is not dict or set(event) != fields
-            or event["type"] != "observe" or event["branch_id"] != ROOT_BRANCH
+            or event["type"] != "observe" or event["branch_id"] != branch_id
             or event["stimulus"] != "options" or event["stimulation"] is not None
             or event["learning"] is not False or event["pathway_detail"] is not False
             or event["qualification_detail"] is not False):
         raise RunArtifactError("Unsupported event observation fields or flags")
-    start, end = index * 5000, (index + 1) * 5000
+    start, end = start_tick + index * 5000, start_tick + (index + 1) * 5000
     for name, expected in (("start_tick", start), ("end_tick", end), ("duration_ticks", 5000)):
         if _integer(event[name], name) != expected:
             raise RunArtifactError("Noncontinuous event observation ticks")
@@ -216,8 +224,8 @@ def _segment(event: dict, index: int, *, identity: dict, groups: dict,
                                      "selected_option_id": _selected(readout, proposal)},
               "Recorded event selection differs from fixed measured policy")
     return {
-        "event_sequence": event["sequence"] if recorded else index + 1,
-        "branch_id": ROOT_BRANCH, "frame_id": "options", "stimulation": None, "learning": False,
+        "event_sequence": event["sequence"] if recorded else sequence_start + index,
+        "branch_id": branch_id, "frame_id": "options", "stimulation": None, "learning": False,
         "source_start_tick": start, "source_end_tick": end,
         "playback_start_tick": start, "playback_end_tick": end, "bins": bins,
     }, {"counts": counts, "populations": populations, "readout": readout}
@@ -232,6 +240,43 @@ def _new_output(source: Path | None, output: Path) -> None:
         raise RunArtifactError("Output ancestor symlink or junction rejected")
     if any(parent.exists() and not parent.is_dir() for parent in output.absolute().parents):
         raise RunArtifactError("Output ancestor is not a directory")
+
+
+def _observe_event_phase(engine: FlyEngine, *, proposal: dict, frame: np.ndarray,
+                         payload: dict, branch_id: str, start_tick: int,
+                         sequence_start: int):
+    """Yield four observations without owning engine, checkpoints or recording."""
+    if engine.brain.cursor != start_tick:
+        raise RunArtifactError("Event phase must start at the current native tick")
+    identity = engine.identity()
+    groups = _groups(identity)
+    for index in range(4):
+        start = engine.brain.cursor
+        telemetry = engine.observe(frame, 500.0, stimulation=None, learning=False,
+                                   pathway_detail=False, qualification_detail=False)
+        end = engine.brain.cursor
+        if start != start_tick + index * 5000 or end != start + 5000:
+            raise RunArtifactError("Actual event observation clock mismatch")
+        event = {
+            "type": "observe", "branch_id": branch_id, "sim_ms": end / 10,
+            "start_ms": start / 10, "end_ms": end / 10, "start_tick": start,
+            "end_tick": end, "duration_ms": 500.0, "duration_ticks": 5000,
+            "stimulus": "options", "stimulation": None, "learning": False,
+            "pathway_detail": False, "qualification_detail": False,
+            "telemetry": telemetry, "event_frame": payload,
+        }
+        if index == 3:
+            raw_readout = asdict(ADAPTER.adapt(telemetry))
+            event["motor_readout"] = {
+                "interpretation": "engineered_unvalidated_motor_readout",
+                "action_threshold_hz": 1.0, "decision": raw_readout,
+            }
+            event["event_choice"] = {"policy_version": POLICY_VERSION,
+                                     "selected_option_id": _selected(raw_readout, proposal)}
+        _segment(event, index, identity=identity, groups=groups, frame=payload,
+                 proposal=proposal, recorded=False, branch_id=branch_id,
+                 start_tick=start_tick, sequence_start=sequence_start)
+        yield event
 
 
 def record_event_choice_run(output_dir: str | Path, *, proposal_path: str | Path,
@@ -262,31 +307,10 @@ def record_event_choice_run(output_dir: str | Path, *, proposal_path: str | Path
                                  "checkpoint_name": name})
 
             save("brain-before.npz")
-            for index in range(4):
-                start = engine.brain.cursor
-                telemetry = engine.observe(frame, 500.0, stimulation=None, learning=False,
-                                           pathway_detail=False, qualification_detail=False)
-                end = engine.brain.cursor
-                if start != index * 5000 or end != start + 5000:
-                    raise RunArtifactError("Actual event observation clock mismatch")
-                event = {
-                    "type": "observe", "branch_id": ROOT_BRANCH, "sim_ms": end / 10,
-                    "start_ms": start / 10, "end_ms": end / 10, "start_tick": start,
-                    "end_tick": end, "duration_ms": 500.0, "duration_ticks": 5000,
-                    "stimulus": "options", "stimulation": None, "learning": False,
-                    "pathway_detail": False, "qualification_detail": False,
-                    "telemetry": telemetry, "event_frame": payload,
-                }
-                if index == 3:
-                    raw_readout = asdict(ADAPTER.adapt(telemetry))
-                    event["motor_readout"] = {
-                        "interpretation": "engineered_unvalidated_motor_readout",
-                        "action_threshold_hz": 1.0, "decision": raw_readout,
-                    }
-                    event["event_choice"] = {"policy_version": POLICY_VERSION,
-                                             "selected_option_id": _selected(raw_readout, proposal)}
-                _segment(event, index, identity=identity, groups=groups, frame=payload,
-                         proposal=proposal, recorded=False)
+            for event in _observe_event_phase(
+                engine, proposal=proposal, frame=frame, payload=payload,
+                branch_id=ROOT_BRANCH, start_tick=0, sequence_start=1,
+            ):
                 recorder.append(event)
             save("brain-after.npz")
     return verify_run(target)

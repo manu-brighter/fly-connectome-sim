@@ -1,3 +1,4 @@
+import { isSessionRecording, sampleSessionAtTick } from './session-replay.ts';
 import './style.css';
 import { GROUPS, advancePlayback } from './replay.ts';
 import { BufferTarget, CanvasSource, Output, WebMOutputFormat, canEncodeVideo } from 'mediabunny';
@@ -41,7 +42,7 @@ if (stage && typeof VideoEncoder !== 'undefined') {
         if (await canEncodeVideo(candidate, { width: EXPORT_SIZE, height: EXPORT_SIZE, frameRate: EXPORT_FPS })) { videoCodec = candidate; break; }
       }
       videoButton.disabled = !recording || !videoCodec || operations.loading || operations.exporting;
-      videoNote.textContent = videoCodec ? `Video export: 900×900, 30 timestamped frames/s. Last ${holdSeconds(recording)} s holds the measured terminal sample${recording && isEventRecording(recording) ? ' and locked plan' : ''} for presentation.` : 'Video export unavailable: this browser cannot encode VP9 or VP8 with WebCodecs at 900×900.';
+      videoNote.textContent = videoCodec ? `Video export: 900×900, 30 timestamped frames/s. Last ${holdSeconds(recording)} s holds the measured terminal sample${recording && (isEventRecording(recording) || isSessionRecording(recording)) ? ' and locked plan' : ''} for presentation.` : 'Video export unavailable: this browser cannot encode VP9 or VP8 with WebCodecs at 900×900.';
     } catch { videoNote.textContent = 'Video export unavailable: WebCodecs capability check failed.'; }
   })();
 } else videoNote.textContent = 'Video export unavailable: WebGL and WebCodecs video encoding are required.';
@@ -54,7 +55,7 @@ for (const name of ['pam11', 'ppl101', 'mbon07'] as const) {
 
 function showError(message: string) { errorElement.textContent = message; errorElement.hidden = false; }
 if (stageError) showError(stageError);
-function holdSeconds(record: AnyRecording | null) { return record && isEventRecording(record) ? 3 : .5; }
+function holdSeconds(record: AnyRecording | null) { return record && (isEventRecording(record) || isSessionRecording(record)) ? 3 : .5; }
 
 const traceBases: Partial<Record<'kc' | 'mbon11', HTMLCanvasElement>> = {};
 function drawTrace(name: 'kc' | 'mbon11') {
@@ -103,6 +104,7 @@ function update() {
   element('event-sequence').textContent = String(sample.segment.event_sequence);
   element('video-policy').hidden = !video;
   element('event-plan').hidden = !event;
+  planButton.hidden = !event || !sample.plan;
   if (event) {
     const view = eventPresentation(sample);
     element('event-status').textContent = view.status;
@@ -113,10 +115,10 @@ function update() {
   } else planButton.disabled = true;
   if (video) {
     element('source-pts').textContent = `${sample.input.source_pts} × ${sample.input.source_time_base[0]}/${sample.input.source_time_base[1]} s`;
-    if (isVideoRecording(recording)) {
+    if (isVideoRecording(recording) || isSessionRecording(recording)) {
       const clips = recording.source.metadata.clips as Array<{ source_url: string }>;
       element<HTMLAnchorElement>('clip-url').href = clips[Number(sample.input.clip_id.slice(5))].source_url;
-      element('policy-note').textContent = `Recorded right-scroll/${recording.version === 'measured-video-replay/v2' ? 'v2' : 'v1'} display policy; not validated fly behavior.`;
+      element('policy-note').textContent = `Recorded right-scroll/${recording.version === 'measured-video-replay/v1' ? 'v1' : 'v2'} display policy; not validated fly behavior.`;
     }
     element('policy-status').textContent = videoPolicyLabel(sample.policy);
     const current = sample.clipPolicy;
@@ -134,7 +136,7 @@ function loadingControls(loading: boolean) {
   openButton.disabled = loading; file.disabled = loading;
   play.disabled = loading || !recording; seek.disabled = loading || !recording; speed.disabled = loading || !recording;
   videoButton.disabled = loading || !recording || !videoCodec || !stage;
-  planButton.disabled = loading || !recording || !isEventRecording(recording) || tick < recording.decision.effective_tick;
+  planButton.disabled = loading || !recording || !(isEventRecording(recording) || isSessionRecording(recording)) || tick < recording.decision.effective_tick;
   openButton.textContent = loading ? 'Opening…' : 'Open recording';
 }
 file.addEventListener('change', async () => {
@@ -161,10 +163,13 @@ file.addEventListener('change', async () => {
     const segments = element('segments'); segments.replaceChildren();
     if (isEventRecording(parsed)) {
       const item = document.createElement('span'); item.className = 'stimulus-event'; item.style.flexGrow = '1'; item.textContent = 'Paired options · 1.5 s settling + 0.5 s decision'; segments.append(item);
-    } else if (isVideoRecording(parsed)) {
-      for (const block of videoTimelineBlocks(parsed)) {
+    } else if (isVideoRecording(parsed) || isSessionRecording(parsed)) {
+      for (const block of videoTimelineBlocks({ segments: parsed.segments.flatMap((segment) => 'clip_id' in segment ? [segment] : []) })) {
         const item = document.createElement('span'); item.className = `stimulus-video-${Number(block.clipId.slice(5)) % 2}`;
         item.style.flexGrow = String(block.duration); item.textContent = `Clip ${Number(block.clipId.slice(5)) + 1}`; segments.append(item);
+      }
+      if (isSessionRecording(parsed)) {
+        const item = document.createElement('span'); item.className = 'stimulus-event'; item.style.flexGrow = '20000'; item.textContent = 'Paired options · 1.5 s settling + 0.5 s decision'; segments.append(item);
       }
     } else for (const segment of parsed.segments) {
       const item = document.createElement('span'); item.className = `stimulus-${segment.stimulus}`;
@@ -173,7 +178,7 @@ file.addEventListener('change', async () => {
     }
     element('source-mode').textContent = parsed.source.verification_mode;
     element('source-json').textContent = JSON.stringify(parsed.source, null, 2);
-    if (videoCodec) videoNote.textContent = `Video export: 900×900, 30 timestamped frames/s. Last ${holdSeconds(parsed)} s holds the measured terminal sample${isEventRecording(parsed) ? ' and locked plan' : ''} for presentation.`;
+    if (videoCodec) videoNote.textContent = `Video export: 900×900, 30 timestamped frames/s. Last ${holdSeconds(parsed)} s holds the measured terminal sample${(isEventRecording(parsed) || isSessionRecording(parsed)) ? ' and locked plan' : ''} for presentation.`;
     update(); stage?.render();
   } catch (error) {
     if (operations.isCurrentLoad(generation)) showError(`Cannot open recording. ${error instanceof Error ? error.message : 'Invalid file.'} Choose the JSON produced by export-replay.${recording ? ' The previous recording remains loaded.' : ''}`);
@@ -185,8 +190,9 @@ sourceButton.addEventListener('click', () => {
   sourceButton.setAttribute('aria-expanded', String(!panel.hidden));
 });
 planButton.addEventListener('click', () => {
-  if (!recording || !isEventRecording(recording) || operations.loading || operations.exporting) return;
-  const json = eventPlanJson(sampleEventAtTick(recording, tick), operations);
+  if (!recording || !(isEventRecording(recording) || isSessionRecording(recording)) || operations.loading || operations.exporting) return;
+  const sample = isSessionRecording(recording) ? sampleSessionAtTick(recording, tick) : sampleEventAtTick(recording, tick);
+  const json = 'decision' in sample ? eventPlanJson(sample, operations) : null;
   if (!json) return;
   const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
   const link = document.createElement('a'); link.href = url; link.download = 'event-plan.json'; link.click();
@@ -211,7 +217,7 @@ function exportControls(exporting: boolean) {
   openButton.disabled = exporting; file.disabled = exporting; play.disabled = exporting; seek.disabled = exporting; speed.disabled = exporting;
   videoButton.textContent = exporting ? 'Cancel export' : 'Export video';
   videoButton.disabled = !exporting && (!recording || !videoCodec || !stage);
-  planButton.disabled = exporting || !recording || !isEventRecording(recording) || tick < recording.decision.effective_tick;
+  planButton.disabled = exporting || !recording || !(isEventRecording(recording) || isSessionRecording(recording)) || tick < recording.decision.effective_tick;
 }
 
 videoButton.addEventListener('click', async () => {
@@ -234,12 +240,12 @@ videoButton.addEventListener('click', async () => {
       add: (timestamp, duration) => source.add(timestamp, duration),
       finalize: async () => { await output!.finalize(); return target.buffer; },
       cancel: () => output!.cancel(),
-    }, controller.signal, (done, total) => { videoNote.textContent = `Encoding ${done}/${total} frames…`; }, isVideoRecording(sourceRecording) ? quantizeVideoTick : undefined, isEventRecording(sourceRecording) ? EVENT_HOLD_FRAMES : undefined);
+    }, controller.signal, (done, total) => { videoNote.textContent = `Encoding ${done}/${total} frames…`; }, (isVideoRecording(sourceRecording) || isSessionRecording(sourceRecording)) ? quantizeVideoTick : undefined, (isEventRecording(sourceRecording) || isSessionRecording(sourceRecording)) ? EVENT_HOLD_FRAMES : undefined);
     if (!completed?.byteLength) throw new Error('Encoder produced an empty video.');
     const url = URL.createObjectURL(new Blob([completed], { type: 'video/webm' }));
     const link = document.createElement('a'); link.href = url; link.download = 'measured-replay.webm'; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 30000);
-    videoNote.textContent = `Video exported. The final ${holdSeconds(sourceRecording)} s holds the measured terminal sample${isEventRecording(sourceRecording) ? ' and locked plan' : ''} for presentation; no simulation time is added.`;
+    videoNote.textContent = `Video exported. The final ${holdSeconds(sourceRecording)} s holds the measured terminal sample${(isEventRecording(sourceRecording) || isSessionRecording(sourceRecording)) ? ' and locked plan' : ''} for presentation; no simulation time is added.`;
   } catch (error) {
     if (output && output.state !== 'canceled' && output.state !== 'finalized') try { await output.cancel(); } catch { /* Preserve export error. */ }
     if (controller.signal.aborted) videoNote.textContent = 'Video export canceled. No video was saved.';

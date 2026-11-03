@@ -26,6 +26,7 @@ from .experiment.recorder import RunRecorder, verify_run
 from .experiment.measured_replay import export_measured_replay, record_observation_run
 from .experiment.video_observation import export_video_replay, record_video_observation_run
 from .experiment.event_choice import export_event_plan, export_event_replay, record_event_choice_run
+from .experiment.feed_event_session import export_session_plan, export_session_replay, record_feed_event_session
 from .experiment.stimuli import AssayStimuli
 
 
@@ -117,6 +118,14 @@ def main(argv: list[str] | None = None) -> int:
     event_parser = commands.add_parser("event-choice")
     event_parser.add_argument("--proposal", type=Path, required=True)
     event_parser.add_argument("--output-dir", type=Path, required=True)
+    session_parser = commands.add_parser("feed-event-session")
+    session_parser.add_argument("--playlist", type=Path, required=True)
+    session_parser.add_argument("--proposal", type=Path, required=True)
+    session_parser.add_argument("--output-dir", type=Path, required=True)
+    for command in ("export-session-replay", "export-session-plan"):
+        session_export_parser = commands.add_parser(command)
+        session_export_parser.add_argument("path", type=Path)
+        session_export_parser.add_argument("--output", type=Path, required=True)
     for command in ("export-event-replay", "export-event-plan"):
         event_export_parser = commands.add_parser(command)
         event_export_parser.add_argument("path", type=Path)
@@ -147,6 +156,20 @@ def main(argv: list[str] | None = None) -> int:
                        "duration_ticks": replay["duration_ticks"],
                        "segment_count": len(replay["segments"]),
                        "verification_mode": replay["source"]["verification_mode"]}
+        elif args.command == "feed-event-session":
+            summary = _verified_summary(record_feed_event_session(
+                args.output_dir, playlist_path=args.playlist, proposal_path=args.proposal,
+                engine_factory=FlyEngine.from_prepared_graph,
+            ))
+        elif args.command in {"export-session-replay", "export-session-plan"}:
+            exporter = export_session_plan if args.command == "export-session-plan" else export_session_replay
+            result = exporter(args.path, args.output)
+            summary = {"path": str(args.output), "version": result["version"],
+                       "verification_mode": result["source"]["verification_mode"]}
+            if args.command == "export-session-plan":
+                summary.update(status=result["status"], selected_option_id=result["selected_option_id"])
+            else:
+                summary.update(duration_ticks=result["duration_ticks"], segment_count=len(result["segments"]))
         elif args.command == "event-choice":
             summary = _verified_summary(record_event_choice_run(
                 args.output_dir, proposal_path=args.proposal,

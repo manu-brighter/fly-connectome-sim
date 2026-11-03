@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from fly_connectome_sim.cli import main
 from fly_connectome_sim.experiment.recorder import verify_run
 
@@ -222,3 +224,38 @@ def test_video_cli_selects_closed_profile_before_native_construction(tmp_path, m
     assert error.value.code == 2
     assert profiles == ["standard", "fast-feed", "standard"]
     capsys.readouterr()
+@pytest.mark.parametrize("command", ["export-session-replay", "export-session-plan"])
+def test_session_export_cli_is_bound_to_closed_exporter(tmp_path, monkeypatch, capsys, command):
+    from fly_connectome_sim import cli
+
+    calls = []
+    def export(path, output):
+        calls.append((path, output))
+        return {"version": "feed-event-replay/v1" if command.endswith("replay") else "event-plan/v1",
+                "source": {"verification_mode": "integrity-only"}, "duration_ticks": 60000,
+                "segments": [{}, {}], "status": "deferred", "selected_option_id": None}
+    monkeypatch.setattr(cli, command.replace("-", "_"), export)
+    source, output = tmp_path / "run", tmp_path / "out.json"
+    assert cli.main([command, str(source), "--output", str(output)]) == 0
+    assert calls == [(source, output)]
+    assert json.loads(capsys.readouterr().out)["verification_mode"] == "integrity-only"
+
+
+@pytest.mark.parametrize("override", ["--profile", "--seed", "--threshold", "--winner", "--duration"])
+def test_session_cli_has_no_behavior_overrides(tmp_path, override):
+    from fly_connectome_sim.cli import main
+
+    with pytest.raises(SystemExit):
+        main(["feed-event-session", "--playlist", "videos.json", "--proposal", "options.json",
+              "--output-dir", str(tmp_path / "run"), override, "1"])
+
+
+def test_session_cli_missing_input_fails_before_graph(tmp_path, monkeypatch, capsys):
+    from fly_connectome_sim import cli
+
+    def forbidden():
+        pytest.fail("invalid input constructed graph")
+    monkeypatch.setattr(cli.FlyEngine, "from_prepared_graph", forbidden)
+    assert cli.main(["feed-event-session", "--playlist", "missing.json", "--proposal", "missing.json",
+                     "--output-dir", str(tmp_path / "run")]) == 1
+    assert not (tmp_path / "run").exists()
