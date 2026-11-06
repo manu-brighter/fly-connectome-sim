@@ -290,6 +290,59 @@ The closed [session contract](superpowers/specs/2026-11-03-feed-event-session.md
 defines the exact source/count/plan/EOF validation. This uses imported JSON,
 not a live LLM/API call. Generated runs/media remain local and ignored.
 
+## Optional model-generated event proposals
+
+`prepare-event-proposal` prepares a request independently of any simulation.
+Its default mode is offline: it needs no API key and makes no network request.
+Choose a model available to your own API project; `YOUR_MODEL_ID` below is a
+placeholder, not an available/recommended model or a pricing claim.
+
+```powershell
+.venv/Scripts/python.exe -m fly_connectome_sim.cli prepare-event-proposal --title "Summer team party" --guests 100 --max-budget-chf 5000 --model YOUR_MODEL_ID --max-output-tokens 2048 --output-dir runs/proposal-preview
+```
+
+The parent directory must exist and the final directory must be new. Inspect
+`request.json` and the `dry-run` receipt. There is deliberately no proposal in a
+dry run. Existing JSON prepared by a person or another model remains supported.
+
+To make one **paid external request**, configure `OPENAI_API_KEY` securely in
+your local process environment, choose the model and token limit explicitly,
+and add `--allow-paid-request` with a different new directory:
+
+```powershell
+.venv/Scripts/python.exe -m fly_connectome_sim.cli prepare-event-proposal --title "Summer team party" --guests 100 --max-budget-chf 5000 --model YOUR_MODEL_ID --max-output-tokens 2048 --output-dir runs/proposal-live --allow-paid-request
+```
+
+This sends the brief and fixed schema/instructions to OpenAI, with `store:false`;
+no reels, measurements, selected plan or checkpoints are sent. The token range
+is512..4096. This limits output tokens, **not CHF/USD cost**; check your API
+project's access/pricing/spending controls. No API access or credit is assumed
+from a ChatGPT subscription. The command never retries, follows redirects or
+repairs a rejected answer automatically. Timeout/connection loss can still cost
+money; an absent completion receipt does not prove the request was not sent.
+
+On success, `proposal.json` passes the existing strict validator and matches the
+exact brief; `receipt.json` is written last and records local hashes/usage. Only
+the complete valid receipt with matching request/proposal hashes completes the
+preparation; file presence alone does not. An error leaves the reserved directory
+incomplete, potentially with a proposal or truncated receipt if a write failed.
+Do not treat incomplete output as completed generation or automatically retry it.
+Raw provider responses and API keys are not saved. The30s socket timeout is not
+a whole-process deadline. Protect local brief/request files as your own data.
+
+Use the successful proposal through the existing boundary:
+
+```powershell
+.venv/Scripts/python.exe -m fly_connectome_sim.cli feed-event-session --playlist runs/my-playlist.json --proposal runs/proposal-live/proposal.json --output-dir runs/my-generated-session
+```
+
+The importer still identifies it as `imported-json`; a transport receipt is no
+provider attestation or scientific evidence. The model cannot select a winner,
+change the measured plan or configure neural behavior. Live API compatibility
+has not been exercised here because no API key is configured. See the
+[transport contract](superpowers/specs/2026-11-06-event-proposal-transport.md)
+and [proposal handoff](event-proposal-prompt.md).
+
 ## Separate assay commands
 
 The existing qualification command remains separate from Replay v1 and is not
@@ -307,8 +360,9 @@ After preparing and verifying the graph, on Windows:
 On Linux/macOS, replace `.venv/Scripts/python.exe` with `.venv/bin/python`.
 `verify-run` checks integrity only; native replay verification is a separate
 Python API path. Native cohort production is currently exposed through Python
-APIs; the `assay` CLI and live LLM transport remain pending. Event proposals can
-already be imported and bound to a measured selection. Replay's recorder and
+APIs; the `assay` CLI remains pending. The optional proposal transport is separate
+and live API compatibility remains unverified. Event proposals can be imported
+and bound to a measured selection. Replay's recorder and
 renderer source passed the bounded real-file/video-end check and remain experimental WIP.
 
 See the [assay implementation plan](superpowers/plans/2026-09-24-associative-plasticity-assay.md)

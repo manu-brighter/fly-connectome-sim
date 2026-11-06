@@ -1,21 +1,24 @@
-# Continuation and cloud handover — 2026-11-03
+# Continuation and cloud handover — 2026-11-06
 
 Use `origin` of `manu-brighter/fly-connectome-sim`, branch
 `feat/connectome-experiment-core`, latest pushed feature commit. The prior
 standard-video checkpoint `639423f`, Phase 1 A/B checkpoint `4467431` and
-screen-contact checkpoint `877fbe2` and standalone event-choice checkpoint
-`d97e1e8` are historical. Current continuous-session source has36 Python/C++
-members, model identity
+screen-contact checkpoint `877fbe2`, standalone event-choice checkpoint
+`d97e1e8` and continuous-session checkpoint `011f6fa` are historical. The
+continuous-session pilot source had36 Python/C++ members, model identity
 `d4b72b01f14c4c4ec1266f976692fa6bf7dc91b3b83ed40f6f5540ab25a7ec9c`;
 schema remains `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
 The [continuous-session contract](superpowers/specs/2026-11-03-feed-event-session.md)
 and [implementation plan](superpowers/plans/2026-11-03-feed-event-session.md)
-govern the current slice: one fresh engine observes the bounded fast feed then
+govern that completed slice: one fresh engine observes the bounded fast feed then
 immediately the event cards, without reset/restore, and records a measured
 left/right/defer choice plus unchanged plan. Strict imported proposal JSON
-remains the first provider integration, with no live API calls or costs. Formal
-qualification/freeze/confirmation, C1, live LLM transport and old/trained-state
-integration remain parked. Earlier evidence remains source-specific; continuous
+remains the measured pipeline's provider boundary. The separate
+[proposal transport](superpowers/specs/2026-11-06-event-proposal-transport.md)
+adds offline preparation and an explicit one-request paid opt-in; no live API
+call or cost has occurred here. Formal qualification/freeze/confirmation, C1,
+live API acceptance and old/trained-state integration remain parked.
+Earlier evidence remains source-specific; continuous
 production does not establish a causal content/learning effect.
 
 The prior viewer-only [screen-contact correction](experiments/2026-11-02-screen-contact-swipe.md)
@@ -57,13 +60,43 @@ checkout, not a gate on current local work. Never push main/master/develop.
 10. [Current continuous-session plan](superpowers/plans/2026-11-03-feed-event-session.md),
     [contract](superpowers/specs/2026-11-03-feed-event-session.md) and
     [observation report](experiments/2026-11-03-feed-event-session.md).
+11. [Proposal transport plan](superpowers/plans/2026-11-06-event-proposal-transport.md),
+    [contract](superpowers/specs/2026-11-06-event-proposal-transport.md) and
+    [usage](getting-started.md#optional-model-generated-event-proposals).
 
 The older connectome-core plan is background. This tracked handover and current
 plan orient a fresh checkout; private local SDD notes/chats/scripts are not
 required and do not travel through Git. Local raw evidence is not replaced by
 this document. Do not claim to reverify unavailable bytes.
 
-## Current continuous-session checkpoint
+## Current proposal transport checkpoint
+
+`prepare-event-proposal` defaults to an offline request/dry-run receipt. A live
+invocation requires an explicit model,512..4096 output tokens, environment key
+and `--allow-paid-request`; fixed verified-TLS host, one POST, no retry/tools.
+Current37-member local Windows model identity:
+`093081c36bbb64dbb36099e5281407075767e6083244abaf7800631a30ae588b`.
+The new module and narrow CLI change leave existing validators, engine/native
+equations, recorder/schema, viewer and dependencies byte-identical. Old formal
+identities are invalidated; old pilot results remain source-specific.
+
+Astra architecture/source/security/runtime review closed with0 Critical/
+Important/Minor findings. Scoped compatibility:251passed/1sandboxjunctionskip;
+that actual junction passed separately on the host. A later test-only regression
+and full transport module87passed/1same skip preserve all packaged bytes. Test
+counts overlap. These are no live API or full-assay acceptance claims.
+
+The actual offline CLI and a clearly declared fake-HTTPS fixture passed independent
+request/hash/import/render checks. No API key was configured, no paid call was
+made, and live compatibility remains unverified. No new fullgraph observation
+was run; existing compatibility tests exercise tiny-native fixtures separately.
+Receipts are local completion/provenance records, not provider/native/scientific
+attestation. Require a complete valid receipt and matching file hashes; partial
+output persists, and path presence alone does not prove completion. Token/socket
+limits are not a CHF budget or total process deadline. Exact evidence/limits:
+[transport report](experiments/2026-11-06-event-proposal-transport.md).
+
+## Historical continuous-session checkpoint
 
 `feed-event-session` creates one fresh engine/recorder/root; existing fast-feed
 STOP ends the feed phase only, immediately followed by four500ms card intervals
@@ -696,9 +729,12 @@ Interrupted development runs are never counted as passes.
   bounds before accepting arbitrary foreign runs. Current local exporter uses
   generic verify_run before its output-size bound; oversized foreign inputs can
   exhaust memory. No service/deployment or arbitrary hostile-run safety claim.
-- [ ] Add live LLM proposal transport and optional narrative continuation only
-  with explicit key/cost configuration; keep selected plan immutable and retain
-  JSON import. Do not relabel the authored example as a live model request.
+- [x] Add a separate offline-default proposal transport with explicit key/model/
+  token/cost opt-in and local receipts; preserve JSON import and measured choice.
+- [ ] Exercise one actual API request only after explicit local key/model/cost
+  configuration. Offline fixture tests are not live compatibility evidence.
+- [ ] Add optional post-choice narrative separately if needed; keep selected
+  plan immutable. Do not relabel authored examples as live model requests.
 - [ ] Define authenticated old/trained-state resumption separately if needed;
   the current session starts fresh and retains state only within that one run.
 - [ ] Complete broader accessibility/cross-browser checks and separate the

@@ -1,6 +1,13 @@
 # Proposal handoff from a language model
 
-The first event-choice milestone imports a proposal file. It does not call a
+The optional [proposal command](getting-started.md#optional-model-generated-event-proposals)
+now prepares an offline inspectable request or, with an explicitly configured
+key/model/token limit and `--allow-paid-request`, makes one OpenAI request.
+Live API compatibility remains unverified; no paid call has been made here.
+This manual JSON route remains available independently. Both use the same
+strict validator and neither gives the language model selection authority.
+
+The original event-choice milestone imports a proposal file. It does not call a
 model API, send data externally or charge API usage. You can use any language
 model to prepare the file, then inspect it before running the local experiment.
 The included [example](../examples/event-options.json) is an authored example,

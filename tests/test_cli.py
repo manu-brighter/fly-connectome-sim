@@ -259,3 +259,49 @@ def test_session_cli_missing_input_fails_before_graph(tmp_path, monkeypatch, cap
     assert cli.main(["feed-event-session", "--playlist", "missing.json", "--proposal", "missing.json",
                      "--output-dir", str(tmp_path / "run")]) == 1
     assert not (tmp_path / "run").exists()
+
+
+def test_proposal_cli_offline_never_constructs_native_engine(tmp_path, monkeypatch, capsys):
+    import http.client
+    import os
+    from fly_connectome_sim import cli
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("offline proposal accessed native engine, credentials or HTTPS")
+    monkeypatch.setattr(cli.FlyEngine, "from_prepared_graph", forbidden)
+    monkeypatch.setattr(http.client, "HTTPSConnection", forbidden)
+    monkeypatch.setattr(os, "getenv", forbidden)
+    target = tmp_path / "offline-proposal"
+    assert cli.main(["prepare-event-proposal", "--title", "Team party", "--guests", "100",
+                     "--max-budget-chf", "5000", "--model", "explicit-model",
+                     "--max-output-tokens", "1024", "--output-dir", str(target)]) == 0
+    summary = json.loads(capsys.readouterr().out)
+    assert summary["status"] == "dry-run"
+    assert set(path.name for path in target.iterdir()) == {"request.json", "receipt.json"}
+
+
+def test_proposal_cli_paid_flag_missing_key_fails_without_native_or_output(tmp_path, monkeypatch, capsys):
+    from fly_connectome_sim import cli
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("proposal accessed native engine")
+    monkeypatch.setattr(cli.FlyEngine, "from_prepared_graph", forbidden)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    target = tmp_path / "missing-key"
+    assert cli.main(["prepare-event-proposal", "--title", "Team party", "--guests", "100",
+                     "--max-budget-chf", "5000", "--model", "explicit-model",
+                     "--max-output-tokens", "1024", "--allow-paid-request",
+                     "--output-dir", str(target)]) == 1
+    assert not target.exists()
+    captured = capsys.readouterr()
+    assert not captured.out and "OPENAI_API_KEY" in captured.err
+
+
+@pytest.mark.parametrize("missing", ["--model", "--max-output-tokens"])
+def test_proposal_cli_requires_explicit_cost_controls(tmp_path, missing):
+    args = ["prepare-event-proposal", "--title", "Team party", "--guests", "100",
+            "--max-budget-chf", "5000", "--output-dir", str(tmp_path / "out")]
+    args.extend(["--max-output-tokens", "1024"] if missing == "--model" else ["--model", "explicit"])
+    with pytest.raises(SystemExit) as error:
+        main(args)
+    assert error.value.code == 2

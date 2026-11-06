@@ -25,10 +25,17 @@ f.3c design is ratified; C1 is parked local uncommitted/unreviewed WIP, not acce
 
 ## Current checkpoint and live remaining work — 2026-11-02
 
-Current product work follows the [continuous session plan](2026-11-03-feed-event-session.md):
+The next product source slice is the separate
+[proposal transport](2026-11-06-event-proposal-transport.md): offline request
+preparation plus explicit key/model/token/cost opt-in, using the unchanged JSON
+import and measured choice. No API key is configured and live compatibility
+remains unverified. It changes no neural equations, assay gates or plan authority;
+new packaged source invalidates prior formal identities. Formal integration stays parked.
+
+The completed product work follows the [continuous session plan](2026-11-03-feed-event-session.md):
 one fresh engine observes fast-feed then event cards,without reset/restore; one
 actual9s run and360frame/12s combined movie passed source/raw/Chrome/encoded
-checks. Current36-member model is
+checks. Its historical36-member model is
 `d4b72b01f14c4c4ec1266f976692fa6bf7dc91b3b83ed40f6f5540ab25a7ec9c`;
 schema unchanged. This source-bearing integration invalidates old formal
 identities and proves no causal content/learning effect. Exact scope/evidence:
