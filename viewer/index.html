@@ -17,7 +17,8 @@
         <div class="heading"><div><h1>A window into the recording.</h1><p id="recording-name">Open measured-replay/v1, measured-video-replay/v1 or /v2, event-choice-replay/v1 or feed-event-replay/v1.</p></div><span id="status" class="status">No recording loaded</span></div>
         <p id="error" role="alert" hidden></p>
         <section class="experiment" aria-label="Recorded simulation replay">
-          <div class="stage"><canvas id="stage" aria-label="Illustrative fruit fly, exact recorded stimulus and measured telemetry. Drag to orbit the scene." tabindex="0"></canvas><div class="stage-note">Illustrative geometry · drag to orbit</div></div>
+          <div class="stage"><canvas id="stage" aria-label="Illustrative fruit fly, exact recorded stimulus and measured telemetry." aria-describedby="stage-help" tabindex="0"></canvas><p id="stage-help" class="stage-note">Illustrative geometry · drag to orbit. With canvas focused: Space play/pause · Left/Right seek 100 ms · Home beginning · End terminal sample.</p></div>
+          <div id="replay-announcement" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
           <aside class="telemetry" aria-label="Measured population telemetry">
             <div class="stimulus-line"><span id="input-caption">Recorded input</span><strong id="stimulus">—</strong></div>
             <div class="flags"><span>External stimulation <b id="stimulation">—</b></span><span>Learning flag <b id="learning">—</b></span></div>

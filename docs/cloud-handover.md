@@ -69,6 +69,19 @@ plan orient a fresh checkout; private local SDD notes/chats/scripts are not
 required and do not travel through Git. Local raw evidence is not replaced by
 this document. Do not claim to reverify unavailable bytes.
 
+## Current replay controls checkpoint
+
+The [viewer controls slice](superpowers/plans/2026-11-06-replay-controls.md)
+moves help below the canvas and adds focused Home/End navigation, guarded Space/
+100ms arrows and deduplicated polite clip/phase/result announcements. All backend,
+schema, dependency, parser, stage geometry and export bytes stay unchanged; the
+37-member model identity below remains current. Viewer97passed/0skip/build0;
+same historical9s session passed actual Chrome keyboard/reverse-result checks and
+default/narrow390px layout checks. Help no longer overlaps canvas; viewport reset.
+No audible screenreader/full mobile/cross-browser certification, new simulation
+or export is claimed. Exact evidence and limits:
+[controls report](experiments/2026-11-06-replay-controls.md).
+
 ## Current proposal transport checkpoint
 
 `prepare-event-proposal` defaults to an offline request/dry-run receipt. A live
@@ -737,8 +750,10 @@ Interrupted development runs are never counted as passes.
   plan immutable. Do not relabel authored examples as live model requests.
 - [ ] Define authenticated old/trained-state resumption separately if needed;
   the current session starts fresh and retains state only within that one run.
-- [ ] Complete broader accessibility/cross-browser checks and separate the
-  interactive orbit hint from the event overlay's top edge; preserve experimental WIP.
+- [x] Separate the orbit hint from measured pixels and add scoped keyboard/phase
+  announcement behavior; test/review using the existing continuous recording.
+- [ ] Complete broader assistive-technology/accessibility, cross-browser, device
+  and liveFPS checks; preserve experimental WIP.
 - [x] Complete c.2b source review, ordinary/actual graph/full tiny-native grid
   acceptance and exact reviewed-source checks.
 - [x] Execute, independently review and publish the bounded actual MaleCNS

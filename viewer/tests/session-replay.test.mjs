@@ -180,7 +180,7 @@ test('one global30fps export and final90frame hold preserve terminal plan, cance
 function mainHarness() {
   const nodes = new Map(), paints = [], downloads = [];
   const context = { beginPath() {}, moveTo() {}, lineTo() {}, stroke() {}, clearRect() {}, drawImage() {} };
-  function node() { return { textContent: '', hidden: false, disabled: false, value: '1', clientWidth: 200, width: 0, height: 0, handlers: {}, children: [], style: {}, classList: { add() {} }, append(child) { this.children.push(child); }, replaceChildren() { this.children = []; }, setAttribute(name, value) { this[name] = value; }, getContext() { return context; }, addEventListener(name, handler) { this.handlers[name] = handler; }, click() { if (this.download) downloads.push(this.download); return this.handlers.click?.(); } }; }
+  function node() { return { content: '', writes: [], get textContent() { return this.content; }, set textContent(value) { this.content = value; this.writes.push(value); }, hidden: false, disabled: false, value: '1', clientWidth: 200, width: 0, height: 0, handlers: {}, children: [], style: {}, classList: { add() {} }, append(child) { this.children.push(child); }, replaceChildren() { this.children = []; }, setAttribute(name, value) { this[name] = value; }, getContext() { return context; }, addEventListener(name, handler) { this.handlers[name] = handler; }, click() { if (this.download) downloads.push(this.download); return this.handlers.click?.(); } }; }
   const document = { getElementById(id) { if (!nodes.has(id)) nodes.set(id, node()); return nodes.get(id); }, createElement() { return node(); } };
   let currentSample, animation, loadCount = 0, cancelAt = null;
   const stage = { renderer: { setAnimationLoop(callback) { animation = callback; } }, setRecording() { loadCount++; }, setSample(sample) { currentSample = sample; }, render(hold) { paints.push({ sample: currentSample, hold }); }, setExporting() {}, dispose() {} };
@@ -191,8 +191,87 @@ function mainHarness() {
   runInNewContext(javascript, { ...replayModule, ...videoModule, ...recordingModule, ...eventModule, ...sessionModule, ...exportModule, sampleAt: recordingModule.sampleAnyAtTick, createOperationGate, createStage: () => stage, canEncodeVideo: async () => true, document, performance, VideoEncoder: class {}, window: { addEventListener() {} }, setTimeout: () => {}, Blob, URL: { createObjectURL: () => 'blob:declared', revokeObjectURL() {} }, AbortController, BufferTarget, Output, CanvasSource, WebMOutputFormat: class {} });
   const load = async (value, textPromise) => { const json = JSON.stringify(value); nodes.get('file').files = [{ name: 'session.json', size: Buffer.byteLength(json), text: async () => textPromise ?? json }]; await nodes.get('file').handlers.change(); };
   const seek = (tick) => { nodes.get('seek').value = String(tick); nodes.get('seek').handlers.input(); };
-  return { nodes, load, seek, paints, downloads, sample: () => currentSample, loadCount: () => loadCount, cancelAfter: n => { cancelAt = n; }, animate: t => animation(t) };
+  const key = (code, options = {}, focus = 'stage') => {
+    document.activeElement = nodes.get(focus);
+    const event = { code, repeat: false, altKey: false, ctrlKey: false, metaKey: false, shiftKey: false, prevented: false, preventDefault() { this.prevented = true; }, ...options };
+    nodes.get('stage').handlers.keydown(event); return event.prevented;
+  };
+  return { nodes, load, seek, key, paints, downloads, sample: () => currentSample, loadCount: () => loadCount, cancelAfter: n => { cancelAt = n; }, animate: t => animation(t) };
 }
+
+test('canvas shortcuts seek the real timeline by100ms and Home/End clamp to recorded bounds', async () => {
+  const app = mainHarness(), value = sessionFixture(); await app.load(value);
+  for (const [code, tick] of [['ArrowRight', 1000], ['ArrowLeft', 0], ['ArrowLeft', 0], ['End', 60000], ['ArrowRight', 60000], ['ArrowLeft', 59000], ['Home', 0]]) {
+    assert.equal(app.key(code), true, code); assert.equal(app.sample().tick, tick, code);
+    assert.equal(app.nodes.get('seek').value, String(tick));
+  }
+});
+
+test('only focused unmodified canvas shortcuts act, and repeated Space cannot toggle playback', async () => {
+  const app = mainHarness(); await app.load(sessionFixture());
+  assert.equal(app.key('Space'), true); assert.equal(app.nodes.get('play').textContent, 'Pause');
+  assert.equal(app.key('Space', { repeat: true }), true); assert.equal(app.nodes.get('play').textContent, 'Pause');
+  for (const modifier of ['altKey', 'ctrlKey', 'metaKey', 'shiftKey']) {
+    for (const code of ['Space', 'ArrowLeft', 'ArrowRight', 'Home', 'End']) assert.equal(app.key(code, { [modifier]: true }), false);
+  }
+  for (const focus of ['play', 'seek', 'speed', 'open']) {
+    for (const code of ['Space', 'ArrowLeft', 'ArrowRight', 'Home', 'End']) assert.equal(app.key(code, {}, focus), false);
+  }
+  assert.equal(app.key('KeyX'), false); assert.equal(app.sample().tick, 0); assert.equal(app.nodes.get('play').textContent, 'Pause');
+  assert.equal(app.key('Space'), true); assert.equal(app.nodes.get('play').textContent, 'Play');
+});
+
+test('canvas shortcuts leave clocks and browser defaults alone without a recording or during loading/export', async () => {
+  const app = mainHarness(), value = sessionFixture();
+  for (const code of ['Space', 'ArrowLeft', 'ArrowRight', 'Home', 'End']) assert.equal(app.key(code), false);
+  await app.load(value); await new Promise(setImmediate); app.seek(12345);
+  let finishLoad; const pending = app.load(value, new Promise(resolve => { finishLoad = resolve; }));
+  for (const code of ['Space', 'ArrowLeft', 'ArrowRight', 'Home', 'End']) {
+    assert.equal(app.key(code), false, code); assert.equal(app.sample().tick, 12345); assert.equal(app.nodes.get('play').textContent, 'Play');
+  }
+  finishLoad(JSON.stringify(value)); await pending; app.seek(12345);
+  const exporting = app.nodes.get('video').handlers.click();
+  for (const code of ['Space', 'ArrowLeft', 'ArrowRight', 'Home', 'End']) {
+    assert.equal(app.key(code), false, code); assert.equal(app.nodes.get('seek').value, '12345');
+  }
+  await exporting; assert.equal(app.sample().tick, 12345);
+});
+
+test('main announces clip/paired pending/selected phases once, and reverse seek clears the winner', async () => {
+  const app = mainHarness(), value = sessionFixture(); await app.load(value);
+  const live = app.nodes.get('replay-announcement');
+  assert.match(live?.textContent ?? '', /feed.*clip 1/i);
+  let writes = live.writes.length;
+  app.seek(1000); app.animate(performance.now()); app.animate(performance.now()); assert.equal(live.writes.length, writes);
+  app.seek(value.feed_end_tick); assert.match(live.textContent, /paired.*pending/i); assert.doesNotMatch(live.textContent, /Night lights/);
+  writes = live.writes.length; app.seek(value.duration_ticks - 1); assert.equal(live.writes.length, writes);
+  app.seek(value.duration_ticks); assert.match(live.textContent, /selected.*Night lights/i);
+  writes = live.writes.length; app.animate(performance.now()); app.seek(value.duration_ticks); assert.equal(live.writes.length, writes);
+  app.seek(value.feed_end_tick); assert.match(live.textContent, /pending/i); assert.doesNotMatch(live.textContent, /Night lights/);
+  app.seek(0); assert.match(live.textContent, /feed.*clip 1/i); assert.doesNotMatch(live.textContent, /selected|Night lights/i);
+});
+
+test('main announces clip changes and honestly deferred standalone and continuous choices', async () => {
+  const app = mainHarness(), value = sessionFixture(3, true); await app.load(value);
+  app.seek(30000); assert.match(app.nodes.get('replay-announcement')?.textContent ?? '', /feed.*clip 2/i);
+  for (const deferred of [eventFixture(1, 1), sessionFixture(1, false, 1, 1)]) {
+    await app.load(deferred); app.seek(deferred.duration_ticks);
+    assert.match(app.nodes.get('replay-announcement').textContent, /deferred.*no option selected/i);
+    app.seek(deferred.duration_ticks - 1); assert.match(app.nodes.get('replay-announcement').textContent, /pending/i);
+  }
+});
+
+test('A/B replay announcements describe the current stimulus without implying a choice', async () => {
+  const event = eventFixture(), groups = event.groups;
+  const input = rgb => { const bytes = Buffer.from(rgb); return { width: 1, height: 1, rgb_base64: bytes.toString('base64'), sha256: hash(Buffer.concat([Buffer.from('{"dtype":"uint8","rank":3,"shape":[1,1,3],"version":"rgb-input/v1"}\n'), bytes])) }; };
+  const inputs = { A: input([255, 0, 0]), B: input([0, 255, 0]), black: input([0, 0, 0]) };
+  const value = { version: 'measured-replay/v1', tick_ms: .1, groups, inputs, source: { ...event.source, metadata: { family: 'measured-observation', protocol_version: 'measured-observation/v1', engine_identity: event.source.metadata.engine_identity, input_sha256: Object.values(inputs).map(input => input.sha256) } }, segments: ['A', 'black', 'B', 'black'].map((stimulus, i) => ({ event_sequence: i + 1, branch_id: 'root', stimulus, stimulation: null, learning: false, source_start_tick: i * 100, source_end_tick: (i + 1) * 100, playback_start_tick: i * 100, playback_end_tick: (i + 1) * 100, bins: [{ end_tick: (i + 1) * 100, duration_ticks: 100, group_spikes: Object.fromEntries(Object.keys(groups).map(name => [name, 0])) }] })), duration_ticks: 400 };
+  const app = mainHarness(); await app.load(value);
+  for (const [tick, stimulus] of [[0, 'A'], [100, 'Black'], [200, 'B'], [400, 'Black']]) {
+    app.seek(tick); const live = app.nodes.get('replay-announcement');
+    assert.match(live?.textContent ?? '', new RegExp(`stimulus.*${stimulus}`, 'i')); assert.doesNotMatch(live.textContent, /selected|choice/i);
+  }
+});
 
 test('main keeps phase labels/URL/timeline/plan/download coherent through forward and reverse seeks', async () => {
   const app = mainHarness(), value = sessionFixture(); await app.load(value); await new Promise(setImmediate);

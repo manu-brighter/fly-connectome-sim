@@ -165,6 +165,17 @@ For a built preview, use `npm --prefix viewer run preview` after the build.
 Unix/native reproduction and browser capture availability require their own
 checks; current evidence is from the Windows environment described above.
 
+### Keyboard replay controls
+
+Tab to the replay canvas to use **Space** for play/pause, **Left/Right** for100ms
+steps, **Home** for the beginning and **End** for the terminal sample. Controls
+are inactive while loading/exporting; modified shortcuts retain browser behavior.
+Buttons, speed selection and timeline keep their normal keyboard controls.
+Visible help sits below the measured image. A polite live region announces clip,
+pending and selected/deferred phase changes without repeating on every frame;
+reverse seeking restores the earlier phase. Full assistive-technology testing
+remains open; see the [acceptance note](experiments/2026-11-06-replay-controls.md).
+
 ## Local video observation and recorded feed actions
 
 For genuine video input, install the optional locked decoder after the graph

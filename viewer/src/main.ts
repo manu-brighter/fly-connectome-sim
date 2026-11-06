@@ -23,6 +23,7 @@ const sourceButton = element<HTMLButtonElement>('source-toggle');
 const errorElement = element<HTMLParagraphElement>('error');
 const videoNote = element<HTMLParagraphElement>('video-note');
 const planButton = element<HTMLButtonElement>('download-plan');
+const replayAnnouncement = element('replay-announcement');
 let recording: AnyRecording | null = null;
 let tick = 0, playing = false, lastTime = performance.now();
 const operations = createOperationGate();
@@ -107,12 +108,18 @@ function update() {
   planButton.hidden = !event || !sample.plan;
   if (event) {
     const view = eventPresentation(sample);
+    const message = !sample.decision ? 'Paired event options. Choice pending.' : sample.plan?.selected_option ? `Selected option: ${sample.plan.selected_option.title}. Engineered measured lateral policy.` : 'Deferred. No option selected by the measured lateral policy.';
+    if (replayAnnouncement.textContent !== message) replayAnnouncement.textContent = message;
     element('event-status').textContent = view.status;
     element('event-title').textContent = view.title;
     element('event-details').textContent = view.lines.join('\n');
     element('event-measurement').textContent = view.measurement;
     planButton.disabled = !view.canDownload || operations.loading || operations.exporting;
-  } else planButton.disabled = true;
+  } else {
+    planButton.disabled = true;
+    const message = video ? `Feed clip ${Number(sample.input.clip_id.slice(5)) + 1}.` : `Recorded stimulus: ${sample.segment.stimulus === 'black' ? 'Black' : sample.segment.stimulus}.`;
+    if (replayAnnouncement.textContent !== message) replayAnnouncement.textContent = message;
+  }
   if (video) {
     element('source-pts').textContent = `${sample.input.source_pts} × ${sample.input.source_time_base[0]}/${sample.input.source_time_base[1]} s`;
     if (isVideoRecording(recording) || isSessionRecording(recording)) {
@@ -206,11 +213,12 @@ play.addEventListener('click', () => {
 seek.addEventListener('input', () => { tick = Number(seek.value); update(); });
 speed.addEventListener('change', () => { lastTime = performance.now(); });
 canvas.addEventListener('keydown', (event) => {
-  if (!recording || exportController) return;
-  if (event.code === 'Space') { event.preventDefault(); play.click(); }
-  if (event.code === 'ArrowLeft' || event.code === 'ArrowRight') {
-    event.preventDefault(); tick = Math.max(0, Math.min(recording.duration_ticks, tick + (event.code === 'ArrowLeft' ? -1000 : 1000))); update();
-  }
+  if (document.activeElement !== canvas || !recording || operations.loading || operations.exporting || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+  if (!['Space', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.code)) return;
+  event.preventDefault();
+  if (event.code === 'Space') { if (!event.repeat) play.click(); return; }
+  tick = event.code === 'Home' ? 0 : event.code === 'End' ? recording.duration_ticks : Math.max(0, Math.min(recording.duration_ticks, tick + (event.code === 'ArrowLeft' ? -1000 : 1000)));
+  update();
 });
 
 function exportControls(exporting: boolean) {

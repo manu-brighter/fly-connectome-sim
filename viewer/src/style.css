@@ -161,25 +161,36 @@ h1 {
   background:#e3edf4
 }
 .stage {
-  position:relative;
+  display:flex;
+  flex-direction:column;
   min-width:0;
   background:#dfeaf2
 }
 .stage>canvas {
   display:block;
   width:100%;
-  height:100%;
+  flex:1;
+  height:auto;
   aspect-ratio:1.43;
   min-height:440px;
   touch-action:none
 }
 .stage-note {
-  position:absolute;
-  top:18px;
-  left:22px;
+  margin:0;
+  padding:12px 22px;
   font-size:11px;
-  color:#597083;
-  pointer-events:none
+  color:#597083
+}
+.visually-hidden {
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:-1px;
+  overflow:hidden;
+  clip-path:inset(50%);
+  white-space:nowrap;
+  border:0
 }
 .telemetry {
   background:#eef4f8;
@@ -531,8 +542,7 @@ footer p {
   }
   .stage-note {
     font-size:9px;
-    top:12px;
-    left:15px
+    padding:10px 15px
   }
   .telemetry {
     border-left:0;
