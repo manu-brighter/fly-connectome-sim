@@ -17,21 +17,22 @@ preference. A positive MBON11 assay would not automatically establish that:
 the current event/video policies
 use only DNa02 motor-left/right, not the older MBON/motor preference adapter.
 
-**Next session starts with Task 2 below: check local API prerequisites for one
-genuine proposal/session acceptance; if unavailable, continue the final demo
-and explicitly leave LLM acceptance open.** Task1 is completed and reported;
-do not repeat the comparison or expand it into more controls. Do not start
-another general audit, verifier rewrite, full assay,
-large control grid, platform expansion or fresh simulation merely for UI work.
-The user wants completion and useful evidence, with bounded effort.
+**The [local imported-proposal observation demo](experiments/2026-11-07-final-demo.md)
+is accepted; Tasks 1 and 3 are closed. Genuine LLM proposal/session acceptance
+remains externally blocked and open.** API preflight found no key in process,
+user or machine scope and no supplied model/token/cost configuration. No
+provider request occurred. Resume Task 2 only when those local prerequisites
+are supplied; do not request secrets in chat or call the entire LLM v1 complete.
+Reuse the accepted recording/film for presentation. Do not repeat the diagnostic,
+expand controls, resume research or run a fresh simulation merely for UI work.
 
 ## Repository, authority and working style
 
 - Local workspace: `C:/dev/jogge-di-fly-brain`; public repository:
   `https://github.com/manu-brighter/fly-connectome-sim`.
 - Branch: `feat/connectome-experiment-core`; remote: `origin`. Latest
-  checkpoint before the completed diagnostic: `1b0e996`.
-  The diagnostic checkpoint is committed on top; use the latest pushed feature HEAD, not a
+  implementation/diagnostic checkpoint before the final demo documentation: `c2e9d1c`.
+  Use the latest pushed feature HEAD, not a
   checkout/reset to that historical hash. Verify status/tracking before edits.
 - Autonomous relevant implementation, tests, reviews, commits and explicit
   `git push -u origin feat/connectome-experiment-core` are authorized. Never
@@ -52,8 +53,9 @@ The user wants completion and useful evidence, with bounded effort.
 ## Read only what the next task needs
 
 1. [AGENTS.md](../AGENTS.md), [README](../README.md), this handover.
-2. [Continuous-session contract](superpowers/specs/2026-11-03-feed-event-session.md),
-   [current workflow acceptance](experiments/2026-11-07-session-workflow.md) and
+2. [Final demo acceptance](experiments/2026-11-07-final-demo.md),
+   [continuous-session contract](superpowers/specs/2026-11-03-feed-event-session.md),
+   [workflow acceptance](experiments/2026-11-07-session-workflow.md) and
    [usage](getting-started.md#continuous-reels-and-event-choice).
 3. For content comparison: [session pilot](experiments/2026-11-03-feed-event-session.md),
    `src/fly_connectome_sim/experiment/feed_event_session.py`, `video_observation.py`,
@@ -108,9 +110,11 @@ inspection, not as a session recording accepted by the viewer.
 
 ### 2. One genuine LLM proposal -> session acceptance
 
-- [ ] Check local API/model/token/cost configuration. At handover the process
-  has **no OPENAI_API_KEY** (presence checked only); no actual provider request
-  or API cost has occurred. ChatGPT subscription does not supply API credit.
+- [x] Check local API/model/token/cost configuration. On November 7,
+  **OPENAI_API_KEY was absent in process, user and machine scope** (presence
+  checked only), and no explicit model/token/cost configuration was supplied.
+  This is an external blocker; zero provider requests or API charges occurred.
+  ChatGPT subscription does not supply API credit.
 - [ ] Existing `prepare-event-proposal` defaults offline. Only explicit local
   key/model/token configuration and `--allow-paid-request` enable one paid
   request. Token limit is not a monetary cap. Do not retry automatically.
@@ -122,16 +126,27 @@ inspection, not as a session recording accepted by the viewer.
 
 ### 3. Final demonstration and v1 close-out
 
-- [ ] Accept one coherent representative recording, bound plan and playable
+- [x] Accept one coherent representative recording, bound plan and playable
   exported film, with clear real-input/measured-output/illustrative-motion labels.
   Reuse existing data for rendering work; only new input/provider/diagnostic
   needs justify new native runs. Longer feeds are optional, not a prerequisite.
-- [ ] Check actual exported video playback/timing and readable choice or defer;
+- [x] Check actual exported video playback/timing and readable choice or defer;
   retain exact source recording/plan and concise reproduction commands. Do not
   silently reuse a historical film as evidence for a newer recording/source.
-- [ ] Align README/product scope with actual observation v1 and known limits.
+- [x] Align README/product scope with actual observation v1 and known limits.
   Record remaining training/research work separately and stop expanding v1.
   No post-choice narration, autonomous multi-round planner or deployment is needed.
+
+Accepted imported-proposal demo: `runs/final-demo-20261107/` retains the exact
+November 7 session recording/plan and a newly exported `demo-30fps.webm`.
+Actual Chrome 157 export/playback and full decode passed: 360 VP9 frames,
+900×900, 12 s = 9 s recorded data + 3 s labelled presentation hold. Final
+L6/R2 → left/Sunset House and the bound plan are unchanged. No new native
+simulation ran; this uses historical source identity `f3ef2ff6…`, not the
+newer diagnostic source. Viewer checks: 97 passed, no skips; build exited 0.
+See the [final report](experiments/2026-11-07-final-demo.md) for exact artifact
+hashes, reproduction, warnings and limits. Task 2 remains open, so this closes
+only the imported-proposal observation/presentation scope.
 
 **Stop rule:** once the bounded diagnostic is honestly reported, the genuine
 LLM path is accepted (or explicitly left blocked by external API configuration),
@@ -160,13 +175,12 @@ keep LLM acceptance open; do not call the entire LLM v1 complete.
   `plan.json`, `receipt.json`, and `run/{run.json,events.jsonl,checkpoints/}`.
   Its actual 9s run was 7s feed+2s cards, final L6/R2 -> Sunset House. This is
   a result, not a target for the next run. CLI wall time was 98.969s for that
-  specific workload; not a general capacity estimate. Actual Chrome inspected
-  this recording; no film was encoded from this newest bundle.
+  specific workload; not a general capacity estimate. This exact recording was
+  newly exported and played through for the final demo, without native rerun.
 - Historical combined film acceptance: 360 frames/12s including 3s terminal
   hold, from the separate 2026-11-03 recording. See its linked session report.
-  Local film location is not promised here; export again from the desired
-  recording if required. Existing bundle/playlist/media presence was checked
-  for handover, not independently reverified against all recorded hashes.
+  It is separate from the newly accepted November 7 film and retains its own
+  historical source/acceptance context.
 - One-command scoped suite: 315 passed/5 sandbox skips; those 5 host path cases
   separately passed. Latest [CI run](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42380161212)
   on `981373b`: 142 passed/1 Windows-only junction skip; viewer 97 passed/build0.

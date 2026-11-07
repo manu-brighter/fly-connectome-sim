@@ -8,11 +8,13 @@
 </p>
 
 An offline experiment built on the released **MaleCNS v1.0** wiring graph.
-The current milestone is a local experimental demo: real reels enter the native
-simulation, measured motor activity controls a recorded event choice, and a
-smooth 3D replay presents the result. The [current handover](docs/cloud-handover.md)
-defines the remaining v1 tasks: actual LLM-proposal acceptance and the final
-demonstration. The [bounded content/side diagnostic](docs/experiments/2026-11-07-content-side-diagnostic.md)
+The [local imported-proposal observation demo](docs/experiments/2026-11-07-final-demo.md)
+is accepted: real reels enter the native simulation, measured motor activity
+controls a recorded event choice, and a playable 3D replay presents the result.
+Genuine LLM proposal/session acceptance remains externally blocked by missing
+API configuration; no provider request has run. The [current handover](docs/cloud-handover.md)
+records that open task and the closed presentation scope.
+The [bounded content/side diagnostic](docs/experiments/2026-11-07-content-side-diagnostic.md)
 found a motor-readout response to the specific visual manipulation, including
 feed after-effects and layout sensitivity; it did not establish semantic or
 stable event preference.
@@ -41,14 +43,14 @@ left/right preference.
 | Experiment state | Checkpoint restore, complete-state hashes, reset determinism, candidate-memory interventions and authenticated native map/schema context | A qualified production frozen configuration |
 | Assay evidence | Caller-owned native production, source-specific 408-pair tiny-native repeats, shared declaration arithmetic and a bounded pair checker with full EOF validation | Global grid/selected-evidence reconciliation/public freezing, fullgraph held-out confirmation and the `assay` CLI |
 | Resource pilots | Fullgraph components, trained 10-/70-second one-anchor pilots with isolated native replay, and a [reviewed detail-on first-training-prefix sample](docs/experiments/2026-11-02-fullgraph-detail-prefix-pilot.md) | Unprofiled controlled timing, complete grid/assay capacity and fullgraph cloud/Linux execution |
-| Product | One-command continuous reel→event sessions, engine-free bundle inspection, measured choice/immutable plan and30fps replay; bounded visual/side diagnostic and opt-in proposal transport | Live API acceptance and final representative demo; longer feeds and broader platform checks are follow-ups |
+| Product | Accepted imported-proposal observation demo and playable 30 fps film; continuous reel→event sessions, bundle inspection, immutable plan, visual/side diagnostic and opt-in proposal transport | Genuine LLM proposal/session acceptance; longer feeds and broader platform checks are follow-ups |
 
 The [continuous session](docs/superpowers/specs/2026-11-03-feed-event-session.md)
-uses one fresh engine for fast-feed reels and then2s of event cards, without
-reset/restore. One actual run recorded7s feed+2s cards and selected Sunset House
-from final6:2 motor spikes. Its combined film has360frames/12s at30fps, including
-one labelled3s terminal plan hold. See the
-[report](docs/experiments/2026-11-03-feed-event-session.md) and
+uses one fresh engine for fast-feed reels and then 2 s of event cards, without
+reset/restore. The representative demo reuses the November 7 recording: 7 s
+feed + 2 s cards, final L6/R2 spikes → Sunset House. Its newly exported film has
+360 frames / 12 s at 30 fps, including one labelled 3 s terminal plan hold.
+See the [final demo](docs/experiments/2026-11-07-final-demo.md) and
 [commands](docs/getting-started.md#continuous-reels-and-event-choice).
 Continuous state does not establish that reel content caused the choice.
 The separate fixed8s-feed diagnostic compared matched native states and clocks:
@@ -82,7 +84,7 @@ The motor readout is an engineered display policy with an uncalibrated 1 Hz
 threshold. It uses measured lateral motor rates and leaves the primary MBON11
 classification unchanged; it does not establish learned behavior.
 
-Measured Replay remains experimental WIP. The current [fast-feed contract](docs/superpowers/specs/2026-11-02-fast-reel-feed.md)
+Measured Replay remains experimental. The current [fast-feed contract](docs/superpowers/specs/2026-11-02-fast-reel-feed.md)
 adds an explicit `fast-feed` profile: 5× source-content sampling, 3s minimum
 watch time and a 4s clip cap. After recorded ADVANCE, an illustrative foreground
 leg reaches onto the display, swipes it and retracts in400ms; the synchronized
@@ -103,8 +105,8 @@ Implementation and verification details live in the
 [assay plan](docs/superpowers/plans/2026-09-24-associative-plasticity-assay.md).
 The [assay design](docs/superpowers/specs/2026-09-24-associative-plasticity-pivot-design.md)
 defines the scientific boundaries; the [product specification](docs/specs/fly-event-planner.md)
-describes the broader event-planning goal; live API acceptance and optional
-post-choice narrative remain open.
+describes the broader event-planning goal. Live API acceptance remains open;
+post-choice narrative and training/research are separate follow-ups.
 
 For a fresh cloud checkout, start with the versioned
 [cloud handover and live TODOs](docs/cloud-handover.md). Local runtime data,
