@@ -8,8 +8,14 @@
 </p>
 
 An offline experiment built on the released **MaleCNS v1.0** wiring graph.
-The first goal is to test a declared KC → MBON11 associative-plasticity mechanism
-using controlled visual stimuli and explicit PPL101 stimulation.
+The current milestone is a local experimental demo: real reels enter the native
+simulation, measured motor activity controls a recorded event choice, and a
+smooth 3D replay presents the result. The [current handover](docs/cloud-handover.md)
+defines the three remaining v1 tasks: a bounded content/side diagnostic, actual
+LLM-proposal acceptance, and the final demonstration.
+
+The separate research track tests a declared KC → MBON11 associative-plasticity
+mechanism using controlled visual stimuli and explicit PPL101 stimulation.
 
 **Work in progress: native correctness pilots have not established scientific support.**
 Formal full-graph qualification and confirmation have not run. Bounded fullgraph
@@ -32,7 +38,7 @@ left/right preference.
 | Experiment state | Checkpoint restore, complete-state hashes, reset determinism, candidate-memory interventions and authenticated native map/schema context | A qualified production frozen configuration |
 | Assay evidence | Caller-owned native production, source-specific 408-pair tiny-native repeats, shared declaration arithmetic and a bounded pair checker with full EOF validation | Global grid/selected-evidence reconciliation/public freezing, fullgraph held-out confirmation and the `assay` CLI |
 | Resource pilots | Fullgraph components, trained 10-/70-second one-anchor pilots with isolated native replay, and a [reviewed detail-on first-training-prefix sample](docs/experiments/2026-11-02-fullgraph-detail-prefix-pilot.md) | Unprofiled controlled timing, complete grid/assay capacity and fullgraph cloud/Linux execution |
-| Product | One-command continuous reel→event sessions, engine-free bundle inspection, measured choice/immutable plan and30fps replay; opt-in proposal transport | Live API compatibility, longer feed sessions and broader accessibility/cross-browser checks |
+| Product | One-command continuous reel→event sessions, engine-free bundle inspection, measured choice/immutable plan and30fps replay; opt-in proposal transport | Controlled content/side diagnostic, live API acceptance and final representative demo; longer feeds and broader platform checks are follow-ups |
 
 The [continuous session](docs/superpowers/specs/2026-11-03-feed-event-session.md)
 uses one fresh engine for fast-feed reels and then2s of event cards, without

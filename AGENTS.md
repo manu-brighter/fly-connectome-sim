@@ -1,14 +1,16 @@
 # Working on Fly Connectome Sim
 
-Read `README.md`, `docs/cloud-handover.md` and the current assay plan before
-continuing. The handover is the tracked continuation record; private local
+Read `README.md` and `docs/cloud-handover.md` before continuing. The handover's
+accepted experimental-v1 priorities govern product continuation; read the assay
+plan only when explicitly returning to that separately parked research track.
+The handover is the tracked continuation record; private local
 `.superpowers/` notes are not required and are unavailable in a cloud checkout.
 
 ## Scope and scientific integrity
 
 - Preserve the existing Python/C++ core, provenance locks and upstream MIT notice.
   Do not build a second simulator or weaken checks to obtain a positive result.
-- Primary endpoint: MBON11 response under the declared PPL101-modulated
+- For the separate learning assay, primary endpoint: MBON11 response under the declared PPL101-modulated
   KC-to-MBON11 model. PAM11/MBON07 is exploratory and cannot rescue a failed gate.
   Do not claim consciousness, semantic understanding, dopamine concentration,
   receptor activity, biological learning or validated motor behavior.
@@ -21,7 +23,9 @@ continuing. The handover is the tracked continuation record; private local
   provenance, checkpoints, verification modes or successful gates.
 - Any packaged `.py`/`.cpp` change invalidates existing formal qualification,
   frozen configuration and confirmation evidence. Finish source-bearing tasks
-  before the formal source-freeze gate. Viewer/LLM work remains gated by the plan.
+  before the formal source-freeze gate. The accepted replay-first product work
+  follows the current handover; formal science gates do not block an honestly
+  labelled observation demo or its separately authorized proposal transport.
 
 ## Implementation and review
 

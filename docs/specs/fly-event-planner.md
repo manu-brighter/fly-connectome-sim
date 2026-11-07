@@ -1,7 +1,26 @@
 # Fly Connectome Sim — Product and Experiment Specification
 
-**Status:** Approved direction, implementation in progress  
+**Status:** Original product/research scope; current observation-v1 priorities below
 **Date:** 2026-09-16  
+
+## Current milestone update — 2026-11-07
+
+The user chose measured-data replay before full assay completion and accepted
+the direction review: close a local experimental observation v1 with a bounded
+content/side diagnostic, one actual LLM-proposal path and a representative
+recording/plan/film. The [current handover](../cloud-handover.md) is the execution
+entry point. Training remains a separate research follow-up; its controls,
+qualification and claim boundaries are preserved rather than declared complete.
+
+For this observation milestone, the original synthetic-assay-before-reels order
+below is superseded. Video/event choice uses the declared motor-only DNa02
+left/right adapter, not the earlier MBON/motor mixed readout. Measured activity
+controls the choice; content-specific influence is still an open comparison,
+and neither learning nor semantics is established. A positive MBON11 assay would
+not automatically validate the current motor-based choice.
+
+The original specification below remains the broader product/research record.
+
 ## Problem Statement
 
 The project needs a short-form social media experiment in which a reconstructed
