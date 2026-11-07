@@ -25,10 +25,14 @@ from .event_cards import (
     load_proposal_with_source, render_event_cards, validate_event_proposal,
 )
 from .measured_replay import GROUPS, _integer, _populations, _ticks
-from .recorder import DIGEST, OWNED, RunArtifactError, RunRecorder, VerifiedRun, _canonical, verify_run
+from .recorder import DIGEST, OWNED, RunArtifactError, RunReadLimits, RunRecorder, VerifiedRun, _canonical, verify_run
 
 
 ROOT_BRANCH = "event-choice/root"
+EXPORT_READ_LIMITS = RunReadLimits(
+    max_manifest_bytes=2 * 1024 * 1024, max_event_line_bytes=1024 * 1024,
+    max_events_bytes=8 * 1024 * 1024, max_events=6, max_checkpoints=2,
+)
 POLICY_VERSION = "event-card-choice/v1"
 ADAPTER = LateralMotorAdapter()
 MOTOR_GROUPS = ("motor_left", "motor_right")
@@ -378,7 +382,7 @@ def _export_data(run: VerifiedRun) -> dict:
 def _export(run_dir: str | Path, output_path: str | Path, *, plan_only: bool) -> dict:
     output = Path(output_path)
     _new_output(Path(run_dir), output)
-    run = verify_run(run_dir)
+    run = verify_run(run_dir, limits=EXPORT_READ_LIMITS)
     try:
         replay = _export_data(run)
     except (KeyError, TypeError, AttributeError, IndexError, OverflowError) as error:

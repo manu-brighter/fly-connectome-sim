@@ -30,6 +30,35 @@ def recording(tmp_path, inputs, engine_factory):
                                      proposal_path=inputs[1], engine_factory=engine_factory)
 
 
+@pytest.mark.parametrize("export_name", ["export_session_replay", "export_session_plan"])
+@pytest.mark.parametrize("field", ["max_manifest_bytes", "max_event_line_bytes", "max_events_bytes",
+                                  "max_events", "max_checkpoints"])
+def test_export_intake_limits_reject_before_temporary_output(recording, tmp_path, monkeypatch,
+                                                            export_name, field):
+    from dataclasses import replace
+    from fly_connectome_sim.experiment import feed_event_session as session
+    from fly_connectome_sim.experiment.recorder import RunArtifactError, verify_run
+
+    policy = session.EXPORT_READ_LIMITS
+    assert (policy.max_manifest_bytes, policy.max_event_line_bytes, policy.max_events_bytes,
+            policy.max_events, policy.max_checkpoints) == (2 * 1024 * 1024, 1024 * 1024,
+                                                          64 * 1024 * 1024, 246, 2)
+    raw = (recording.path / "events.jsonl").read_bytes()
+    count = len(raw.splitlines())
+    sizes = dict(max_manifest_bytes=len((recording.path / "run.json").read_bytes()),
+                 max_event_line_bytes=max(map(len, raw.splitlines(keepends=True))),
+                 max_events_bytes=len(raw), max_events=count, max_checkpoints=2)
+    monkeypatch.setattr(session, "EXPORT_READ_LIMITS", replace(policy, **{field: sizes[field] - 1}))
+    monkeypatch.setattr(session.tempfile, "NamedTemporaryFile",
+                        lambda *args, **kwargs: pytest.fail("Over-limit source reached publication"))
+    output = tmp_path / "not-published.json"
+    with pytest.raises(RunArtifactError, match="limit"):
+        getattr(session, export_name)(recording.path, output)
+    assert not output.exists()
+    assert not list(tmp_path.glob(".session-export-*"))
+    assert len(list(verify_run(recording.path).iter_events())) == count
+
+
 def test_actual_one_engine_continuous_inputs_clocks_and_defer(tmp_path, inputs, engine_factory):
     from fly_connectome_sim.experiment import feed_event_session as session
     from fly_connectome_sim.experiment.event_cards import render_event_cards

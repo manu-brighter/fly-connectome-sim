@@ -1,4 +1,4 @@
-# Continuation and cloud handover — 2026-11-06
+# Continuation and cloud handover — 2026-11-07
 
 Use `origin` of `manu-brighter/fly-connectome-sim`, branch
 `feat/connectome-experiment-core`, latest pushed feature commit. The prior
@@ -69,13 +69,41 @@ plan orient a fresh checkout; private local SDD notes/chats/scripts are not
 required and do not travel through Git. Local raw evidence is not replaced by
 this document. Do not claim to reverify unavailable bytes.
 
+## Current bounded export intake checkpoint
+
+The [bounded intake plan](superpowers/plans/2026-11-07-bounded-event-intake.md)
+adds optional immutable read limits to the existing verifier, enabled only by
+the four event/session replay/plan exports. They bound manifest/JSONL reads and
+actual directory/event counts before decoding, retain limits through every pass
+and final digest, and preserve complete normal EOF/integrity/semantic validation.
+Generic verify-run, producers, prefixes and unrelated exporters keep old defaults.
+Limits are operational ceilings, not full hostile-filesystem/RSS/CPU guarantees.
+
+Current37-member local Windows model identity:
+`cad0926bd37e23aa9ab978be9ca28a8d784a97ab874b9dbe033caefc145548d6`.
+The packaged delta is3 Python files; numerical core, schema, dependencies and
+viewer are unchanged. Old formal qualification/config/confirmation identities
+are invalidated; formal science/C1 remain parked. Both actual historical raw
+runs re-exported all4 files byte-identically after source freeze, without a new
+simulation or provider call. Scope and actual evidence:
+[intake report](experiments/2026-11-07-bounded-event-intake.md).
+
+Affected compatibility:883passed/2skipped213.85s; actual sandbox-denied junction
+passed separately on the host in0.07s, while the opt-in full MaleCNS map-context
+case remained unrun. Existing tiny-native tests were exercised; no fullgraph or
+formal qualification follows. All41 package/schema/test hashes match before/
+after/current. Source review and same-artifact byte checks are separate from
+scientific support; exact commands, scope and omitted coverage are in the report.
+Independent Astra source/runtime and Sol release/evidence reviews closed with
+0 Critical/Important/Minor findings; no review is a scientific qualification.
+
 ## Current replay controls checkpoint
 
 The [viewer controls slice](superpowers/plans/2026-11-06-replay-controls.md)
 moves help below the canvas and adds focused Home/End navigation, guarded Space/
 100ms arrows and deduplicated polite clip/phase/result announcements. All backend,
-schema, dependency, parser, stage geometry and export bytes stay unchanged; the
-37-member model identity below remains current. Viewer97passed/0skip/build0;
+schema, dependency, parser, stage geometry and export bytes stayed unchanged in
+that viewer-only slice. Viewer97passed/0skip/build0;
 same historical9s session passed actual Chrome keyboard/reverse-result checks and
 default/narrow390px layout checks. Help no longer overlaps canvas; viewport reset.
 No audible screenreader/full mobile/cross-browser certification, new simulation
@@ -87,7 +115,7 @@ or export is claimed. Exact evidence and limits:
 `prepare-event-proposal` defaults to an offline request/dry-run receipt. A live
 invocation requires an explicit model,512..4096 output tokens, environment key
 and `--allow-paid-request`; fixed verified-TLS host, one POST, no retry/tools.
-Current37-member local Windows model identity:
+That proposal-transport checkpoint's37-member local Windows model identity:
 `093081c36bbb64dbb36099e5281407075767e6083244abaf7800631a30ae588b`.
 The new module and narrow CLI change leave existing validators, engine/native
 equations, recorder/schema, viewer and dependencies byte-identical. Old formal
@@ -120,8 +148,9 @@ plan only at the later decision. Old standalone readers/exporters remain strict;
 same old Event/Fast/Standard artifacts re-exported byte-identically after freeze.
 
 Independent architecture/frozen backend/fresh viewer reviews closed with no new
-Critical/Important/Minor finding. Known foreign raw-run allocation hardening is
-still open. Backend640passed/1junction skip215.58s; that exact test separately
+Critical/Important/Minor finding. Foreign raw-run intake was still open at that
+checkpoint; the later bounded-export slice above addresses its stated scope.
+Backend640passed/1junction skip215.58s; that exact test separately
 passed on the host in0.07s,after a corrected root test-directory setup error.
 Viewer91passed/0skip29.179s/build0; known bundle/type-strip notices remain.
 Backend39-path and viewer24-path raw freezes matched; no dependencies/core/
@@ -163,8 +192,9 @@ or explicit defer, bound to actual observe sequence/hash and source artifact.
 No winner override, live API, old trained/reel checkpoint restore or retry loop.
 The tracked example is authored; it is not a fabricated live LLM request.
 
-Independent backend review closed C0/I0/M1 for the own bounded pilot; the foreign
-raw-run allocation-hardening Minor stays open below. Initial viewer review
+Independent backend review closed C0/I0/M1 for the own bounded pilot; its foreign
+raw-run allocation-hardening Minor is addressed only in the later bounded-export
+scope above. Initial viewer review
 C0/I1/M2 was corrected test-first and independently closed C0/I0/M0. Backend
 focused307passed/310deselected39.29s and separately79passed85.88s overlap at CLI;
 no skips/failures. Viewer83passed/0skip10.263s,build0; known bundle-size and
@@ -738,10 +768,11 @@ Interrupted development runs are never counted as passes.
   combined movie acceptance; no intermediate hold or clock/state reset.
 - [ ] Continue longer-feed work when requested; reuse validated current data for UI
   changes and keep live LLM/formal integration separately gated.
-- [ ] Harden event-export raw-run intake with pre-allocation manifest/JSONL
-  bounds before accepting arbitrary foreign runs. Current local exporter uses
-  generic verify_run before its output-size bound; oversized foreign inputs can
-  exhaust memory. No service/deployment or arbitrary hostile-run safety claim.
+- [x] Bound the four event/session exports' manifest/JSONL/entry intake before
+  parsing, retain policy on all passes and preserve full EOF/integrity checking.
+- [ ] Keep generic verify-run, prefix/other-export intake and hostile-filesystem/
+  CPU/RSS/decompressed-array guarantees separately scoped before broader use.
+  The current bounded exports are no service/deployment safety certification.
 - [x] Add a separate offline-default proposal transport with explicit key/model/
   token/cost opt-in and local receipts; preserve JSON import and measured choice.
 - [ ] Exercise one actual API request only after explicit local key/model/cost

@@ -17,11 +17,15 @@ from . import event_choice as cards
 from . import video_observation as video
 from .event_cards import RENDERER_RECIPE, load_proposal_with_source, render_event_cards
 from .measured_replay import _integer, _ticks
-from .recorder import RunArtifactError, RunRecorder, VerifiedRun, _canonical, verify_run
+from .recorder import RunArtifactError, RunReadLimits, RunRecorder, VerifiedRun, _canonical, verify_run
 from .video_policy import evaluate_video_policy
 
 
 ROOT_BRANCH = "feed-event/root"
+EXPORT_READ_LIMITS = RunReadLimits(
+    max_manifest_bytes=2 * 1024 * 1024, max_event_line_bytes=1024 * 1024,
+    max_events_bytes=64 * 1024 * 1024, max_events=246, max_checkpoints=2,
+)
 CHOICE_RECIPE = {**cards.CHOICE_RECIPE, "timing_origin": "feed-stop/v1"}
 MAX_REPLAY_BYTES = 32 * 1024 * 1024
 MAX_PLAN_BYTES = 64 * 1024
@@ -226,7 +230,7 @@ def _export_data(run: VerifiedRun) -> dict:
 def _export(run_dir: str | Path, output_path: str | Path, *, plan_only: bool) -> dict:
     output = Path(output_path)
     cards._new_output(Path(run_dir), output)
-    run = verify_run(run_dir)
+    run = verify_run(run_dir, limits=EXPORT_READ_LIMITS)
     try:
         replay = _export_data(run)
     except (KeyError, TypeError, AttributeError, IndexError, OverflowError) as error:

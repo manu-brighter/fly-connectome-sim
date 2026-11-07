@@ -263,10 +263,18 @@ and decision references. This fresh pilot does not continue reel history or
 establish semantic understanding, visual specificity or learned behavior.
 
 The exporter checks sealed integrity and complete semantic consistency; it does
-not attest native execution history. Import only your own bounded run artifacts:
-generic raw-run verification currently lacks an allocation bound for arbitrary
-oversized manifests/JSONL lines. The proposal reader and compact replay reader
-have separate explicit byte bounds. See the
+not attest native execution history. The event and continuous-session replay/plan
+exporters apply fixed read limits before parsing raw input:2MiB manifest,1MiB per
+JSONL line including LF,2 checkpoint entries, and6 events/8MiB stream for standalone
+choice or246 events/64MiB for continuous sessions. Exact caps still require normal
+EOF and all original integrity/semantic checks. Limits persist through second
+passes and final rechecks; no automatic unlimited fallback is available.
+These are operational intake ceilings, not a process-memory/CPU guarantee or
+complete hostile-filesystem safety. Generic `verify-run`, producers, prefix APIs
+and other exporters retain their previous behavior and are intended for your own
+controlled artifacts. Proposal and compact replay readers have their own bounds.
+See the [bounded intake plan](superpowers/plans/2026-11-07-bounded-event-intake.md)
+and the
 [contract](superpowers/specs/2026-11-02-event-choice-milestone.md) for the trust model.
 
 ## Continuous reels and event choice

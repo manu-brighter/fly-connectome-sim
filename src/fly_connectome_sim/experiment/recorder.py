@@ -33,6 +33,22 @@ class RunArtifactError(ValueError):
     """An incomplete or invalid run artifact."""
 
 
+@dataclass(frozen=True)
+class RunReadLimits:
+    """Optional operational ceilings for complete sealed artifact intake."""
+    max_manifest_bytes: int
+    max_event_line_bytes: int
+    max_events_bytes: int
+    max_events: int
+    max_checkpoints: int
+
+    def __post_init__(self) -> None:
+        for name in ("max_manifest_bytes", "max_event_line_bytes", "max_events_bytes",
+                     "max_events", "max_checkpoints"):
+            if type(getattr(self, name)) is not int or getattr(self, name) <= 0:
+                raise RunArtifactError(f"Invalid run read limit: {name}")
+
+
 def _canonical(value: object) -> bytes:
     def check_keys(item: object) -> None:
         if isinstance(item, dict):
@@ -992,24 +1008,33 @@ class RunRecorder:
             self._closed = True
 
 
-def _digest_file(path: Path) -> tuple[str, int]:
+def _digest_file(path: Path, *, max_bytes: int | None = None) -> tuple[str, int]:
     digest = sha256()
     size = 0
     with path.open("rb") as stream:
-        while chunk := stream.read(1024 * 1024):
-            digest.update(chunk)
+        while chunk := stream.read(1024 * 1024 if max_bytes is None
+                                  else min(1024 * 1024, max_bytes - size + 1)):
             size += len(chunk)
+            if max_bytes is not None and size > max_bytes:
+                raise RunArtifactError("Event bytes exceed run read limit")
+            digest.update(chunk)
     return digest.hexdigest(), size
 
 
-def _read_manifest(path: Path) -> tuple[dict, bytes]:
+def _read_manifest(path: Path, *, limits: RunReadLimits | None = None) -> tuple[dict, bytes]:
     if path.is_symlink() or path.is_junction() or not path.is_dir():
         raise RunArtifactError("Run path is not a sealed directory")
     manifest_path = path / "run.json"
     if manifest_path.is_symlink():
         raise RunArtifactError("Manifest symlink rejected")
     try:
-        raw = manifest_path.read_bytes()
+        if limits is None:
+            raw = manifest_path.read_bytes()
+        else:
+            with manifest_path.open("rb") as stream:
+                raw = stream.read(limits.max_manifest_bytes + 1)
+            if len(raw) > limits.max_manifest_bytes:
+                raise RunArtifactError("Manifest bytes exceed run read limit")
     except OSError as error:
         raise RunArtifactError(f"Missing run seal: {error}") from error
     item = _strict_load(raw)
@@ -1032,9 +1057,13 @@ def _read_manifest(path: Path) -> tuple[dict, bytes]:
             or any(not isinstance(item[name], str) or not DIGEST.fullmatch(item[name])
                    for name in ("final_scientific_sha256", "events_sha256")):
         raise RunArtifactError("Invalid manifest counts or digests")
+    if limits is not None and item["event_count"] > limits.max_events:
+        raise RunArtifactError("Declared event count exceeds run read limit")
     checkpoints = item["checkpoints"]
     if not isinstance(checkpoints, dict) or not {"brain-before.npz", "brain-after.npz"} <= checkpoints.keys():
         raise RunArtifactError("Missing reserved checkpoints")
+    if limits is not None and len(checkpoints) > limits.max_checkpoints:
+        raise RunArtifactError("Declared checkpoint count exceeds run read limit")
     for name, data in checkpoints.items():
         _safe_name(name)
         if not isinstance(data, dict) \
@@ -1081,11 +1110,20 @@ def _check_anchor_index(index: object) -> None:
         ids.add(anchor["anchor_id"])
 
 
-def _check_files(path: Path, manifest: dict, *, allow_later: bool = False) -> None:
+def _check_files(path: Path, manifest: dict, *, allow_later: bool = False,
+                 limits: RunReadLimits | None = None) -> None:
     directory = path / "checkpoints"
     if directory.is_symlink() or directory.is_junction() or not directory.is_dir():
         raise RunArtifactError("Missing safe checkpoint directory")
-    names = {entry.name for entry in directory.iterdir()}
+    if limits is None:
+        names = {entry.name for entry in directory.iterdir()}
+    else:
+        names = set()
+        with os.scandir(directory) as entries:
+            for count, entry in enumerate(entries, 1):
+                if count > limits.max_checkpoints:
+                    raise RunArtifactError("Checkpoint entries exceed run read limit")
+                names.add(entry.name)
     if (not manifest["checkpoints"].keys() <= names if allow_later
             else names != manifest["checkpoints"].keys()):
         raise RunArtifactError("Missing or extra checkpoint file")
@@ -1096,7 +1134,8 @@ def _check_files(path: Path, manifest: dict, *, allow_later: bool = False) -> No
 
 
 def _raw_events(path: Path, *, count: int | None = None,
-                byte_length: int | None = None) -> Iterator[dict]:
+                byte_length: int | None = None,
+                limits: RunReadLimits | None = None) -> Iterator[dict]:
     """Raw bounded streaming under a validated context; never recursively scan."""
     events_path = path / "events.jsonl"
     if events_path.is_symlink() or not events_path.is_file():
@@ -1104,12 +1143,26 @@ def _raw_events(path: Path, *, count: int | None = None,
     with events_path.open("rb") as stream:
         remaining = byte_length
         emitted = 0
+        consumed = 0
         while (remaining is None or remaining > 0) and (count is None or emitted < count):
-            line = stream.readline(-1 if remaining is None else remaining)
+            read_size = -1 if remaining is None else remaining
+            if limits is not None:
+                read_size = min(limits.max_event_line_bytes + 1,
+                                limits.max_events_bytes - consumed + 1,
+                                read_size if read_size >= 0 else limits.max_event_line_bytes + 1)
+            line = stream.readline(read_size)
             if not line:
                 if remaining is not None and remaining > 0 or count is not None and emitted < count:
                     raise RunArtifactError("Fixed event prefix truncated")
                 break
+            consumed += len(line)
+            if limits is not None:
+                if len(line) > limits.max_event_line_bytes:
+                    raise RunArtifactError("Event line bytes exceed run read limit")
+                if consumed > limits.max_events_bytes:
+                    raise RunArtifactError("Event bytes exceed run read limit")
+                if emitted >= limits.max_events:
+                    raise RunArtifactError("Event count exceeds run read limit")
             if remaining is not None:
                 remaining -= len(line)
             if not line.endswith(b"\n"):
@@ -1136,14 +1189,15 @@ def _digest_boundary(path: Path, byte_length: int) -> str:
     return digest.hexdigest()
 
 
-def _scan_chain(path: Path, manifest: dict, *, byte_length: int | None = None) -> Iterator[dict]:
+def _scan_chain(path: Path, manifest: dict, *, byte_length: int | None = None,
+                limits: RunReadLimits | None = None) -> Iterator[dict]:
     from .replay import _PrefixProjection
 
     chain = _Chain(manifest["root_branch_id"], manifest["metadata"],
                    _strict_load(_canonical(manifest["checkpoints"])), manifest["run_kind"])
     chain.projection = _PrefixProjection(chain.metadata, chain.metadata_digest)
     raw_digest = sha256()
-    for event in _raw_events(path, byte_length=byte_length):
+    for event in _raw_events(path, byte_length=byte_length, limits=limits):
         # _raw_events has already checked exact canonical bytes including LF.
         raw_digest.update(_canonical(event) + b"\n")
         chain.check(event)
@@ -1154,8 +1208,8 @@ def _scan_chain(path: Path, manifest: dict, *, byte_length: int | None = None) -
     return chain
 
 
-def _scan(path: Path, manifest: dict) -> Iterator[dict]:
-    chain = yield from _scan_chain(path, manifest)
+def _scan(path: Path, manifest: dict, *, limits: RunReadLimits | None = None) -> Iterator[dict]:
+    chain = yield from _scan_chain(path, manifest, limits=limits)
     if chain.count != manifest["event_count"] or chain.previous != manifest["final_scientific_sha256"] \
             or chain.scanned_raw_sha256 != manifest["events_sha256"] \
             or (manifest["run_kind"] in {"qualification", "confirmation"} and not chain.result_seen) \
@@ -1163,7 +1217,8 @@ def _scan(path: Path, manifest: dict) -> Iterator[dict]:
             or _canonical(chain.anchors) != _canonical(manifest["state_anchors"]):
         raise RunArtifactError("Event stream count, chain or raw digest mismatch")
     if (path / "events.jsonl").is_symlink() \
-            or _digest_file(path / "events.jsonl")[0] != manifest["events_sha256"]:
+            or _digest_file(path / "events.jsonl", max_bytes=None if limits is None
+                            else limits.max_events_bytes)[0] != manifest["events_sha256"]:
         raise RunArtifactError("Event stream changed during scan")
 
 
@@ -1513,6 +1568,7 @@ def validate_prefix(path: str | Path, *, run_kind: str, metadata: dict,
 class VerifiedRun:
     path: Path
     _manifest_bytes: bytes
+    _limits: RunReadLimits | None = field(default=None, repr=False)
     _attestation: _ReplayAttestation | None = field(default=None, init=False, repr=False)
 
     @property
@@ -1527,12 +1583,13 @@ class VerifiedRun:
         if self._attestation is None:
             return frozenset()
         _issued_attestation(self)
-        manifest, raw = _read_manifest(self.path)
+        manifest, raw = _read_manifest(self.path, limits=self._limits)
         if raw != self._manifest_bytes or self._attestation.artifact_bytes != raw:
             raise RunArtifactError("Manifest changed since replay verification")
-        _check_files(self.path, manifest)
+        _check_files(self.path, manifest, limits=self._limits)
         if (self.path / "events.jsonl").is_symlink() \
-                or _digest_file(self.path / "events.jsonl")[0] != manifest["events_sha256"]:
+                or _digest_file(self.path / "events.jsonl", max_bytes=None if self._limits is None
+                                else self._limits.max_events_bytes)[0] != manifest["events_sha256"]:
             raise RunArtifactError("Events changed since replay verification")
         return frozenset(self._attestation.occurrences)
 
@@ -1541,29 +1598,31 @@ class VerifiedRun:
         return _strict_load(self._manifest_bytes)
 
     def iter_events(self) -> Iterator[dict]:
-        manifest, raw = _read_manifest(self.path)
+        manifest, raw = _read_manifest(self.path, limits=self._limits)
         if raw != self._manifest_bytes:
             raise RunArtifactError("Manifest changed since verification")
-        _check_files(self.path, manifest)
-        yield from _scan(self.path, manifest)
-        current, raw = _read_manifest(self.path)
+        _check_files(self.path, manifest, limits=self._limits)
+        yield from _scan(self.path, manifest, limits=self._limits)
+        current, raw = _read_manifest(self.path, limits=self._limits)
         if raw != self._manifest_bytes:
             raise RunArtifactError("Manifest changed during iteration")
-        _check_files(self.path, current)
+        _check_files(self.path, current, limits=self._limits)
 
 
-def verify_run(path: str | Path) -> VerifiedRun:
+def verify_run(path: str | Path, *, limits: RunReadLimits | None = None) -> VerifiedRun:
     """Verify a complete artifact without retaining its events in memory."""
+    if limits is not None and type(limits) is not RunReadLimits:
+        raise RunArtifactError("Invalid run read limits policy")
     target = Path(path)
     try:
-        manifest, raw = _read_manifest(target)
-        _check_files(target, manifest)
-        for _ in _scan(target, manifest):
+        manifest, raw = _read_manifest(target, limits=limits)
+        _check_files(target, manifest, limits=limits)
+        for _ in _scan(target, manifest, limits=limits):
             pass
-        if _read_manifest(target)[1] != raw:
+        if _read_manifest(target, limits=limits)[1] != raw:
             raise RunArtifactError("Manifest changed during verification")
-        _check_files(target, manifest)
-        return VerifiedRun(target, raw)
+        _check_files(target, manifest, limits=limits)
+        return VerifiedRun(target, raw, limits)
     except OSError as error:
         raise RunArtifactError(f"Unreadable run artifact: {error}") from error
 

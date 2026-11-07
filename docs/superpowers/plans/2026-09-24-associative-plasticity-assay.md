@@ -25,7 +25,13 @@ f.3c design is ratified; C1 is parked local uncommitted/unreviewed WIP, not acce
 
 ## Current checkpoint and live remaining work — 2026-11-02
 
-The next product source slice is the separate
+Current product source adds [bounded event export intake](2026-11-07-bounded-event-intake.md)
+to the existing verifier as opt-in limits on four event/session exports. Defaults,
+prefixes, native equations and scientific gates stay intact; old formal source
+identities are invalidated and formal integration remains parked. Exact source
+and evidence: [intake report](../../experiments/2026-11-07-bounded-event-intake.md).
+
+The completed proposal source slice is the separate
 [proposal transport](2026-11-06-event-proposal-transport.md): offline request
 preparation plus explicit key/model/token/cost opt-in, using the unchanged JSON
 import and measured choice. No API key is configured and live compatibility

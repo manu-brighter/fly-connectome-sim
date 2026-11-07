@@ -63,6 +63,34 @@ def test_genuine_native_deferred_roundtrip_is_bound_to_final_event(recording, tm
     assert json.loads((tmp_path / "plan.json").read_text()) == plan
 
 
+@pytest.mark.parametrize("export_name", ["export_event_replay", "export_event_plan"])
+@pytest.mark.parametrize("field", ["max_manifest_bytes", "max_event_line_bytes", "max_events_bytes",
+                                  "max_events", "max_checkpoints"])
+def test_export_intake_limits_reject_before_temporary_output(recording, tmp_path, monkeypatch,
+                                                            export_name, field):
+    from dataclasses import replace
+    from fly_connectome_sim.experiment import event_choice
+    from fly_connectome_sim.experiment.recorder import RunArtifactError, verify_run
+
+    policy = event_choice.EXPORT_READ_LIMITS
+    assert (policy.max_manifest_bytes, policy.max_event_line_bytes, policy.max_events_bytes,
+            policy.max_events, policy.max_checkpoints) == (2 * 1024 * 1024, 1024 * 1024,
+                                                          8 * 1024 * 1024, 6, 2)
+    raw = (recording.path / "events.jsonl").read_bytes()
+    sizes = dict(max_manifest_bytes=len((recording.path / "run.json").read_bytes()),
+                 max_event_line_bytes=max(map(len, raw.splitlines(keepends=True))),
+                 max_events_bytes=len(raw), max_events=6, max_checkpoints=2)
+    monkeypatch.setattr(event_choice, "EXPORT_READ_LIMITS", replace(policy, **{field: sizes[field] - 1}))
+    monkeypatch.setattr(event_choice.tempfile, "NamedTemporaryFile",
+                        lambda *args, **kwargs: pytest.fail("Over-limit source reached publication"))
+    output = tmp_path / "not-published.json"
+    with pytest.raises(RunArtifactError, match="limit"):
+        getattr(event_choice, export_name)(recording.path, output)
+    assert not output.exists()
+    assert not list(tmp_path.glob(".event-export-*"))
+    assert len(list(verify_run(recording.path).iter_events())) == 6
+
+
 def test_invalid_proposal_precedes_engine_and_output(tmp_path, proposal_path):
     from fly_connectome_sim.experiment.event_choice import record_event_choice_run
 
