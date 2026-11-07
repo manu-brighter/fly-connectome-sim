@@ -69,6 +69,20 @@ plan orient a fresh checkout; private local SDD notes/chats/scripts are not
 required and do not travel through Git. Local raw evidence is not replaced by
 this document. Do not claim to reverify unavailable bytes.
 
+## Clean-checkout compatibility checkpoint
+
+The [CI plan](superpowers/plans/2026-11-07-clean-checkout-ci.md) adds two
+standard Ubuntu 24.04 jobs for tiny native/session tests and viewer tests/build.
+The [report](experiments/2026-11-07-clean-checkout-ci.md) records a clean Git
+export of `b0ea3c1`, its own installed environments and a fresh empty data root:
+143 Python tests passed without skips in85.90s;97 viewer tests passed without
+skips and build exited0. Actionlint passed; ShellCheck was unavailable.
+Hosted Linux acceptance is pending the first reviewed push. No packaged source,
+test, schema or dependency changed; the working-tree model identity below remains
+unchanged. The Git/LF export has its own raw-byte identity in the report.
+System compiler/image are recorded rather than pinned. This does not close
+fullgraph, macOS, hosted Windows, browser/encoding, live API or formal gates.
+
 ## Current one-command workflow checkpoint
 
 `run-session` now records once and creates a local bundle with `run/`,
@@ -776,6 +790,10 @@ Interrupted development runs are never counted as passes.
 
 ## Live remaining work
 
+- [x] Add data-free native/session and viewer compatibility jobs; verify the
+  exact selection in a clean isolated Windows Git export with no runtime inputs.
+- [ ] Observe the first hosted Linux workflow and record its exact commit,
+  versions, test counts/skips and outcome before claiming Linux compatibility.
 - [x] Implement/review measured observation recording/export and viewer source;
   complete bounded real fullgraph recording/export and independent raw/parser checks.
 - [x] Complete same-recording Chrome playback/sample/desktop/mobile QA.
@@ -880,9 +898,12 @@ Local .venv, Windows Zig/DLL, graph data, prepared arrays, checkpoints, runs and
 and a C++17 compiler exposing c++. The exercised Windows versions are uv 0.12.15,
 Zig 0.16.0 and historically Node 25.9.0 for the native/data workflow; the viewer
 was checked with Node 24.21.0/npm 11.19.0 and requires Node >=24. Unix
-compiler/platform execution is not yet locally verified or pinned. See
+compiler/platform execution is pending the new hosted compatibility workflow,
+and the compiler is not pinned. See
 [Getting started](getting-started.md) for platform setup.
-These are instructions, not new Linux results; record actual versions/limitations.
+These manual instructions are not Linux results; see the
+[compatibility report](experiments/2026-11-07-clean-checkout-ci.md) for the
+separate clean-export/hosted acceptance status and record actual limitations.
 
 ```sh
 git branch --show-current

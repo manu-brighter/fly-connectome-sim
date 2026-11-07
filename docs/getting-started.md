@@ -40,6 +40,67 @@ uv python install 3.12.14 --no-bin --cache-dir .tools/uv-cache
 uv sync --locked --extra test --cache-dir .tools/uv-cache --python 3.12.14
 ```
 
+## Clean-checkout compatibility
+
+The [GitHub Actions workflow](../.github/workflows/compatibility.yml) has two
+independent Ubuntu 24.04 jobs, triggered by feature pushes, pull requests or
+manual dispatch. It pins uv 0.12.15, Python 3.12.14 and Node 24.21.0, installs
+locked dependencies, and records the runner image, tool/compiler versions and
+the actual checkout's source fingerprint. Hosted Linux acceptance is pending.
+The system C++17 compiler and runner image are not pinned.
+
+For the Python job's local equivalent, use a fresh checkout/export with no
+installed project environment or runtime data, and the prerequisites above.
+The data directory below must not already exist. Set it before Python imports:
+
+```sh
+unset FLY_CONNECTOME_SIM_FULL_TEST FLY_CONNECTOME_SIM_CXX PYTHONPATH PYTHONHOME
+export FLY_CONNECTOME_SIM_DATA="$PWD/.tools/ci/runtime"
+mkdir -p .tools/ci
+mkdir "$FLY_CONNECTOME_SIM_DATA"
+uv sync --locked --extra test --extra media --python 3.12.14
+uv run --no-sync python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+runtime = Path(os.environ["FLY_CONNECTOME_SIM_DATA"]).resolve()
+assert runtime.is_dir() and not any(runtime.iterdir()), runtime
+import av
+import fly_connectome_sim
+from fly_connectome_sim.neural.checkpoint import model_fingerprint
+from fly_connectome_sim.neural.common import DATA
+
+assert Path(fly_connectome_sim.__file__).resolve() == (Path.cwd() / "src/fly_connectome_sim/__init__.py").resolve()
+assert DATA == runtime
+print(f"PyAV: {av.__version__}")
+print(json.dumps(model_fingerprint(), sort_keys=True))
+PY
+uv run --no-sync pytest -q tests/test_native_build.py tests/test_checkpoint.py::test_evolved_emitted_checkpoint_replays_with_native_kernel tests/experiment/test_replay.py::test_native_qualification_context_maps_and_single_factory tests/experiment/test_session_workflow.py tests/experiment/test_recorder_limits.py tests/test_cli.py
+```
+
+This explicitly requires PyAV and exercises native compilation/loading, evolved
+checkpoint continuation, tiny qualification context, session/recorder limits
+and CLI behavior. It downloads no MaleCNS data and does not run the general
+data-dependent suite or opt-in fullgraph cases. On Windows use PowerShell
+environment syntax and the documented Zig compiler; record the selected tool
+versions separately from hosted Linux results.
+
+The viewer job runs these commands under `viewer/` with Node 24.21.0:
+
+```sh
+node --version
+npm --version
+npm ci
+npm test
+npm run build
+```
+
+Neither job restores dependency caches, uploads artifacts, deploys or accesses
+secrets. Passing compatibility checks does not establish native-history
+attestation, scientific qualification, fullgraph capacity, macOS/hosted Windows
+support, live API compatibility, or browser/video-encoding acceptance.
+
 ## Download, verify, stage and prepare
 
 The three source tables come from the

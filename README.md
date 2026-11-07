@@ -128,8 +128,12 @@ downloads the released data and serves/builds the local viewer.
 Follow [Getting started](docs/getting-started.md) for the complete toolchain
 setup, locked data download and verification, preparation, experiment commands
 and tests. Allow space for the 1.1 GB source download plus generated outputs.
-Linux/macOS have an existing build path; that environment has not been locally
-verified or compiler-pinned.
+The [clean-checkout compatibility workflow](.github/workflows/compatibility.yml)
+targets Ubuntu 24.04 with tiny native/session tests and viewer tests/build,
+without MaleCNS data. Hosted Linux acceptance is pending; the system compiler
+and runner image are recorded per run, not pinned. See the
+[exact scope and local commands](docs/getting-started.md#clean-checkout-compatibility).
+macOS remains unverified.
 
 ## Provenance
 
