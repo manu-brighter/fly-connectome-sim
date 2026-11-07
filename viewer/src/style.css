@@ -171,7 +171,7 @@ h1 {
   width:100%;
   flex:1;
   height:auto;
-  aspect-ratio:1.43;
+  aspect-ratio:1;
   min-height:440px;
   touch-action:none
 }
@@ -475,7 +475,7 @@ footer p {
 }
 @media(min-width:1400px) {
   .stage>canvas {
-    aspect-ratio:1.6
+    aspect-ratio:1
   }
 }
 @media(max-width:1000px) {
@@ -536,9 +536,9 @@ footer p {
     display:block
   }
   .stage>canvas {
-    min-height:0;
+    min-height:1040px;
     height:auto;
-    aspect-ratio:1/1
+    aspect-ratio:1/2
   }
   .stage-note {
     font-size:9px;

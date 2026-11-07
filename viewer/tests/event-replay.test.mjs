@@ -16,6 +16,7 @@ import * as videoModule from '../src/video-replay.ts';
 import * as recordingModule from '../src/recording.ts';
 import * as eventModule from '../src/event-replay.ts';
 import * as exportModule from '../src/export.ts';
+import * as anatomyModule from '../src/anatomy.ts';
 
 const canonical = (value) => value && typeof value === 'object' ? Array.isArray(value) ? value.map(canonical) : Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])])) : value;
 const hash = (text) => createHash('sha256').update(text).digest('hex');
@@ -117,6 +118,20 @@ test('maximum programme canvas panel stays above default board and bounds narrow
     drawEventPlan(context, width, sampleEventAtTick(recording, 20000));
     if (width === 900) assert.ok(boxes.every(({ y, h }) => y + h <= 225));
     assert.ok(texts.every(({ x, width: textWidth }) => x + textWidth <= width - 22));
+  }
+});
+
+test('final count measurement wraps into readable lines instead of shrinking with long feed context', async () => {
+  const recording = await parse(eventFixture());
+  const sample = { ...sampleEventAtTick(recording, 20000), feedContext: 'Feed ended at 7.000 s · END · playlist exhausted (clip window end)' };
+  for (const width of [390, 900]) {
+    const calls = [], context = { font: '', save() {}, restore() {}, fillRect() {},
+      measureText(text) { return { width: text.length * Number(this.font.match(/(\d+)px/)[1]) * .55 }; },
+      fillText(text, x, y) { calls.push({ text, font: this.font, width: this.measureText(text).width }); } };
+    drawEventPlan(context, width, sample);
+    const measurement = calls.find(call => call.text.includes('Final 500 ms'));
+    assert.ok(Number(measurement.font.match(/(\d+)px/)[1]) >= 12);
+    assert.ok(calls.filter(call => call.text.includes('Final 500 ms') || call.text.includes('Feed ended')).every(call => call.width <= width - 44));
   }
 });
 
@@ -234,14 +249,14 @@ test('late codec completion labels the current event recording with its three-se
   const document = { getElementById(id) { if (!nodes.has(id)) nodes.set(id, node()); return nodes.get(id); }, createElement() { return node(); } };
   let finishCapability;
   const capability = new Promise((resolve) => { finishCapability = resolve; });
-  const stage = { renderer: { setAnimationLoop() {} }, setRecording() {}, setSample() {}, render() {} };
+  const stage = { renderer: { setAnimationLoop() {} }, setRecording() {}, setAnatomy() {}, setSample() {}, render() {} };
   const source = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8');
   const javascript = stripTypeScriptTypes(source).replace(/^import .+;\r?$/gm, '');
   // Execute real main control flow without a browser/WebGL/encoder. The pending
   // encoder is a controlled external dependency; parser and sampling stay real.
-  runInNewContext(javascript, { ...replayModule, ...exportModule, ...videoModule, ...recordingModule, ...eventModule, sampleAt: recordingModule.sampleAnyAtTick, createOperationGate, createStage: () => stage, canEncodeVideo: () => capability, document, performance, VideoEncoder: class {}, window: { addEventListener() {} }, setTimeout });
+  runInNewContext(javascript, { ...replayModule, ...exportModule, ...anatomyModule, ...videoModule, ...recordingModule, ...eventModule, sampleAt: recordingModule.sampleAnyAtTick, createOperationGate, createStage: () => stage, canEncodeVideo: () => capability, document, performance, VideoEncoder: class {}, window: { addEventListener() {} }, setTimeout });
   const file = nodes.get('file'), json = JSON.stringify(eventFixture());
-  file.files = [{ name: 'event.json', size: Buffer.byteLength(json), text: async () => json }];
+  file.files = [{ name: 'event.json', size: Buffer.byteLength(json), arrayBuffer: async () => new TextEncoder().encode(json).buffer }];
   await file.handlers.change();
   assert.equal(nodes.get('error').hidden, true);
   assert.equal(nodes.get('video-note').textContent, 'Checking WebCodecs video encoding support…');

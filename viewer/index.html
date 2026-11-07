@@ -10,8 +10,9 @@
     <div id="app">
       <header class="masthead">
         <div class="identity"><span class="mark" aria-hidden="true">f</span><div><strong>Fly Connectome</strong><span>Measured replay</span></div></div>
-        <div class="file-actions"><button id="open" class="primary">Open recording</button><button id="source-toggle" disabled aria-expanded="false" aria-controls="source-panel">Source</button></div>
+        <div class="file-actions"><button id="open" class="primary">Open recording</button><button id="anatomy-open" disabled>Open anatomy</button><button id="source-toggle" disabled aria-expanded="false" aria-controls="source-panel">Source</button></div>
         <input id="file" type="file" accept=".json,application/json" hidden />
+        <input id="anatomy-file" type="file" accept=".json,application/json" hidden />
       </header>
       <main>
         <div class="heading"><div><h1>A window into the recording.</h1><p id="recording-name">Open measured-replay/v1, measured-video-replay/v1 or /v2, event-choice-replay/v1 or feed-event-replay/v1.</p></div><span id="status" class="status">No recording loaded</span></div>
@@ -27,6 +28,7 @@
             <div class="motor-readout"><div><span>Motor left</span><strong id="motor_left-rate">—</strong></div><div><span>Motor right</span><strong id="motor_right-rate">—</strong></div><small>Recorded DNa02 population Hz / cell</small></div>
             <details class="additional"><summary>Other recorded populations</summary><div id="additional-rates"></div></details>
             <p class="bin-note" id="bin-note">Rates use complete recorded bins. No measurements are shown until a file is loaded.</p>
+            <p class="bin-note" id="anatomy-note">Anatomy not loaded</p>
             <p class="clock">Simulation clock <b id="source-clock">—</b><br />Event <b id="event-sequence">—</b></p>
             <div id="video-policy" class="policy-readout" hidden><span>Media PTS <b id="source-pts">—</b></span><a id="clip-url" target="_blank" rel="noopener noreferrer">Source reel page</a><strong id="policy-status">—</strong><small id="rolling-readout">—</small><small id="policy-note">Recorded right-scroll/v1 display policy; not validated fly behavior.</small></div>
             <section id="event-plan" class="event-plan" aria-label="Locked event plan" hidden><small id="event-status"></small><h2 id="event-title"></h2><p id="event-details"></p><small id="event-measurement"></small><button id="download-plan" disabled>Download bound plan</button><small>Engineered selection policy; no semantic preference or venue feasibility is established.</small></section>

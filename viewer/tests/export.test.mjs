@@ -2,6 +2,24 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { frameAt, frameCount, quantizeVideoTick, writeFrames } from '../src/export.ts';
 import { flyPose } from '../src/motion.ts';
+import * as exportModule from '../src/export.ts';
+
+test('terminal presentation clock advances independently while the measured sample stays fixed', () => {
+  const first = frameAt(270, 90000, quantizeVideoTick, 90);
+  const contact = frameAt(294, 90000, quantizeVideoTick, 90);
+  assert.equal(first.holdElapsedTicks, 0);
+  assert.equal(contact.holdElapsedTicks, 8000);
+  assert.equal(first.tick, 90000); assert.equal(contact.tick, 90000);
+  assert.equal(frameAt(269, 90000, quantizeVideoTick, 90).holdElapsedTicks, 0);
+  assert.equal(typeof exportModule.advancePresentationPlayback, 'function');
+  const state = exportModule.advancePresentationPlayback(89900, 810, 1, true, 90000, 30000);
+  assert.equal(state.tick, 90000); assert.equal(state.holdElapsedTicks, 8000);
+  assert.equal(state.playing, true); assert.equal(state.terminalHold, true);
+  const paused = exportModule.advancePresentationPlayback(98000, 700, 1, false, 90000, 30000);
+  assert.equal(paused.holdElapsedTicks, 8000);
+  const ended = exportModule.advancePresentationPlayback(119000, 1000, 1, true, 90000, 30000);
+  assert.equal(ended.tick, 90000); assert.equal(ended.holdElapsedTicks, 30000); assert.equal(ended.playing, false);
+});
 
 test('12 second export has 360 source samples and 15 terminal presentation frames', () => {
   const frames = Array.from({ length: 375 }, (_, index) => frameAt(index, 120000));

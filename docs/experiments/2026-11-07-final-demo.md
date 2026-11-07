@@ -1,6 +1,12 @@
 # Imported-proposal observation demo — 2026-11-07
 
-The local experimental observation demo is accepted: real reel RGB, recorded
+**Historical export, superseded by the [reviewed presentation repair](2026-11-07-scientific-presentation.md).** The film
+below intersects the fly with the event tablet and lacks the requested
+scientific visual layer. Its byte, timing and playback checks remain valid;
+they did not establish satisfactory visual composition. Continue under the
+[presentation repair](../superpowers/plans/2026-11-07-scientific-replay-presentation.md).
+
+This local experimental observation demo contains real reel RGB, recorded
 native motor output, an unchanged selected event plan and a newly exported,
 playable film. It uses the authored `examples/event-options.json` proposal.
 **Genuine LLM proposal/session acceptance remains externally blocked and open.**
@@ -99,5 +105,5 @@ scope, and no explicit model/token/cost configuration was supplied. Zero provide
 requests or API charges occurred. Genuine LLM acceptance requires local API
 configuration, the explicit paid-request opt-in and a separately validated
 provider proposal/session; secrets should remain outside chat. That task stays
-open. The imported-proposal observation/demo scope is closed; the entire LLM v1
-and the parked training/research track are not complete.
+open. Presentation acceptance was subsequently reopened as noted above; the
+entire LLM v1 and the parked training/research track are not complete.

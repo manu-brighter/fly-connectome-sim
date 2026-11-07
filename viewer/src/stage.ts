@@ -3,14 +3,26 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { decodePixels } from './replay.ts';
 import { EXPORT_SIZE } from './export.ts';
-import { flyPose } from './motion.ts';
+import { flyPose, selectionTapProgress } from './motion.ts';
 import { createSwipeArm } from './swipe-arm.ts';
 import { isVideoRecording, videoInputLabel, videoPlaneHeight, videoPolicyLabel, videoSpeedLabel } from './video-replay.ts';
 import { type AnyRecording, type sampleAnyAtTick } from './recording.ts';
 import { eventPresentation, isEventRecording, type sampleEventAtTick } from './event-replay.ts';
+import { buildActivityTraces, drawSciencePanel, projectSomaPoints, scienceLayout, type ActivityTrace } from './science-panel.ts';
+import type { Anatomy } from './anatomy.ts';
 
 type Sample = ReturnType<typeof sampleAnyAtTick>;
 const INK = '#172B3A';
+
+export function presentationCaption(sample: Sample | null, terminalHold: boolean, holdElapsedTicks: number, reducedMotion: boolean) {
+  const swipe = sample && 'gesture' in sample && sample.gesture && !reducedMotion;
+  const tap = sample && 'decision' in sample && selectionTapProgress(eventPresentation(sample).selectedSide, terminalHold ? holdElapsedTicks : 0, reducedMotion) !== null;
+  return [swipe ? 'Illustrative swipe · presentation only' : tap ? 'Illustrative tap · presentation only' : terminalHold ? 'Recorded terminal sample · presentation hold' : 'Recorded simulation · illustrative fly motion',
+    terminalHold ? 'No simulation time advances' : 'Pose is illustrative, not measured movement'];
+}
+function fittedFov(base: number, aspect: number) {
+  return 2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(base / 2)) * Math.max(1, 1.5 / aspect)) * 180 / Math.PI;
+}
 
 export function drawOverlay(context: CanvasRenderingContext2D, width: number, height: number, logicalWidth: number, recording: AnyRecording | null, sample: Sample | null, terminalHold = false, reducedMotion = false) {
   const inputLine = sample && recording ? `${'decision' in sample ? 'Paired event cards' : 'input' in sample ? `${videoSpeedLabel(recording)} · ${videoInputLabel(sample.input)}` : `Input ${sample.segment.stimulus}`}   •   ${(sample.tick / 10000).toFixed(3)} / ${(recording.duration_ticks / 10000).toFixed(3)} s` : '';
@@ -66,11 +78,19 @@ export function drawOverlay(context: CanvasRenderingContext2D, width: number, he
 // is drawn literally; the selected proposal never appears before effective_tick.
 export function drawEventPlan(context: CanvasRenderingContext2D, width: number, sample: ReturnType<typeof sampleEventAtTick>) {
   const view = eventPresentation(sample), narrow = width < 650;
-  const lines = [view.status, ...(sample.decision ? [view.title, ...view.lines, view.measurement] : [])];
-  const maxWidth = Math.min(width - 44, narrow ? 480 : 600), lineHeight = narrow ? 15 : 16;
+  const maxWidth = Math.min(width - 44, narrow ? 480 : 600), measurements: string[] = [];
+  context.font = '12px Bahnschrift, Aptos, sans-serif';
+  if (sample.decision) for (const chunk of view.measurement.split(' · ')) {
+    const previous = measurements.at(-1);
+    if (previous && context.measureText(`${previous} · ${chunk}`).width <= maxWidth) measurements[measurements.length - 1] = `${previous} · ${chunk}`;
+    else measurements.push(chunk);
+  }
+  const lines = [view.status, ...(sample.decision ? [view.title, ...view.lines, ...measurements] : [])];
+  const lineHeight = narrow || lines.length > 12 ? 15 : 16;
   context.save(); context.fillStyle = 'rgba(243,247,250,.94)'; context.fillRect(12, 12, maxWidth + 20, 18 + lines.length * lineHeight);
   for (const [index, text] of lines.entries()) {
-    context.font = `${index === 1 ? '600' : '400'} ${narrow ? 11 : 13}px Bahnschrift, Aptos, sans-serif`;
+    const measurement = index >= lines.length - measurements.length;
+    context.font = `${index === 1 ? '600' : '400'} ${measurement ? 12 : narrow ? 11 : 13}px Bahnschrift, Aptos, sans-serif`;
     const measured = context.measureText(text).width;
     if (measured > maxWidth) context.font = `${Math.max(7, Math.floor((narrow ? 11 : 13) * maxWidth / measured))}px Bahnschrift, Aptos, sans-serif`;
     context.fillStyle = index === 0 ? '#597083' : INK; context.fillText(text, 22, 31 + index * lineHeight, maxWidth);
@@ -117,36 +137,8 @@ export function createEventBoard() {
   };
 }
 
-export function createStage(canvas: HTMLCanvasElement) {
-  const context = canvas.getContext('2d')!;
-  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-  renderer.setPixelRatio(1);
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#DFEAF2');
-  scene.fog = new THREE.Fog('#DFEAF2', 18, 30);
-  const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 50);
-  camera.position.set(6.1, 5.3, 10.8);
-  const controls = new OrbitControls(camera, canvas);
-  controls.target.set(0.25, 0.9, 0);
-  controls.enablePan = false; controls.enableDamping = !matchMedia('(prefers-reduced-motion: reduce)').matches;
-  controls.minDistance = 8; controls.maxDistance = 16;
-  controls.minPolarAngle = Math.PI / 6; controls.maxPolarAngle = Math.PI / 2.2;
-  controls.update();
-  scene.add(new THREE.HemisphereLight('#ffffff', '#738b9b', 2.6));
-  const key = new THREE.DirectionalLight('#fff7eb', 3.4);
-  key.position.set(-3, 8, 6); key.castShadow = true;
-  key.shadow.mapSize.set(1024, 1024);
-  key.shadow.camera.left = -7; key.shadow.camera.right = 7; key.shadow.camera.top = 7; key.shadow.camera.bottom = -7;
-  key.shadow.normalBias = 0.025;
-  scene.add(key);
-  const fill = new THREE.DirectionalLight('#c6dbff', 1.4); fill.position.set(5, 3, -4); scene.add(fill);
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshStandardMaterial({ color: '#DFEAF2', roughness: 1 }));
-  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
-
-  const fly = new THREE.Group(); fly.position.set(-.65, 0.85, 0.1); fly.rotation.y = 1.1; scene.add(fly);
+export function createFly() {
+  const fly = new THREE.Group(); fly.position.set(-.65, 0.85, 0.1); fly.rotation.y = 1.1;
   const shell = new THREE.MeshStandardMaterial({ color: '#82694b', roughness: 0.83 });
   const dark = new THREE.MeshStandardMaterial({ color: '#342e29', roughness: 0.9 });
   const band = new THREE.MeshStandardMaterial({ color: '#51412f', roughness: 0.8 });
@@ -176,9 +168,11 @@ export function createStage(canvas: HTMLCanvasElement) {
   // These six legs and wing veins are illustrative construction, never mapped neurons.
   const legs: THREE.Group[] = [], wings: Array<{ side: number; group: THREE.Group }> = [];
   const swipeArm = createSwipeArm(dark);
+  const oppositeArm = createSwipeArm(dark, -1);
   for (const side of [-1, 1]) {
     for (let leg = 0; leg < 3; leg += 1) {
       if (side === 1 && leg === 0) { fly.add(swipeArm.group); legs.push(swipeArm.group); continue; }
+      if (side === -1 && leg === 0) { fly.add(oppositeArm.group); legs.push(oppositeArm.group); continue; }
       const start = new THREE.Vector3(side * .25, -.1, .25 - leg * .35);
       const knee = new THREE.Vector3(side * (.8 + leg * .07), -.3, .72 - leg * .73);
       const ankle = new THREE.Vector3(side * (1.16 + leg * .035), -.77, .9 - leg * .95);
@@ -205,6 +199,50 @@ export function createStage(canvas: HTMLCanvasElement) {
       line(fly, [new THREE.Vector3(side * .3, .25, z), new THREE.Vector3(side * (.39 + (hair % 3) * .025), .37, z - .03)], '#514535', .7);
     }
   }
+  return { group: fly, head, legs, wings, swipeArm, oppositeArm, tapArms: { left: swipeArm, right: oppositeArm } };
+}
+
+export function placeEventScene(fly: THREE.Group, head: THREE.Group, board: THREE.Group, camera: THREE.PerspectiveCamera) {
+  board.position.set(1.25, 1.4, 0); board.rotation.set(-.25, -.4, 0);
+  fly.position.copy(board.localToWorld(new THREE.Vector3(0, 0, 1.6))); fly.position.y = .85;
+  fly.rotation.set(0, Math.atan2(board.position.x - fly.position.x, board.position.z - fly.position.z), 0);
+  fly.updateWorldMatrix(true, true); board.updateWorldMatrix(true, true);
+  head.lookAt(board.localToWorld(new THREE.Vector3(0, 0, .071)));
+  camera.fov = fittedFov(33, camera.aspect); camera.position.set(-10, 5, 8);
+  camera.lookAt(1.25, 2.25, .6); camera.updateProjectionMatrix();
+  fly.updateWorldMatrix(true, true);
+}
+
+export function createStage(canvas: HTMLCanvasElement) {
+  const context = canvas.getContext('2d')!;
+  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(1);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color('#DFEAF2');
+  scene.fog = new THREE.Fog('#DFEAF2', 18, 30);
+  const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 50);
+  camera.position.set(6.1, 5.3, 10.8);
+  const controls = new OrbitControls(camera, canvas);
+  controls.target.set(0.25, 0.9, 0);
+  controls.enablePan = false; controls.enableDamping = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  controls.minDistance = 8; controls.maxDistance = 16;
+  controls.minPolarAngle = Math.PI / 6; controls.maxPolarAngle = Math.PI / 2.2;
+  controls.update();
+  scene.add(new THREE.HemisphereLight('#ffffff', '#738b9b', 2.6));
+  const key = new THREE.DirectionalLight('#fff7eb', 3.4);
+  key.position.set(-3, 8, 6); key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.camera.left = -7; key.shadow.camera.right = 7; key.shadow.camera.top = 7; key.shadow.camera.bottom = -7;
+  key.shadow.normalBias = 0.025;
+  scene.add(key);
+  const fill = new THREE.DirectionalLight('#c6dbff', 1.4); fill.position.set(5, 3, -4); scene.add(fill);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshStandardMaterial({ color: '#DFEAF2', roughness: 1 }));
+  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+
+  const { group: fly, head, legs, wings, swipeArm, oppositeArm, tapArms } = createFly(); scene.add(fly);
   const phone = new THREE.Group(); phone.position.set(1.5, 1.02, .7); phone.rotation.y = -.2; phone.rotation.x = -.75; scene.add(phone);
   const caseMaterial = new THREE.MeshStandardMaterial({ color: '#203747', roughness: .44, metalness: .25 });
   const phoneCase = new THREE.Mesh(new THREE.BoxGeometry(1.47, 2.65, .13), caseMaterial); phoneCase.castShadow = true; phone.add(phoneCase);
@@ -220,10 +258,14 @@ export function createStage(canvas: HTMLCanvasElement) {
   let sample: Sample | null = null;
   let swipeSurface: ReturnType<typeof createVideoSwipeSurface> | null = null;
   let exporting = false;
+  let eventPhase: boolean | null = null;
+  let anatomy: Anatomy | null = null, somaProjection: Array<[number, number]> = [], activityTraces: ActivityTrace[] = [];
   function setRecording(next: AnyRecording) {
     swipeSurface?.dispose(); swipeSurface = null;
     Object.values(textures).forEach((texture) => texture.dispose()); textures = {};
     recording = next;
+    eventPhase = null;
+    anatomy = null; somaProjection = []; activityTraces = buildActivityTraces(next);
     phone.visible = !isEventRecording(next); eventBoard.group.visible = isEventRecording(next);
     eventBoard.screen.material.map = null; eventBoard.screen.material.needsUpdate = true;
     eventBoard.highlights.left.visible = false; eventBoard.highlights.right.visible = false;
@@ -246,15 +288,19 @@ export function createStage(canvas: HTMLCanvasElement) {
     sample = null;
     const material = pixelsScreen.material as THREE.MeshBasicMaterial; material.map = null; material.needsUpdate = true;
   }
-  function render(terminalHold = false) {
+  function render(terminalHold = false, holdElapsedTicks = 0) {
     const rect = canvas.getBoundingClientRect();
     const ratio = Math.min(devicePixelRatio, 1.75);
     const width = exporting ? EXPORT_SIZE : Math.max(1, Math.round(rect.width * ratio));
     const height = exporting ? EXPORT_SIZE : Math.max(1, Math.round(rect.height * ratio));
+    const logicalWidth = exporting ? EXPORT_SIZE : Math.min(900, canvas.clientWidth);
+    const scale = width / logicalWidth, logicalHeight = height / scale;
+    const layout = scienceLayout(logicalWidth, logicalHeight);
+    const sceneHeight = Math.max(1, Math.round((layout.sceneHeight - 36) * scale));
     if (canvas.width !== width || canvas.height !== height) {
       canvas.width = width; canvas.height = height; renderer.setSize(width, height, false);
-      camera.aspect = width / height; camera.updateProjectionMatrix();
     }
+    camera.aspect = width / sceneHeight; camera.updateProjectionMatrix();
     const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const inputName = sample && ('frame_id' in sample.segment ? sample.segment.frame_id : sample.segment.stimulus);
     if (inputName) {
@@ -273,18 +319,52 @@ export function createStage(canvas: HTMLCanvasElement) {
       }
     }
     if (sample) {
-      phone.visible = !('decision' in sample); eventBoard.group.visible = 'decision' in sample;
+      const paired = 'decision' in sample;
+      if (eventPhase !== paired) {
+        if (paired) {
+          placeEventScene(fly, head, eventBoard.group, camera);
+          controls.target.set(1.25, 2.25, .6);
+        } else {
+          fly.position.set(-.65, .85, .1); fly.rotation.set(0, 1.1, 0); head.rotation.set(0, 0, 0);
+          camera.fov = 35; camera.position.set(6.1, 5.3, 10.8); camera.lookAt(.25, .9, 0);
+          camera.updateProjectionMatrix(); controls.target.set(.25, .9, 0);
+        }
+        eventPhase = paired;
+      }
+      phone.visible = !paired; eventBoard.group.visible = paired;
       if (!eventBoard.group.visible) { eventBoard.highlights.left.visible = false; eventBoard.highlights.right.visible = false; }
       const pose = flyPose(sample.tick, reducedMotion);
-      fly.position.y = .85 + pose.bob; fly.rotation.x = pose.bodyPitch; head.rotation.y = pose.headYaw;
-      wings.forEach(({ side, group }) => { group.rotation.z = side * pose.wingAngle; });
-      legs.forEach((group, index) => { if (group !== swipeArm.group) group.rotation.z = (index % 2 ? -1 : 1) * pose.legAngle; });
-      swipeArm.update(fly, phone, !reducedMotion && 'gesture' in sample && sample.gesture ? sample.gesture.progress : null, -pose.legAngle);
+      fly.position.y = paired ? .85 : .85 + pose.bob; fly.rotation.x = paired ? 0 : pose.bodyPitch;
+      if (paired) head.lookAt(eventBoard.group.localToWorld(new THREE.Vector3(0, 0, .071)));
+      else head.rotation.set(0, pose.headYaw, 0);
+      wings.forEach(({ side, group }) => { group.rotation.z = paired ? 0 : side * pose.wingAngle; });
+      legs.forEach((group, index) => { if (group !== swipeArm.group && group !== oppositeArm.group) group.rotation.z = paired ? 0 : (index % 2 ? -1 : 1) * pose.legAngle; });
+      if ('decision' in sample) {
+        const side = eventPresentation(sample).selectedSide;
+        swipeArm.updateTap(fly, eventBoard.group, null, null); oppositeArm.updateTap(fly, eventBoard.group, null, null);
+        if (side) tapArms[side].updateTap(fly, eventBoard.group, side, selectionTapProgress(side, terminalHold ? holdElapsedTicks : 0, reducedMotion));
+      } else {
+        swipeArm.update(fly, phone, !reducedMotion && 'gesture' in sample && sample.gesture ? sample.gesture.progress : null, -pose.legAngle);
+        oppositeArm.update(fly, phone, null, pose.legAngle);
+      }
     }
     if (!exporting) controls.update();
+    camera.fov = fittedFov(eventPhase ? 33 : 35, camera.aspect); camera.updateProjectionMatrix();
+    renderer.setScissorTest(false); renderer.setViewport(0, 0, width, height); renderer.clear();
+    // Shared measurements keep the scene, captions and science panel disjoint.
+    renderer.setViewport(0, height - sceneHeight, width, sceneHeight);
+    renderer.setScissor(0, height - sceneHeight, width, sceneHeight); renderer.setScissorTest(true);
     renderer.render(scene, camera);
+    renderer.setScissorTest(false);
     context.drawImage(renderer.domElement, 0, 0, width, height);
-    drawOverlay(context, width, height, exporting ? EXPORT_SIZE : Math.min(900, canvas.clientWidth), recording, sample, terminalHold, reducedMotion);
+    if (recording && sample) {
+      context.save(); context.scale(scale, scale);
+      context.font = '12px Bahnschrift, Aptos, sans-serif'; context.fillStyle = '#172B3A';
+      presentationCaption(sample, terminalHold, holdElapsedTicks, reducedMotion).forEach((caption, index) => context.fillText(caption, 16, layout.sceneHeight - 22 + index * 14, logicalWidth - 32));
+      if ('decision' in sample) drawEventPlan(context, logicalWidth, sample);
+      drawSciencePanel(context, logicalWidth, logicalHeight, recording, sample, activityTraces, anatomy, somaProjection);
+      context.restore();
+    } else drawOverlay(context, width, height, logicalWidth, recording, sample, terminalHold, reducedMotion);
   }
   function dispose() {
     swipeSurface?.dispose(); swipeSurface = null;
@@ -297,5 +377,7 @@ export function createStage(canvas: HTMLCanvasElement) {
     });
     Object.values(textures).forEach((texture) => texture.dispose()); renderer.dispose();
   }
-  return { renderer, render, setRecording, setSample: (next: Sample) => { sample = next; }, setExporting: (value: boolean) => { exporting = value; controls.enabled = !value; }, dispose };
+  return { renderer, render, setRecording,
+    setAnatomy: (next: Anatomy | null) => { anatomy = next; somaProjection = projectSomaPoints(next); },
+    setSample: (next: Sample) => { sample = next; }, setExporting: (value: boolean) => { exporting = value; controls.enabled = !value; }, dispose };
 }

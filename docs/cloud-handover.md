@@ -17,21 +17,27 @@ preference. A positive MBON11 assay would not automatically establish that:
 the current event/video policies
 use only DNa02 motor-left/right, not the older MBON/motor preference adapter.
 
-**The [local imported-proposal observation demo](experiments/2026-11-07-final-demo.md)
-is accepted; Tasks 1 and 3 are closed. Genuine LLM proposal/session acceptance
-remains externally blocked and open.** API preflight found no key in process,
+**Tasks 1 and 3 are complete within the imported-proposal observation scope.**
+After the user reopened visual acceptance, the [reviewed presentation repair](experiments/2026-11-07-scientific-presentation.md)
+replaced the intersecting tablet with safe placement and a selected-card tap,
+and added static source anatomy plus seven recorded population traces.
+`runs/scientific-demo-20261107/` contains the revised 30 fps film, exact original
+recording/plan and optional bound anatomy file. The [previous film](experiments/2026-11-07-final-demo.md)
+remains historical; its earlier visual acceptance was insufficient.
+**Genuine LLM proposal/session acceptance remains externally blocked and open.**
+API preflight found no key in process,
 user or machine scope and no supplied model/token/cost configuration. No
 provider request occurred. Resume Task 2 only when those local prerequisites
 are supplied; do not request secrets in chat or call the entire LLM v1 complete.
-Reuse the accepted recording/film for presentation. Do not repeat the diagnostic,
+Reuse the revised film or exact recording/plan/anatomy for presentation. Do not repeat the diagnostic,
 expand controls, resume research or run a fresh simulation merely for UI work.
 
 ## Repository, authority and working style
 
 - Local workspace: `C:/dev/jogge-di-fly-brain`; public repository:
   `https://github.com/manu-brighter/fly-connectome-sim`.
-- Branch: `feat/connectome-experiment-core`; remote: `origin`. Latest
-  implementation/diagnostic checkpoint before the final demo documentation: `c2e9d1c`.
+- Branch: `feat/connectome-experiment-core`; remote: `origin`. The prior
+  `5ec5398` film-documentation checkpoint is superseded by this presentation repair.
   Use the latest pushed feature HEAD, not a
   checkout/reset to that historical hash. Verify status/tracking before edits.
 - Autonomous relevant implementation, tests, reviews, commits and explicit
@@ -53,7 +59,7 @@ expand controls, resume research or run a fresh simulation merely for UI work.
 ## Read only what the next task needs
 
 1. [AGENTS.md](../AGENTS.md), [README](../README.md), this handover.
-2. [Final demo acceptance](experiments/2026-11-07-final-demo.md),
+2. [Revised scientific presentation](experiments/2026-11-07-scientific-presentation.md),
    [continuous-session contract](superpowers/specs/2026-11-03-feed-event-session.md),
    [workflow acceptance](experiments/2026-11-07-session-workflow.md) and
    [usage](getting-started.md#continuous-reels-and-event-choice).
@@ -124,7 +130,29 @@ inspection, not as a session recording accepted by the viewer.
   generated proposals. An unavailable API leaves this task explicitly open;
   it must not block the diagnostic or presentation work.
 
-### 3. Final demonstration and v1 close-out
+### 3. Final demonstration and v1 close-out — presentation repaired
+
+- [x] Repair tablet/fly intersection, place the fly looking at the display and
+  animate one selected-side tap after the measured decision. Keep simulation
+  time frozen throughout the existing presentation hold; defer never taps.
+- [x] Add static source-bound cell-body anatomy and seven measured population
+  traces to the exported canvas. No invented individual spikes or synapse
+  locations; the existing recording contains aggregate group bins only.
+- [x] Review actual geometry, encoded frames, scientific labels and unchanged
+  recording/plan, then publish a replacement presentation checkpoint.
+
+The replacement has 360 VP9 frames / 12 s at 900×900, with the same 7 s feed,
+2 s cards and 3 s presentation hold. Both contact paths retain original limb
+lengths and clear tablet/body meshes; the real film shows reach, contact and
+retraction on the selected left card. Anatomy uses 12,000 real sampled somata
+from 139,662 positioned model cells, with 27,038 missing positions explicit.
+All seven traces use recorded bins; terminal values freeze during the tap.
+114 viewer tests and 10 generator tests passed, build passed, actual Chrome
+playthrough completed and independent source/frame review found no open blocker.
+See the [repair report](experiments/2026-11-07-scientific-presentation.md) for
+artifact hashes, source checks, responsive scope, warnings and limits.
+
+The earlier export checks below remain historical:
 
 - [x] Accept one coherent representative recording, bound plan and playable
   exported film, with clear real-input/measured-output/illustrative-motion labels.
@@ -137,7 +165,7 @@ inspection, not as a session recording accepted by the viewer.
   Record remaining training/research work separately and stop expanding v1.
   No post-choice narration, autonomous multi-round planner or deployment is needed.
 
-Accepted imported-proposal demo: `runs/final-demo-20261107/` retains the exact
+Historical imported-proposal demo: `runs/final-demo-20261107/` retains the exact
 November 7 session recording/plan and a newly exported `demo-30fps.webm`.
 Actual Chrome 157 export/playback and full decode passed: 360 VP9 frames,
 900×900, 12 s = 9 s recorded data + 3 s labelled presentation hold. Final
@@ -145,8 +173,8 @@ L6/R2 → left/Sunset House and the bound plan are unchanged. No new native
 simulation ran; this uses historical source identity `f3ef2ff6…`, not the
 newer diagnostic source. Viewer checks: 97 passed, no skips; build exited 0.
 See the [final report](experiments/2026-11-07-final-demo.md) for exact artifact
-hashes, reproduction, warnings and limits. Task 2 remains open, so this closes
-only the imported-proposal observation/presentation scope.
+hashes, reproduction, warnings and limits. Task 2 remains open; this older film
+is superseded by the reviewed repair above.
 
 **Stop rule:** once the bounded diagnostic is honestly reported, the genuine
 LLM path is accepted (or explicitly left blocked by external API configuration),

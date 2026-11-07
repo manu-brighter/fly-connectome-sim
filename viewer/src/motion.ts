@@ -9,3 +9,9 @@ export function flyPose(tick: number, reducedMotion: boolean) {
     legAngle: Math.sin(time * 2 * Math.PI * 1.4) * .055,
   };
 }
+
+// A single illustrative acknowledgement, never an extra neural measurement.
+export function selectionTapProgress(selectedSide: 'left' | 'right' | null, holdElapsedTicks: number, reducedMotion: boolean) {
+  if (selectedSide === null || reducedMotion || holdElapsedTicks <= 2000 || holdElapsedTicks >= 18000) return null;
+  return (holdElapsedTicks - 2000) / 16000;
+}

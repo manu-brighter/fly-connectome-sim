@@ -15,11 +15,17 @@ qualification and claim boundaries are preserved rather than declared complete.
 For this observation milestone, the original synthetic-assay-before-reels order
 below is superseded. Video/event choice uses the declared motor-only DNa02
 left/right adapter, not the earlier MBON/motor mixed readout. Measured activity
-controls the choice; content-specific influence is still an open comparison,
-and neither learning nor semantics is established. A positive MBON11 assay would
+controls the choice. The bounded November 7 diagnostic found sensitivity to
+its visual manipulation and card layout, without establishing stable event
+preference, learning or semantics. A positive MBON11 assay would
 not automatically validate the current motor-based choice.
 
-The original specification below remains the broader product/research record.
+The user reopened presentation acceptance after finding a tablet/fly collision
+and the missing scientific visual layer. The [presentation repair](../superpowers/plans/2026-11-07-scientific-replay-presentation.md)
+adds a safe illustrative interaction, static source anatomy and recorded
+population activity. Individual-neuron/synapse activity is not present in the
+existing compact recording. The original specification below remains the
+broader product/research record.
 
 ## Problem Statement
 

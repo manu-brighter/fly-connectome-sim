@@ -2,12 +2,13 @@ import { isSessionRecording, sampleSessionAtTick } from './session-replay.ts';
 import './style.css';
 import { GROUPS, advancePlayback } from './replay.ts';
 import { BufferTarget, CanvasSource, Output, WebMOutputFormat, canEncodeVideo } from 'mediabunny';
-import { EXPORT_FPS, EXPORT_SIZE, quantizeVideoTick, writeFrames } from './export.ts';
+import { EXPORT_FPS, EXPORT_SIZE, advancePresentationPlayback, quantizeVideoTick, writeFrames } from './export.ts';
 import { createStage } from './stage.ts';
 import { createOperationGate } from './operation.ts';
 import { isVideoRecording, videoInputLabel, videoPolicyLabel, videoSpeedLabel, videoTimelineBlocks } from './video-replay.ts';
 import { parseAnyRecording, sampleAnyAtTick as sampleAt, type AnyRecording } from './recording.ts';
 import { EVENT_HOLD_FRAMES, eventPlanJson, eventPresentation, isEventRecording, sampleEventAtTick } from './event-replay.ts';
+import { MAX_ANATOMY_BYTES, createAnatomyAttachment, readRecordingFile } from './anatomy.ts';
 
 function element<T extends HTMLElement>(id: string): T {
   return document.getElementById(id) as T;
@@ -23,9 +24,15 @@ const sourceButton = element<HTMLButtonElement>('source-toggle');
 const errorElement = element<HTMLParagraphElement>('error');
 const videoNote = element<HTMLParagraphElement>('video-note');
 const planButton = element<HTMLButtonElement>('download-plan');
+const anatomyButton = element<HTMLButtonElement>('anatomy-open');
+const anatomyFile = element<HTMLInputElement>('anatomy-file');
+const anatomyNote = element('anatomy-note');
+const anatomyAttachment = createAnatomyAttachment();
+let anatomyLoading = false;
 const replayAnnouncement = element('replay-announcement');
 let recording: AnyRecording | null = null;
 let tick = 0, playing = false, lastTime = performance.now();
+let holdElapsedTicks = 0;
 const operations = createOperationGate();
 let exportController: AbortController | null = null;
 let videoCodec: 'vp9' | 'vp8' | null = null;
@@ -57,6 +64,13 @@ for (const name of ['pam11', 'ppl101', 'mbon07'] as const) {
 function showError(message: string) { errorElement.textContent = message; errorElement.hidden = false; }
 if (stageError) showError(stageError);
 function holdSeconds(record: AnyRecording | null) { return record && (isEventRecording(record) || isSessionRecording(record)) ? 3 : .5; }
+function presentationHoldTicks() { return recording && (isEventRecording(recording) || isSessionRecording(recording)) ? 30000 : 0; }
+function renderCurrent() { stage?.render(presentationHoldTicks() > 0 && tick >= (recording?.duration_ticks ?? Infinity) ? true : undefined, holdElapsedTicks); }
+function anatomyControls() {
+  anatomyButton.disabled = !recording || operations.loading || operations.exporting || anatomyLoading;
+  anatomyFile.disabled = anatomyButton.disabled;
+  videoButton.disabled = !recording || !videoCodec || !stage || operations.loading || (!operations.exporting && anatomyLoading);
+}
 
 const traceBases: Partial<Record<'kc' | 'mbon11', HTMLCanvasElement>> = {};
 function drawTrace(name: 'kc' | 'mbon11') {
@@ -145,19 +159,25 @@ function loadingControls(loading: boolean) {
   videoButton.disabled = loading || !recording || !videoCodec || !stage;
   planButton.disabled = loading || !recording || !(isEventRecording(recording) || isSessionRecording(recording)) || tick < recording.decision.effective_tick;
   openButton.textContent = loading ? 'Opening…' : 'Open recording';
+  anatomyControls();
 }
 file.addEventListener('change', async () => {
   const selected = file.files?.[0]; file.value = '';
   if (!selected) return;
   const generation = operations.beginLoad();
   if (generation === null) return;
+  anatomyAttachment.cancelPending(); anatomyLoading = false;
   playing = false; update();
   loadingControls(true);
   try {
     if (selected.size > 32 * 1024 * 1024) throw new Error('File exceeds 32 MiB. Export a shorter observation recording.');
-    const parsed = await parseAnyRecording(await selected.text());
+    const raw = await readRecordingFile(selected);
+    const parsed = await parseAnyRecording(raw.text);
     if (!operations.isCurrentLoad(generation)) return;
-    recording = parsed; tick = 0;
+    recording = parsed; tick = 0; holdElapsedTicks = 0;
+    const identity = parsed.source.metadata.engine_identity as { model_provenance?: { graph_ids_sha256?: string } };
+    anatomyAttachment.setRecording({ recordingSha256: raw.sha256, graphIdsSha256: identity?.model_provenance?.graph_ids_sha256 ?? '' });
+    anatomyNote.textContent = 'Anatomy not loaded';
     delete traceBases.kc; delete traceBases.mbon11;
     stage?.setRecording(parsed);
     errorElement.hidden = true;
@@ -192,6 +212,26 @@ file.addEventListener('change', async () => {
   } finally { if (operations.isCurrentLoad(generation)) { operations.endLoad(generation); loadingControls(false); } }
 });
 
+anatomyButton.addEventListener('click', () => { if (!anatomyButton.disabled) anatomyFile.click(); });
+anatomyFile.addEventListener('change', async () => {
+  const selected = anatomyFile.files?.[0]; anatomyFile.value = '';
+  if (!selected || !recording || anatomyLoading || operations.loading || operations.exporting) return;
+  const sourceRecording = recording;
+  anatomyLoading = true; anatomyControls();
+  try {
+    if (selected.size > MAX_ANATOMY_BYTES) throw new Error('Anatomy file exceeds 8 MiB.');
+    const attached = await anatomyAttachment.load(selected.text());
+    if (!attached || recording !== sourceRecording) return;
+    stage?.setAnatomy(anatomyAttachment.value);
+    anatomyNote.textContent = `${anatomyAttachment.value!.coverage.displayed_cells.toLocaleString('en-US')} static source positions loaded`;
+    errorElement.hidden = true;
+  } catch (error) {
+    if (recording === sourceRecording) showError(`Cannot open anatomy. ${error instanceof Error ? error.message : 'Invalid sidecar.'} Generate a sidecar for this exact recording; replay remains available.`);
+  } finally {
+    if (recording === sourceRecording) { anatomyLoading = false; anatomyControls(); renderCurrent(); }
+  }
+});
+
 sourceButton.addEventListener('click', () => {
   const panel = element('source-panel'); panel.hidden = !panel.hidden;
   sourceButton.setAttribute('aria-expanded', String(!panel.hidden));
@@ -207,10 +247,10 @@ planButton.addEventListener('click', () => {
 });
 play.addEventListener('click', () => {
   if (!recording) return;
-  if (tick >= recording.duration_ticks) tick = 0;
+  if (tick >= recording.duration_ticks && (presentationHoldTicks() === 0 || holdElapsedTicks >= presentationHoldTicks())) { tick = 0; holdElapsedTicks = 0; }
   playing = !playing; lastTime = performance.now(); update();
 });
-seek.addEventListener('input', () => { tick = Number(seek.value); update(); });
+seek.addEventListener('input', () => { tick = Number(seek.value); holdElapsedTicks = 0; update(); });
 speed.addEventListener('change', () => { lastTime = performance.now(); });
 canvas.addEventListener('keydown', (event) => {
   if (document.activeElement !== canvas || !recording || operations.loading || operations.exporting || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
@@ -218,6 +258,7 @@ canvas.addEventListener('keydown', (event) => {
   event.preventDefault();
   if (event.code === 'Space') { if (!event.repeat) play.click(); return; }
   tick = event.code === 'Home' ? 0 : event.code === 'End' ? recording.duration_ticks : Math.max(0, Math.min(recording.duration_ticks, tick + (event.code === 'ArrowLeft' ? -1000 : 1000)));
+  holdElapsedTicks = 0;
   update();
 });
 
@@ -226,13 +267,14 @@ function exportControls(exporting: boolean) {
   videoButton.textContent = exporting ? 'Cancel export' : 'Export video';
   videoButton.disabled = !exporting && (!recording || !videoCodec || !stage);
   planButton.disabled = exporting || !recording || !(isEventRecording(recording) || isSessionRecording(recording)) || tick < recording.decision.effective_tick;
+  anatomyControls();
 }
 
 videoButton.addEventListener('click', async () => {
   if (exportController) { exportController.abort(); return; }
-  if (!recording || !videoCodec || !stage || !operations.beginExport()) return;
+  if (!recording || !videoCodec || !stage || anatomyLoading || !operations.beginExport()) return;
   const sourceRecording = recording, sourceStage = stage;
-  const previousTick = tick, wasPlaying = playing;
+  const previousTick = tick, previousHoldElapsedTicks = holdElapsedTicks, wasPlaying = playing;
   const controller = new AbortController(); exportController = controller;
   playing = false; exportControls(true); sourceStage.setExporting(true);
   let output: Output<WebMOutputFormat, BufferTarget> | null = null;
@@ -244,7 +286,7 @@ videoButton.addEventListener('click', async () => {
     await output.start();
     controller.signal.throwIfAborted();
     const completed = await writeFrames(sourceRecording.duration_ticks, {
-      paint: (frame) => { sourceStage.setSample(sampleAt(sourceRecording, frame.tick)); sourceStage.render(frame.terminalHold); },
+      paint: (frame) => { sourceStage.setSample(sampleAt(sourceRecording, frame.tick)); sourceStage.render(frame.terminalHold, frame.holdElapsedTicks); },
       add: (timestamp, duration) => source.add(timestamp, duration),
       finalize: async () => { await output!.finalize(); return target.buffer; },
       cancel: () => output!.cancel(),
@@ -259,20 +301,20 @@ videoButton.addEventListener('click', async () => {
     if (controller.signal.aborted) videoNote.textContent = 'Video export canceled. No video was saved.';
     else { showError(`Video export failed: ${error instanceof Error ? error.message : 'Unknown encoding error.'} No video was saved.`); videoNote.textContent = 'Video export failed. No video was saved.'; }
   } finally {
-    tick = previousTick; playing = wasPlaying; lastTime = performance.now();
+    tick = previousTick; holdElapsedTicks = previousHoldElapsedTicks; playing = wasPlaying; lastTime = performance.now();
     sourceStage.setExporting(false); exportController = null; operations.endExport(); exportControls(false); update();
-    if (pageHidden) sourceStage.dispose(); else sourceStage.render();
+    if (pageHidden) sourceStage.dispose(); else renderCurrent();
   }
 });
 
 function frame(time: number) {
   if (exportController) { lastTime = time; return; }
   if (recording) {
-    const state = advancePlayback(tick, Math.max(0, time - lastTime), Number(speed.value), playing, recording.duration_ticks);
-    tick = state.tick; playing = state.playing; update();
+    const state = advancePresentationPlayback(tick + holdElapsedTicks, Math.max(0, time - lastTime), Number(speed.value), playing, recording.duration_ticks, presentationHoldTicks());
+    tick = state.tick; holdElapsedTicks = state.holdElapsedTicks; playing = state.playing; update();
   }
   lastTime = time;
-  stage?.render();
+  renderCurrent();
 }
 if (stage) stage.renderer.setAnimationLoop(frame);
 else {

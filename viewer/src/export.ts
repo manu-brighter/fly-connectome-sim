@@ -2,6 +2,17 @@ export const EXPORT_SIZE = 900;
 export const EXPORT_FPS = 30;
 export const TERMINAL_HOLD_FRAMES = 15;
 
+// Presentation time can advance beyond the immutable last recorded sample.
+export function advancePresentationPlayback(presentationTick: number, elapsedMs: number, speed: number, playing: boolean, durationTicks: number, holdTicks: number) {
+  const next = Math.max(0, Math.min(durationTicks + holdTicks, presentationTick + (playing ? elapsedMs * 10 * speed : 0)));
+  return {
+    tick: Math.min(durationTicks, next),
+    holdElapsedTicks: Math.max(0, next - durationTicks),
+    terminalHold: holdTicks > 0 && next >= durationTicks,
+    playing: playing && next < durationTicks + holdTicks,
+  };
+}
+
 export function quantizeVideoTick(index: number) {
   if (!Number.isSafeInteger(index) || index < 0) throw new RangeError('Invalid video frame index.');
   return Math.floor((index * 10000 + 15) / EXPORT_FPS);
@@ -22,6 +33,7 @@ export function frameAt(index: number, durationTicks: number, sourceTickForFrame
     timestamp: index / EXPORT_FPS,
     duration: 1 / EXPORT_FPS,
     terminalHold,
+    holdElapsedTicks: terminalHold ? Math.round((index - sourceFrames) * 10000 / EXPORT_FPS) : 0,
   };
 }
 

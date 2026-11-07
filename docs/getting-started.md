@@ -393,12 +393,45 @@ The feed lasts at most8s, cards exactly2s, with no external stimulation or
 learning. The8s session cap takes priority over minimum clip dwell; a third clip
 can therefore end after2s. Export adds one labelled3s terminal plan hold, with
 global30fps timestamps and no hold at the feed/cards boundary. It adds no neural
-measurements. One continuous state does not establish that reel content caused
+measurements. During that hold, the fly makes one illustrative tap on the
+selected card and retracts; defer makes no tap. Interactive event/session replay
+uses the same presentation hold, while simulation time and rates remain fixed.
+Pause freezes the gesture; seeking resets its presentation progress. Reduced
+motion retains the selected highlight without a reaching gesture.
+One continuous state does not establish that reel content caused
 the choice, visual specificity or learning; no such effect is claimed.
 
 The closed [session contract](superpowers/specs/2026-11-03-feed-event-session.md)
 defines the exact source/count/plan/EOF validation. This uses imported JSON,
 not a live LLM/API call. Generated runs/media remain local and ignored.
+
+## Optional scientific replay anatomy
+
+The scientific canvas combines recorded population rates with an optional,
+static sample of source cell-body positions. Generate that separate local file
+from the existing locked runtime and the exact recording you will open:
+
+```powershell
+.venv/Scripts/python.exe scripts/export-anatomy.py --runtime-directory data/malecns-v1.0/runtime --recording runs/my-session/recording.json --output runs/my-session/anatomy.json
+```
+
+The output path must be new. This reads existing annotations and graph IDs;
+it does not download data or run the simulator. Open the recording in the viewer,
+then use **Open anatomy** for its matching `anatomy.json`. Loading another
+recording clears the attached anatomy. The same panel appears in video export;
+without the optional file, rates still work and anatomy is labelled unloaded.
+
+The generator uses only actual `somaLocation` entries for the modeled IDs,
+reports missing positions and deterministically selects at most 12,000 points.
+The cloud is static source-coordinate context, without calibrated anatomical
+axes or inferred synapse positions. The seven activity rows use recorded group
+counts and per-cell Hz with individually labelled fixed scales. They are not
+individual-neuron spike rasters or measured synaptic activity.
+
+The sidecar binds to the original recording bytes and graph-ID hash. The
+generator checks original source bytes; a browser without those sources cannot
+independently prove coordinate provenance. Generated anatomy stays outside Git.
+See the [presentation contract](superpowers/specs/2026-11-07-scientific-replay-presentation.md).
 
 ## Optional model-generated event proposals
 

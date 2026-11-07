@@ -8,12 +8,14 @@
 </p>
 
 An offline experiment built on the released **MaleCNS v1.0** wiring graph.
-The [local imported-proposal observation demo](docs/experiments/2026-11-07-final-demo.md)
-is accepted: real reels enter the native simulation, measured motor activity
-controls a recorded event choice, and a playable 3D replay presents the result.
+The [local imported-proposal observation demo](docs/experiments/2026-11-07-scientific-presentation.md)
+records real reels entering the native simulation. Measured motor activity
+controls the event choice. Its revised replay shows a safe tablet interaction,
+an illustrative selected-card tap, static source anatomy and seven measured
+population traces, including in the playable film.
 Genuine LLM proposal/session acceptance remains externally blocked by missing
 API configuration; no provider request has run. The [current handover](docs/cloud-handover.md)
-records that open task and the closed presentation scope.
+records that open task and the reviewed presentation repair.
 The [bounded content/side diagnostic](docs/experiments/2026-11-07-content-side-diagnostic.md)
 found a motor-readout response to the specific visual manipulation, including
 feed after-effects and layout sensitivity; it did not establish semantic or
@@ -43,14 +45,14 @@ left/right preference.
 | Experiment state | Checkpoint restore, complete-state hashes, reset determinism, candidate-memory interventions and authenticated native map/schema context | A qualified production frozen configuration |
 | Assay evidence | Caller-owned native production, source-specific 408-pair tiny-native repeats, shared declaration arithmetic and a bounded pair checker with full EOF validation | Global grid/selected-evidence reconciliation/public freezing, fullgraph held-out confirmation and the `assay` CLI |
 | Resource pilots | Fullgraph components, trained 10-/70-second one-anchor pilots with isolated native replay, and a [reviewed detail-on first-training-prefix sample](docs/experiments/2026-11-02-fullgraph-detail-prefix-pilot.md) | Unprofiled controlled timing, complete grid/assay capacity and fullgraph cloud/Linux execution |
-| Product | Accepted imported-proposal observation demo and playable 30 fps film; continuous reel→event sessions, bundle inspection, immutable plan, visual/side diagnostic and opt-in proposal transport | Genuine LLM proposal/session acceptance; longer feeds and broader platform checks are follow-ups |
+| Product | Reviewed 30 fps observation replay with safe tablet/tap, static source anatomy and recorded activity; continuous sessions, immutable plan, visual/side diagnostic and opt-in proposal transport | Genuine LLM proposal/session acceptance; per-neuron/synapse recordings and broader platform checks are separate follow-ups |
 
 The [continuous session](docs/superpowers/specs/2026-11-03-feed-event-session.md)
 uses one fresh engine for fast-feed reels and then 2 s of event cards, without
 reset/restore. The representative demo reuses the November 7 recording: 7 s
 feed + 2 s cards, final L6/R2 spikes → Sunset House. Its newly exported film has
 360 frames / 12 s at 30 fps, including one labelled 3 s terminal plan hold.
-See the [final demo](docs/experiments/2026-11-07-final-demo.md) and
+See the [revised demo](docs/experiments/2026-11-07-scientific-presentation.md) and
 [commands](docs/getting-started.md#continuous-reels-and-event-choice).
 Continuous state does not establish that reel content caused the choice.
 The separate fixed8s-feed diagnostic compared matched native states and clocks:

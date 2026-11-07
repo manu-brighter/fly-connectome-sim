@@ -7,6 +7,7 @@ import * as recordingModule from '../src/recording.ts';
 import * as eventModule from '../src/event-replay.ts';
 import * as sessionModule from '../src/session-replay.ts';
 import * as exportModule from '../src/export.ts';
+import * as anatomyModule from '../src/anatomy.ts';
 import { drawOverlay, createEventBoard } from '../src/stage.ts';
 import { createOperationGate } from '../src/operation.ts';
 import * as THREE from 'three';
@@ -183,13 +184,13 @@ function mainHarness() {
   function node() { return { content: '', writes: [], get textContent() { return this.content; }, set textContent(value) { this.content = value; this.writes.push(value); }, hidden: false, disabled: false, value: '1', clientWidth: 200, width: 0, height: 0, handlers: {}, children: [], style: {}, classList: { add() {} }, append(child) { this.children.push(child); }, replaceChildren() { this.children = []; }, setAttribute(name, value) { this[name] = value; }, getContext() { return context; }, addEventListener(name, handler) { this.handlers[name] = handler; }, click() { if (this.download) downloads.push(this.download); return this.handlers.click?.(); } }; }
   const document = { getElementById(id) { if (!nodes.has(id)) nodes.set(id, node()); return nodes.get(id); }, createElement() { return node(); } };
   let currentSample, animation, loadCount = 0, cancelAt = null;
-  const stage = { renderer: { setAnimationLoop(callback) { animation = callback; } }, setRecording() { loadCount++; }, setSample(sample) { currentSample = sample; }, render(hold) { paints.push({ sample: currentSample, hold }); }, setExporting() {}, dispose() {} };
+  const stage = { renderer: { setAnimationLoop(callback) { animation = callback; } }, setRecording() { loadCount++; }, setAnatomy() {}, setSample(sample) { currentSample = sample; }, render(hold, holdElapsedTicks) { paints.push({ sample: currentSample, hold, holdElapsedTicks }); }, setExporting() {}, dispose() {} };
   class BufferTarget { buffer = new ArrayBuffer(1); }
   class Output { state = 'pending'; constructor({target}) { this.target = target; } addVideoTrack() {} async start() { this.state = 'started'; } async finalize() { this.state = 'finalized'; } async cancel() { this.state = 'canceled'; } }
   class CanvasSource { async add() { if (cancelAt !== null && paints.filter(p => p.hold !== undefined).length >= cancelAt) { cancelAt = null; await nodes.get('video').handlers.click(); } } }
   const javascript = stripTypeScriptTypes(readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')).replace(/^import .+;\r?$/gm, '');
-  runInNewContext(javascript, { ...replayModule, ...videoModule, ...recordingModule, ...eventModule, ...sessionModule, ...exportModule, sampleAt: recordingModule.sampleAnyAtTick, createOperationGate, createStage: () => stage, canEncodeVideo: async () => true, document, performance, VideoEncoder: class {}, window: { addEventListener() {} }, setTimeout: () => {}, Blob, URL: { createObjectURL: () => 'blob:declared', revokeObjectURL() {} }, AbortController, BufferTarget, Output, CanvasSource, WebMOutputFormat: class {} });
-  const load = async (value, textPromise) => { const json = JSON.stringify(value); nodes.get('file').files = [{ name: 'session.json', size: Buffer.byteLength(json), text: async () => textPromise ?? json }]; await nodes.get('file').handlers.change(); };
+  runInNewContext(javascript, { ...replayModule, ...videoModule, ...recordingModule, ...eventModule, ...sessionModule, ...exportModule, ...anatomyModule, sampleAt: recordingModule.sampleAnyAtTick, createOperationGate, createStage: () => stage, canEncodeVideo: async () => true, document, performance, VideoEncoder: class {}, window: { addEventListener() {} }, setTimeout: () => {}, Blob, URL: { createObjectURL: () => 'blob:declared', revokeObjectURL() {} }, AbortController, BufferTarget, Output, CanvasSource, WebMOutputFormat: class {} });
+  const load = async (value, textPromise) => { const json = JSON.stringify(value); nodes.get('file').files = [{ name: 'session.json', size: Buffer.byteLength(json), arrayBuffer: async () => new TextEncoder().encode(await (textPromise ?? json)).buffer }]; await nodes.get('file').handlers.change(); };
   const seek = (tick) => { nodes.get('seek').value = String(tick); nodes.get('seek').handlers.input(); };
   const key = (code, options = {}, focus = 'stage') => {
     document.activeElement = nodes.get(focus);
@@ -198,6 +199,44 @@ function mainHarness() {
   };
   return { nodes, load, seek, key, paints, downloads, sample: () => currentSample, loadCount: () => loadCount, cancelAfter: n => { cancelAt = n; }, animate: t => animation(t) };
 }
+
+test('interactive presentation hold pauses, reverses and exports without advancing neural time', async () => {
+  const app = mainHarness(), value = sessionFixture(); await app.load(value); await new Promise(setImmediate);
+  app.seek(value.duration_ticks - 1000); app.key('Space');
+  const time = performance.now(); app.animate(time + 900);
+  let painted = app.paints.at(-1);
+  assert.equal(painted.sample.tick, value.duration_ticks);
+  assert.equal(painted.hold, true);
+  assert.ok(painted.holdElapsedTicks > 7900 && painted.holdElapsedTicks < 8200);
+  assert.equal(app.nodes.get('play').textContent, 'Pause');
+  app.key('Space'); const paused = painted.holdElapsedTicks;
+  app.animate(time + 1500); assert.equal(app.paints.at(-1).holdElapsedTicks, paused);
+  app.paints.length = 0; await app.nodes.get('video').handlers.click();
+  const holds = app.paints.slice(0, -1).filter(paint => paint.hold === true);
+  assert.equal(holds.length, 90);
+  assert.equal(holds[0].holdElapsedTicks, 0); assert.equal(holds[24].holdElapsedTicks, 8000);
+  assert.equal(app.paints.at(-1).holdElapsedTicks, paused, 'Export must restore paused presentation position');
+  app.seek(value.feed_end_tick); app.animate(time + 1700);
+  assert.equal(app.paints.at(-1).holdElapsedTicks, 0); assert.equal(app.sample().decision, null);
+  app.seek(value.duration_ticks); app.key('Space'); app.animate(performance.now() + 3100);
+  assert.equal(app.paints.at(-1).holdElapsedTicks, 30000); assert.equal(app.nodes.get('play').textContent, 'Play');
+  app.key('Space'); assert.equal(app.sample().tick, 0, 'Replay after completed presentation must start at zero');
+});
+
+test('optional anatomy loading blocks export and stale files never replace a newer recording', async () => {
+  const app = mainHarness(), value = sessionFixture(); await app.load(value); await new Promise(setImmediate);
+  const open = app.nodes.get('anatomy-open'), file = app.nodes.get('anatomy-file');
+  assert.ok(open && file, 'Recording needs an optional local anatomy action');
+  assert.equal(open.disabled, false);
+  let finish; file.files = [{ size: 2, text: () => new Promise(resolve => { finish = resolve; }) }];
+  const pending = file.handlers.change();
+  assert.equal(open.disabled, true); assert.equal(app.nodes.get('video').disabled, true);
+  await app.load(eventFixture()); finish('{}'); await pending;
+  assert.equal(app.sample().tick, 0); assert.equal(app.nodes.get('anatomy-note').textContent, 'Anatomy not loaded');
+  assert.equal(app.nodes.get('error').hidden, true);
+  file.files = [{ size: 2, text: async () => '{}' }]; await file.handlers.change();
+  assert.match(app.nodes.get('error').textContent, /anatomy/i); assert.equal(app.nodes.get('play').disabled, false);
+});
 
 test('canvas shortcuts seek the real timeline by100ms and Home/End clamp to recorded bounds', async () => {
   const app = mainHarness(), value = sessionFixture(); await app.load(value);
