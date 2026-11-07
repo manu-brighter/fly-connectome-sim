@@ -9,13 +9,19 @@ because it has unchecked tasks. Replay-first was an explicit user decision.
 
 The product chain is implemented: real reel RGB -> one native MaleCNS engine ->
 measured motor activity -> left/right/defer -> unchanged event plan -> smooth
-3D replay. **Whether changing the visual content changes motor activity or the
-choice has not been established by a controlled comparison.** A positive MBON11
-assay would not automatically establish that: the current event/video policies
+3D replay. **The [bounded diagnostic](experiments/2026-11-07-content-side-diagnostic.md)
+found that this specific real-versus-black visual manipulation changes motor
+activity and the final adapter result.** The fixed8s feed is separate from the adaptive demo.
+Card relocation reveals layout/history sensitivity, not stable semantic event
+preference. A positive MBON11 assay would not automatically establish that:
+the current event/video policies
 use only DNa02 motor-left/right, not the older MBON/motor preference adapter.
 
-**Next session starts with Task 1 below: design a small, bounded content/side
-comparison.** Do not start another general audit, verifier rewrite, full assay,
+**Next session starts with Task 2 below: check local API prerequisites for one
+genuine proposal/session acceptance; if unavailable, continue the final demo
+and explicitly leave LLM acceptance open.** Task1 is completed and reported;
+do not repeat the comparison or expand it into more controls. Do not start
+another general audit, verifier rewrite, full assay,
 large control grid, platform expansion or fresh simulation merely for UI work.
 The user wants completion and useful evidence, with bounded effort.
 
@@ -23,9 +29,9 @@ The user wants completion and useful evidence, with bounded effort.
 
 - Local workspace: `C:/dev/jogge-di-fly-brain`; public repository:
   `https://github.com/manu-brighter/fly-connectome-sim`.
-- Branch: `feat/connectome-experiment-core`; remote: `origin`. Latest code/CI
-  checkpoint before this documentation handover: `981373bc2ff23273ce2980b722c2241b7b8da95f`.
-  This handover is committed on top; use the latest pushed feature HEAD, not a
+- Branch: `feat/connectome-experiment-core`; remote: `origin`. Latest
+  checkpoint before the completed diagnostic: `1b0e996`.
+  The diagnostic checkpoint is committed on top; use the latest pushed feature HEAD, not a
   checkout/reset to that historical hash. Verify status/tracking before edits.
 - Autonomous relevant implementation, tests, reviews, commits and explicit
   `git push -u origin feat/connectome-experiment-core` are authorized. Never
@@ -64,29 +70,41 @@ old task IDs, hashes, detailed acceptance and assay continuation links. Consult
 it on demand; it is not the current execution order. Private local notes and
 this long chat are not required to continue from a fresh checkout.
 
-## Three remaining v1 tasks, in order
+## Experimental v1 tasks, in order
 
 ### 1. Bounded visual-content and side diagnostic
 
-- [ ] Write a short fixed comparison protocol before running it. State exact
+- [x] Write a short fixed comparison protocol before running it. State exact
   inputs, checkpoint/start state, clocks, comparisons, output measures and a
   finite run/resource budget. Have Astra review the scientific interpretation
   once; use Sol for bounded implementation, test-first where code changes.
-- [ ] Separate **feed after-effect** from **response to event cards**. Compare
+- [x] Separate **feed after-effect** from **response to event cards**. Compare
   the same start state and schedule with a controlled changed image sequence
   (e.g. black frames) and separately swap card positions. The current public
   feed policy changes duration based on activity; do not confuse different
   exposure times with a content effect. A small diagnostic harness may need
   fixed observation timing rather than copying the adaptive feed unchanged.
-- [ ] Measure actual native motor counts/rate time courses and adapter outputs;
+- [x] Measure actual native motor counts/rate time courses and adapter outputs;
   report changes, no change, side bias and defer honestly. Existing pilot count
   differences are not controls. Different pixels/hashes alone are insufficient.
   Do not tune thresholds, hunt a winner, require a selection reversal, change
   the kernel or launch the full learning grid to obtain a positive result.
-- [ ] Publish a concise scoped result and update the presentation claim. An
+- [x] Publish a concise scoped result and update the presentation claim. An
   absent effect is acceptable for an honest activity-driven demo; a claim of
   content-dependent preference requires supporting evidence. These controls
   cannot establish semantics, biological learning or general reel preference.
+
+Completed once on2026-11-07: two fixed8s feeds and six2s probes from matched
+complete checkpoints,28s cumulative/504 observations. Real versus black feed
+changed12/16 motor windows; the common black probe showed residual differences
+in4/4. Final counts after real feed: normal L11/R1→left/Sunset House, swapped
+L7/R0→left/Warehouse Techno, black L5/R5→defer. After black feed: normal0/0→defer,
+swapped1/8→right/Sunset House, black0/0→defer. All outcomes/ten contrasts retained.
+The [result](experiments/2026-11-07-content-side-diagnostic.md) records204 passing
+tests, independent raw audit, Astra reviews and the disclosed Windows launcher
+RSS-monitor correction. No native repeat, threshold tuning or new learning claim.
+Raw output remains local at `runs/content-diagnostic-20261107/`; use it for
+inspection, not as a session recording accepted by the viewer.
 
 ### 2. One genuine LLM proposal -> session acceptance
 
@@ -214,15 +232,16 @@ For an explicit research return use the archived handover and
 No complete production assay CLI, positive learning gate or formal qualification
 is established. Preserve genuine negative/inconclusive results.
 
-Current raw-byte model identities (38 Python/C++ members):
+Current raw-byte model identity (39 Python/C++ members):
 
-- Mixed-ending Windows working tree: `f3ef2ff605432fe549ada0aeb37384f3426df94be23d95049f2a180cc2d4197c`.
-- Linux LF/exact Git blobs: `26b0f88127be9bd3d0732161519e23d34c0e8f9ef436ff0d773f558c447ea3e0`.
-- Windows archive with CRLF conversion: `8bc237a7a592ab023d23a980034e4c5dc9441dd84b35b6d056bca60fea355e59`.
+- Mixed-ending Windows working tree: `804899ab8b828365ffb8065094b84aa3eb78330da85b79dd62465435e2cfb1b4`.
+- Exact Git LF blobs: `f55dcd784aa383193e642983d8afc2f505b55a9f82176865985cd98c60233878`.
 - Schema: `3cc3257af02363b056db8390c99bd0040ab902b7808138d8dfc6c3d92628fb13`.
 
-All38 hosted member hashes matched exact Git blobs; in-memory CRLF->LF explains
-archive difference. This was not a formal LF freeze. Any packaged .py/.cpp change
+The Git-blob identity is a byte-layout check, not a new Linux/native run.
+The earlier38-member Linux/CRLF identities remain historical CI evidence in the
+linked report, not identities of this new source. Diagnostic source pins are
+not a formal LF freeze. Any packaged .py/.cpp change
 invalidates previous formal qualification/config/confirmation identities;
 finish source-bearing work before a future formal freeze. Do not rerun science
 for a documentation-only handover change.

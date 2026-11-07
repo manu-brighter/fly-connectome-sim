@@ -11,8 +11,11 @@ An offline experiment built on the released **MaleCNS v1.0** wiring graph.
 The current milestone is a local experimental demo: real reels enter the native
 simulation, measured motor activity controls a recorded event choice, and a
 smooth 3D replay presents the result. The [current handover](docs/cloud-handover.md)
-defines the three remaining v1 tasks: a bounded content/side diagnostic, actual
-LLM-proposal acceptance, and the final demonstration.
+defines the remaining v1 tasks: actual LLM-proposal acceptance and the final
+demonstration. The [bounded content/side diagnostic](docs/experiments/2026-11-07-content-side-diagnostic.md)
+found a motor-readout response to the specific visual manipulation, including
+feed after-effects and layout sensitivity; it did not establish semantic or
+stable event preference.
 
 The separate research track tests a declared KC → MBON11 associative-plasticity
 mechanism using controlled visual stimuli and explicit PPL101 stimulation.
@@ -38,7 +41,7 @@ left/right preference.
 | Experiment state | Checkpoint restore, complete-state hashes, reset determinism, candidate-memory interventions and authenticated native map/schema context | A qualified production frozen configuration |
 | Assay evidence | Caller-owned native production, source-specific 408-pair tiny-native repeats, shared declaration arithmetic and a bounded pair checker with full EOF validation | Global grid/selected-evidence reconciliation/public freezing, fullgraph held-out confirmation and the `assay` CLI |
 | Resource pilots | Fullgraph components, trained 10-/70-second one-anchor pilots with isolated native replay, and a [reviewed detail-on first-training-prefix sample](docs/experiments/2026-11-02-fullgraph-detail-prefix-pilot.md) | Unprofiled controlled timing, complete grid/assay capacity and fullgraph cloud/Linux execution |
-| Product | One-command continuous reel→event sessions, engine-free bundle inspection, measured choice/immutable plan and30fps replay; opt-in proposal transport | Controlled content/side diagnostic, live API acceptance and final representative demo; longer feeds and broader platform checks are follow-ups |
+| Product | One-command continuous reel→event sessions, engine-free bundle inspection, measured choice/immutable plan and30fps replay; bounded visual/side diagnostic and opt-in proposal transport | Live API acceptance and final representative demo; longer feeds and broader platform checks are follow-ups |
 
 The [continuous session](docs/superpowers/specs/2026-11-03-feed-event-session.md)
 uses one fresh engine for fast-feed reels and then2s of event cards, without
@@ -48,6 +51,11 @@ one labelled3s terminal plan hold. See the
 [report](docs/experiments/2026-11-03-feed-event-session.md) and
 [commands](docs/getting-started.md#continuous-reels-and-event-choice).
 Continuous state does not establish that reel content caused the choice.
+The separate fixed8s-feed diagnostic compared matched native states and clocks:
+real versus black input changed motor counts, while swapping the cards after
+real reels kept the final physical action left and therefore changed the
+selected option. This supports sensitivity to those visual inputs, not event
+understanding or a stable preference; it does not relabel the historical pilot.
 
 Use `run-session` to record and export a new local session in one command, then
 `inspect-session` to verify its raw-backed outputs without running the engine.
