@@ -75,11 +75,18 @@ The [CI plan](superpowers/plans/2026-11-07-clean-checkout-ci.md) adds two
 standard Ubuntu 24.04 jobs for tiny native/session tests and viewer tests/build.
 The [report](experiments/2026-11-07-clean-checkout-ci.md) records a clean Git
 export of `b0ea3c1`, its own installed environments and a fresh empty data root:
-143 Python tests passed without skips in85.90s;97 viewer tests passed without
-skips and build exited0. Actionlint passed; ShellCheck was unavailable.
-Hosted Linux acceptance is pending the first reviewed push. No packaged source,
+143 Python tests passed without skips in 85.90s; 97 viewer tests passed without
+skips and build exited 0. Actionlint passed; ShellCheck was unavailable.
+The first actual [hosted run 42379675655](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42379675655)
+on `cfcda1de00520b8c8a267d509b178926c508f884` passed 142 Python tests in 29.63s,
+with the sole Windows-only junction skip; 97 viewer tests and build also passed.
+Ubuntu 24.04/image 20261101.360.1, GCC 13.3.0, Python 3.12.14/uv 0.12.15/PyAV 19.0.2,
+Node 24.21.0/npm 11.19.0; jobs 40s/44s. No packaged source,
 test, schema or dependency changed; the working-tree model identity below remains
-unchanged. The Git/LF export has its own raw-byte identity in the report.
+unchanged. Windows archive, mixed-ending working tree and Linux/LF checkout
+have separate raw-byte identities in the report. Hosted 38-member hashes match
+the exact Git blobs; in-memory CRLF→LF normalization explains the archive
+difference without changing source or completing a formal LF freeze.
 System compiler/image are recorded rather than pinned. This does not close
 fullgraph, macOS, hosted Windows, browser/encoding, live API or formal gates.
 
@@ -792,7 +799,7 @@ Interrupted development runs are never counted as passes.
 
 - [x] Add data-free native/session and viewer compatibility jobs; verify the
   exact selection in a clean isolated Windows Git export with no runtime inputs.
-- [ ] Observe the first hosted Linux workflow and record its exact commit,
+- [x] Observe the first hosted Linux workflow and record its exact commit,
   versions, test counts/skips and outcome before claiming Linux compatibility.
 - [x] Implement/review measured observation recording/export and viewer source;
   complete bounded real fullgraph recording/export and independent raw/parser checks.
@@ -898,8 +905,8 @@ Local .venv, Windows Zig/DLL, graph data, prepared arrays, checkpoints, runs and
 and a C++17 compiler exposing c++. The exercised Windows versions are uv 0.12.15,
 Zig 0.16.0 and historically Node 25.9.0 for the native/data workflow; the viewer
 was checked with Node 24.21.0/npm 11.19.0 and requires Node >=24. Unix
-compiler/platform execution is pending the new hosted compatibility workflow,
-and the compiler is not pinned. See
+tiny-native/session compatibility passed the linked hosted workflow; fullgraph
+Unix execution/macOS remain unverified and the compiler is not pinned. See
 [Getting started](getting-started.md) for platform setup.
 These manual instructions are not Linux results; see the
 [compatibility report](experiments/2026-11-07-clean-checkout-ci.md) for the

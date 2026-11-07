@@ -31,7 +31,7 @@ left/right preference.
 | Native model | C++17 kernel; explicit PAM11/PPL101 stimulation; KC, MBON07, MBON11 and DNa02 telemetry | Physiological validity beyond the declared model |
 | Experiment state | Checkpoint restore, complete-state hashes, reset determinism, candidate-memory interventions and authenticated native map/schema context | A qualified production frozen configuration |
 | Assay evidence | Caller-owned native production, source-specific 408-pair tiny-native repeats, shared declaration arithmetic and a bounded pair checker with full EOF validation | Global grid/selected-evidence reconciliation/public freezing, fullgraph held-out confirmation and the `assay` CLI |
-| Resource pilots | Fullgraph components, trained 10-/70-second one-anchor pilots with isolated native replay, and a [reviewed detail-on first-training-prefix sample](docs/experiments/2026-11-02-fullgraph-detail-prefix-pilot.md) | Unprofiled controlled timing, complete grid/assay capacity and a tested cloud/Linux environment |
+| Resource pilots | Fullgraph components, trained 10-/70-second one-anchor pilots with isolated native replay, and a [reviewed detail-on first-training-prefix sample](docs/experiments/2026-11-02-fullgraph-detail-prefix-pilot.md) | Unprofiled controlled timing, complete grid/assay capacity and fullgraph cloud/Linux execution |
 | Product | One-command continuous reel→event sessions, engine-free bundle inspection, measured choice/immutable plan and30fps replay; opt-in proposal transport | Live API compatibility, longer feed sessions and broader accessibility/cross-browser checks |
 
 The [continuous session](docs/superpowers/specs/2026-11-03-feed-event-session.md)
@@ -130,8 +130,9 @@ setup, locked data download and verification, preparation, experiment commands
 and tests. Allow space for the 1.1 GB source download plus generated outputs.
 The [clean-checkout compatibility workflow](.github/workflows/compatibility.yml)
 targets Ubuntu 24.04 with tiny native/session tests and viewer tests/build,
-without MaleCNS data. Hosted Linux acceptance is pending; the system compiler
-and runner image are recorded per run, not pinned. See the
+without MaleCNS data. The first [hosted Linux run](docs/experiments/2026-11-07-clean-checkout-ci.md)
+passed 142 Python tests with one Windows-only skip, plus 97 viewer tests/build.
+The system compiler and runner image are recorded per run, not pinned. See the
 [exact scope and local commands](docs/getting-started.md#clean-checkout-compatibility).
 macOS remains unverified.
 

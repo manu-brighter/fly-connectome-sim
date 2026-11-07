@@ -28,43 +28,74 @@ the same locked sync passed on the host. No lock or application code was changed
 to bypass it. Local versions: Windows, Python 3.12.14, uv 0.12.15, Zig 0.16.0,
 PyAV 19.0.2, pytest 9.1.1, Node 24.21.0/npm 11.19.0.
 
-The viewer commands `npm ci`, `npm test`, `npm run build` exited0:
-97 tests passed, zero skipped, test duration25.401s. Vite retained its existing
+The viewer commands `npm ci`, `npm test`, `npm run build` exited 0:
+97 tests passed, zero skipped, test duration 25.401s. Vite retained its existing
 bundle-size warning (830.64kB main JS). No real browser or encoded-video
 acceptance was performed in this slice.
 
 The exact native selection is recorded in the workflow and local commands:
-143 tests passed, zero skipped, in85.90s (86.528s command wall time), exit0.
-The evolved native
-checkpoint test verifies an active state, exact checkpoint restoration and
+143 tests passed, zero skipped, in 85.90s (86.528s command wall time), exit 0.
+The evolved native checkpoint test verifies an active state, exact restoration and
 identical continuation; the genuine session fixture uses a generated MPEG4
 and four-neuron native graph. Mutated/resealed count fixtures are declared
 test cases and do not constitute measured MaleCNS outcomes.
 
-The exported Git/LF38-member model identity is
+The Windows archive's 38-member raw-byte model identity is
 `8bc237a7a592ab023d23a980034e4c5dc9441dd84b35b6d056bca60fea355e59`.
 The existing Windows working-tree raw-byte identity remains
 `f3ef2ff605432fe549ada0aeb37384f3426df94be23d95049f2a180cc2d4197c`.
-This is the existing Git/working-tree line-ending distinction; no source
-normalization or formal source-freeze gate was performed. All77 captured
+The archive retained Windows CRLF conversion under `core.autocrlf=true`; the
+working tree has mixed LF/CRLF files. The initial report labelled the archive
+as Git/LF; hosted comparison corrected that assumption. No source files were
+rewritten and no formal source-freeze gate was performed. All 77 captured
 source/test/schema/dependency-lock paths remained byte-identical locally.
 
 ## Hosted acceptance
 
-Pending first reviewed workflow push. A local Windows pass must not be reported
-as Linux execution. The follow-up record must identify the exact tested commit,
-run/jobs, versions, counts and skips before claiming hosted acceptance.
-The existing Windows-junction test intentionally skips on non-Windows platforms;
-that skip must remain visible in the hosted result.
+The first actual [GitHub run 42379675655](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42379675655)
+completed successfully on commit
+`cfcda1de00520b8c8a267d509b178926c508f884`, push event, at
+2026-11-07T14:02:55Z. No rerun or workflow/source correction was required.
 
-Configuration lint: official actionlint1.7.12, archive checksum verified against
-its release manifest, exited0 with no diagnostics. ShellCheck was unavailable.
+| Job | Actual result | Job duration |
+| --- | --- | --- |
+| [Tiny native/session 128424446628](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42379675655/job/128424446628) | 142 passed, 1 skipped in 29.63s | 40s |
+| [Viewer 128424446946](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42379675655/job/128424446946) | 97 passed, 0 skipped in 29.183s; build exit 0 | 44s |
+
+The sole Python skip is the existing Windows-junction case at
+`tests/experiment/test_session_workflow.py:388`, explicitly inapplicable on
+Linux. Media/native tests executed; the Windows isolated run covered that
+junction case. The viewer's retained bundle-size warning is not a build failure.
+
+Both jobs used image `ubuntu24 20261101.360.1`, Ubuntu 24.04 x64. Native compiler:
+`c++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0`; uv 0.12.15;
+Python 3.12.14 (Clang 22.1.3-built distribution); PyAV 19.0.2. Viewer:
+Node 24.21.0/npm 11.19.0. The workflow's package-location, empty runtime and
+effective data-root assertions passed. Hosted source model identity was
+`26b0f88127be9bd3d0732161519e23d34c0e8f9ef436ff0d773f558c447ea3e0`.
+All 38 hosted member hashes match their exact `git show` blob bytes at the tested
+commit. All 38 archive member hashes match those hosted/blob hashes after CRLF
+to LF normalization in memory. The archive, hosted checkout and Windows working
+tree identities are therefore recorded separately; no identity is relabelled
+across them. This establishes this tiny-native/session compatibility selection
+on that hosted environment,
+not cross-platform numerical equivalence or fullgraph execution.
+
+Run metadata and full logs were read through the authenticated CLI and retained
+locally under ignored `.tools/ci-clean-20261107/`; the linked GitHub run is the
+tracked continuation reference. Local evidence is not a cloud prerequisite.
+
+Configuration lint: official actionlint 1.7.12, archive checksum verified against
+its release manifest, exited 0 with no diagnostics. ShellCheck was unavailable.
 `git diff --check` passed. Existing tests provide behavioral acceptance; no
 YAML-mirroring tests or configuration RED/GREEN cycle is claimed.
 Independent configuration/security review closed with zero Critical, Important
 or Minor findings; it verified action metadata, trust/isolation boundaries and
 the genuine native fixture selection. It did not execute the tests or establish
 hosted Linux acceptance.
+The final evidence review independently checked retained run/logs, first-attempt
+metadata, all 77 frozen paths, all 38 hosted/Git member hashes and the three
+source identities; it also closed with zero Critical, Important or Minor findings.
 
 ## Remaining boundaries
 

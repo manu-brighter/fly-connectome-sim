@@ -45,8 +45,10 @@
   Viewer job uses `npm ci`, `npm test`, `npm run build` under `viewer/`, disables automatic package-manager cache. Record versions.
 - [x] Independently review YAML/security/test selection; verify every action SHA and actual inputs. Apply material findings before push.
 - [x] Run selected Python tests and viewer commands from an isolated clean export. Report command, count, elapsed time, skips and toolchain; verify application import belongs to export and no runtime data is used.
-- [ ] Update tracked report/handover with local evidence and clearly pending hosted acceptance. Inspect complete staged diff, hashes and size; commit/push explicitly to feature branch.
-- [ ] Observe the real hosted run, diagnose any failure before claiming Linux support, and update the tracked report/TODO with its exact tested commit, job outcome, versions and scope. Review and push a small evidence follow-up if needed, then pause with concise status.
+- [x] Update tracked report/handover with local evidence and clearly pending hosted acceptance. Inspect complete staged diff, hashes and size; commit/push explicitly to feature branch.
+- [x] Observe the real hosted run, diagnose any failure before claiming Linux support, and update the tracked report/TODO with its exact tested commit, job outcome, versions and scope. Review and push a small evidence follow-up if needed, then pause with concise status.
+
+Acceptance: first hosted run 42379675655 on `cfcda1de00520b8c8a267d509b178926c508f884`, 142 Python passes/1 Windows-only skip; 97 viewer passes/build 0. See the tracked report for exact tools, durations and review scope. Evidence follow-up is a documentation-only checkpoint.
 
 ## Boundaries after this slice
 

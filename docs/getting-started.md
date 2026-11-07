@@ -46,7 +46,9 @@ The [GitHub Actions workflow](../.github/workflows/compatibility.yml) has two
 independent Ubuntu 24.04 jobs, triggered by feature pushes, pull requests or
 manual dispatch. It pins uv 0.12.15, Python 3.12.14 and Node 24.21.0, installs
 locked dependencies, and records the runner image, tool/compiler versions and
-the actual checkout's source fingerprint. Hosted Linux acceptance is pending.
+the actual checkout's source fingerprint. The first actual
+[hosted Linux acceptance](experiments/2026-11-07-clean-checkout-ci.md) passed
+142 Python tests with one Windows-only skip, plus 97 viewer tests/build.
 The system C++17 compiler and runner image are not pinned.
 
 For the Python job's local equivalent, use a fresh checkout/export with no
