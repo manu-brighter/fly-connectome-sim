@@ -10,6 +10,52 @@ from fly_connectome_sim.cli import main
 from fly_connectome_sim.experiment.recorder import verify_run
 
 
+def test_session_workflow_cli_missing_input_fails_closed(tmp_path, monkeypatch, capsys):
+    from fly_connectome_sim import cli
+
+    monkeypatch.setattr(cli.FlyEngine, "from_prepared_graph",
+                        lambda: pytest.fail("Invalid workflow constructed engine"))
+    target = tmp_path / "bundle"
+    assert main(["run-session", "--playlist", "missing.json", "--proposal", "missing.json",
+                 "--output-dir", str(target)]) == 1
+    assert capsys.readouterr().err
+    assert main(["inspect-session", str(target)]) == 1
+    assert capsys.readouterr().err
+
+
+def test_session_workflow_cli_emits_summary_and_fixed_arguments(tmp_path, monkeypatch, capsys):
+    from fly_connectome_sim import cli
+
+    expected = {"status": "complete", "verification_mode": "integrity-only", "plan_status": "deferred",
+                "selected_option_id": None}
+    calls = []
+    def runner(output, **kwargs):
+        calls.append((output, kwargs))
+        return expected
+    def inspector(path):
+        assert path == tmp_path
+        return expected
+    monkeypatch.setattr(cli, "run_session", runner)
+    monkeypatch.setattr(cli, "inspect_session", inspector)
+    assert main(["run-session", "--playlist", "clips.json", "--proposal", "options.json",
+                 "--output-dir", str(tmp_path)]) == 0
+    assert json.loads(capsys.readouterr().out) == expected
+    assert calls[0][0] == tmp_path
+    assert calls[0][1] == {"playlist_path": cli.Path("clips.json"), "proposal_path": cli.Path("options.json"),
+                           "engine_factory": cli.FlyEngine.from_prepared_graph}
+    assert main(["inspect-session", str(tmp_path)]) == 0
+    assert json.loads(capsys.readouterr().out) == expected
+
+
+@pytest.mark.parametrize("flag", ["--selected-option-id", "--action-threshold-hz", "--cycles", "--profile"])
+def test_run_session_cli_has_no_neural_policy_overrides(flag, capsys):
+    with pytest.raises(SystemExit) as error:
+        main(["run-session", "--playlist", "clips.json", "--proposal", "options.json",
+              "--output-dir", "bundle", flag, "1"])
+    assert error.value.code == 2
+    capsys.readouterr()
+
+
 def test_qualification_metadata_declares_real_population_and_heldout_pixels():
     from fly_connectome_sim.cli import _qualification_metadata
     from fly_connectome_sim.engine import _rgb_input_sha256

@@ -69,7 +69,38 @@ plan orient a fresh checkout; private local SDD notes/chats/scripts are not
 required and do not travel through Git. Local raw evidence is not replaced by
 this document. Do not claim to reverify unavailable bytes.
 
-## Current bounded export intake checkpoint
+## Current one-command workflow checkpoint
+
+`run-session` now records once and creates a local bundle with `run/`,
+`recording.json`, `plan.json` and a final atomic `receipt.json`. `inspect-session`
+rederives the existing exports from bounded raw verification without an engine,
+network or writes. Receipt hashes alone cannot override measured plan/source;
+failures retain partial directories without retries, repairs or replacement.
+See the [workflow plan](superpowers/plans/2026-11-07-session-workflow.md),
+[commands/recovery](getting-started.md#continuous-reels-and-event-choice) and
+[acceptance report](experiments/2026-11-07-session-workflow.md).
+
+Current38-member local Windows model identity:
+`f3ef2ff605432fe549ada0aeb37384f3426df94be23d95049f2a180cc2d4197c`.
+Only new workflow module/narrow CLI changed packaged code; core, bounded verifier,
+schema, renderer, viewer and dependencies stayed byte-identical. All74 frozen
+paths match after tests/acceptance. Old formal identities are invalidated.
+
+Scoped tests315pass/5sandboxpathskips; those exact5 host cases passed separately.
+Astra source/runtime and Sol release/evidence reviews closed0/0/0.
+One actual fullgraph CLI attempt exited0
+in98.969s/240s limit, recording7s feed+2s cards and finalL6/R2→Sunset House.
+Engine-free CLI inspection passed with graph/compiler unavailable; a rehashed
+forged copy failed without modifying its7 files. Actual new recording loaded in
+Chrome through the9s bound plan. No new movie, learning/content-causality,
+native-history attestation or formal qualification is claimed.
+
+Local bundle `runs/session-workflow-20261107` is ignored, not a cloud dependency.
+The live viewer may open its `recording.json`; keep `run/` for later inspection.
+JSON/event read bounds do not provide total checkpoint/RSS/CPU or filesystem
+snapshot guarantees. Formal science/C1/live API acceptance remain separately gated.
+
+## Bounded export intake checkpoint
 
 The [bounded intake plan](superpowers/plans/2026-11-07-bounded-event-intake.md)
 adds optional immutable read limits to the existing verifier, enabled only by
@@ -79,7 +110,7 @@ and final digest, and preserve complete normal EOF/integrity/semantic validation
 Generic verify-run, producers, prefixes and unrelated exporters keep old defaults.
 Limits are operational ceilings, not full hostile-filesystem/RSS/CPU guarantees.
 
-Current37-member local Windows model identity:
+That intake checkpoint's37-member local Windows model identity:
 `cad0926bd37e23aa9ab978be9ca28a8d784a97ab874b9dbe033caefc145548d6`.
 The packaged delta is3 Python files; numerical core, schema, dependencies and
 viewer are unchanged. Old formal qualification/config/confirmation identities
@@ -766,6 +797,10 @@ Interrupted development runs are never counted as passes.
   source reviews and one actual9s pilot/raw audit; preserve old export bytes.
 - [x] Close same-artifact session Chrome/global-boundary/download and360frame/12s
   combined movie acceptance; no intermediate hold or clock/state reset.
+- [x] Add one-command run-session with existing recording/replay/plan formats and
+  final receipt, then engine-free raw-backed inspect-session and partial recovery.
+- [x] Review/test both commands and complete one bounded actual fullgraph workflow,
+  no-graph inspection, forgery rejection and same-new-artifact Chrome acceptance.
 - [ ] Continue longer-feed work when requested; reuse validated current data for UI
   changes and keep live LLM/formal integration separately gated.
 - [x] Bound the four event/session exports' manifest/JSONL/entry intake before

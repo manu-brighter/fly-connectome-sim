@@ -280,8 +280,36 @@ and the
 ## Continuous reels and event choice
 
 Use a local playlist prepared as above and the same strict event proposal file.
-This separate command constructs one fresh engine and retains it through both
-phases. Existing standalone video/event commands and formats remain available.
+The one-command workflow constructs one fresh engine and retains it through both
+phases, then exports the replay and plan automatically:
+
+```powershell
+.venv/Scripts/python.exe -m fly_connectome_sim.cli run-session --playlist runs/my-playlist.json --proposal examples/event-options.json --output-dir runs/my-session
+.venv/Scripts/python.exe -m fly_connectome_sim.cli inspect-session runs/my-session
+```
+
+The parent directory must already exist; `my-session` must be new. It contains
+`run/` (the sealed raw artifact), `recording.json` (open this in the viewer),
+`plan.json` and `receipt.json`. The inspector prints completion, selected/deferred
+status/title, global duration/feed ticks, final-window motor counts and file paths.
+It derives the outputs from the bounded raw verifier without constructing an
+engine, calling a provider or writing files. Keep `run/` alongside the outputs for
+inspection. The compact recording alone remains sufficient for viewer playback.
+
+A missing, truncated or inconsistent receipt is incomplete/invalid. Hashes alone
+are insufficient: inspection checks exact canonical exports against the raw
+semantic derivation. A valid receipt records local completion, not native-history
+or scientific attestation. Deferred choice is a valid completed result.
+
+Failures retain the directory and name the failed stage; no automatic retry,
+cleanup, replacement or resume occurs. Input validation still belongs to the
+existing recorder, so invalid input can leave an empty reserved directory without
+constructing an engine. If recording sealed but a later export failed, recover
+manually using the existing export commands below and fresh destination paths.
+Do not rerun run-session into an existing directory or treat a partial tree as
+completed. No atomic snapshot of every file or crash-durability guarantee is made.
+
+The component commands remain available for diagnosis and manual export:
 
 ```powershell
 .venv/Scripts/python.exe -m fly_connectome_sim.cli feed-event-session --playlist runs/my-playlist.json --proposal examples/event-options.json --output-dir runs/my-feed-event-session

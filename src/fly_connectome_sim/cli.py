@@ -28,6 +28,7 @@ from .experiment.video_observation import export_video_replay, record_video_obse
 from .experiment.event_choice import export_event_plan, export_event_replay, record_event_choice_run
 from .experiment.event_proposals import prepare_event_proposal
 from .experiment.feed_event_session import export_session_plan, export_session_replay, record_feed_event_session
+from .experiment.session_workflow import inspect_session, run_session
 from .experiment.stimuli import AssayStimuli
 
 
@@ -131,6 +132,12 @@ def main(argv: list[str] | None = None) -> int:
     session_parser.add_argument("--playlist", type=Path, required=True)
     session_parser.add_argument("--proposal", type=Path, required=True)
     session_parser.add_argument("--output-dir", type=Path, required=True)
+    workflow_parser = commands.add_parser("run-session")
+    workflow_parser.add_argument("--playlist", type=Path, required=True)
+    workflow_parser.add_argument("--proposal", type=Path, required=True)
+    workflow_parser.add_argument("--output-dir", type=Path, required=True)
+    inspect_parser = commands.add_parser("inspect-session")
+    inspect_parser.add_argument("path", type=Path)
     for command in ("export-session-replay", "export-session-plan"):
         session_export_parser = commands.add_parser(command)
         session_export_parser.add_argument("path", type=Path)
@@ -143,6 +150,11 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "verify-run":
             summary = _verified_summary(verify_run(args.path))
+        elif args.command == "run-session":
+            summary = run_session(args.output_dir, playlist_path=args.playlist, proposal_path=args.proposal,
+                                  engine_factory=FlyEngine.from_prepared_graph)
+        elif args.command == "inspect-session":
+            summary = inspect_session(args.path)
         elif args.command == "prepare-event-proposal":
             summary = prepare_event_proposal(
                 args.output_dir, title=args.title, guests=args.guests,

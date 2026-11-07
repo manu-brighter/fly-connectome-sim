@@ -32,7 +32,7 @@ left/right preference.
 | Experiment state | Checkpoint restore, complete-state hashes, reset determinism, candidate-memory interventions and authenticated native map/schema context | A qualified production frozen configuration |
 | Assay evidence | Caller-owned native production, source-specific 408-pair tiny-native repeats, shared declaration arithmetic and a bounded pair checker with full EOF validation | Global grid/selected-evidence reconciliation/public freezing, fullgraph held-out confirmation and the `assay` CLI |
 | Resource pilots | Fullgraph components, trained 10-/70-second one-anchor pilots with isolated native replay, and a [reviewed detail-on first-training-prefix sample](docs/experiments/2026-11-02-fullgraph-detail-prefix-pilot.md) | Unprofiled controlled timing, complete grid/assay capacity and a tested cloud/Linux environment |
-| Product | Continuous reel→event observation in one engine; measured choice/immutable plan and inspected30fps combined replay; opt-in proposal transport | Live API compatibility, longer feed sessions and accessibility/cross-browser polish |
+| Product | One-command continuous reel→event sessions, engine-free bundle inspection, measured choice/immutable plan and30fps replay; opt-in proposal transport | Live API compatibility, longer feed sessions and broader accessibility/cross-browser checks |
 
 The [continuous session](docs/superpowers/specs/2026-11-03-feed-event-session.md)
 uses one fresh engine for fast-feed reels and then2s of event cards, without
@@ -42,6 +42,13 @@ one labelled3s terminal plan hold. See the
 [report](docs/experiments/2026-11-03-feed-event-session.md) and
 [commands](docs/getting-started.md#continuous-reels-and-event-choice).
 Continuous state does not establish that reel content caused the choice.
+
+Use `run-session` to record and export a new local session in one command, then
+`inspect-session` to verify its raw-backed outputs without running the engine.
+Open the bundle's `recording.json` in the viewer; selected and deferred results
+are both valid completions. See the
+[workflow commands and partial-run recovery](docs/getting-started.md#continuous-reels-and-event-choice).
+The completion receipt is local bookkeeping and adds no scientific authority.
 
 The [event-choice contract](docs/superpowers/specs/2026-11-02-event-choice-milestone.md)
 adds two imported event concepts, deterministic visual cards and a fresh 2s

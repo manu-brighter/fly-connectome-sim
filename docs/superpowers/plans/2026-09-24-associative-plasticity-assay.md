@@ -25,7 +25,13 @@ f.3c design is ratified; C1 is parked local uncommitted/unreviewed WIP, not acce
 
 ## Current checkpoint and live remaining work — 2026-11-02
 
-Current product source adds [bounded event export intake](2026-11-07-bounded-event-intake.md)
+Current product source adds [one-command sessions/inspection](2026-11-07-session-workflow.md)
+around existing recording and bounded exports. One bounded9s fullgraph workflow
+and engine-free inspection passed; this adds no scientific/learning authority.
+Exact source and limits: [workflow report](../../experiments/2026-11-07-session-workflow.md).
+Formal source identities are invalidated; C1/qualification remain parked.
+
+The earlier source added [bounded event export intake](2026-11-07-bounded-event-intake.md)
 to the existing verifier as opt-in limits on four event/session exports. Defaults,
 prefixes, native equations and scientific gates stay intact; old formal source
 identities are invalidated and formal integration remains parked. Exact source
