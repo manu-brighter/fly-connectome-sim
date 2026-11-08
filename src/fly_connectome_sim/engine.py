@@ -7,7 +7,7 @@ from hashlib import sha256
 import json
 import math
 import time
-from typing import Literal, NotRequired, TypedDict
+from typing import Callable, Literal, NotRequired, TypedDict
 
 import numpy as np
 
@@ -205,6 +205,20 @@ class FlyEngine:
             group_arrays[name] = values
         self._groups = NeuralGroups(**group_arrays)
         self._identity_json: bytes | None = None
+        self._cell_observer: Callable[[dict], None] | None = None
+        self._cell_indices: tuple[int, ...] = ()
+        self._observation_index = 0
+
+    def configure_cell_observer(self, indices: list[int], callback: Callable[[dict], None]) -> None:
+        """Fix a passive, detached cohort before the first observation."""
+        if (self._cell_observer is not None or self._observation_index
+                or float(self.brain.sim_ms) != 0 or not callable(callback)
+                or not 0 < len(indices) <= 256
+                or any(type(index) is not int or not 0 <= index < self.brain.n for index in indices)
+                or len(set(indices)) != len(indices)):
+            raise ValueError("Cell observer requires a unique fixed cohort before advancement")
+        self._cell_indices = tuple(indices)
+        self._cell_observer = callback
 
     @property
     def groups(self) -> NeuralGroups:
@@ -306,6 +320,8 @@ class FlyEngine:
         remaining_ticks = round(duration_ms / brain.dt)
         kernel_seconds = 0.0
         started = time.perf_counter()
+        observation_index = self._observation_index
+        self._observation_index += 1
 
         while remaining_ticks:
             ticks = min(100, remaining_ticks)
@@ -355,6 +371,15 @@ class FlyEngine:
                     ),
                 }
             bins.append(spike_bin)
+            if self._cell_observer is not None:
+                end_tick = round(float(brain.sim_ms) / brain.dt)
+                self._cell_observer({
+                    "observation_index": observation_index,
+                    "bin_index": len(bins) - 1,
+                    "start_tick": end_tick - ticks,
+                    "end_tick": end_tick,
+                    "counts": [int(counts[index]) for index in self._cell_indices],
+                })
             remaining_ticks -= ticks
 
         seconds = duration_ms / 1000.0

@@ -1,6 +1,77 @@
-# Continuation handover — experimental v1, 2026-11-07
+# Continuation handover — experimental v1, 2026-11-08
 
 ## Start here: current decision and next action
+
+### Current continuation request
+
+After the reviewed presentation repair, the user requested sequential autonomous
+continuation until the agreed work is finished, they say stop, or the token limit
+is reached. **Do not pause automatically after each commit/push.** Keep a small
+number of agents: bounded implementation with Sol, difficult design/integrity
+review with Astra, and preserve progress in tracked checkpoints.
+
+The next product step, inferred from the preceding missing-neuron/synapse
+discussion, is a bounded **recorded single-cell activity and connection view**.
+First inspect existing native detail output, then define a finite acquisition
+and rendering contract before implementation or a new observation. The existing
+static-anatomy film remains valid; aggregate group bins cannot reconstruct
+individual spikes. Connection topology must not be mislabelled as measured
+synaptic transmission. The learning assay is still a separate parked track.
+
+The [cell activity contract](superpowers/specs/2026-11-07-cell-activity-replay.md)
+and [sequential plan](superpowers/plans/2026-11-07-cell-activity-replay.md) now fix
+256 selected cells, at most512 existing directed edges, original native-bin
+counts and completed100ms display windows. Astra completed protocol and process
+supervisor review. A non-neural host smoke test verified actual child-process
+monitoring; sandbox CIM restrictions require host execution for supervision.
+The first implementation attempt hit a usage limit before code changes. The user
+resumed on November8. Sol implemented the passive observer, fixed source-bound
+cohort/topology, incremental raw writer, verified sidecar export and a script
+composing the existing session workflow. 29 focused tests passed; combined
+regression170 passed with4 Windows permission skips, and those4 then passed on
+the host. Astra found and reviewed a correction binding the exporter to the
+canonical recording file's actually inspected bytes; both defects had failing
+regression tests before correction. Backend and safe API diagnostics are now
+reviewed. Final combined host tests:285 passed,2 symlink-privilege skips in129.20s;
+hardlink/junction tests passed. Sol is implementing the viewer. See the
+[backend/API checkpoint](experiments/2026-11-08-cell-capture-api.md).
+**Viewer,
+acquisition and film acceptance are not complete**; do not treat this backend
+checkpoint as a completed demonstration. No interrupted review counts as acceptance.
+
+The user delegated model/token selection. The offline request at
+`runs/proposal-preview-20261107/` uses `gpt-5.4-mini-2026-03-17` with 2048 output
+tokens, the existing Summer team party / 100 guests / CHF5000 brief, and request
+SHA256 `945b86de95401e1349c418e45507d3015ea3cb85e3a064cb69c020e25b8dac51`.
+The current [official model page](https://developers.openai.com/api/docs/models/gpt-5.4-mini)
+supports Responses/structured output and lists USD0.75/M input and USD4.50/M output
+tokens; the displayed rough estimate is 1–2 US cents for one call, not a monetary
+cap. On November8 the user created an API project/key and stored it in the
+Windows user environment as `OPENAI_API_KEY`; a presence-only check confirmed it
+there. Read that user value locally into the request process if the running
+app's inherited environment is stale. Never print or persist it.
+
+The first live attempt at `runs/proposal-live-20261108/` exited1 with the existing
+sanitized `Event proposal transport failed`. It retains only the2024-byte
+`request.json`, no validated proposal/receipt or token usage; the precise cause,
+transmission status and any charge are unverified. No automatic retry occurred.
+After API credit setup, the user explicitly authorized a second attempt.
+`runs/proposal-live-20261108-02/` completed with a validated proposal/receipt:
+357 input +241 output =598 tokens, requested/returned model
+`gpt-5.4-mini-2026-03-17`, nominal USD0.00135225 at the checked tariff. Request
+bytes exactly match the offline preview. Proposal SHA256 is
+`da144f530f962b07431200684b7b3d0e74c0d5b42d5f066431fc9b989741e397`.
+The two concepts are Sunset Rooftop Social / Indoor Summer Bash, within the
+unchanged brief. They remain illustrative estimates, not verified venues/costs.
+Use this exact successful `proposal.json` for the one cell-detail session.
+**No further provider request is needed for the current demo.** The user asked
+to keep API spending bounded and purposeful. Do not purchase credit, enable
+recharge or retry automatically. Actual billing deductions were not inspected.
+The [compatibility run for dc4145f](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42395241518)
+completed successfully. No new fullgraph native simulation has run for this
+continuation yet; tiny-native test fixtures are separate.
+
+### Completed observation baseline
 
 The user accepted the direction review on 2026-11-07: finish a **local,
 experimental, measured-data replay demo**. The original training/research goal
@@ -24,11 +95,10 @@ and added static source anatomy plus seven recorded population traces.
 `runs/scientific-demo-20261107/` contains the revised 30 fps film, exact original
 recording/plan and optional bound anatomy file. The [previous film](experiments/2026-11-07-final-demo.md)
 remains historical; its earlier visual acceptance was insufficient.
-**Genuine LLM proposal/session acceptance remains externally blocked and open.**
-API preflight found no key in process,
-user or machine scope and no supplied model/token/cost configuration. No
-provider request occurred. Resume Task 2 only when those local prerequisites
-are supplied; do not request secrets in chat or call the entire LLM v1 complete.
+**Genuine API proposal generation has passed; its native session and film remain
+open.** External API setup is resolved. Complete Task2 using the successful
+proposal in the one planned cell-detail session; do not call the entire LLM v1
+complete before the session/plan checks.
 Reuse the revised film or exact recording/plan/anatomy for presentation. Do not repeat the diagnostic,
 expand controls, resume research or run a fresh simulation merely for UI work.
 
@@ -54,7 +124,9 @@ expand controls, resume research or run a fresh simulation merely for UI work.
   attribution signatures. Stage explicit first-party files and inspect diff/size.
   Runtime/data, `.tools/`, `.venv/`, `.superpowers/`, `.ai/`, egg-info, runs,
   checkpoints, media, chats and reference images remain ignored/uncommitted.
-- Pause with concise status after the next sensible reviewed feature commit/push.
+- Continue through reviewed feature checkpoints under the current user request;
+  stop for completion, an explicit stop, the token limit or a real unresolved
+  dependency. Do not invent extra product scope or resume parked research.
 
 ## Read only what the next task needs
 
@@ -116,19 +188,17 @@ inspection, not as a session recording accepted by the viewer.
 
 ### 2. One genuine LLM proposal -> session acceptance
 
-- [x] Check local API/model/token/cost configuration. On November 7,
-  **OPENAI_API_KEY was absent in process, user and machine scope** (presence
-  checked only), and no explicit model/token/cost configuration was supplied.
-  This is an external blocker; zero provider requests or API charges occurred.
-  ChatGPT subscription does not supply API credit.
-- [ ] Existing `prepare-event-proposal` defaults offline. Only explicit local
+- [x] Configure local key/model/token settings and make the offline request
+  reviewable. The initial November7 missing-key blocker was resolved November8.
+- [x] Complete one validated live proposal after the explicitly authorized
+  second attempt; exact request/proposal/usage evidence is recorded above.
+  Existing `prepare-event-proposal` still defaults offline. Only explicit local
   key/model/token configuration and `--allow-paid-request` enable one paid
   request. Token limit is not a monetary cap. Do not retry automatically.
-- [ ] Validate the successful provider proposal/receipt, pass its `proposal.json`
-  into existing `run-session`, and preserve selected option/defer exactly.
-  Current earlier pilots use authored `examples/event-options.json`, not live
-  generated proposals. An unavailable API leaves this task explicitly open;
-  it must not block the diagnostic or presentation work.
+- [ ] Pass the fixed successful `proposal.json` through the one planned
+  cell-detail capture that composes `run-session`; preserve selected option/defer
+  exactly and validate the resulting plan. Earlier pilots retain their authored
+  `examples/event-options.json` origin and cannot substitute for this check.
 
 ### 3. Final demonstration and v1 close-out — presentation repaired
 

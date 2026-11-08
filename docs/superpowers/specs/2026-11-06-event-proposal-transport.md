@@ -46,6 +46,14 @@ These are socket/byte bounds, not a guaranteed whole-process deadline or service
 availability claim. Close response/connection on every path. Reject all non-200
 responses, compressed bodies and redirects without a second request.
 
+Reviewed diagnostic refinement (November8): expose only fixed categories for
+plain-integer HTTP400/401/403/404/429 and500..599, plus timeout/TLS/connection-I/O
+and compressed-response rejection. HTTP429 does not distinguish credit from rate
+limits without further evidence. Unknown statuses/types remain generic. Never
+preserve provider body/header/reason/exception text, including a transport-raised
+exception that impersonates an internal error. Raise the selected sanitized
+message after resource cleanup; retry behavior is unchanged.
+
 ## Completion, persistence and errors
 
 Reserve the final NEW directory with exclusive mkdir after all local validation

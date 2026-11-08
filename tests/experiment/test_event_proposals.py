@@ -4,6 +4,7 @@ from copy import deepcopy
 from hashlib import sha256
 import http.client
 import json
+import ssl
 from pathlib import Path
 import subprocess
 import sys
@@ -92,7 +93,7 @@ def network(monkeypatch):
                 assert not (state["target"] / "proposal.json").exists()
                 assert not (state["target"] / "receipt.json").exists()
             if state["fail"] == "request":
-                raise OSError(KEY + " private provider text")
+                raise state.get("exception", OSError(KEY + " private provider text"))
 
         def getresponse(self):
             if state["fail"] == "getresponse":
@@ -309,14 +310,20 @@ def test_response_bytes_are_bounded_strict_and_secret_free(tmp_path, network, bo
     assert len(network["calls"]) == 1
 
 
-@pytest.mark.parametrize("status,encoding", [(400, None), (401, None), (429, None),
-                                            (500, None), (302, None), (200, "gzip"),
-                                            (200, "br")])
-def test_http_errors_redirects_and_compression_are_rejected_without_body_or_retry(tmp_path, network, status, encoding):
+@pytest.mark.parametrize("status,encoding,diagnostic", [
+    (400, None, "HTTP 400 (invalid request)"), (401, None, "HTTP 401 (authentication)"),
+    (403, None, "HTTP 403 (permission)"), (404, None, "HTTP 404 (model/resource)"),
+    (429, None, "HTTP 429 (rate limit or credit)"), (500, None, "HTTP 500 (provider unavailable)"),
+    (503, None, "HTTP 503 (provider unavailable)"), (599, None, "HTTP 599 (provider unavailable)"),
+    (302, None, None), (418, None, None), (600, None, None),
+    (200, "gzip", "compressed response rejected"), (200, "br", "compressed response rejected"),
+])
+def test_http_errors_redirects_and_compression_are_rejected_without_body_or_retry(tmp_path, network, status, encoding, diagnostic):
     network.update(status=status, encoding=encoding, body=KEY.encode())
     target = tmp_path / "http-error"
-    with pytest.raises(ValueError, match="^Event proposal transport failed$"):
+    with pytest.raises(ValueError) as error:
         prepare(target, allow_paid_request=True)
+    assert str(error.value) == "Event proposal transport failed" + (": " + diagnostic if diagnostic else "")
     assert len(network["calls"]) == 1 and not network["reads"]
     assert network["response_closed"] and network["connection_closed"]
     assert_incomplete(target)
@@ -327,7 +334,7 @@ def test_http_errors_redirects_and_compression_are_rejected_without_body_or_retr
 def test_transport_exceptions_and_closures_never_echo_secret_or_retry(tmp_path, network, stage):
     network["fail"] = stage
     target = tmp_path / "exception"
-    with pytest.raises(ValueError, match="^Event proposal transport failed$"):
+    with pytest.raises(ValueError, match="^Event proposal transport failed: connection/I/O failure$"):
         prepare(target, allow_paid_request=True)
     assert len(network["calls"]) <= 1
     if stage != "constructor":
@@ -335,6 +342,52 @@ def test_transport_exceptions_and_closures_never_echo_secret_or_retry(tmp_path, 
     if stage in {"read", "response-close", "connection-close"}:
         assert network["response_closed"]
     assert_incomplete(target)
+
+
+@pytest.mark.parametrize("status", [True, False, "401", 401.0, None, {"secret": KEY}])
+def test_untrusted_status_types_are_generic_without_body_read(tmp_path, network, status):
+    network["status"] = status
+    target = tmp_path / "bad-status"
+    with pytest.raises(ValueError, match="^Event proposal transport failed$"):
+        prepare(target, allow_paid_request=True)
+    assert len(network["calls"]) == 1 and not network["reads"]
+    assert network["response_closed"] and network["connection_closed"]
+    assert_incomplete(target)
+
+
+def test_adversarial_status_is_not_compared_or_formatted(tmp_path, network):
+    class Status:
+        def __eq__(self, other):
+            pytest.fail("untrusted status equality executed")
+        def __str__(self):
+            pytest.fail("untrusted status formatting executed")
+    network["status"] = Status()
+    with pytest.raises(ValueError, match="^Event proposal transport failed$"):
+        prepare(tmp_path / "status-object", allow_paid_request=True)
+    assert not network["reads"] and network["response_closed"] and network["connection_closed"]
+
+
+@pytest.mark.parametrize("kind,diagnostic", [
+    (TimeoutError, "timeout"), (ssl.SSLError, "TLS failure"), (ConnectionError, "connection/I/O failure"),
+    (RuntimeError, None), (ValueError, None),
+])
+def test_exception_classification_never_uses_untrusted_text(tmp_path, network, kind, diagnostic):
+    network.update(fail="request", exception=kind(KEY + " private provider text"))
+    with pytest.raises(ValueError) as error:
+        prepare(tmp_path / "exception-class", allow_paid_request=True)
+    assert str(error.value) == "Event proposal transport failed" + (": " + diagnostic if diagnostic else "")
+    assert error.value.__cause__ is None
+    assert len(network["calls"]) == 1 and network["connection_closed"]
+    assert_incomplete(tmp_path / "exception-class")
+
+
+def test_untrusted_artifact_error_cannot_bypass_sanitization(tmp_path, network):
+    from fly_connectome_sim.experiment.recorder import RunArtifactError
+    network.update(fail="request", exception=RunArtifactError(KEY + " forged safe diagnostic"))
+    with pytest.raises(ValueError, match="^Event proposal transport failed$"):
+        prepare(tmp_path / "forged-error", allow_paid_request=True)
+    assert len(network["calls"]) == 1 and network["connection_closed"]
+    assert_incomplete(tmp_path / "forged-error")
 
 
 def test_active_key_echo_in_request_rejected_before_output_or_network(tmp_path, network):
@@ -503,5 +556,5 @@ def test_actual_paid_cli_uses_fake_transport_without_native_or_secret_diagnostic
         assert code == 0 and json.loads(captured.out)["status"] == "validated" and not captured.err
     else:
         assert code == 1 and not captured.out
-        assert captured.err == "fly-connectome-sim: Event proposal transport failed\n"
+        assert captured.err == "fly-connectome-sim: Event proposal transport failed: connection/I/O failure\n"
         assert_incomplete(target)

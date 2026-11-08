@@ -452,6 +452,13 @@ To make one **paid external request**, configure `OPENAI_API_KEY` securely in
 your local process environment, choose the model and token limit explicitly,
 and add `--allow-paid-request` with a different new directory:
 
+On Windows, create the key in the [API dashboard](https://platform.openai.com/api-keys),
+then use **Edit environment variables for your account → User variables → New**:
+name `OPENAI_API_KEY`, value your key. Open a new terminal after saving; an
+already-running process keeps its previous environment. Keep the value out of
+chat, Git, command history and request files. The command reads the process
+environment; it does not load a `.env` file.
+
 ```powershell
 .venv/Scripts/python.exe -m fly_connectome_sim.cli prepare-event-proposal --title "Summer team party" --guests 100 --max-budget-chf 5000 --model YOUR_MODEL_ID --max-output-tokens 2048 --output-dir runs/proposal-live --allow-paid-request
 ```
@@ -481,8 +488,12 @@ Use the successful proposal through the existing boundary:
 
 The importer still identifies it as `imported-json`; a transport receipt is no
 provider attestation or scientific evidence. The model cannot select a winner,
-change the measured plan or configure neural behavior. Live API compatibility
-has not been exercised here because no API key is configured. See the
+change the measured plan or configure neural behavior. A live Responses request
+using `gpt-5.4-mini-2026-03-17` passed validation on November8,2026; other
+models/accounts are not thereby verified. Eligible subscriptions can activate
+[included API credits](https://help.openai.com/en/articles/20001626-api-credits-benefit-for-eligible-chatgpt-subscriptions);
+check the linked API organization's actual grant rather than assuming credit
+from the subscription alone. See the
 [transport contract](superpowers/specs/2026-11-06-event-proposal-transport.md)
 and [proposal handoff](event-proposal-prompt.md).
 

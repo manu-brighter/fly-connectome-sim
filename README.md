@@ -13,9 +13,10 @@ records real reels entering the native simulation. Measured motor activity
 controls the event choice. Its revised replay shows a safe tablet interaction,
 an illustrative selected-card tap, static source anatomy and seven measured
 population traces, including in the playable film.
-Genuine LLM proposal/session acceptance remains externally blocked by missing
-API configuration; no provider request has run. The [current handover](docs/cloud-handover.md)
-records that open task and the reviewed presentation repair.
+One genuine API proposal generation has now passed validation. The native session
+using those proposals and the new individual-cell visualization are in progress.
+The [current handover](docs/cloud-handover.md) records these open tasks and the
+reviewed presentation repair.
 The [bounded content/side diagnostic](docs/experiments/2026-11-07-content-side-diagnostic.md)
 found a motor-readout response to the specific visual manipulation, including
 feed after-effects and layout sensitivity; it did not establish semantic or
@@ -77,7 +78,9 @@ exactly; an LLM cannot override that selection. Start with the small
 These observation commands import JSON and make no model/API call. The separate
 [proposal command](docs/getting-started.md#optional-model-generated-event-proposals)
 defaults to offline preparation; an explicit key/model/token configuration and
-cost opt-in enable one request. Live API compatibility remains unverified.
+cost opt-in enable one request. One live Responses request using
+`gpt-5.4-mini-2026-03-17` passed validation; this does not establish compatibility
+with every model or account.
 The historical standalone pilot selected Sunset House from final left2/right1 spikes;
 same-artifact Chrome/plan-download and150-frame/5s export checks passed. See the
 [event-choice report](docs/experiments/2026-11-02-event-choice-observation.md).

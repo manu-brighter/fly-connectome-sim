@@ -7,6 +7,7 @@ import http.client
 import os
 from pathlib import Path
 import re
+import ssl
 
 from .event_cards import MAX_PROPOSAL_BYTES, _integer, _text, validate_event_proposal
 from .recorder import RunArtifactError, _canonical, _strict_load
@@ -66,6 +67,8 @@ def _request(brief: dict, model: str, max_output_tokens: int) -> bytes:
 def _post(request: bytes, key: str) -> bytes:
     connection = None
     response = None
+    message = None
+    generic = "Event proposal transport failed"
     try:
         try:
             # Direct HTTPS uses the platform's default verified TLS context, no proxy or redirect handler.
@@ -74,9 +77,21 @@ def _post(request: bytes, key: str) -> bytes:
                 "Authorization": "Bearer " + key, "Content-Type": "application/json",
             })
             response = connection.getresponse()
-            if response.status != 200 or response.getheader("Content-Encoding") is not None:
-                raise ValueError
-            raw = response.read(MAX_RESPONSE_BYTES + 1)
+            status = response.status
+            # Do not compare, format or hash arbitrary transport-supplied objects.
+            if type(status) is not int or status != 200:
+                message = generic
+                if type(status) is int:
+                    category = {400: "invalid request", 401: "authentication", 403: "permission",
+                                404: "model/resource", 429: "rate limit or credit"}.get(status)
+                    if 500 <= status <= 599:
+                        category = "provider unavailable"
+                    if category is not None:
+                        message = f"{generic}: HTTP {status} ({category})"
+            elif response.getheader("Content-Encoding") is not None:
+                message = generic + ": compressed response rejected"
+            else:
+                raw = response.read(MAX_RESPONSE_BYTES + 1)
         finally:
             try:
                 if response is not None:
@@ -84,8 +99,18 @@ def _post(request: bytes, key: str) -> bytes:
             finally:
                 if connection is not None:
                     connection.close()
+    except TimeoutError:
+        message = message or generic + ": timeout"
+    except ssl.SSLError:
+        message = message or generic + ": TLS failure"
+    except OSError:
+        message = message or generic + ": connection/I/O failure"
     except Exception:
-        raise RunArtifactError("Event proposal transport failed") from None
+        message = message or generic
+    # Raise outside exception handlers after both resources have been closed.
+    # Provider bodies, headers, reasons and exception text never enter diagnostics.
+    if message is not None:
+        raise RunArtifactError(message) from None
     return raw
 
 
