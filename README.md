@@ -8,16 +8,13 @@
 </p>
 
 An offline experiment built on the released **MaleCNS v1.0** wiring graph.
-The [local imported-proposal observation demo](docs/experiments/2026-11-07-scientific-presentation.md)
-records real reels entering the native simulation. Measured motor activity
-controls the event choice. Its revised replay shows a safe tablet interaction,
-an illustrative selected-card tap, static source anatomy and seven measured
-population traces, including in the playable film.
-One genuine API proposal generation has now passed validation. The individual-cell
-viewer is implemented and reviewed; its native session and film acceptance remain
-open after a supervision failure, with a corrected retry awaiting authorization.
-The [current handover](docs/cloud-handover.md) records these open tasks and the
-reviewed presentation repair.
+The accepted [experimental observation demo](docs/experiments/2026-11-08-cell-capture-api.md)
+passes a genuine API-generated proposal through one continuous native session,
+measured motor selection, an unchanged event plan and a playable film. Replay
+shows 256 recorded cells in completed 100 ms windows, static model connections,
+source anatomy, seven population traces and an illustrative selected-card tap.
+The [current handover](docs/cloud-handover.md) closes this agreed scope and retains
+the first supervision failure and explicitly authorized successful second launch.
 The [bounded content/side diagnostic](docs/experiments/2026-11-07-content-side-diagnostic.md)
 found a motor-readout response to the specific visual manipulation, including
 feed after-effects and layout sensitivity; it did not establish semantic or
@@ -26,7 +23,7 @@ stable event preference.
 The separate research track tests a declared KC → MBON11 associative-plasticity
 mechanism using controlled visual stimuli and explicit PPL101 stimulation.
 
-**Work in progress: native correctness pilots have not established scientific support.**
+**The separate research assay remains unqualified; correctness pilots have not established scientific support.**
 Formal full-graph qualification and confirmation have not run. Bounded fullgraph
 resource pilots have run, but whole-assay capacity and a production frozen
 configuration have not been established. No positive
@@ -47,14 +44,16 @@ left/right preference.
 | Experiment state | Checkpoint restore, complete-state hashes, reset determinism, candidate-memory interventions and authenticated native map/schema context | A qualified production frozen configuration |
 | Assay evidence | Caller-owned native production, source-specific 408-pair tiny-native repeats, shared declaration arithmetic and a bounded pair checker with full EOF validation | Global grid/selected-evidence reconciliation/public freezing, fullgraph held-out confirmation and the `assay` CLI |
 | Resource pilots | Fullgraph components, trained 10-/70-second one-anchor pilots with isolated native replay, and a [reviewed detail-on first-training-prefix sample](docs/experiments/2026-11-02-fullgraph-detail-prefix-pilot.md) | Unprofiled controlled timing, complete grid/assay capacity and fullgraph cloud/Linux execution |
-| Product | Reviewed 30 fps observation replay with safe tablet/tap, static source anatomy and recorded activity; continuous sessions, immutable plan, visual/side diagnostic and opt-in proposal transport | Genuine LLM proposal/session acceptance; per-neuron/synapse recordings and broader platform checks are separate follow-ups |
+| Product | Accepted genuine proposal → native session → measured choice → unchanged plan → 30 fps film, fixed-cohort cell counts/static connections and bounded visual/side diagnostic | Broader platform/model/account coverage and separately scoped research; no measured synaptic transmission or biological validation |
 
 The [continuous session](docs/superpowers/specs/2026-11-03-feed-event-session.md)
 uses one fresh engine for fast-feed reels and then 2 s of event cards, without
-reset/restore. The representative demo reuses the November 7 recording: 7 s
-feed + 2 s cards, final L6/R2 spikes → Sunset House. Its newly exported film has
-360 frames / 12 s at 30 fps, including one labelled 3 s terminal plan hold.
-See the [revised demo](docs/experiments/2026-11-07-scientific-presentation.md) and
+reset/restore. The current November 8 demo records 7 s feed + 2 s cards:
+final L7/R2 spikes → Sunset Rooftop Social. Its film has 360 frames / 12 s at
+30 fps, including one labelled 3 s terminal plan hold. All 1,040 native bins,
+90 cell-count windows and the fixed source cohort/topology were audited.
+The November 7 imported-proposal [presentation](docs/experiments/2026-11-07-scientific-presentation.md)
+remains separate historical evidence. See the [current result](docs/experiments/2026-11-08-cell-capture-api.md) and
 [commands](docs/getting-started.md#continuous-reels-and-event-choice).
 Continuous state does not establish that reel content caused the choice.
 The separate fixed8s-feed diagnostic compared matched native states and clocks:
@@ -63,7 +62,11 @@ real reels kept the final physical action left and therefore changed the
 selected option. This supports sensitivity to those visual inputs, not event
 understanding or a stable preference; it does not relabel the historical pilot.
 
-Use `run-session` to record and export a new local session in one command, then
+No simulation rerun is needed to open the accepted local bundle at
+`runs/cell-demo-20261108-02/`: load `session/recording.json`, then
+`cell-activity.json` and optional `anatomy.json` in the viewer. The existing film
+is `demo-30fps.webm`. For a separately justified new observation, use
+`run-session` to record and export a local session in one command, then
 `inspect-session` to verify its raw-backed outputs without running the engine.
 Open the bundle's `recording.json` in the viewer; selected and deferred results
 are both valid completions. See the
@@ -80,8 +83,9 @@ These observation commands import JSON and make no model/API call. The separate
 [proposal command](docs/getting-started.md#optional-model-generated-event-proposals)
 defaults to offline preparation; an explicit key/model/token configuration and
 cost opt-in enable one request. One live Responses request using
-`gpt-5.4-mini-2026-03-17` passed validation; this does not establish compatibility
-with every model or account.
+`gpt-5.4-mini-2026-03-17` passed validation and its exact proposal completed the
+accepted session/plan/film chain. This does not establish compatibility with
+every model or account.
 The historical standalone pilot selected Sunset House from final left2/right1 spikes;
 same-artifact Chrome/plan-download and150-frame/5s export checks passed. See the
 [event-choice report](docs/experiments/2026-11-02-event-choice-observation.md).
@@ -111,8 +115,9 @@ Implementation and verification details live in the
 [assay plan](docs/superpowers/plans/2026-09-24-associative-plasticity-assay.md).
 The [assay design](docs/superpowers/specs/2026-09-24-associative-plasticity-pivot-design.md)
 defines the scientific boundaries; the [product specification](docs/specs/fly-event-planner.md)
-describes the broader event-planning goal. Live API acceptance remains open;
-post-choice narrative and training/research are separate follow-ups.
+describes the broader event-planning goal. The agreed experimental observation
+scope is complete; post-choice narrative, broader platform work and training/
+research remain separately scoped.
 
 For a fresh cloud checkout, start with the versioned
 [cloud handover and live TODOs](docs/cloud-handover.md). Local runtime data,
@@ -154,6 +159,9 @@ The [clean-checkout compatibility workflow](.github/workflows/compatibility.yml)
 targets Ubuntu 24.04 with tiny native/session tests and viewer tests/build,
 without MaleCNS data. The first [hosted Linux run](docs/experiments/2026-11-07-clean-checkout-ci.md)
 passed 142 Python tests with one Windows-only skip, plus 97 viewer tests/build.
+The latest [reviewed source CI](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42431095712)
+on `776465dce2ece99ffdec74a43d6f6116157ecc60` passed 185 native/backend tests
+with one Windows-only skip, plus 135 viewer tests with no skips and the build.
 The system compiler and runner image are recorded per run, not pinned. See the
 [exact scope and local commands](docs/getting-started.md#clean-checkout-compatibility).
 macOS remains unverified.

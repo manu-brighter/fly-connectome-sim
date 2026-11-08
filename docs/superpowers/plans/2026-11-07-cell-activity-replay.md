@@ -14,6 +14,9 @@ No new simulator, dependencies or core C++ changes.
 
 **Spec:** [Recorded cell activity replay](../specs/2026-11-07-cell-activity-replay.md).
 The user authorized autonomous sequential continuation. The assay stays parked.
+Implementation, independent source/data review and actual session/film acceptance
+are complete. The final documentation review is approved; the checkpoint is
+recorded below.
 
 ## Constraints and review focus
 
@@ -24,7 +27,9 @@ The user authorized autonomous sequential continuation. The assay stays parked.
 - Validate raw/recording/engine/source bindings and all fully selected group sums.
 - Missing coordinates stay missing; zero activity stays neutral; stale or invalid
   optional detail never replaces the current valid attachment or breaks replay.
-- One acquisition only, after review: <=10s, 244 observations, 1160 bins,
+- One accepted acquisition after review; retain the initial accounting abort and
+  explicitly authorized second launch. No automatic retries. Limits: <=10s,
+  244 observations, 1160 bins,
   900s wall, 4GiB peak RSS, 256MiB task output, 16MiB combined detail.
 - Export and seeking use the same deterministic drawing path; terminal hold
   freezes measurement time. No transmission, exact spike-time or semantic claim.
@@ -49,7 +54,8 @@ Files: `src/fly_connectome_sim/engine.py`, new
 
 Backend test checkpoint: 29 focused tests passed; combined regression170 passed
 with4 Windows permission skips. Those4 hardlink/junction cases then passed on
-the host in2.78s. Independent backend review remains a separate gate below.
+the host in2.78s. Independent backend review subsequently passed, including the
+canonical-recording/exact-inspected-byte binding correction.
 
 ## 2. Count-driven canvas presentation — Sol
 
@@ -78,9 +84,9 @@ These fixture previews do not substitute for the new recording/film below.
 - [x] Select existing playlist and declared proposal once. Use a validated live
   proposal if ready; otherwise label imported origin honestly. No extra native
   run just to change proposal origin.
-- [ ] Run once under external wall/RSS/output supervision; preserve partial
+- [x] Run under external wall/RSS/output supervision; preserve partial
   evidence on failure and never retry automatically.
-- [ ] Audit every raw bin/window, selected group sum, ID/coordinate/edge, source
+- [x] Audit every raw bin/window, selected group sum, ID/coordinate/edge, source
   binding and resource receipt independently of producer summaries.
 
 First launch stopped after0.353s: the monitor mistakenly counted older regression
@@ -89,16 +95,32 @@ The original attempt/freeze/receipts remain unchanged. Reviewed supervisor v2
 requires isolated fresh acquisition evidence and retains all production limits;
 both non-neural normal/overflow smoke tests passed. The119-file retry freeze
 preserves the original117 bindings and adds the corrected supervisor/test hashes.
-Explicit retry authorization is pending; no automatic second acquisition ran.
+The user explicitly authorized the second launch. It completed at
+`runs/cell-demo-20261108-02/`: 9 s (7 s feed + 2 s cards), 214 observations,
+1,040 bins, 90 windows, final L7/R2 → Sunset Rooftop Social. All 256 cohort cells
+are positioned; source/bin/group/topology audits passed. Supervision: 109.223 s,
+948,957,184-byte native peak RSS, 47,844,542-byte observed output peak, both exit
+codes zero, no cleanup errors. The first failed attempt remains intact.
 
 ## 4. Film and reviewed checkpoint
 
-- [ ] Load the new recording and bound sidecars; export 30fps film, inspect
+- [x] Load the new recording and bound sidecars; export 30fps film, inspect
   window/feed/card/decision/hold boundaries and complete playback.
-- [ ] Verify both-side/defer/reduced-motion presentation with synthetic fixtures,
+- [x] Verify both-side/defer/reduced-motion presentation with synthetic fixtures,
   immutable plan, exact counts, no fabricated activity and readable legends.
-- [ ] Record new source identity, actual results/limits and API status in the
+- [x] Record new source identity, actual results/limits and API status in the
   experiment report, usage, README and handover. Preserve historical evidence.
-- [ ] Review the complete explicit staged diff, commit and push only
+- [x] Review the complete explicit staged diff, commit and push only
   `feat/connectome-experiment-core`; check compatibility CI.
-- [ ] Continue remaining authorized work; no automatic pause after this checkpoint.
+- [x] Complete the agreed sequential experimental observation scope; no research
+  resumption or further feature expansion is implied.
+
+Actual film acceptance: VP9, 360 frames, 900×900, 12 s at 30 fps, including a
+labelled 3 s terminal hold. Chrome playback ended without media error or dropped
+frames; the actual 341×1600 narrow view passed. Independent final source/raw/
+artifact/frame review approved the result. See the
+[accepted report](../../experiments/2026-11-08-cell-capture-api.md).
+Reviewed-source [Linux CI](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42431095712)
+passed 185 native/backend tests (one Windows-only skip), 135 viewer tests
+(no skips) and build. The final documentation records this accepted evidence;
+the research track remains parked.

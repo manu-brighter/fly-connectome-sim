@@ -435,6 +435,22 @@ See the [presentation contract](superpowers/specs/2026-11-07-scientific-replay-p
 
 ## Optional recorded cell activity
 
+In the existing Windows workspace, the accepted bundle is already available at
+`runs/cell-demo-20261108-02/`; no simulation or provider request is needed:
+
+```powershell
+.venv/Scripts/python.exe -m fly_connectome_sim.cli inspect-session runs/cell-demo-20261108-02/session
+npm --prefix viewer run dev
+```
+
+Open the printed localhost URL, choose **Open recording** with that bundle's
+`session/recording.json`, then **Open cell counts** with `cell-activity.json`.
+Optionally **Open anatomy** with `anatomy.json`. Play/seek/inspect, or play the
+existing `demo-30fps.webm` directly. **Export video** reproduces presentation from
+the loaded files. A server is not deliberately left running. The
+[accepted report](experiments/2026-11-08-cell-capture-api.md) records exact hashes
+and the retained first failed launch.
+
 Individual counts require capture during a new session; old population totals
 cannot be converted into cell activity. The bounded capture script composes the
 same session engine and records a fixed cohort of at most 256 cells and 512 actual
@@ -547,10 +563,11 @@ After preparing and verifying the graph, on Windows:
 On Linux/macOS, replace `.venv/Scripts/python.exe` with `.venv/bin/python`.
 `verify-run` checks integrity only; native replay verification is a separate
 Python API path. Native cohort production is currently exposed through Python
-APIs; the `assay` CLI remains pending. The optional proposal transport is separate
-and live API compatibility remains unverified. Event proposals can be imported
-and bound to a measured selection. Replay's recorder and
-renderer source passed the bounded real-file/video-end check and remain experimental WIP.
+APIs; the `assay` CLI remains pending. The optional proposal transport is separate:
+the pinned model/account path completed the accepted genuine proposal/session/
+plan/film chain; broader model/account compatibility remains unverified.
+Replay remains experimental, with the current bounded acceptance documented in
+the [cell-count report](experiments/2026-11-08-cell-capture-api.md).
 
 See the [assay implementation plan](superpowers/plans/2026-09-24-associative-plasticity-assay.md)
 for the current scientific milestone and verification details.

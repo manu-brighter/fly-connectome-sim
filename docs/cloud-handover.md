@@ -1,6 +1,6 @@
 # Continuation handover — experimental v1, 2026-11-08
 
-## Start here: current decision and next action
+## Start here: accepted scope and current status
 
 ### Current continuation request
 
@@ -10,13 +10,13 @@ is reached. **Do not pause automatically after each commit/push.** Keep a small
 number of agents: bounded implementation with Sol, difficult design/integrity
 review with Astra, and preserve progress in tracked checkpoints.
 
-The next product step, inferred from the preceding missing-neuron/synapse
-discussion, is a bounded **recorded single-cell activity and connection view**.
-First inspect existing native detail output, then define a finite acquisition
-and rendering contract before implementation or a new observation. The existing
-static-anatomy film remains valid; aggregate group bins cannot reconstruct
-individual spikes. Connection topology must not be mislabelled as measured
-synaptic transmission. The learning assay is still a separate parked track.
+**The agreed experimental observation v1 scope is complete.** The genuine API
+proposal → continuous native session → measured choice → unchanged plan → film
+chain and the bounded recorded single-cell/static-connection view are accepted.
+No further acquisition, provider request or feature expansion is needed for this
+scope. The learning assay and broader platform work remain separately parked.
+Aggregate group bins cannot reconstruct individual spikes; the new cell view uses
+separately captured counts. Static connections are not measured transmission.
 
 The [cell activity contract](superpowers/specs/2026-11-07-cell-activity-replay.md)
 and [sequential plan](superpowers/plans/2026-11-07-cell-activity-replay.md) now fix
@@ -42,9 +42,12 @@ That checkpoint is committed/pushed as `f5766f5094599ff2529436bfabc06c34009441cb
 Its [Linux compatibility run](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42428235786)
 passed:185 native/backend tests,1 Windows-only junction skip; both new symlink
 cases ran successfully. The unchanged viewer passed114 tests and its build.
-**Acquisition and film acceptance are not complete**; do not treat this backend
-checkpoint or synthetic viewer fixtures as a completed demonstration. No
-interrupted review counts as acceptance.
+That was the backend checkpoint, not film acceptance. The subsequent reviewed
+source checkpoint `776465dce2ece99ffdec74a43d6f6116157ecc60` passed
+[Linux CI](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42431095712):
+185 native/backend tests, one Windows-only skip, 135 viewer tests with no skips
+and a successful build. Actual recording/film acceptance below is separate from
+synthetic fixtures; no interrupted review counts as acceptance.
 
 The first acquisition launch stopped after0.353s because the supervisor counted
 pre-existing regression fixtures inside its evidence directory:1,814,974,188
@@ -54,11 +57,24 @@ ended without cleanup errors. `runs/cell-demo-20261108/` contains only an empty
 Original attempt, source freeze and supervision receipts are preserved locally.
 Supervisor v2 isolates new acquisition evidence from prior validation artifacts
 and retains all caps. Both non-neural host smoke tests passed; Astra independently
-reviewed source/receipts and all119 retry-freeze hashes. The concrete retry uses
-`runs/cell-demo-20261108-02/` with fresh isolated local acquisition evidence;
-both targets are still absent. No automatic native retry is permitted by the
-accepted protocol. Explicit authorization for this reviewed retry was requested
-and is pending; do not start another acquisition without it.
+reviewed source/receipts and all 119 retry-freeze hashes. The user explicitly
+authorized the second launch at `runs/cell-demo-20261108-02/` with isolated
+evidence under `.tools/cell-acquisition-20261108-02/`. It completed in 109.223 s;
+both exit codes were zero, with no cleanup errors. Observed native peak RSS was
+948,957,184 bytes and acquisition output peak 47,844,542 bytes. No automatic
+retry occurred; the first incomplete attempt remains intact.
+
+The accepted recording has 7 s feed + 2 s cards, 214 observations, 1,040 native
+bins and 90 completed 100 ms windows. Its fixed cohort has 256 positioned cells
+(KC 231/4,064 plus all mandatory groups), 512/4,254 directed connections and
+5,388 recorded counts across 98 active cells; maximum 14 per cell/window.
+Final L7/R2 selects Sunset Rooftop Social through the unchanged lateral policy.
+The saved/downloaded plan exactly retains the live proposal. Independent source,
+bin/window, artifact and film audits passed. Actual Chrome 157 on Windows 11
+played all 360 VP9 frames / 12 s at 900×900 without error or dropped frames;
+the final 3 s is a labelled frozen-measurement hold with illustrative tap.
+The actual 341×1600 narrow view was checked. See the
+[accepted report](experiments/2026-11-08-cell-capture-api.md) for hashes and limits.
 
 The user delegated model/token selection. The offline request at
 `runs/proposal-preview-20261107/` uses `gpt-5.4-mini-2026-03-17` with 2048 output
@@ -84,12 +100,13 @@ bytes exactly match the offline preview. Proposal SHA256 is
 `da144f530f962b07431200684b7b3d0e74c0d5b42d5f066431fc9b989741e397`.
 The two concepts are Sunset Rooftop Social / Indoor Summer Bash, within the
 unchanged brief. They remain illustrative estimates, not verified venues/costs.
-Use this exact successful `proposal.json` for the one cell-detail session.
+This exact successful `proposal.json` was used for the accepted cell-detail session.
 **No further provider request is needed for the current demo.** The user asked
 to keep API spending bounded and purposeful. Do not purchase credit, enable
 recharge or retry automatically. Actual billing deductions were not inspected.
-No complete fullgraph observation exists for this continuation yet;
-tiny-native test fixtures and the immediately aborted launch are separate.
+The completed fullgraph observation is distinct from tiny-native test fixtures
+and the immediately aborted first launch. It establishes an experimental replay
+demonstration, not scientific qualification or semantic preference.
 
 ### Completed observation baseline
 
@@ -115,11 +132,11 @@ and added static source anatomy plus seven recorded population traces.
 `runs/scientific-demo-20261107/` contains the revised 30 fps film, exact original
 recording/plan and optional bound anatomy file. The [previous film](experiments/2026-11-07-final-demo.md)
 remains historical; its earlier visual acceptance was insufficient.
-**Genuine API proposal generation has passed; its native session and film remain
-open.** External API setup is resolved. Complete Task2 using the successful
-proposal in the one planned cell-detail session; do not call the entire LLM v1
-complete before the session/plan checks.
-Reuse the revised film or exact recording/plan/anatomy for presentation. Do not repeat the diagnostic,
+**Task 2 and the recorded cell-view extension are now accepted** through the
+November 8 native session, unchanged plan and actual film. This closes the agreed
+observation scope, not the broader research/event-platform specification.
+Use the November 8 bundle for the current presentation; retain November 7 as
+historical evidence. Do not repeat the diagnostic,
 expand controls, resume research or run a fresh simulation merely for UI work.
 
 ## Repository, authority and working style
@@ -215,12 +232,17 @@ inspection, not as a session recording accepted by the viewer.
   Existing `prepare-event-proposal` still defaults offline. Only explicit local
   key/model/token configuration and `--allow-paid-request` enable one paid
   request. Token limit is not a monetary cap. Do not retry automatically.
-- [ ] Pass the fixed successful `proposal.json` through the one planned
-  cell-detail capture that composes `run-session`; preserve selected option/defer
-  exactly and validate the resulting plan. Earlier pilots retain their authored
+- [x] Pass the fixed successful `proposal.json` through the accepted November 8
+  cell-detail capture that composes `run-session`; the selected option/brief/
+  programme and downloaded plan exactly match. Earlier pilots retain their authored
   `examples/event-options.json` origin and cannot substitute for this check.
 
 ### 3. Final demonstration and v1 close-out — presentation repaired
+
+- [x] Accept the November 8 genuine-proposal session with 256 recorded cells,
+  static source connections, unchanged plan and actual 30 fps film. Independent
+  raw/source/film review, complete playback and narrow layout passed. The agreed
+  experimental scope is closed; broader platform and research remain separate.
 
 - [x] Repair tablet/fly intersection, place the fly looking at the display and
   animate one selected-side tap after the measured decision. Keep simulation
@@ -231,7 +253,7 @@ inspection, not as a session recording accepted by the viewer.
 - [x] Review actual geometry, encoded frames, scientific labels and unchanged
   recording/plan, then publish a replacement presentation checkpoint.
 
-The replacement has 360 VP9 frames / 12 s at 900×900, with the same 7 s feed,
+The historical November 7 replacement has 360 VP9 frames / 12 s at 900×900, with the same 7 s feed,
 2 s cards and 3 s presentation hold. Both contact paths retain original limb
 lengths and clear tablet/body meshes; the real film shows reach, contact and
 retraction on the selected left card. Anatomy uses 12,000 real sampled somata
@@ -263,14 +285,12 @@ L6/R2 → left/Sunset House and the bound plan are unchanged. No new native
 simulation ran; this uses historical source identity `f3ef2ff6…`, not the
 newer diagnostic source. Viewer checks: 97 passed, no skips; build exited 0.
 See the [final report](experiments/2026-11-07-final-demo.md) for exact artifact
-hashes, reproduction, warnings and limits. Task 2 remains open; this older film
-is superseded by the reviewed repair above.
+hashes, reproduction, warnings and limits. This older film is superseded by the
+reviewed November 7 repair and the accepted November 8 cell-detail demonstration.
 
-**Stop rule:** once the bounded diagnostic is honestly reported, the genuine
-LLM path is accepted (or explicitly left blocked by external API configuration),
-and the representative demo is ready, close the corresponding experimental v1
-scope. If API remains unavailable, label the result imported-proposal demo and
-keep LLM acceptance open; do not call the entire LLM v1 complete.
+**Completion rule:** the diagnostic, genuine proposal/session path and current
+representative film are accepted. Close this agreed experimental v1 scope; do
+not infer further features, research resumption or deployment from that closure.
 
 ## What already works and available local evidence
 
@@ -289,18 +309,22 @@ keep LLM acceptance open; do not call the entire LLM v1 complete.
 - `run-session` composes recording/export/plan and final local receipt;
   `inspect-session` rederives outputs from bounded raw verification without an
   engine/network/writes. Receipt/integrity does not attest native history.
-- Current local bundle: `runs/session-workflow-20261107/` contains `recording.json`,
+- Current local bundle: `runs/cell-demo-20261108-02/` contains the ordinary
+  `session/` bundle, raw/exported cell detail, optional anatomy and the accepted
+  `demo-30fps.webm`. It is 9 s measured data plus a 3 s presentation hold, final
+  L7/R2 → Sunset Rooftop Social. Reopen it without another simulation/API call.
+- Historical local bundle: `runs/session-workflow-20261107/` contains `recording.json`,
   `plan.json`, `receipt.json`, and `run/{run.json,events.jsonl,checkpoints/}`.
   Its actual 9s run was 7s feed+2s cards, final L6/R2 -> Sunset House. This is
-  a result, not a target for the next run. CLI wall time was 98.969s for that
+  a historical result. CLI wall time was 98.969s for that
   specific workload; not a general capacity estimate. This exact recording was
   newly exported and played through for the final demo, without native rerun.
 - Historical combined film acceptance: 360 frames/12s including 3s terminal
   hold, from the separate 2026-11-03 recording. See its linked session report.
   It is separate from the newly accepted November 7 film and retains its own
   historical source/acceptance context.
-- One-command scoped suite: 315 passed/5 sandbox skips; those 5 host path cases
-  separately passed. Latest [CI run](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42380161212)
+- Historical one-command scoped suite: 315 passed/5 sandbox skips; those 5 host path cases
+  separately passed. Historical [CI run](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42380161212)
   on `981373b`: 142 passed/1 Windows-only junction skip; viewer 97 passed/build0.
   CI is data-free tiny-native Linux compatibility, not fullgraph qualification.
   See [CI evidence](experiments/2026-11-07-clean-checkout-ci.md).
@@ -311,10 +335,13 @@ From the existing Windows workspace (choose new output paths; parent must exist)
 
 ```powershell
 git status --short --branch
-.venv/Scripts/python.exe -m fly_connectome_sim.cli inspect-session runs/session-workflow-20261107
+.venv/Scripts/python.exe -m fly_connectome_sim.cli inspect-session runs/cell-demo-20261108-02/session
 npm --prefix viewer run dev
-# Open the localhost URL Vite prints; Open recording -> the bundle's recording.json.
-# Export video in the viewer. Do not assume an old server/tab is still running.
+# Open recording -> runs/cell-demo-20261108-02/session/recording.json.
+# Open cell counts -> runs/cell-demo-20261108-02/cell-activity.json.
+# Optional Open anatomy -> runs/cell-demo-20261108-02/anatomy.json.
+# Play/seek/inspect, or open existing demo-30fps.webm. No simulation rerun is needed.
+# Export video only to reproduce presentation. Do not assume an old server is running.
 ```
 
 Only when a new observation is justified:
@@ -364,7 +391,14 @@ For an explicit research return use the archived handover and
 No complete production assay CLI, positive learning gate or formal qualification
 is established. Preserve genuine negative/inconclusive results.
 
-Current raw-byte model identity (39 Python/C++ members):
+Current frozen raw-byte model identity (40 packaged source members):
+
+- Model fingerprint: `dc83d0796fd51c46323ee0e96a7bcfc725d34c6d94371971d235d90ed4144db5`.
+- Accepted session engine identity: `13eb5c81d3898597224405ae06a62e03359d28588d0b81f5c1a51ead528ae1e7`.
+- All 119 acquisition-freeze bindings were checked independently. This local
+  observation freeze is not formal research qualification.
+
+Historical November 7 raw-byte identity (39 Python/C++ members):
 
 - Mixed-ending Windows working tree: `804899ab8b828365ffb8065094b84aa3eb78330da85b79dd62465435e2cfb1b4`.
 - Exact Git LF blobs: `f55dcd784aa383193e642983d8afc2f505b55a9f82176865985cd98c60233878`.
