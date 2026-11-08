@@ -72,8 +72,14 @@ Consumes Task 1 command, five-file folder and complete candidate/UI contract.
 - [x] Actual browser one-selection import, layers, choice/rewind, invalid mixed
   combination retention, downloads, desktop/narrow layout and local-only requests.
 - [x] Independent actual evidence/visual review; document limits and commands.
-- [ ] Update report/current handover/TODOs, inspect complete explicit staged diff,
+- [x] Update report/current handover/TODOs, inspect complete explicit staged diff,
   reviewed feature commit/push and observe CI; preserve ignored evidence locally.
+
+Accepted feature: `c7bbbdc99ed39e6e03facd43902e3c71ffc71bce`.
+[CI 42525145089](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42525145089)
+passed 243 viewer tests / four private-artifact skips and build; dangling-link
+coverage passed on Linux. Backend/native: 343 passed / eight skips. Local viewer:
+246 passed / one link-privilege skip. See the [report](../../experiments/2026-11-08-local-demo-open.md).
 
 Self-review: one coherent five-file contract covers parser, UI and script; each
 review focus has a Task 1 regression and Task 2 actual acceptance where relevant.

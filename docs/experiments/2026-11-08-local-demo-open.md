@@ -90,6 +90,14 @@ artifacts are absent, those checks skip. These are local results, not CI counts.
 run build` passed with the existing large-chunk advisory. Link creation is
 unavailable in this Windows environment; that test remains enabled for Linux.
 
+Feature `c7bbbdc99ed39e6e03facd43902e3c71ffc71bce` was pushed to
+`origin/feat/connectome-experiment-core`. Its
+[clean-checkout CI](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42525145089)
+passed 243 viewer tests with four expected private-artifact parity skips and a
+successful build. The dangling-output-link test executed and passed on Linux.
+Backend/native compatibility passed 343 tests with eight skips; that automated
+tiny-native coverage is separate from the preserved fullgraph observation.
+
 Astra independently accepted the design and source/integrity changes, then
 inspected actual screenshots/browser evidence and rechecked copies, originals,
 package identity and downloads. That evidence review ran no new browser test.

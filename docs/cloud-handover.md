@@ -55,7 +55,12 @@ all existing brain layers and choice-gated notes. Invalid import retention,
 rewind, picker cancellation, delayed replacement and desktop/mobile layout passed.
 Final local viewer suite: 246 passed, one Windows link-creation skip; build passed.
 Astra independently accepted source, actual visual evidence and artifact bindings;
-feature publication and CI remain as the final checkpoint.
+the step is complete and published as `c7bbbdc99ed39e6e03facd43902e3c71ffc71bce`.
+[Clean-checkout CI](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42525145089)
+passed 243 viewer tests with four private-artifact parity skips and a successful
+build; the Windows-skipped dangling-link case passed on Linux. Backend/native
+compatibility passed 343 tests with eight skips. No further acquisition or
+provider request is needed to use the prepared demo folder.
 The learning assay and broader platform work remain separately parked.
 Aggregate group bins cannot reconstruct individual spikes; the new cell view uses
 separately captured counts. Static connections are not measured transmission.
@@ -301,6 +306,16 @@ inspection, not as a session recording accepted by the viewer.
   and unchanged historical files; use declared fixtures only for race/defer checks.
 - [x] Publish the reviewed feature checkpoint and observe successful clean-checkout
   CI. See the [viewer result](experiments/2026-11-08-followup-viewer.md).
+
+### 2d. Simple local demo start — accepted
+
+- [x] Prepare exactly five checked copies using bounded reads and exclusive output.
+- [x] Open recording, cells, anatomy and companion pair with one selection;
+  preserve old state on failure and ignore superseded asynchronous imports.
+- [x] Accept real prepared files, choice/rewind/download behavior, desktop/mobile
+  layout and unchanged original artifacts; independently review source/evidence.
+- [x] Publish the reviewed feature and observe successful Linux CI, including
+  the dangling-link test. [Result and commands](experiments/2026-11-08-local-demo-open.md).
 
 ### 3. Final demonstration and v1 close-out — presentation repaired
 
