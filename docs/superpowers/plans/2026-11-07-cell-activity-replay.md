@@ -56,27 +56,40 @@ the host in2.78s. Independent backend review remains a separate gate below.
 Files: new `viewer/src/cell-activity.ts` and tests, existing `main.ts`, `stage.ts`,
 `science-panel.ts`, `index.html` and styles as required.
 
-- [ ] Test strict loader bindings, malformed/duplicate fields, counts, topology,
+- [x] Test strict loader bindings, malformed/duplicate fields, counts, topology,
   group coverage, original bin boundaries and stale replacement behavior.
-- [ ] Test first/terminal window, seeking, short-bin aggregation, exact count
+- [x] Test first/terminal window, seeking, short-bin aggregation, exact count
   categories and all-zero/missing-coordinate fixtures before implementation.
-- [ ] Add optional loading, prominent cohort projection, static directed edges,
+- [x] Add optional loading, prominent cohort projection, static directed edges,
   schematic exact-count view and coverage/window/measurement legends.
-- [ ] Use one projection for real cohort/background coordinates and one drawing
+- [x] Use one projection for real cohort/background coordinates and one drawing
   path for viewer/export; retain seven population traces and existing fly/tap.
-- [ ] Run viewer tests/build; inspect actual 900px and narrow layouts.
+- [x] Run viewer tests/build; inspect actual 900px and narrow layouts.
+
+Viewer source checkpoint: 135 tests passed, zero skips, 26.682s; build passed.
+Astra reviewed the source and synthetic browser layouts, including both actual
+proposal texts, their reserved scene viewport and corrected first-paint background.
+These fixture previews do not substitute for the new recording/film below.
 
 ## 3. Review and single acquisition — Astra review, root execution
 
-- [ ] Independently review source/tests/protocol, correct identified defects,
+- [x] Independently review source/tests/protocol, correct identified defects,
   and record concrete source/fixture/protocol hashes before acquisition.
-- [ ] Select existing playlist and declared proposal once. Use a validated live
+- [x] Select existing playlist and declared proposal once. Use a validated live
   proposal if ready; otherwise label imported origin honestly. No extra native
   run just to change proposal origin.
 - [ ] Run once under external wall/RSS/output supervision; preserve partial
   evidence on failure and never retry automatically.
 - [ ] Audit every raw bin/window, selected group sum, ID/coordinate/edge, source
   binding and resource receipt independently of producer summaries.
+
+First launch stopped after0.353s: the monitor mistakenly counted older regression
+fixtures against the acquisition output cap. No measurement files were produced.
+The original attempt/freeze/receipts remain unchanged. Reviewed supervisor v2
+requires isolated fresh acquisition evidence and retains all production limits;
+both non-neural normal/overflow smoke tests passed. The119-file retry freeze
+preserves the original117 bindings and adds the corrected supervisor/test hashes.
+Explicit retry authorization is pending; no automatic second acquisition ran.
 
 ## 4. Film and reviewed checkpoint
 

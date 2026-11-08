@@ -33,11 +33,32 @@ the host. Astra found and reviewed a correction binding the exporter to the
 canonical recording file's actually inspected bytes; both defects had failing
 regression tests before correction. Backend and safe API diagnostics are now
 reviewed. Final combined host tests:285 passed,2 symlink-privilege skips in129.20s;
-hardlink/junction tests passed. Sol is implementing the viewer. See the
+hardlink/junction tests passed. The viewer is now implemented and source-reviewed.
+Its final full suite passed135 tests with zero skips in26.682s; build passed.
+Actual synthetic browser checks cover both live proposal plans, pending/defer and
+the corrected first paint. See the
 [backend/API checkpoint](experiments/2026-11-08-cell-capture-api.md).
-**Viewer,
-acquisition and film acceptance are not complete**; do not treat this backend
-checkpoint as a completed demonstration. No interrupted review counts as acceptance.
+That checkpoint is committed/pushed as `f5766f5094599ff2529436bfabc06c34009441cb`.
+Its [Linux compatibility run](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42428235786)
+passed:185 native/backend tests,1 Windows-only junction skip; both new symlink
+cases ran successfully. The unchanged viewer passed114 tests and its build.
+**Acquisition and film acceptance are not complete**; do not treat this backend
+checkpoint or synthetic viewer fixtures as a completed demonstration. No
+interrupted review counts as acceptance.
+
+The first acquisition launch stopped after0.353s because the supervisor counted
+pre-existing regression fixtures inside its evidence directory:1,814,974,188
+observed bytes exceeded the256MiB acquisition output cap. Both owned processes
+ended without cleanup errors. `runs/cell-demo-20261108/` contains only an empty
+`session/` directory; logs are empty and no measurement files were produced.
+Original attempt, source freeze and supervision receipts are preserved locally.
+Supervisor v2 isolates new acquisition evidence from prior validation artifacts
+and retains all caps. Both non-neural host smoke tests passed; Astra independently
+reviewed source/receipts and all119 retry-freeze hashes. The concrete retry uses
+`runs/cell-demo-20261108-02/` with fresh isolated local acquisition evidence;
+both targets are still absent. No automatic native retry is permitted by the
+accepted protocol. Explicit authorization for this reviewed retry was requested
+and is pending; do not start another acquisition without it.
 
 The user delegated model/token selection. The offline request at
 `runs/proposal-preview-20261107/` uses `gpt-5.4-mini-2026-03-17` with 2048 output
@@ -67,9 +88,8 @@ Use this exact successful `proposal.json` for the one cell-detail session.
 **No further provider request is needed for the current demo.** The user asked
 to keep API spending bounded and purposeful. Do not purchase credit, enable
 recharge or retry automatically. Actual billing deductions were not inspected.
-The [compatibility run for dc4145f](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42395241518)
-completed successfully. No new fullgraph native simulation has run for this
-continuation yet; tiny-native test fixtures are separate.
+No complete fullgraph observation exists for this continuation yet;
+tiny-native test fixtures and the immediately aborted launch are separate.
 
 ### Completed observation baseline
 

@@ -433,6 +433,39 @@ generator checks original source bytes; a browser without those sources cannot
 independently prove coordinate provenance. Generated anatomy stays outside Git.
 See the [presentation contract](superpowers/specs/2026-11-07-scientific-replay-presentation.md).
 
+## Optional recorded cell activity
+
+Individual counts require capture during a new session; old population totals
+cannot be converted into cell activity. The bounded capture script composes the
+same session engine and records a fixed cohort of at most 256 cells and 512 actual
+directed model edges. It makes no provider request:
+
+```powershell
+.venv/Scripts/python.exe -X utf8 -B scripts/run-cell-activity-session.py --runtime-directory data/malecns-v1.0/runtime --playlist runs/my-playlist.json --proposal examples/event-options.json --output runs/my-cell-session
+```
+
+Use a new output directory. The ordinary bundle is under `session/`; incremental
+`cell-activity.jsonl` and the validated `cell-activity.json` are at the output root.
+The script enforces cell/bin/detail-byte limits; the bounded acceptance protocol
+additionally requires external wall/RSS/output supervision. The
+[acquisition report](experiments/2026-11-08-cell-capture-api.md) records the actual
+status and any incomplete attempt; partial output is not an accepted recording.
+
+Open `session/recording.json`, then **Open cell counts** with `cell-activity.json`.
+The viewer checks exact recording bytes, source declarations, original bins and
+population reconciliation. Its canvas shows the last completed 100 ms window;
+before 100 ms no completed window exists. **Inspect exact recorded cell counts**
+lists every source ID and integer count in the same grid order. Zeros remain
+neutral, missing coordinates remain explicit, and seeking/terminal hold use the
+same immutable counts. New recordings clear attachments; invalid files preserve
+the current valid attachment and playback.
+
+Optional anatomy adds static background context using the same projection.
+Export video includes the count panel, fixed connections and seven original
+population traces. These are simulated model counts; connections are static
+topology, not measured synaptic transmission or exact intra-bin spike times.
+See the [cell activity contract](superpowers/specs/2026-11-07-cell-activity-replay.md).
+
 ## Optional model-generated event proposals
 
 `prepare-event-proposal` prepares a request independently of any simulation.

@@ -17,6 +17,7 @@ import * as recordingModule from '../src/recording.ts';
 import * as eventModule from '../src/event-replay.ts';
 import * as exportModule from '../src/export.ts';
 import * as anatomyModule from '../src/anatomy.ts';
+import * as cellModule from '../src/cell-activity.ts';
 
 const canonical = (value) => value && typeof value === 'object' ? Array.isArray(value) ? value.map(canonical) : Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])])) : value;
 const hash = (text) => createHash('sha256').update(text).digest('hex');
@@ -249,12 +250,12 @@ test('late codec completion labels the current event recording with its three-se
   const document = { getElementById(id) { if (!nodes.has(id)) nodes.set(id, node()); return nodes.get(id); }, createElement() { return node(); } };
   let finishCapability;
   const capability = new Promise((resolve) => { finishCapability = resolve; });
-  const stage = { renderer: { setAnimationLoop() {} }, setRecording() {}, setAnatomy() {}, setSample() {}, render() {} };
+  const stage = { renderer: { setAnimationLoop() {} }, setRecording() {}, setAnatomy() {}, setCellActivity() {}, setSample() {}, render() {} };
   const source = readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8');
   const javascript = stripTypeScriptTypes(source).replace(/^import .+;\r?$/gm, '');
   // Execute real main control flow without a browser/WebGL/encoder. The pending
   // encoder is a controlled external dependency; parser and sampling stay real.
-  runInNewContext(javascript, { ...replayModule, ...exportModule, ...anatomyModule, ...videoModule, ...recordingModule, ...eventModule, sampleAt: recordingModule.sampleAnyAtTick, createOperationGate, createStage: () => stage, canEncodeVideo: () => capability, document, performance, VideoEncoder: class {}, window: { addEventListener() {} }, setTimeout });
+  runInNewContext(javascript, { ...replayModule, ...exportModule, ...anatomyModule, ...cellModule, ...videoModule, ...recordingModule, ...eventModule, sampleAt: recordingModule.sampleAnyAtTick, createOperationGate, createStage: () => stage, canEncodeVideo: () => capability, document, performance, VideoEncoder: class {}, window: { addEventListener() {} }, setTimeout });
   const file = nodes.get('file'), json = JSON.stringify(eventFixture());
   file.files = [{ name: 'event.json', size: Buffer.byteLength(json), arrayBuffer: async () => new TextEncoder().encode(json).buffer }];
   await file.handlers.change();

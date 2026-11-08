@@ -9,6 +9,7 @@ import { isVideoRecording, videoInputLabel, videoPolicyLabel, videoSpeedLabel, v
 import { parseAnyRecording, sampleAnyAtTick as sampleAt, type AnyRecording } from './recording.ts';
 import { EVENT_HOLD_FRAMES, eventPlanJson, eventPresentation, isEventRecording, sampleEventAtTick } from './event-replay.ts';
 import { MAX_ANATOMY_BYTES, createAnatomyAttachment, readRecordingFile } from './anatomy.ts';
+import { MAX_CELL_ACTIVITY_BYTES, assertCellAnatomy, buildCellWindows, cellWindowAtTick, createCellActivityAttachment, type CellWindow } from './cell-activity.ts';
 
 function element<T extends HTMLElement>(id: string): T {
   return document.getElementById(id) as T;
@@ -29,6 +30,14 @@ const anatomyFile = element<HTMLInputElement>('anatomy-file');
 const anatomyNote = element('anatomy-note');
 const anatomyAttachment = createAnatomyAttachment();
 let anatomyLoading = false;
+const cellButton = element<HTMLButtonElement>('cell-open');
+const cellFile = element<HTMLInputElement>('cell-file');
+const cellNote = element('cell-note');
+const cellCountCaption = element('cell-count-caption');
+const cellCountBody = element('cell-count-body');
+const cellAttachment = createCellActivityAttachment();
+let cellLoading = false, cellWindows: CellWindow[] = [], cellRows: HTMLElement[] = [];
+let lastCellWindow: CellWindow | null | undefined;
 const replayAnnouncement = element('replay-announcement');
 let recording: AnyRecording | null = null;
 let tick = 0, playing = false, lastTime = performance.now();
@@ -67,9 +76,20 @@ function holdSeconds(record: AnyRecording | null) { return record && (isEventRec
 function presentationHoldTicks() { return recording && (isEventRecording(recording) || isSessionRecording(recording)) ? 30000 : 0; }
 function renderCurrent() { stage?.render(presentationHoldTicks() > 0 && tick >= (recording?.duration_ticks ?? Infinity) ? true : undefined, holdElapsedTicks); }
 function anatomyControls() {
-  anatomyButton.disabled = !recording || operations.loading || operations.exporting || anatomyLoading;
+  anatomyButton.disabled = !recording || operations.loading || operations.exporting || anatomyLoading || cellLoading;
   anatomyFile.disabled = anatomyButton.disabled;
-  videoButton.disabled = !recording || !videoCodec || !stage || operations.loading || (!operations.exporting && anatomyLoading);
+  cellButton.disabled = anatomyButton.disabled; cellFile.disabled = cellButton.disabled;
+  videoButton.disabled = !recording || !videoCodec || !stage || operations.loading || (!operations.exporting && (anatomyLoading || cellLoading));
+}
+
+function updateCellCounts(sourceTick: number) {
+  const detail = cellAttachment.value;
+  if (!detail) return;
+  const window = cellWindowAtTick(cellWindows, sourceTick);
+  if (window === lastCellWindow) return;
+  lastCellWindow = window;
+  cellCountCaption.textContent = window ? `Completed 100 ms window ${(window.start_tick / 10000).toFixed(3)}–${(window.end_tick / 10000).toFixed(3)} s. Schematic grid slots follow these source-ID rows.` : 'Awaiting first complete 100 ms window';
+  cellRows.forEach((row, slot) => { row.textContent = window ? String(window.counts[slot]) : '—'; });
 }
 
 const traceBases: Partial<Record<'kc' | 'mbon11', HTMLCanvasElement>> = {};
@@ -108,6 +128,7 @@ function update() {
   if (!recording) return;
   const sample = sampleAt(recording, tick);
   stage?.setSample(sample);
+  updateCellCounts(sample.sourceTick);
   const video = 'input' in sample;
   const event = 'decision' in sample;
   element('input-caption').textContent = event ? 'Exact fed paired RGB · 384×216' : video ? `Fed video frame · ${videoSpeedLabel(recording)}` : 'Recorded input';
@@ -167,6 +188,7 @@ file.addEventListener('change', async () => {
   const generation = operations.beginLoad();
   if (generation === null) return;
   anatomyAttachment.cancelPending(); anatomyLoading = false;
+  cellAttachment.cancelPending(); cellLoading = false;
   playing = false; update();
   loadingControls(true);
   try {
@@ -178,6 +200,9 @@ file.addEventListener('change', async () => {
     const identity = parsed.source.metadata.engine_identity as { model_provenance?: { graph_ids_sha256?: string } };
     anatomyAttachment.setRecording({ recordingSha256: raw.sha256, graphIdsSha256: identity?.model_provenance?.graph_ids_sha256 ?? '' });
     anatomyNote.textContent = 'Anatomy not loaded';
+    cellAttachment.setRecording({ recordingSha256: raw.sha256, recording: parsed });
+    cellNote.textContent = 'Cell activity not loaded'; cellCountCaption.textContent = 'Cell activity not loaded';
+    cellWindows = []; cellRows = []; lastCellWindow = undefined; cellCountBody.replaceChildren();
     delete traceBases.kc; delete traceBases.mbon11;
     stage?.setRecording(parsed);
     errorElement.hidden = true;
@@ -215,13 +240,14 @@ file.addEventListener('change', async () => {
 anatomyButton.addEventListener('click', () => { if (!anatomyButton.disabled) anatomyFile.click(); });
 anatomyFile.addEventListener('change', async () => {
   const selected = anatomyFile.files?.[0]; anatomyFile.value = '';
-  if (!selected || !recording || anatomyLoading || operations.loading || operations.exporting) return;
+  if (!selected || !recording || anatomyLoading || cellLoading || operations.loading || operations.exporting) return;
   const sourceRecording = recording;
   anatomyLoading = true; anatomyControls();
   try {
     if (selected.size > MAX_ANATOMY_BYTES) throw new Error('Anatomy file exceeds 8 MiB.');
     const attached = await anatomyAttachment.load(selected.text());
     if (!attached || recording !== sourceRecording) return;
+    assertCellAnatomy(cellAttachment.value, anatomyAttachment.value);
     stage?.setAnatomy(anatomyAttachment.value);
     anatomyNote.textContent = `${anatomyAttachment.value!.coverage.displayed_cells.toLocaleString('en-US')} static source positions loaded`;
     errorElement.hidden = true;
@@ -229,6 +255,36 @@ anatomyFile.addEventListener('change', async () => {
     if (recording === sourceRecording) showError(`Cannot open anatomy. ${error instanceof Error ? error.message : 'Invalid sidecar.'} Generate a sidecar for this exact recording; replay remains available.`);
   } finally {
     if (recording === sourceRecording) { anatomyLoading = false; anatomyControls(); renderCurrent(); }
+  }
+});
+
+cellButton.addEventListener('click', () => { if (!cellButton.disabled) cellFile.click(); });
+cellFile.addEventListener('change', async () => {
+  const selected = cellFile.files?.[0]; cellFile.value = '';
+  if (!selected || !recording || cellLoading || anatomyLoading || operations.loading || operations.exporting) return;
+  const sourceRecording = recording;
+  cellLoading = true; anatomyControls();
+  try {
+    if (selected.size > MAX_CELL_ACTIVITY_BYTES) throw new Error('Cell activity file exceeds 16 MiB.');
+    const attached = await cellAttachment.load(selected.text());
+    if (!attached || recording !== sourceRecording) return;
+    const detail = cellAttachment.value!;
+    assertCellAnatomy(detail, anatomyAttachment.value);
+    stage?.setCellActivity(detail);
+    cellWindows = buildCellWindows(detail); lastCellWindow = undefined; cellRows = []; cellCountBody.replaceChildren();
+    for (const [slot, cell] of detail.cells.entries()) {
+      const row = document.createElement('tr');
+      for (const text of [String(slot + 1), String(cell.source_id), cell.groups.join(', '), cell.soma ? cell.soma.join(', ') : 'Missing position']) {
+        const value = document.createElement('td'); value.textContent = text; row.append(value);
+      }
+      const count = document.createElement('td'); count.textContent = '—'; row.append(count); cellRows.push(count); cellCountBody.append(row);
+    }
+    cellNote.textContent = `${detail.cells.length} recorded cells; ${detail.cells.filter(cell => !cell.soma).length} without positions. Static model connections, not measured transmission.`;
+    errorElement.hidden = true; update();
+  } catch (error) {
+    if (recording === sourceRecording) showError(`Cannot open cell activity. ${error instanceof Error ? error.message : 'Invalid sidecar.'} Choose a sidecar for this exact recording; replay remains available.`);
+  } finally {
+    if (recording === sourceRecording) { cellLoading = false; anatomyControls(); renderCurrent(); }
   }
 });
 
@@ -263,6 +319,7 @@ canvas.addEventListener('keydown', (event) => {
 });
 
 function exportControls(exporting: boolean) {
+  cellAttachment.setExporting(exporting);
   openButton.disabled = exporting; file.disabled = exporting; play.disabled = exporting; seek.disabled = exporting; speed.disabled = exporting;
   videoButton.textContent = exporting ? 'Cancel export' : 'Export video';
   videoButton.disabled = !exporting && (!recording || !videoCodec || !stage);
@@ -272,7 +329,7 @@ function exportControls(exporting: boolean) {
 
 videoButton.addEventListener('click', async () => {
   if (exportController) { exportController.abort(); return; }
-  if (!recording || !videoCodec || !stage || anatomyLoading || !operations.beginExport()) return;
+  if (!recording || !videoCodec || !stage || anatomyLoading || cellLoading || !operations.beginExport()) return;
   const sourceRecording = recording, sourceStage = stage;
   const previousTick = tick, previousHoldElapsedTicks = holdElapsedTicks, wasPlaying = playing;
   const controller = new AbortController(); exportController = controller;

@@ -161,11 +161,20 @@ h1 {
   background:#e3edf4
 }
 .stage {
+  container-type:inline-size;
   display:flex;
   flex-direction:column;
   min-width:0;
   background:#dfeaf2
 }
+.stage>canvas.has-cell-activity { min-height:900px }
+.cell-inspection { margin-top:20px; font-size:13px }
+.cell-inspection summary { cursor:pointer }
+.cell-inspection p { max-width:80ch; color:#597083 }
+.cell-table { max-height:460px; overflow:auto; margin:16px 0 }
+.cell-table table { width:100%; border-collapse:collapse; text-align:left; font-variant-numeric:tabular-nums }
+.cell-table th,.cell-table td { padding:8px 12px; border-bottom:1px solid #bdceda; white-space:nowrap }
+.cell-table caption { text-align:left; padding-bottom:12px }
 .stage>canvas {
   display:block;
   width:100%;
@@ -504,7 +513,11 @@ footer p {
     padding:0 16px
   }
   .masthead {
-    height:84px
+    min-height:84px;
+    height:auto;
+    padding:16px 0;
+    flex-wrap:wrap;
+    gap:14px
   }
   .identity strong {
     font-size:16px
@@ -516,7 +529,8 @@ footer p {
     font-size:35px
   }
   .file-actions {
-    gap:7px
+    gap:7px;
+    flex-wrap:wrap
   }
   .file-actions button {
     font-size:12px;
@@ -623,6 +637,9 @@ footer p {
     margin-top:8px;
     max-width:75ch
   }
+}
+@container (max-width:859px) {
+  .stage>canvas.has-cell-activity { min-height:1600px; aspect-ratio:auto }
 }
 @media(prefers-reduced-motion:reduce) {
   * {

@@ -1,15 +1,16 @@
 import { isSessionRecording } from './session-replay.ts';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { decodePixels } from './replay.ts';
+import { decodePixels, type Counts } from './replay.ts';
 import { EXPORT_SIZE } from './export.ts';
 import { flyPose, selectionTapProgress } from './motion.ts';
 import { createSwipeArm } from './swipe-arm.ts';
 import { isVideoRecording, videoInputLabel, videoPlaneHeight, videoPolicyLabel, videoSpeedLabel } from './video-replay.ts';
 import { type AnyRecording, type sampleAnyAtTick } from './recording.ts';
-import { eventPresentation, isEventRecording, type sampleEventAtTick } from './event-replay.ts';
-import { buildActivityTraces, drawSciencePanel, projectSomaPoints, scienceLayout, type ActivityTrace } from './science-panel.ts';
+import { eventPresentation, isEventRecording, type EventOption, type sampleEventAtTick } from './event-replay.ts';
+import { CELL_PANEL_MIN_WIDTH, buildActivityTraces, drawSciencePanel, prepareCellPanel, projectSomaPoints, scienceLayout, type ActivityTrace } from './science-panel.ts';
 import type { Anatomy } from './anatomy.ts';
+import type { CellActivity } from './cell-activity.ts';
 
 type Sample = ReturnType<typeof sampleAnyAtTick>;
 const INK = '#172B3A';
@@ -76,26 +77,54 @@ export function drawOverlay(context: CanvasRenderingContext2D, width: number, he
 
 // The same sampled result paints interactive and encoded frames. Imported text
 // is drawn literally; the selected proposal never appears before effective_tick.
+export function eventPlanLayout(context: CanvasRenderingContext2D, width: number, sample: ReturnType<typeof sampleEventAtTick>) {
+  const view = eventPresentation(sample), maxWidth = Math.min(width - 44, 600);
+  const source = [view.status, ...(sample.decision ? [view.title, ...view.lines, view.measurement] : [])];
+  const lines: Array<{ text: string; font: string; color: string }> = [];
+  for (const [index, text] of source.entries()) {
+    const font = index === 1 ? '600 13px Bahnschrift, Aptos, sans-serif' : '400 12px Bahnschrift, Aptos, sans-serif';
+    context.font = font;
+    const push = (value: string) => lines.push({ text: value, font, color: index === 0 ? '#597083' : INK });
+    let line = '';
+    for (const word of text.split(' ')) {
+      if (context.measureText(word).width > maxWidth) {
+        if (line) { push(line); line = ''; }
+        for (const character of word) {
+          if (line && context.measureText(line + character).width > maxWidth) { push(line); line = character; }
+          else line += character;
+        }
+      } else if (line && context.measureText(`${line} ${word}`).width > maxWidth) { push(line); line = word; }
+      else line = line ? `${line} ${word}` : word;
+    }
+    if (line) push(line);
+  }
+  return { x: 12, y: 12, width: maxWidth + 20, height: 18 + lines.length * 15, lines };
+}
 export function drawEventPlan(context: CanvasRenderingContext2D, width: number, sample: ReturnType<typeof sampleEventAtTick>) {
-  const view = eventPresentation(sample), narrow = width < 650;
-  const maxWidth = Math.min(width - 44, narrow ? 480 : 600), measurements: string[] = [];
-  context.font = '12px Bahnschrift, Aptos, sans-serif';
-  if (sample.decision) for (const chunk of view.measurement.split(' · ')) {
-    const previous = measurements.at(-1);
-    if (previous && context.measureText(`${previous} · ${chunk}`).width <= maxWidth) measurements[measurements.length - 1] = `${previous} · ${chunk}`;
-    else measurements.push(chunk);
+  const layout = eventPlanLayout(context, width, sample);
+  context.save(); context.fillStyle = 'rgba(243,247,250,.94)'; context.fillRect(layout.x, layout.y, layout.width, layout.height);
+  for (const [index, line] of layout.lines.entries()) {
+    context.font = line.font; context.fillStyle = line.color; context.fillText(line.text, 22, 31 + index * 15);
   }
-  const lines = [view.status, ...(sample.decision ? [view.title, ...view.lines, ...measurements] : [])];
-  const lineHeight = narrow || lines.length > 12 ? 15 : 16;
-  context.save(); context.fillStyle = 'rgba(243,247,250,.94)'; context.fillRect(12, 12, maxWidth + 20, 18 + lines.length * lineHeight);
-  for (const [index, text] of lines.entries()) {
-    const measurement = index >= lines.length - measurements.length;
-    context.font = `${index === 1 ? '600' : '400'} ${measurement ? 12 : narrow ? 11 : 13}px Bahnschrift, Aptos, sans-serif`;
-    const measured = context.measureText(text).width;
-    if (measured > maxWidth) context.font = `${Math.max(7, Math.floor((narrow ? 11 : 13) * maxWidth / measured))}px Bahnschrift, Aptos, sans-serif`;
-    context.fillStyle = index === 0 ? '#597083' : INK; context.fillText(text, 22, 31 + index * lineHeight, maxWidth);
-  }
-  context.restore();
+  context.restore(); return layout;
+}
+
+type CardProposal = { brief: { guests: number }; options: EventOption[] };
+export function eventSceneViewport(context: CanvasRenderingContext2D, width: number, sceneHeight: number,
+                                   sample: ReturnType<typeof sampleEventAtTick>, proposal: CardProposal,
+                                   populations: Pick<Counts, 'motor_left' | 'motor_right'>) {
+  if (width >= CELL_PANEL_MIN_WIDTH) return { planWidth: 310, minimumSceneHeight: 336, scene: { x: 310, y: 0, width: width - 310, height: sceneHeight - 36 } };
+  // Bounds-only placeholders reserve every possible option and defer before a
+  // decision. They are never drawn, recorded or used for the adapter. Their
+  // counts are fixed upper bounds, not future measured results.
+  const decision = { counts: { motor_left: populations.motor_left * 5000, motor_right: populations.motor_right * 5000 },
+    readout: { signed_difference_hz: -10000, action: 'inspect_right' } };
+  const heights = [...proposal.options, null].map(option => eventPlanLayout(context, width, {
+    ...sample, decision, plan: { brief: proposal.brief, selected_option: option },
+  } as ReturnType<typeof sampleEventAtTick>).height);
+  const reserved = Math.max(...heights) + 36;
+  const minimumSceneHeight = reserved + 336;
+  return { planWidth: width, minimumSceneHeight, scene: { x: 0, y: reserved, width, height: Math.max(sceneHeight, minimumSceneHeight) - reserved - 36 } };
 }
 
 // One bounded presentation surface per loaded video; never an extra neural input.
@@ -222,6 +251,7 @@ export function createStage(canvas: HTMLCanvasElement) {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#DFEAF2');
+  renderer.setClearColor(scene.background, 1);
   scene.fog = new THREE.Fog('#DFEAF2', 18, 30);
   const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 50);
   camera.position.set(6.1, 5.3, 10.8);
@@ -260,12 +290,14 @@ export function createStage(canvas: HTMLCanvasElement) {
   let exporting = false;
   let eventPhase: boolean | null = null;
   let anatomy: Anatomy | null = null, somaProjection: Array<[number, number]> = [], activityTraces: ActivityTrace[] = [];
+  let cellPanel: ReturnType<typeof prepareCellPanel> | null = null;
   function setRecording(next: AnyRecording) {
     swipeSurface?.dispose(); swipeSurface = null;
     Object.values(textures).forEach((texture) => texture.dispose()); textures = {};
     recording = next;
     eventPhase = null;
     anatomy = null; somaProjection = []; activityTraces = buildActivityTraces(next);
+    cellPanel = null; canvas.classList.remove('has-cell-activity');
     phone.visible = !isEventRecording(next); eventBoard.group.visible = isEventRecording(next);
     eventBoard.screen.material.map = null; eventBoard.screen.material.needsUpdate = true;
     eventBoard.highlights.left.visible = false; eventBoard.highlights.right.visible = false;
@@ -289,18 +321,30 @@ export function createStage(canvas: HTMLCanvasElement) {
     const material = pixelsScreen.material as THREE.MeshBasicMaterial; material.map = null; material.needsUpdate = true;
   }
   function render(terminalHold = false, holdElapsedTicks = 0) {
+    const logicalWidth = exporting ? EXPORT_SIZE : Math.min(900, canvas.clientWidth);
+    const cardSample = cellPanel && sample && 'decision' in sample ? sample : null;
+    const proposal = cardSample && recording ? recording.source.metadata.proposal as CardProposal : null;
+    if (!exporting) {
+      const base = cellPanel ? (logicalWidth < CELL_PANEL_MIN_WIDTH ? 1600 : 900) : 0;
+      const required = cardSample && proposal && recording && logicalWidth < CELL_PANEL_MIN_WIDTH
+        ? scienceLayout(logicalWidth, 0, true).panelHeight + eventSceneViewport(context, logicalWidth, 0, cardSample, proposal, recording.groups).minimumSceneHeight : 0;
+      const minimum = Math.max(base, required);
+      canvas.style.minHeight = minimum ? `${minimum}px` : '';
+    }
     const rect = canvas.getBoundingClientRect();
     const ratio = Math.min(devicePixelRatio, 1.75);
     const width = exporting ? EXPORT_SIZE : Math.max(1, Math.round(rect.width * ratio));
     const height = exporting ? EXPORT_SIZE : Math.max(1, Math.round(rect.height * ratio));
-    const logicalWidth = exporting ? EXPORT_SIZE : Math.min(900, canvas.clientWidth);
     const scale = width / logicalWidth, logicalHeight = height / scale;
-    const layout = scienceLayout(logicalWidth, logicalHeight);
-    const sceneHeight = Math.max(1, Math.round((layout.sceneHeight - 36) * scale));
+    const layout = scienceLayout(logicalWidth, logicalHeight, cellPanel !== null);
+    const viewport = cardSample && proposal && recording ? eventSceneViewport(context, logicalWidth, layout.sceneHeight, cardSample, proposal, recording.groups)
+      : { planWidth: logicalWidth, scene: { x: 0, y: 0, width: logicalWidth, height: layout.sceneHeight - 36 } };
+    const sceneWidth = Math.max(1, Math.round(viewport.scene.width * scale)), sceneHeight = Math.max(1, Math.round(viewport.scene.height * scale));
+    const sceneX = Math.round(viewport.scene.x * scale), sceneY = Math.round(viewport.scene.y * scale);
     if (canvas.width !== width || canvas.height !== height) {
       canvas.width = width; canvas.height = height; renderer.setSize(width, height, false);
     }
-    camera.aspect = width / sceneHeight; camera.updateProjectionMatrix();
+    camera.aspect = sceneWidth / sceneHeight; camera.updateProjectionMatrix();
     const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const inputName = sample && ('frame_id' in sample.segment ? sample.segment.frame_id : sample.segment.stimulus);
     if (inputName) {
@@ -352,8 +396,8 @@ export function createStage(canvas: HTMLCanvasElement) {
     camera.fov = fittedFov(eventPhase ? 33 : 35, camera.aspect); camera.updateProjectionMatrix();
     renderer.setScissorTest(false); renderer.setViewport(0, 0, width, height); renderer.clear();
     // Shared measurements keep the scene, captions and science panel disjoint.
-    renderer.setViewport(0, height - sceneHeight, width, sceneHeight);
-    renderer.setScissor(0, height - sceneHeight, width, sceneHeight); renderer.setScissorTest(true);
+    renderer.setViewport(sceneX, height - sceneY - sceneHeight, sceneWidth, sceneHeight);
+    renderer.setScissor(sceneX, height - sceneY - sceneHeight, sceneWidth, sceneHeight); renderer.setScissorTest(true);
     renderer.render(scene, camera);
     renderer.setScissorTest(false);
     context.drawImage(renderer.domElement, 0, 0, width, height);
@@ -361,8 +405,8 @@ export function createStage(canvas: HTMLCanvasElement) {
       context.save(); context.scale(scale, scale);
       context.font = '12px Bahnschrift, Aptos, sans-serif'; context.fillStyle = '#172B3A';
       presentationCaption(sample, terminalHold, holdElapsedTicks, reducedMotion).forEach((caption, index) => context.fillText(caption, 16, layout.sceneHeight - 22 + index * 14, logicalWidth - 32));
-      if ('decision' in sample) drawEventPlan(context, logicalWidth, sample);
-      drawSciencePanel(context, logicalWidth, logicalHeight, recording, sample, activityTraces, anatomy, somaProjection);
+      if ('decision' in sample) drawEventPlan(context, viewport.planWidth, sample);
+      drawSciencePanel(context, logicalWidth, logicalHeight, recording, sample, activityTraces, anatomy, somaProjection, cellPanel);
       context.restore();
     } else drawOverlay(context, width, height, logicalWidth, recording, sample, terminalHold, reducedMotion);
   }
@@ -378,6 +422,7 @@ export function createStage(canvas: HTMLCanvasElement) {
     Object.values(textures).forEach((texture) => texture.dispose()); renderer.dispose();
   }
   return { renderer, render, setRecording,
-    setAnatomy: (next: Anatomy | null) => { anatomy = next; somaProjection = projectSomaPoints(next); },
+    setAnatomy: (next: Anatomy | null) => { if (exporting) return; const nextPanel = cellPanel ? prepareCellPanel(cellPanel.detail, next) : null; anatomy = next; somaProjection = projectSomaPoints(next); cellPanel = nextPanel; },
+    setCellActivity: (next: CellActivity | null) => { if (exporting) return; cellPanel = next ? prepareCellPanel(next, anatomy) : null; canvas.classList.toggle('has-cell-activity', next !== null); },
     setSample: (next: Sample) => { sample = next; }, setExporting: (value: boolean) => { exporting = value; controls.enabled = !value; }, dispose };
 }

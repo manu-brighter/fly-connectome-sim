@@ -13,8 +13,9 @@ records real reels entering the native simulation. Measured motor activity
 controls the event choice. Its revised replay shows a safe tablet interaction,
 an illustrative selected-card tap, static source anatomy and seven measured
 population traces, including in the playable film.
-One genuine API proposal generation has now passed validation. The native session
-using those proposals and the new individual-cell visualization are in progress.
+One genuine API proposal generation has now passed validation. The individual-cell
+viewer is implemented and reviewed; its native session and film acceptance remain
+open after a supervision failure, with a corrected retry awaiting authorization.
 The [current handover](docs/cloud-handover.md) records these open tasks and the
 reviewed presentation repair.
 The [bounded content/side diagnostic](docs/experiments/2026-11-07-content-side-diagnostic.md)

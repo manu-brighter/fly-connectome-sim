@@ -1,9 +1,94 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import { stripTypeScriptTypes } from 'node:module';
+import { runInNewContext } from 'node:vm';
 import * as THREE from 'three';
 import * as stageModule from '../src/stage.ts';
 import * as armModule from '../src/swipe-arm.ts';
 import { selectionTapProgress } from '../src/motion.ts';
+
+test('stage initializes the full-canvas clear color before its first scene render', () => {
+  let createdScene;
+  class Scene extends THREE.Scene { constructor() { super(); createdScene = this; } }
+  class Renderer {
+    shadowMap = {};
+    color = new THREE.Color('#000000');
+    alpha = 0;
+    renders = 0;
+    setPixelRatio() {}
+    setClearColor(color, alpha) { this.color.set(color); this.alpha = alpha; }
+    render() { this.renders++; }
+  }
+  class Controls { target = new THREE.Vector3(); update() {} }
+  const source = stripTypeScriptTypes(readFileSync(new URL('../src/stage.ts', import.meta.url), 'utf8')).replace(/^import .+;\r?$/gm, '').replace(/^export /gm, '');
+  const createStage = runInNewContext(source + '\ncreateStage;', { THREE: { ...THREE, Scene, WebGLRenderer: Renderer }, OrbitControls: Controls,
+    ...armModule, matchMedia: () => ({ matches: false }) });
+  const stage = createStage({ getContext: () => ({}) });
+  assert.equal(stage.renderer.renders, 0);
+  assert.equal(stage.renderer.color.getHexString(), createdScene.background.getHexString(), 'First full-canvas clear must already match the scene background');
+  assert.equal(stage.renderer.alpha, 1);
+});
+
+// Exact visible option content used for the authorized live-proposal acceptance.
+// This fixture contains no request, transport response or provider receipt.
+const liveProposal = { brief: { guests: 100 }, options: [
+  { id: 'rooftop-sunset-01', title: 'Sunset Rooftop Social', setting: 'rooftop', music: 'Deep house', budget_chf: 4200, capacity: 120, duration_minutes: 240,
+    programme: [{ start_minute: 0, label: 'Welcome drinks' }, { start_minute: 45, label: 'Sunset dinner' }, { start_minute: 120, label: 'Live DJ set' }, { start_minute: 210, label: 'Late networking' }] },
+  { id: 'warehouse-garden-02', title: 'Indoor Summer Bash', setting: 'warehouse', music: 'Indie dance', budget_chf: 3800, capacity: 140, duration_minutes: 300,
+    programme: [{ start_minute: 0, label: 'Arrival and check-in' }, { start_minute: 30, label: 'Team games' }, { start_minute: 110, label: 'Buffet dinner' }, { start_minute: 180, label: 'Dance floor opens' }, { start_minute: 270, label: 'Final toast' }] },
+] };
+function planSample(option, phase = 'selected') {
+  return { tick: phase === 'pending' ? 89999 : 90000, sourceTick: phase === 'pending' ? 89999 : 90000, decisionTick: 90000,
+    decision: phase === 'pending' ? null : { counts: { motor_left: 6, motor_right: 2 }, readout: { signed_difference_hz: -8, action: option?.id === liveProposal.options[0].id ? 'inspect_left' : option ? 'inspect_right' : 'defer' } },
+    plan: phase === 'pending' ? null : { brief: liveProposal.brief, selected_option: option }, leftOptionId: liveProposal.options[0].id,
+    feedContext: 'Feed ended at 7.000 s · END · playlist exhausted (clip window end)' };
+}
+
+test('both live plans remain disjoint from actual tablet meshes in reserved900px and narrow viewports', () => {
+  for (const width of [900, 341, 700]) {
+    let stableViewport;
+    for (const [option, phase] of [[liveProposal.options[0], 'selected'], [liveProposal.options[1], 'selected'], [null, 'pending'], [null, 'defer']]) {
+      const boxes = [], texts = [], sample = planSample(option, phase), before = JSON.stringify(sample);
+      const context = { font: '', save() {}, restore() {}, fillRect(x, y, width, height) { boxes.push({ x, y, width, height }); },
+        measureText(text) { return { width: text.length * Number(this.font.match(/(\d+)px/)[1]) * .55 }; },
+        fillText(text, x, y) { texts.push({ text, x, y, font: this.font, width: this.measureText(text).width }); } };
+      const sceneHeight = width === 900 ? 480 : 640;
+      const layout = stageModule.eventSceneViewport?.(context, width, sceneHeight, sample, liveProposal, { motor_left: 1, motor_right: 1 })
+        ?? { scene: { x: 0, y: 0, width, height: sceneHeight - 36 }, planWidth: width, minimumSceneHeight: sceneHeight };
+      stageModule.drawEventPlan(context, layout.planWidth, sample);
+      const rig = stageModule.createFly(), board = stageModule.createEventBoard(), viewport = layout.scene;
+      const camera = new THREE.PerspectiveCamera(35, viewport.width / viewport.height, .1, 50);
+      stageModule.placeEventScene(rig.group, rig.head, board.group, camera);
+      camera.updateMatrixWorld(true); board.group.updateMatrixWorld(true); rig.group.updateMatrixWorld(true);
+      const points = [];
+      for (const object of [board.group, rig.group]) object.traverse(mesh => {
+        if (!mesh.geometry) return;
+        const positions = mesh.geometry.attributes.position;
+        for (let index = 0; index < positions.count; index++) {
+          const p = new THREE.Vector3().fromBufferAttribute(positions, index).applyMatrix4(mesh.matrixWorld).project(camera);
+          assert.ok(Math.abs(p.x) < 1 && Math.abs(p.y) < 1, 'Actual meshes must stay within the scene subviewport');
+          if (object === board.group) points.push([viewport.x + (p.x + 1) * viewport.width / 2, viewport.y + (1 - p.y) * viewport.height / 2]);
+        }
+      });
+      const boardBox = { left: Math.min(...points.map(p => p[0])), right: Math.max(...points.map(p => p[0])), top: Math.min(...points.map(p => p[1])), bottom: Math.max(...points.map(p => p[1])) };
+      assert.ok(boxes.every(box => box.x + box.width < boardBox.left || box.x > boardBox.right || box.y + box.height < boardBox.top || box.y > boardBox.bottom), `${width}px ${phase}: plan and actual tablet must not overlap`);
+      assert.ok(viewport.width > 0 && viewport.height >= 300);
+      assert.ok(texts.every(line => Number(line.font.match(/(\d+)px/)[1]) >= 12 && line.x + line.width <= layout.planWidth - 12));
+      if (option && phase !== 'pending') for (const entry of option.programme) assert.ok(texts.map(line => line.text).join(' ').includes(entry.label), entry.label);
+      if (phase === 'pending') assert.ok(texts.every(line => !liveProposal.options.some(option => line.text.includes(option.title))));
+      for (const side of ['left', 'right']) for (const progress of [0, .25, .5, .75, 1]) {
+        const arm = rig.tapArms[side]; arm.updateTap(rig.group, board.group, side, progress);
+        const tip = arm.joints[3].getWorldPosition(new THREE.Vector3()).project(camera);
+        assert.ok(Math.abs(tip.x) < 1 && Math.abs(tip.y) < 1, 'Complete fixed-length tap tip stays in scene subviewport');
+      }
+      if (width === 900) assert.deepEqual(viewport, { x: 310, y: 0, width: 590, height: 444 });
+      if (stableViewport) assert.deepEqual(viewport, stableViewport, 'Selection/pending/defer must reserve the same camera region');
+      stableViewport = viewport;
+      assert.equal(JSON.stringify(sample), before);
+    }
+  }
+});
 
 test('tap runs once after selection and remains absent for defer and reduced motion', () => {
   assert.equal(selectionTapProgress(null, 8000, false), null);

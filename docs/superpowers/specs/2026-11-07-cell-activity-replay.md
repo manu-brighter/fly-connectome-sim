@@ -88,7 +88,9 @@ display: {window_ticks: 1000, mode: "last-completed-whole-bin-window/v1"}
 Counts are nonnegative integers, at most the native bin's duration in ticks per
 cell; no booleans, fractions or inferred timestamps. Indices/IDs are unique and
 in range; reject duplicate/unknown fields, oversized inputs and inconsistent
-coverage. The producer and an independent raw audit must verify every bin against
+coverage. Observation and bin ordinals are zero-based. Source IDs are positive
+safe JSON integers; nullable soma coordinates are safe integer triples. The
+producer and an independent raw audit must verify every bin against
 the exported recording's exact source interval/order. Bins cover the continuous
 session without gaps, overlap, omission or duplicates. Every fully selected group
 must reconcile exactly per bin; selected KC sums cannot exceed its full group.
@@ -150,6 +152,16 @@ bindings and count/group/bin consistency. A count sidecar can supply its own
 cohort coordinates without requiring a separate anatomy upload; if background
 anatomy is present both must share binding and projection. Keep the current
 illustrative fly/tap, immutable plan and no-early-result behavior.
+
+Reviewed layout refinement: the active-cell layout uses a shared860px breakpoint
+for drawing and CSS. At900px, keep the420px science panel and36px caption strip.
+During the whole cards phase, reserve310px on the left for the plan and use the
+remaining590×444px for the fly/tablet viewport. Calculate camera aspect/FOV from
+that actual viewport; do not wait until selection to move the scene. Wrap all
+programme/readout text within the plan region at a minimum12px font. Under860px,
+stack the measured plan reservation above at least300px of scene, increasing
+canvas height where needed. Both actual provider options, pending, defer and
+terminal hold must fit without text/board/tap overlap. Preserve physical geometry.
 
 ## One acquisition and finite budget
 
