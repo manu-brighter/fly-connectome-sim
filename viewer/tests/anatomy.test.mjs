@@ -18,6 +18,7 @@ test('anatomy binds exact original recording bytes and preserves raw integer coo
   const { parseAnatomy, readRecordingFile } = api();
   const raw = new Uint8Array([239, 187, 191, 123, 125, 10]);
   const read = await readRecordingFile({ arrayBuffer: async () => raw.buffer });
+  assert.equal(read.byteLength, raw.byteLength, 'Source bindings need the original first-read byte length');
   assert.equal(read.text.trim(), '{}');
   assert.notEqual(read.sha256, await module.sha256Bytes(new TextEncoder().encode('{}').buffer));
   const value = anatomyFixture(); assert.deepEqual(parseAnatomy(JSON.stringify(value), context), value);

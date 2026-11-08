@@ -10,6 +10,7 @@ import { parseAnyRecording, sampleAnyAtTick as sampleAt, type AnyRecording } fro
 import { EVENT_HOLD_FRAMES, eventPlanJson, eventPresentation, isEventRecording, sampleEventAtTick } from './event-replay.ts';
 import { MAX_ANATOMY_BYTES, createAnatomyAttachment, readRecordingFile } from './anatomy.ts';
 import { MAX_CELL_ACTIVITY_BYTES, assertCellAnatomy, buildCellWindows, cellWindowAtTick, createCellActivityAttachment, type CellWindow } from './cell-activity.ts';
+import { MAX_FOLLOWUP_BYTES, createFollowupAttachment, type FollowupBundle } from './followup.ts';
 
 function element<T extends HTMLElement>(id: string): T {
   return document.getElementById(id) as T;
@@ -38,6 +39,17 @@ const cellCountBody = element('cell-count-body');
 const cellAttachment = createCellActivityAttachment();
 let cellLoading = false, cellWindows: CellWindow[] = [], cellRows: HTMLElement[] = [];
 let lastCellWindow: CellWindow | null | undefined;
+const followupButton = element<HTMLButtonElement>('followup-open');
+const followupFiles = element<HTMLInputElement>('followup-files');
+const followupDownload = element<HTMLButtonElement>('followup-download');
+const followupStatus = element('followup-status');
+const followupContent = element('followup-content');
+const followupTitle = element('followup-title');
+const followupOverview = element('followup-overview');
+const followupPreparation = element('followup-preparation');
+const followupQuestions = element('followup-questions');
+const followupAttachment = createFollowupAttachment();
+let followupLoading = false, followupRequest = 0, shownFollowup: FollowupBundle | null = null;
 const replayAnnouncement = element('replay-announcement');
 let recording: AnyRecording | null = null;
 let tick = 0, playing = false, lastTime = performance.now();
@@ -58,7 +70,7 @@ if (stage && typeof VideoEncoder !== 'undefined') {
       for (const candidate of ['vp9', 'vp8'] as const) {
         if (await canEncodeVideo(candidate, { width: EXPORT_SIZE, height: EXPORT_SIZE, frameRate: EXPORT_FPS })) { videoCodec = candidate; break; }
       }
-      videoButton.disabled = !recording || !videoCodec || operations.loading || operations.exporting;
+      anatomyControls();
       videoNote.textContent = videoCodec ? `Video export: 900×900, 30 timestamped frames/s. Last ${holdSeconds(recording)} s holds the measured terminal sample${recording && (isEventRecording(recording) || isSessionRecording(recording)) ? ' and locked plan' : ''} for presentation.` : 'Video export unavailable: this browser cannot encode VP9 or VP8 with WebCodecs at 900×900.';
     } catch { videoNote.textContent = 'Video export unavailable: WebCodecs capability check failed.'; }
   })();
@@ -76,10 +88,39 @@ function holdSeconds(record: AnyRecording | null) { return record && (isEventRec
 function presentationHoldTicks() { return recording && (isEventRecording(recording) || isSessionRecording(recording)) ? 30000 : 0; }
 function renderCurrent() { stage?.render(presentationHoldTicks() > 0 && tick >= (recording?.duration_ticks ?? Infinity) ? true : undefined, holdElapsedTicks); }
 function anatomyControls() {
-  anatomyButton.disabled = !recording || operations.loading || operations.exporting || anatomyLoading || cellLoading;
+  anatomyButton.disabled = !recording || operations.loading || operations.exporting || anatomyLoading || cellLoading || followupLoading;
   anatomyFile.disabled = anatomyButton.disabled;
   cellButton.disabled = anatomyButton.disabled; cellFile.disabled = cellButton.disabled;
-  videoButton.disabled = !recording || !videoCodec || !stage || operations.loading || (!operations.exporting && (anatomyLoading || cellLoading));
+  followupButton.disabled = !recording || !isSessionRecording(recording) || anatomyButton.disabled;
+  followupFiles.disabled = followupButton.disabled;
+  videoButton.disabled = !recording || !videoCodec || !stage || operations.loading || (!operations.exporting && (anatomyLoading || cellLoading || followupLoading));
+  updateFollowup();
+}
+
+function updateFollowup() {
+  const sample = recording && isSessionRecording(recording) ? sampleSessionAtTick(recording, tick) : null;
+  const plan = sample && 'plan' in sample ? sample.plan : null;
+  const value = followupAttachment.value, selected = !!plan?.selected_option;
+  const visible = !!value && selected;
+  const status = followupLoading ? 'Loading planning companion…' : plan && !selected ? 'No selected plan — planning companion unavailable.'
+    : !value ? 'Planning companion not loaded.' : selected ? 'Planning companion available for the current selected plan.' : 'Planning companion loaded — awaiting the recorded selection.';
+  if (followupStatus.textContent !== status) followupStatus.textContent = status;
+  followupContent.hidden = !visible;
+  followupDownload.hidden = !visible;
+  followupDownload.disabled = !visible || operations.loading || operations.exporting || anatomyLoading || cellLoading || followupLoading;
+  if (!visible) {
+    if (shownFollowup) { followupTitle.textContent = ''; followupOverview.textContent = ''; followupPreparation.replaceChildren(); followupQuestions.replaceChildren(); }
+    shownFollowup = null; return;
+  }
+  if (value !== shownFollowup) {
+    followupTitle.textContent = value!.followup.plan.selected_option!.title;
+    followupOverview.textContent = value!.followup.supplement.overview;
+    for (const [list, items] of [[followupPreparation, value!.followup.supplement.preparation], [followupQuestions, value!.followup.supplement.open_questions]] as const) {
+      list.replaceChildren();
+      for (const text of items) { const item = document.createElement('li'); item.textContent = text; list.append(item); }
+    }
+    shownFollowup = value;
+  }
 }
 
 function updateCellCounts(sourceTick: number) {
@@ -128,6 +169,7 @@ function update() {
   if (!recording) return;
   const sample = sampleAt(recording, tick);
   stage?.setSample(sample);
+  updateFollowup();
   updateCellCounts(sample.sourceTick);
   const video = 'input' in sample;
   const event = 'decision' in sample;
@@ -189,6 +231,7 @@ file.addEventListener('change', async () => {
   if (generation === null) return;
   anatomyAttachment.cancelPending(); anatomyLoading = false;
   cellAttachment.cancelPending(); cellLoading = false;
+  followupRequest++; followupAttachment.cancelPending(); followupLoading = false;
   playing = false; update();
   loadingControls(true);
   try {
@@ -201,6 +244,7 @@ file.addEventListener('change', async () => {
     anatomyAttachment.setRecording({ recordingSha256: raw.sha256, graphIdsSha256: identity?.model_provenance?.graph_ids_sha256 ?? '' });
     anatomyNote.textContent = 'Anatomy not loaded';
     cellAttachment.setRecording({ recordingSha256: raw.sha256, recording: parsed });
+    followupAttachment.setRecording(isSessionRecording(parsed) ? { recording: parsed, recordingSha256: raw.sha256, recordingByteLength: raw.byteLength } : null);
     cellNote.textContent = 'Cell activity not loaded'; cellCountCaption.textContent = 'Cell activity not loaded';
     cellWindows = []; cellRows = []; lastCellWindow = undefined; cellCountBody.replaceChildren();
     delete traceBases.kc; delete traceBases.mbon11;
@@ -240,7 +284,7 @@ file.addEventListener('change', async () => {
 anatomyButton.addEventListener('click', () => { if (!anatomyButton.disabled) anatomyFile.click(); });
 anatomyFile.addEventListener('change', async () => {
   const selected = anatomyFile.files?.[0]; anatomyFile.value = '';
-  if (!selected || !recording || anatomyLoading || cellLoading || operations.loading || operations.exporting) return;
+  if (!selected || !recording || anatomyLoading || cellLoading || followupLoading || operations.loading || operations.exporting) return;
   const sourceRecording = recording;
   anatomyLoading = true; anatomyControls();
   try {
@@ -261,7 +305,7 @@ anatomyFile.addEventListener('change', async () => {
 cellButton.addEventListener('click', () => { if (!cellButton.disabled) cellFile.click(); });
 cellFile.addEventListener('change', async () => {
   const selected = cellFile.files?.[0]; cellFile.value = '';
-  if (!selected || !recording || cellLoading || anatomyLoading || operations.loading || operations.exporting) return;
+  if (!selected || !recording || cellLoading || anatomyLoading || followupLoading || operations.loading || operations.exporting) return;
   const sourceRecording = recording;
   cellLoading = true; anatomyControls();
   try {
@@ -286,6 +330,38 @@ cellFile.addEventListener('change', async () => {
   } finally {
     if (recording === sourceRecording) { cellLoading = false; anatomyControls(); renderCurrent(); }
   }
+});
+
+followupButton.addEventListener('click', () => { if (!followupButton.disabled) followupFiles.click(); });
+followupFiles.addEventListener('change', async () => {
+  const selected = Array.from(followupFiles.files ?? []); followupFiles.value = '';
+  if (!selected.length || !recording || !isSessionRecording(recording) || followupLoading || anatomyLoading || cellLoading || operations.loading || operations.exporting) return;
+  const sourceRecording = recording, request = ++followupRequest;
+  const current = () => recording === sourceRecording && request === followupRequest;
+  followupLoading = true; anatomyControls();
+  try {
+    if (selected.length !== 2 || selected.some(file => !file.size || file.size > MAX_FOLLOWUP_BYTES)) throw new Error('Choose exactly two nonempty JSON files, each at most 128 KiB.');
+    const inputs = Promise.all(selected.map(async file => {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (bytes.byteLength !== file.size) throw new Error('A companion file changed while reading.');
+      return bytes;
+    }));
+    const attached = await followupAttachment.load(inputs);
+    if (!current() || !attached) return;
+    errorElement.hidden = true;
+  } catch (error) {
+    if (current()) showError(`Cannot open planning companion. ${error instanceof Error ? error.message : 'Invalid files.'} Choose followup.json and its validated receipt.json for this exact recording; the previous valid attachment remains available.`);
+  } finally {
+    if (current()) { followupLoading = false; anatomyControls(); }
+  }
+});
+followupDownload.addEventListener('click', () => {
+  if (!recording || !isSessionRecording(recording) || operations.loading || operations.exporting || followupLoading || anatomyLoading || cellLoading) return;
+  const sample = sampleSessionAtTick(recording, tick), value = followupAttachment.value;
+  if (!('plan' in sample) || !sample.plan?.selected_option || !value) return;
+  const url = URL.createObjectURL(new Blob([value.markdownBytes.slice()], { type: 'text/markdown;charset=utf-8' }));
+  const link = document.createElement('a'); link.href = url; link.download = 'event-plan.md'; link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
 });
 
 sourceButton.addEventListener('click', () => {
@@ -320,6 +396,7 @@ canvas.addEventListener('keydown', (event) => {
 
 function exportControls(exporting: boolean) {
   cellAttachment.setExporting(exporting);
+  followupAttachment.setExporting(exporting);
   openButton.disabled = exporting; file.disabled = exporting; play.disabled = exporting; seek.disabled = exporting; speed.disabled = exporting;
   videoButton.textContent = exporting ? 'Cancel export' : 'Export video';
   videoButton.disabled = !exporting && (!recording || !videoCodec || !stage);
@@ -329,7 +406,7 @@ function exportControls(exporting: boolean) {
 
 videoButton.addEventListener('click', async () => {
   if (exportController) { exportController.abort(); return; }
-  if (!recording || !videoCodec || !stage || anatomyLoading || cellLoading || !operations.beginExport()) return;
+  if (!recording || !videoCodec || !stage || anatomyLoading || cellLoading || followupLoading || !operations.beginExport()) return;
   const sourceRecording = recording, sourceStage = stage;
   const previousTick = tick, previousHoldElapsedTicks = holdElapsedTicks, wasPlaying = playing;
   const controller = new AbortController(); exportController = controller;

@@ -9,6 +9,8 @@ import * as sessionModule from '../src/session-replay.ts';
 import * as exportModule from '../src/export.ts';
 import * as anatomyModule from '../src/anatomy.ts';
 import * as cellModule from '../src/cell-activity.ts';
+import * as followupModule from '../src/followup.ts';
+import { followupFixture, followupFiles } from './followup.test.mjs';
 import { cellFixture } from './cell-activity.test.mjs';
 import { drawOverlay, createEventBoard } from '../src/stage.ts';
 import { createOperationGate } from '../src/operation.ts';
@@ -181,7 +183,7 @@ test('one global30fps export and final90frame hold preserve terminal plan, cance
 // Execute real application control flow with only DOM/WebGL/codec dependencies
 // replaced. This is a control-flow test, not browser or encoded-video evidence.
 function mainHarness() {
-  const nodes = new Map(), paints = [], downloads = [];
+  const nodes = new Map(), paints = [], downloads = [], blobs = [];
   const context = { beginPath() {}, moveTo() {}, lineTo() {}, stroke() {}, clearRect() {}, drawImage() {} };
   function node() { return { content: '', writes: [], get textContent() { return this.content; }, set textContent(value) { this.content = value; this.writes.push(value); }, hidden: false, disabled: false, value: '1', clientWidth: 200, width: 0, height: 0, handlers: {}, children: [], style: {}, classList: { add() {} }, append(child) { this.children.push(child); }, replaceChildren() { this.children = []; }, setAttribute(name, value) { this[name] = value; }, getContext() { return context; }, addEventListener(name, handler) { this.handlers[name] = handler; }, click() { if (this.download) downloads.push(this.download); return this.handlers.click?.(); } }; }
   const document = { getElementById(id) { if (!nodes.has(id)) nodes.set(id, node()); return nodes.get(id); }, createElement() { return node(); } };
@@ -191,7 +193,7 @@ function mainHarness() {
   class Output { state = 'pending'; constructor({target}) { this.target = target; } addVideoTrack() {} async start() { this.state = 'started'; } async finalize() { this.state = 'finalized'; } async cancel() { this.state = 'canceled'; } }
   class CanvasSource { async add() { if (cancelAt !== null && paints.filter(p => p.hold !== undefined).length >= cancelAt) { cancelAt = null; await nodes.get('video').handlers.click(); } } }
   const javascript = stripTypeScriptTypes(readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')).replace(/^import .+;\r?$/gm, '');
-  runInNewContext(javascript, { ...replayModule, ...videoModule, ...recordingModule, ...eventModule, ...sessionModule, ...exportModule, ...anatomyModule, ...cellModule, sampleAt: recordingModule.sampleAnyAtTick, createOperationGate, createStage: () => stage, canEncodeVideo: async () => true, document, performance, VideoEncoder: class {}, window: { addEventListener() {} }, setTimeout: () => {}, Blob, URL: { createObjectURL: () => 'blob:declared', revokeObjectURL() {} }, AbortController, BufferTarget, Output, CanvasSource, WebMOutputFormat: class {} });
+  runInNewContext(javascript, { ...replayModule, ...videoModule, ...recordingModule, ...eventModule, ...sessionModule, ...exportModule, ...anatomyModule, ...cellModule, ...followupModule, sampleAt: recordingModule.sampleAnyAtTick, createOperationGate, createStage: () => stage, canEncodeVideo: async () => true, document, performance, VideoEncoder: class {}, window: { addEventListener() {} }, setTimeout: () => {}, Blob, URL: { createObjectURL: blob => { blobs.push(blob); return 'blob:declared'; }, revokeObjectURL() {} }, AbortController, BufferTarget, Output, CanvasSource, WebMOutputFormat: class {} });
   const load = async (value, textPromise) => { const json = JSON.stringify(value); nodes.get('file').files = [{ name: 'session.json', size: Buffer.byteLength(json), arrayBuffer: async () => new TextEncoder().encode(await (textPromise ?? json)).buffer }]; await nodes.get('file').handlers.change(); };
   const seek = (tick) => { nodes.get('seek').value = String(tick); nodes.get('seek').handlers.input(); };
   const key = (code, options = {}, focus = 'stage') => {
@@ -199,8 +201,83 @@ function mainHarness() {
     const event = { code, repeat: false, altKey: false, ctrlKey: false, metaKey: false, shiftKey: false, prevented: false, preventDefault() { this.prevented = true; }, ...options };
     nodes.get('stage').handlers.keydown(event); return event.prevented;
   };
-  return { nodes, load, seek, key, paints, downloads, sample: () => currentSample, cell: () => currentCell, loadCount: () => loadCount, cancelAfter: n => { cancelAt = n; }, animate: t => animation(t) };
+  return { nodes, load, seek, key, paints, downloads, blobs, sample: () => currentSample, cell: () => currentCell, loadCount: () => loadCount, cancelAfter: n => { cancelAt = n; }, animate: t => animation(t) };
 }
+
+function companionInputs(app, files, read = async value => value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength)) {
+  const picker = app.nodes.get('followup-files'); assert.ok(picker, 'Planning companion picker is missing');
+  picker.files = files.map(value => ({ size: value.byteLength, arrayBuffer: () => read(value) }));
+  return picker.handlers.change();
+}
+
+test('current choice gates companion content and checked Markdown download across pending/final/rewind/defer', async () => {
+  const app = mainHarness(), value = sessionFixture(), fixture = followupFixture(value);
+  await app.load(value); await new Promise(setImmediate);
+  await companionInputs(app, followupFiles(fixture).reverse());
+  const body = app.nodes.get('followup-content'), title = app.nodes.get('followup-title'), overview = app.nodes.get('followup-overview'), download = app.nodes.get('followup-download');
+  assert.equal(body.hidden, true); assert.equal(title.textContent, ''); assert.match(app.nodes.get('followup-status').textContent, /awaiting/i);
+  app.seek(value.duration_ticks - 1); assert.equal(body.hidden, true); assert.equal(download.disabled, true);
+  app.seek(value.duration_ticks); assert.equal(body.hidden, false); assert.equal(title.textContent, value.plan.selected_option.title);
+  assert.equal(overview.textContent, fixture.followup.supplement.overview); assert.equal(download.disabled, false);
+  await download.handlers.click(); assert.equal(app.downloads.at(-1), 'event-plan.md');
+  assert.deepEqual(new Uint8Array(await app.blobs.at(-1).arrayBuffer()), fixture.markdown);
+  app.nodes.get('download-plan').handlers.click(); assert.equal(app.downloads.at(-1), 'event-plan.json');
+  const count = app.downloads.length;
+  app.seek(value.duration_ticks - 1); assert.equal(title.textContent, ''); assert.equal(overview.textContent, ''); assert.equal(body.hidden, true);
+  assert.equal(app.nodes.get('followup-preparation').children.length, 0); assert.equal(app.nodes.get('followup-questions').children.length, 0);
+  await download.handlers.click(); assert.equal(app.downloads.length, count);
+  app.seek(value.duration_ticks); assert.equal(body.hidden, false);
+  const deferred = sessionFixture(1, false, 0, 0); await app.load(deferred); app.seek(deferred.duration_ticks);
+  assert.equal(body.hidden, true); assert.equal(title.textContent, ''); assert.match(app.nodes.get('followup-status').textContent, /no selected plan/i);
+  await app.load(value); assert.equal(body.hidden, true); assert.match(app.nodes.get('followup-status').textContent, /not loaded/i);
+});
+
+test('invalid imports preserve valid companion; pre-read limits/cancellation and export/cross-load locks hold', async () => {
+  const app = mainHarness(), value = sessionFixture(), fixture = followupFixture(value);
+  await app.load(value); await new Promise(setImmediate); app.seek(value.duration_ticks);
+  await companionInputs(app, followupFiles(fixture));
+  const status = app.nodes.get('followup-status'), title = app.nodes.get('followup-title'), picker = app.nodes.get('followup-files');
+  await companionInputs(app, [new Uint8Array([255]), new Uint8Array([255])]);
+  assert.equal(title.textContent, value.plan.selected_option.title); assert.match(app.nodes.get('error').textContent, /companion/i);
+  let reads = 0;
+  await companionInputs(app, [new Uint8Array(128 * 1024 + 1), new Uint8Array(1)], async () => { reads++; return new ArrayBuffer(0); });
+  assert.equal(reads, 0); assert.equal(title.textContent, value.plan.selected_option.title);
+  const previousStatus = status.textContent; picker.files = []; await picker.handlers.change(); assert.equal(status.textContent, previousStatus);
+  let finish;
+  const pending = companionInputs(app, followupFiles(fixture), value => new Promise(resolve => { finish ??= () => resolve(value.buffer); if (finish && reads++) resolve(value.buffer); }));
+  assert.equal(app.nodes.get('video').disabled, true); assert.equal(app.nodes.get('anatomy-open').disabled, true); assert.equal(app.nodes.get('cell-open').disabled, true);
+  const paints = app.paints.length; await app.nodes.get('video').handlers.click(); assert.equal(app.paints.length, paints);
+  finish(); await pending;
+  const exporting = app.nodes.get('video').handlers.click(); assert.equal(app.nodes.get('followup-open').disabled, true); assert.equal(app.nodes.get('followup-download').disabled, true);
+  await companionInputs(app, followupFiles(fixture), async () => { assert.fail('Export read companion replacement'); });
+  const downloads = app.downloads.length; await app.nodes.get('followup-download').handlers.click(); assert.equal(app.downloads.length, downloads);
+  await exporting; assert.equal(title.textContent, value.plan.selected_option.title);
+});
+
+test('obsolete import errors cannot clear a newer loading status after a failed recording replacement', async () => {
+  const app = mainHarness(), value = sessionFixture(), fixture = followupFixture(value);
+  await app.load(value); await new Promise(setImmediate); app.seek(value.duration_ticks);
+  let rejectOld, finishNew, count = 0;
+  const old = companionInputs(app, followupFiles(fixture), raw => count++ ? Promise.resolve(raw.buffer) : new Promise((_, reject) => { rejectOld = reject; }));
+  await app.load(value, Promise.resolve('{}'));
+  count = 0;
+  const current = companionInputs(app, followupFiles(fixture), raw => count++ ? Promise.resolve(raw.buffer) : new Promise(resolve => { finishNew = () => resolve(raw.buffer); }));
+  rejectOld(new Error('Obsolete file read')); await old;
+  assert.match(app.nodes.get('followup-status').textContent, /loading/i); assert.equal(app.nodes.get('video').disabled, true);
+  finishNew(); await current; assert.equal(app.nodes.get('followup-content').hidden, false);
+});
+
+test('recording replacement during companion hash work prevents late attachment', async () => {
+  const app = mainHarness(), value = sessionFixture(), fixture = followupFixture(value);
+  await app.load(value); await new Promise(setImmediate);
+  const original = crypto.subtle.digest.bind(crypto.subtle); let release;
+  crypto.subtle.digest = async (...args) => { if (!release) await new Promise(resolve => { release = resolve; }); return original(...args); };
+  try {
+    const pending = companionInputs(app, followupFiles(fixture)); while (!release) await new Promise(setImmediate);
+    await app.load(value); release(); await pending;
+    app.seek(value.duration_ticks); assert.equal(app.nodes.get('followup-content').hidden, true); assert.match(app.nodes.get('followup-status').textContent, /not loaded/i);
+  } finally { crypto.subtle.digest = original; }
+});
 
 test('real application cell loading preserves valid detail, ignores stale files and freezes export attachment', async () => {
   const app = mainHarness(), value = sessionFixture(1, false, 0, 0), detail = cellFixture().detail;

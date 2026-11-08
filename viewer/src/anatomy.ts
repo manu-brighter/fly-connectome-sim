@@ -21,7 +21,7 @@ export async function sha256Bytes(bytes: ArrayBuffer): Promise<string> {
 }
 export async function readRecordingFile(file: Pick<File, 'arrayBuffer'>) {
   const bytes = await file.arrayBuffer();
-  return { text: new TextDecoder('utf-8', { fatal: true }).decode(bytes), sha256: await sha256Bytes(bytes) };
+  return { text: new TextDecoder('utf-8', { fatal: true }).decode(bytes), sha256: await sha256Bytes(bytes), byteLength: bytes.byteLength };
 }
 
 export function parseAnatomy(text: string, context: Binding): Anatomy {

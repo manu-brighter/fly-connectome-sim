@@ -41,6 +41,13 @@
             <p id="video-note" class="video-note" aria-live="polite">Checking WebCodecs video encoding support…</p>
           </div>
         </section>
+        <section class="planning-companion" aria-labelledby="followup-heading">
+          <div class="companion-actions"><h2 id="followup-heading">Planning companion</h2><button id="followup-open" disabled>Open planning companion</button><button id="followup-download" disabled hidden>Download planning notes</button></div>
+          <input id="followup-files" type="file" accept=".json,application/json" multiple hidden />
+          <p id="followup-status" role="status" aria-live="polite">Planning companion not loaded.</p>
+          <p class="companion-help">Choose followup.json and receipt.json from the same saved companion.</p>
+          <div id="followup-content" lang="de" hidden><p class="companion-label">Unverbindlicher Begleittext</p><h3 id="followup-title"></h3><p id="followup-overview"></p><p class="companion-help">Planungsvorschlag. Verfügbarkeit und Preise sind nicht bestätigt.</p><div class="companion-columns"><section><h4>Vorbereitung</h4><ul id="followup-preparation"></ul></section><section><h4>Offene Fragen</h4><ul id="followup-questions"></ul></section></div></div>
+        </section>
         <details class="cell-inspection"><summary>Inspect exact recorded cell counts</summary><p>Simulated model counts per completed 100 ms window. Grid slots follow the source-ID order below; missing positions retain their measured counts.</p><div class="cell-table"><table><caption id="cell-count-caption">Cell activity not loaded</caption><thead><tr><th scope="col">Slot</th><th scope="col">Source cell ID</th><th scope="col">Groups</th><th scope="col">Actual soma coordinates</th><th scope="col">Count</th></tr></thead><tbody id="cell-count-body"></tbody></table></div></details>
         <section id="source-panel" class="source-panel" hidden><h2>Recorded source</h2><p>Stored source verification mode: <strong id="source-mode"></strong>. The browser checks this file’s structure and pixel hashes; it cannot reverify the original artifact or attest native history.</p><pre id="source-json"></pre></section>
       </main>

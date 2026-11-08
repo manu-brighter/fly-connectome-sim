@@ -26,6 +26,18 @@ it. The single call used308input+228output=536tokens and15.562s, nominal
 USD0.001257 at the checked tariff; actual billing was not inspected. All seven
 historical source files and the full plan stayed identical. No more provider
 calls or acquisitions are needed for this selected continuation.
+After the next `continue`, the controller stated the next-step assumption:
+show that existing companion directly in the viewer. This local-only display
+is implemented under the [viewer contract](superpowers/specs/2026-11-08-followup-viewer.md)
+and [plan](superpowers/plans/2026-11-08-followup-viewer.md), with no new provider
+request, simulation or film. Sol implemented it and Astra independently reviewed
+the source/UI. The [browser acceptance](experiments/2026-11-08-followup-viewer.md)
+checks the real saved pair, decision/rewind visibility, desktop/mobile layout,
+exact Markdown download and unchanged original plan. Separate declared fixtures
+cover replacement/defer; all 15 historical inputs and 41 package sources remain
+unchanged. Astra accepted the actual desktop/mobile screenshots and independently
+matched the inputs, package identity and downloads. This bounded viewer
+continuation is complete; final feature publication/CI is the remaining checkpoint.
 The learning assay and broader platform work remain separately parked.
 Aggregate group bins cannot reconstruct individual spikes; the new cell view uses
 separately captured counts. Static connections are not measured transmission.

@@ -92,6 +92,9 @@ passes only the fixed selected option and brief back to the model. One
 a German planning companion with preparation suggestions and open questions;
 the complete original plan and source recording remain unchanged. It defaults
 offline, makes no neural run, and never contacts the provider on a deferred choice.
+The [viewer integration](docs/experiments/2026-11-08-followup-viewer.md) imports
+that companion and its receipt locally, reveals it after the recorded selection,
+and downloads the checked Markdown. Rewinding before the choice hides the notes.
 The historical standalone pilot selected Sunset House from final left2/right1 spikes;
 same-artifact Chrome/plan-download and150-frame/5s export checks passed. See the
 [event-choice report](docs/experiments/2026-11-02-event-choice-observation.md).

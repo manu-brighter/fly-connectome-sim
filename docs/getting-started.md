@@ -588,6 +588,21 @@ used the existing selected session, one1024-token-capped call and536actual
 tokens. Its German Markdown/JSON companions are local under
 `runs/event-followup-live-20261108/`; no simulation rerun is needed to read them.
 
+To read the companion alongside the replay, open the same session's
+`recording.json` in the viewer. Under the replay, choose **Open planning
+companion** and select **both** `followup.json` and its `receipt.json` in the
+same file picker. File order does not matter. This is a local import; it asks
+for no key and makes no provider request.
+
+The companion remains hidden until the recorded choice is reached; rewinding
+hides it again, and a deferred choice has no companion. Once available,
+**Download planning notes** saves the checked original Markdown. The separate
+bound-plan JSON download remains unchanged. A successful recording replacement
+clears the companion; an invalid companion import keeps any previous valid one.
+The browser checks local file/plan bindings, not the original raw run or provider
+authenticity. For raw-backed inspection, use `inspect-session` as above. See the
+[viewer contract](superpowers/specs/2026-11-08-followup-viewer.md).
+
 ## Separate assay commands
 
 The existing qualification command remains separate from Replay v1 and is not
