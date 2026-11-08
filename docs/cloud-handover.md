@@ -43,6 +43,19 @@ passed: 343 native/backend tests with 8 declared skips; 151 viewer tests with
 2 private-artifact parity skips, plus typecheck/build. Locally all 153 viewer
 tests passed without skips. No additional provider request or acquisition is
 needed for the completed companion/viewer scope.
+The user then explicitly selected **Einfacher lokaler Demo-Start** as the next
+step: a preparation command and one combined viewer file selection for the
+existing recording, cells, anatomy and companion pair. This is now implemented
+under the [local demo contract](superpowers/specs/2026-11-08-local-demo-open.md)
+and [plan](superpowers/plans/2026-11-08-local-demo-open.md). Reuse accepted files;
+no new API request, native acquisition, packaged Python/C++ change or deployment.
+The [actual combined-import result](experiments/2026-11-08-local-demo-open.md)
+uses `runs/local-demo-20261108/`: exactly five verified copies, one selection,
+all existing brain layers and choice-gated notes. Invalid import retention,
+rewind, picker cancellation, delayed replacement and desktop/mobile layout passed.
+Final local viewer suite: 246 passed, one Windows link-creation skip; build passed.
+Astra independently accepted source, actual visual evidence and artifact bindings;
+feature publication and CI remain as the final checkpoint.
 The learning assay and broader platform work remain separately parked.
 Aggregate group bins cannot reconstruct individual spikes; the new cell view uses
 separately captured counts. Static connections are not measured transmission.

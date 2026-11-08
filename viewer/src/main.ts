@@ -11,6 +11,7 @@ import { EVENT_HOLD_FRAMES, eventPlanJson, eventPresentation, isEventRecording, 
 import { MAX_ANATOMY_BYTES, createAnatomyAttachment, readRecordingFile } from './anatomy.ts';
 import { MAX_CELL_ACTIVITY_BYTES, assertCellAnatomy, buildCellWindows, cellWindowAtTick, createCellActivityAttachment, type CellWindow } from './cell-activity.ts';
 import { MAX_FOLLOWUP_BYTES, createFollowupAttachment, type FollowupBundle } from './followup.ts';
+import { readDemoFiles, type DemoCandidate } from './demo.ts';
 
 function element<T extends HTMLElement>(id: string): T {
   return document.getElementById(id) as T;
@@ -22,6 +23,8 @@ const seek = element<HTMLInputElement>('seek');
 const speed = element<HTMLSelectElement>('speed');
 const videoButton = element<HTMLButtonElement>('video');
 const openButton = element<HTMLButtonElement>('open');
+const demoButton = element<HTMLButtonElement>('demo-open');
+const demoFiles = element<HTMLInputElement>('demo-files');
 const sourceButton = element<HTMLButtonElement>('source-toggle');
 const errorElement = element<HTMLParagraphElement>('error');
 const videoNote = element<HTMLParagraphElement>('video-note');
@@ -29,15 +32,15 @@ const planButton = element<HTMLButtonElement>('download-plan');
 const anatomyButton = element<HTMLButtonElement>('anatomy-open');
 const anatomyFile = element<HTMLInputElement>('anatomy-file');
 const anatomyNote = element('anatomy-note');
-const anatomyAttachment = createAnatomyAttachment();
-let anatomyLoading = false;
+let anatomyAttachment = createAnatomyAttachment();
+let anatomyLoading = false, anatomyRequest = 0;
 const cellButton = element<HTMLButtonElement>('cell-open');
 const cellFile = element<HTMLInputElement>('cell-file');
 const cellNote = element('cell-note');
 const cellCountCaption = element('cell-count-caption');
 const cellCountBody = element('cell-count-body');
-const cellAttachment = createCellActivityAttachment();
-let cellLoading = false, cellWindows: CellWindow[] = [], cellRows: HTMLElement[] = [];
+let cellAttachment = createCellActivityAttachment();
+let cellLoading = false, cellRequest = 0, cellWindows: CellWindow[] = [], cellRows: HTMLElement[] = [];
 let lastCellWindow: CellWindow | null | undefined;
 const followupButton = element<HTMLButtonElement>('followup-open');
 const followupFiles = element<HTMLInputElement>('followup-files');
@@ -48,7 +51,7 @@ const followupTitle = element('followup-title');
 const followupOverview = element('followup-overview');
 const followupPreparation = element('followup-preparation');
 const followupQuestions = element('followup-questions');
-const followupAttachment = createFollowupAttachment();
+let followupAttachment = createFollowupAttachment();
 let followupLoading = false, followupRequest = 0, shownFollowup: FollowupBundle | null = null;
 const replayAnnouncement = element('replay-announcement');
 let recording: AnyRecording | null = null;
@@ -217,67 +220,114 @@ function update() {
 
 openButton.addEventListener('click', () => file.click());
 function loadingControls(loading: boolean) {
-  openButton.disabled = loading; file.disabled = loading;
+  openButton.disabled = loading; file.disabled = loading; demoButton.disabled = loading; demoFiles.disabled = loading;
   play.disabled = loading || !recording; seek.disabled = loading || !recording; speed.disabled = loading || !recording;
   videoButton.disabled = loading || !recording || !videoCodec || !stage;
   planButton.disabled = loading || !recording || !(isEventRecording(recording) || isSessionRecording(recording)) || tick < recording.decision.effective_tick;
   openButton.textContent = loading ? 'Opening…' : 'Open recording';
   anatomyControls();
 }
-file.addEventListener('change', async () => {
-  const selected = file.files?.[0]; file.value = '';
-  if (!selected) return;
-  const generation = operations.beginLoad();
-  if (generation === null) return;
+function beginLoad() {
+  anatomyRequest++; cellRequest++;
   anatomyAttachment.cancelPending(); anatomyLoading = false;
   cellAttachment.cancelPending(); cellLoading = false;
   followupRequest++; followupAttachment.cancelPending(); followupLoading = false;
   playing = false; update();
   loadingControls(true);
+}
+
+function installAnatomy() {
+  stage?.setAnatomy(anatomyAttachment.value);
+  anatomyNote.textContent = `${anatomyAttachment.value!.coverage.displayed_cells.toLocaleString('en-US')} static source positions loaded`;
+}
+function installCells() {
+  const detail = cellAttachment.value!;
+  stage?.setCellActivity(detail);
+  cellWindows = buildCellWindows(detail); lastCellWindow = undefined; cellRows = []; cellCountBody.replaceChildren();
+  for (const [slot, cell] of detail.cells.entries()) {
+    const row = document.createElement('tr');
+    for (const text of [String(slot + 1), String(cell.source_id), cell.groups.join(', '), cell.soma ? cell.soma.join(', ') : 'Missing position']) {
+      const value = document.createElement('td'); value.textContent = text; row.append(value);
+    }
+    const count = document.createElement('td'); count.textContent = '—'; row.append(count); cellRows.push(count); cellCountBody.append(row);
+  }
+  cellNote.textContent = `${detail.cells.length} recorded cells; ${detail.cells.filter(cell => !cell.soma).length} without positions. Static model connections, not measured transmission.`;
+}
+
+function installRecording(parsed: AnyRecording, raw: { sha256: string; byteLength: number }, name: string, candidate?: DemoCandidate) {
+  recording = parsed; tick = 0; holdElapsedTicks = 0;
+  const identity = parsed.source.metadata.engine_identity as { model_provenance?: { graph_ids_sha256?: string } };
+  anatomyAttachment = candidate?.anatomyAttachment ?? createAnatomyAttachment();
+  cellAttachment = candidate?.cellAttachment ?? createCellActivityAttachment();
+  followupAttachment = candidate?.followupAttachment ?? createFollowupAttachment();
+  if (!candidate) anatomyAttachment.setRecording({ recordingSha256: raw.sha256, graphIdsSha256: identity?.model_provenance?.graph_ids_sha256 ?? '' });
+  anatomyNote.textContent = 'Anatomy not loaded';
+  if (!candidate) cellAttachment.setRecording({ recordingSha256: raw.sha256, recording: parsed });
+  if (!candidate) followupAttachment.setRecording(isSessionRecording(parsed) ? { recording: parsed, recordingSha256: raw.sha256, recordingByteLength: raw.byteLength } : null);
+  cellNote.textContent = 'Cell activity not loaded'; cellCountCaption.textContent = 'Cell activity not loaded';
+  cellWindows = []; cellRows = []; lastCellWindow = undefined; cellCountBody.replaceChildren();
+  delete traceBases.kc; delete traceBases.mbon11;
+  stage?.setRecording(parsed);
+  if (candidate) { installAnatomy(); installCells(); }
+  errorElement.hidden = true;
+  if (stageError) showError(stageError);
+  element('recording-name').textContent = name;
+  element('status').textContent = 'Recorded simulation'; element('status').classList.add('loaded');
+  seek.max = String(parsed.duration_ticks); seek.disabled = false; play.disabled = false; speed.disabled = false; sourceButton.disabled = false;
+  videoButton.disabled = !videoCodec || !stage;
+  element('timeline-end').textContent = `${(parsed.duration_ticks / 10000).toFixed(1)} s`;
+  const segments = element('segments'); segments.replaceChildren();
+  if (isEventRecording(parsed)) {
+    const item = document.createElement('span'); item.className = 'stimulus-event'; item.style.flexGrow = '1'; item.textContent = 'Paired options · 1.5 s settling + 0.5 s decision'; segments.append(item);
+  } else if (isVideoRecording(parsed) || isSessionRecording(parsed)) {
+    for (const block of videoTimelineBlocks({ segments: parsed.segments.flatMap((segment) => 'clip_id' in segment ? [segment] : []) })) {
+      const item = document.createElement('span'); item.className = `stimulus-video-${Number(block.clipId.slice(5)) % 2}`;
+      item.style.flexGrow = String(block.duration); item.textContent = `Clip ${Number(block.clipId.slice(5)) + 1}`; segments.append(item);
+    }
+    if (isSessionRecording(parsed)) {
+      const item = document.createElement('span'); item.className = 'stimulus-event'; item.style.flexGrow = '20000'; item.textContent = 'Paired options · 1.5 s settling + 0.5 s decision'; segments.append(item);
+    }
+  } else for (const segment of parsed.segments) {
+    const item = document.createElement('span'); item.className = `stimulus-${segment.stimulus}`;
+    item.style.flexGrow = String(segment.playback_end_tick - segment.playback_start_tick);
+    item.textContent = segment.stimulus === 'black' ? '' : segment.stimulus; segments.append(item);
+  }
+  element('source-mode').textContent = parsed.source.verification_mode;
+  element('source-json').textContent = JSON.stringify(parsed.source, null, 2);
+  if (videoCodec) videoNote.textContent = `Video export: 900×900, 30 timestamped frames/s. Last ${holdSeconds(parsed)} s holds the measured terminal sample${(isEventRecording(parsed) || isSessionRecording(parsed)) ? ' and locked plan' : ''} for presentation.`;
+  update(); stage?.render();
+}
+
+file.addEventListener('change', async () => {
+  const selected = file.files?.[0]; file.value = '';
+  if (!selected) return;
+  const generation = operations.beginLoad();
+  if (generation === null) return;
+  beginLoad();
   try {
     if (selected.size > 32 * 1024 * 1024) throw new Error('File exceeds 32 MiB. Export a shorter observation recording.');
     const raw = await readRecordingFile(selected);
     const parsed = await parseAnyRecording(raw.text);
     if (!operations.isCurrentLoad(generation)) return;
-    recording = parsed; tick = 0; holdElapsedTicks = 0;
-    const identity = parsed.source.metadata.engine_identity as { model_provenance?: { graph_ids_sha256?: string } };
-    anatomyAttachment.setRecording({ recordingSha256: raw.sha256, graphIdsSha256: identity?.model_provenance?.graph_ids_sha256 ?? '' });
-    anatomyNote.textContent = 'Anatomy not loaded';
-    cellAttachment.setRecording({ recordingSha256: raw.sha256, recording: parsed });
-    followupAttachment.setRecording(isSessionRecording(parsed) ? { recording: parsed, recordingSha256: raw.sha256, recordingByteLength: raw.byteLength } : null);
-    cellNote.textContent = 'Cell activity not loaded'; cellCountCaption.textContent = 'Cell activity not loaded';
-    cellWindows = []; cellRows = []; lastCellWindow = undefined; cellCountBody.replaceChildren();
-    delete traceBases.kc; delete traceBases.mbon11;
-    stage?.setRecording(parsed);
-    errorElement.hidden = true;
-    if (stageError) showError(stageError);
-    element('recording-name').textContent = selected.name;
-    element('status').textContent = 'Recorded simulation'; element('status').classList.add('loaded');
-    seek.max = String(parsed.duration_ticks); seek.disabled = false; play.disabled = false; speed.disabled = false; sourceButton.disabled = false;
-    videoButton.disabled = !videoCodec || !stage;
-    element('timeline-end').textContent = `${(parsed.duration_ticks / 10000).toFixed(1)} s`;
-    const segments = element('segments'); segments.replaceChildren();
-    if (isEventRecording(parsed)) {
-      const item = document.createElement('span'); item.className = 'stimulus-event'; item.style.flexGrow = '1'; item.textContent = 'Paired options · 1.5 s settling + 0.5 s decision'; segments.append(item);
-    } else if (isVideoRecording(parsed) || isSessionRecording(parsed)) {
-      for (const block of videoTimelineBlocks({ segments: parsed.segments.flatMap((segment) => 'clip_id' in segment ? [segment] : []) })) {
-        const item = document.createElement('span'); item.className = `stimulus-video-${Number(block.clipId.slice(5)) % 2}`;
-        item.style.flexGrow = String(block.duration); item.textContent = `Clip ${Number(block.clipId.slice(5)) + 1}`; segments.append(item);
-      }
-      if (isSessionRecording(parsed)) {
-        const item = document.createElement('span'); item.className = 'stimulus-event'; item.style.flexGrow = '20000'; item.textContent = 'Paired options · 1.5 s settling + 0.5 s decision'; segments.append(item);
-      }
-    } else for (const segment of parsed.segments) {
-      const item = document.createElement('span'); item.className = `stimulus-${segment.stimulus}`;
-      item.style.flexGrow = String(segment.playback_end_tick - segment.playback_start_tick);
-      item.textContent = segment.stimulus === 'black' ? '' : segment.stimulus; segments.append(item);
-    }
-    element('source-mode').textContent = parsed.source.verification_mode;
-    element('source-json').textContent = JSON.stringify(parsed.source, null, 2);
-    if (videoCodec) videoNote.textContent = `Video export: 900×900, 30 timestamped frames/s. Last ${holdSeconds(parsed)} s holds the measured terminal sample${(isEventRecording(parsed) || isSessionRecording(parsed)) ? ' and locked plan' : ''} for presentation.`;
-    update(); stage?.render();
+    installRecording(parsed, raw, selected.name);
   } catch (error) {
     if (operations.isCurrentLoad(generation)) showError(`Cannot open recording. ${error instanceof Error ? error.message : 'Invalid file.'} Choose the JSON produced by export-replay.${recording ? ' The previous recording remains loaded.' : ''}`);
+  } finally { if (operations.isCurrentLoad(generation)) { operations.endLoad(generation); loadingControls(false); } }
+});
+
+demoButton.addEventListener('click', () => { if (!demoButton.disabled) demoFiles.click(); });
+demoFiles.addEventListener('change', async () => {
+  const selected = Array.from(demoFiles.files ?? []); demoFiles.value = '';
+  if (!selected.length) return;
+  const generation = operations.beginLoad();
+  if (generation === null) return;
+  beginLoad();
+  try {
+    const candidate = await readDemoFiles(selected);
+    if (!operations.isCurrentLoad(generation)) return;
+    installRecording(candidate.recording, { sha256: candidate.recordingSha256, byteLength: candidate.recordingByteLength }, 'Local demo', candidate);
+  } catch (error) {
+    if (operations.isCurrentLoad(generation)) showError(`Cannot open demo. ${error instanceof Error ? error.message : 'Invalid files.'} Select all five JSON files from the same prepared demo folder. The previous recording and layers remain loaded.`);
   } finally { if (operations.isCurrentLoad(generation)) { operations.endLoad(generation); loadingControls(false); } }
 });
 
@@ -285,20 +335,20 @@ anatomyButton.addEventListener('click', () => { if (!anatomyButton.disabled) ana
 anatomyFile.addEventListener('change', async () => {
   const selected = anatomyFile.files?.[0]; anatomyFile.value = '';
   if (!selected || !recording || anatomyLoading || cellLoading || followupLoading || operations.loading || operations.exporting) return;
-  const sourceRecording = recording;
+  const sourceRecording = recording, request = ++anatomyRequest;
+  const current = () => recording === sourceRecording && request === anatomyRequest;
   anatomyLoading = true; anatomyControls();
   try {
     if (selected.size > MAX_ANATOMY_BYTES) throw new Error('Anatomy file exceeds 8 MiB.');
     const attached = await anatomyAttachment.load(selected.text());
-    if (!attached || recording !== sourceRecording) return;
+    if (!attached || !current()) return;
     assertCellAnatomy(cellAttachment.value, anatomyAttachment.value);
-    stage?.setAnatomy(anatomyAttachment.value);
-    anatomyNote.textContent = `${anatomyAttachment.value!.coverage.displayed_cells.toLocaleString('en-US')} static source positions loaded`;
+    installAnatomy();
     errorElement.hidden = true;
   } catch (error) {
-    if (recording === sourceRecording) showError(`Cannot open anatomy. ${error instanceof Error ? error.message : 'Invalid sidecar.'} Generate a sidecar for this exact recording; replay remains available.`);
+    if (current()) showError(`Cannot open anatomy. ${error instanceof Error ? error.message : 'Invalid sidecar.'} Generate a sidecar for this exact recording; replay remains available.`);
   } finally {
-    if (recording === sourceRecording) { anatomyLoading = false; anatomyControls(); renderCurrent(); }
+    if (current()) { anatomyLoading = false; anatomyControls(); renderCurrent(); }
   }
 });
 
@@ -306,29 +356,21 @@ cellButton.addEventListener('click', () => { if (!cellButton.disabled) cellFile.
 cellFile.addEventListener('change', async () => {
   const selected = cellFile.files?.[0]; cellFile.value = '';
   if (!selected || !recording || cellLoading || anatomyLoading || followupLoading || operations.loading || operations.exporting) return;
-  const sourceRecording = recording;
+  const sourceRecording = recording, request = ++cellRequest;
+  const current = () => recording === sourceRecording && request === cellRequest;
   cellLoading = true; anatomyControls();
   try {
     if (selected.size > MAX_CELL_ACTIVITY_BYTES) throw new Error('Cell activity file exceeds 16 MiB.');
     const attached = await cellAttachment.load(selected.text());
-    if (!attached || recording !== sourceRecording) return;
+    if (!attached || !current()) return;
     const detail = cellAttachment.value!;
     assertCellAnatomy(detail, anatomyAttachment.value);
-    stage?.setCellActivity(detail);
-    cellWindows = buildCellWindows(detail); lastCellWindow = undefined; cellRows = []; cellCountBody.replaceChildren();
-    for (const [slot, cell] of detail.cells.entries()) {
-      const row = document.createElement('tr');
-      for (const text of [String(slot + 1), String(cell.source_id), cell.groups.join(', '), cell.soma ? cell.soma.join(', ') : 'Missing position']) {
-        const value = document.createElement('td'); value.textContent = text; row.append(value);
-      }
-      const count = document.createElement('td'); count.textContent = '—'; row.append(count); cellRows.push(count); cellCountBody.append(row);
-    }
-    cellNote.textContent = `${detail.cells.length} recorded cells; ${detail.cells.filter(cell => !cell.soma).length} without positions. Static model connections, not measured transmission.`;
+    installCells();
     errorElement.hidden = true; update();
   } catch (error) {
-    if (recording === sourceRecording) showError(`Cannot open cell activity. ${error instanceof Error ? error.message : 'Invalid sidecar.'} Choose a sidecar for this exact recording; replay remains available.`);
+    if (current()) showError(`Cannot open cell activity. ${error instanceof Error ? error.message : 'Invalid sidecar.'} Choose a sidecar for this exact recording; replay remains available.`);
   } finally {
-    if (recording === sourceRecording) { cellLoading = false; anatomyControls(); renderCurrent(); }
+    if (current()) { cellLoading = false; anatomyControls(); renderCurrent(); }
   }
 });
 
@@ -397,7 +439,7 @@ canvas.addEventListener('keydown', (event) => {
 function exportControls(exporting: boolean) {
   cellAttachment.setExporting(exporting);
   followupAttachment.setExporting(exporting);
-  openButton.disabled = exporting; file.disabled = exporting; play.disabled = exporting; seek.disabled = exporting; speed.disabled = exporting;
+  openButton.disabled = exporting; file.disabled = exporting; demoButton.disabled = exporting; demoFiles.disabled = exporting; play.disabled = exporting; seek.disabled = exporting; speed.disabled = exporting;
   videoButton.textContent = exporting ? 'Cancel export' : 'Export video';
   videoButton.disabled = !exporting && (!recording || !videoCodec || !stage);
   planButton.disabled = exporting || !recording || !(isEventRecording(recording) || isSessionRecording(recording)) || tick < recording.decision.effective_tick;

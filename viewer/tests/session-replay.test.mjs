@@ -10,6 +10,8 @@ import * as exportModule from '../src/export.ts';
 import * as anatomyModule from '../src/anatomy.ts';
 import * as cellModule from '../src/cell-activity.ts';
 import * as followupModule from '../src/followup.ts';
+import * as demoModule from '../src/demo.ts';
+import { anatomyFixture } from './anatomy.test.mjs';
 import { followupFixture, followupFiles } from './followup.test.mjs';
 import { cellFixture } from './cell-activity.test.mjs';
 import { drawOverlay, createEventBoard } from '../src/stage.ts';
@@ -182,18 +184,42 @@ test('one global30fps export and final90frame hold preserve terminal plan, cance
 
 // Execute real application control flow with only DOM/WebGL/codec dependencies
 // replaced. This is a control-flow test, not browser or encoded-video evidence.
+function demoBytes(value) { return new TextEncoder().encode(JSON.stringify(value)); }
+// Declared relationships only; no measured/native history is claimed by this fixture.
+export function demoFixture() {
+  const recording = sessionFixture(), detail = cellFixture().detail;
+  let index = 0;
+  const maps = Object.fromEntries(Object.entries(recording.groups).map(([name, count]) => [name, Array.from({ length: count }, () => index++)]));
+  recording.source.metadata.engine_identity = { ...cellFixture().context.recording.source.metadata.engine_identity, neural_groups: maps };
+  const raw = demoBytes(recording), sha = hash(raw);
+  detail.binding.recording_sha256 = sha;
+  detail.selection.group_population_counts = { ...recording.groups }; detail.selection.group_selected_counts = { ...recording.groups };
+  detail.cells = Array.from({ length: index }, (_, i) => ({ model_index: i, source_id: i + 1, groups: Object.keys(maps).filter(name => maps[name].includes(i)), soma: null }));
+  detail.topology.eligible_edges = 0; detail.topology.edges = [];
+  detail.bins = recording.segments.flatMap((segment, observation) => segment.bins.map((bin, ordinal) => {
+    const counts = Array(index).fill(0);
+    for (const [name, cells] of Object.entries(maps)) counts[cells[0]] = bin.group_spikes[name];
+    return { observation_index: observation, bin_index: ordinal, start_tick: bin.end_tick - bin.duration_ticks, end_tick: bin.end_tick, counts };
+  }));
+  const followup = followupFixture(recording), pair = followupFiles(followup);
+  return { recording, followup, snapshots: { 'recording.json': raw, 'cell-activity.json': demoBytes(detail), 'anatomy.json': demoBytes(anatomyFixture(sha)), 'followup.json': pair[0], 'receipt.json': pair[1] } };
+}
+export function demoFiles(fixture, read = async raw => raw.slice().buffer) {
+  return Object.entries(fixture.snapshots).map(([name, raw]) => ({ name, size: raw.length, arrayBuffer: () => read(raw, name) }));
+}
+
 function mainHarness() {
   const nodes = new Map(), paints = [], downloads = [], blobs = [];
   const context = { beginPath() {}, moveTo() {}, lineTo() {}, stroke() {}, clearRect() {}, drawImage() {} };
   function node() { return { content: '', writes: [], get textContent() { return this.content; }, set textContent(value) { this.content = value; this.writes.push(value); }, hidden: false, disabled: false, value: '1', clientWidth: 200, width: 0, height: 0, handlers: {}, children: [], style: {}, classList: { add() {} }, append(child) { this.children.push(child); }, replaceChildren() { this.children = []; }, setAttribute(name, value) { this[name] = value; }, getContext() { return context; }, addEventListener(name, handler) { this.handlers[name] = handler; }, click() { if (this.download) downloads.push(this.download); return this.handlers.click?.(); } }; }
   const document = { getElementById(id) { if (!nodes.has(id)) nodes.set(id, node()); return nodes.get(id); }, createElement() { return node(); } };
-  let currentSample, currentCell = null, animation, loadCount = 0, cancelAt = null;
-  const stage = { renderer: { setAnimationLoop(callback) { animation = callback; } }, setRecording() { loadCount++; currentCell = null; }, setAnatomy() {}, setCellActivity(value) { currentCell = value; }, setSample(sample) { currentSample = sample; }, render(hold, holdElapsedTicks) { paints.push({ sample: currentSample, hold, holdElapsedTicks, cell: currentCell }); }, setExporting() {}, dispose() {} };
+  let currentSample, currentCell = null, currentAnatomy = null, animation, loadCount = 0, cancelAt = null;
+  const stage = { renderer: { setAnimationLoop(callback) { animation = callback; } }, setRecording() { loadCount++; currentCell = null; currentAnatomy = null; }, setAnatomy(value) { currentAnatomy = value; }, setCellActivity(value) { currentCell = value; }, setSample(sample) { currentSample = sample; }, render(hold, holdElapsedTicks) { paints.push({ sample: currentSample, hold, holdElapsedTicks, cell: currentCell }); }, setExporting() {}, dispose() {} };
   class BufferTarget { buffer = new ArrayBuffer(1); }
   class Output { state = 'pending'; constructor({target}) { this.target = target; } addVideoTrack() {} async start() { this.state = 'started'; } async finalize() { this.state = 'finalized'; } async cancel() { this.state = 'canceled'; } }
   class CanvasSource { async add() { if (cancelAt !== null && paints.filter(p => p.hold !== undefined).length >= cancelAt) { cancelAt = null; await nodes.get('video').handlers.click(); } } }
   const javascript = stripTypeScriptTypes(readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8')).replace(/^import .+;\r?$/gm, '');
-  runInNewContext(javascript, { ...replayModule, ...videoModule, ...recordingModule, ...eventModule, ...sessionModule, ...exportModule, ...anatomyModule, ...cellModule, ...followupModule, sampleAt: recordingModule.sampleAnyAtTick, createOperationGate, createStage: () => stage, canEncodeVideo: async () => true, document, performance, VideoEncoder: class {}, window: { addEventListener() {} }, setTimeout: () => {}, Blob, URL: { createObjectURL: blob => { blobs.push(blob); return 'blob:declared'; }, revokeObjectURL() {} }, AbortController, BufferTarget, Output, CanvasSource, WebMOutputFormat: class {} });
+  runInNewContext(javascript, { ...replayModule, ...videoModule, ...recordingModule, ...eventModule, ...sessionModule, ...exportModule, ...anatomyModule, ...cellModule, ...followupModule, ...demoModule, sampleAt: recordingModule.sampleAnyAtTick, createOperationGate, createStage: () => stage, canEncodeVideo: async () => true, document, performance, VideoEncoder: class {}, window: { addEventListener() {} }, setTimeout: () => {}, Blob, URL: { createObjectURL: blob => { blobs.push(blob); return 'blob:declared'; }, revokeObjectURL() {} }, AbortController, BufferTarget, Output, CanvasSource, WebMOutputFormat: class {} });
   const load = async (value, textPromise) => { const json = JSON.stringify(value); nodes.get('file').files = [{ name: 'session.json', size: Buffer.byteLength(json), arrayBuffer: async () => new TextEncoder().encode(await (textPromise ?? json)).buffer }]; await nodes.get('file').handlers.change(); };
   const seek = (tick) => { nodes.get('seek').value = String(tick); nodes.get('seek').handlers.input(); };
   const key = (code, options = {}, focus = 'stage') => {
@@ -201,8 +227,74 @@ function mainHarness() {
     const event = { code, repeat: false, altKey: false, ctrlKey: false, metaKey: false, shiftKey: false, prevented: false, preventDefault() { this.prevented = true; }, ...options };
     nodes.get('stage').handlers.keydown(event); return event.prevented;
   };
-  return { nodes, load, seek, key, paints, downloads, blobs, sample: () => currentSample, cell: () => currentCell, loadCount: () => loadCount, cancelAfter: n => { cancelAt = n; }, animate: t => animation(t) };
+  return { nodes, load, seek, key, paints, downloads, blobs, sample: () => currentSample, cell: () => currentCell, anatomy: () => currentAnatomy, loadCount: () => loadCount, cancelAfter: n => { cancelAt = n; }, animate: t => animation(t) };
 }
+
+function openDemo(app, files) {
+  const picker = app.nodes.get('demo-files'); assert.ok(picker, 'Open demo picker is missing');
+  picker.files = files; return picker.handlers.change();
+}
+
+test('combined demo commits all layers at once, starts paused and preserves choice-gated downloads', async () => {
+  const app = mainHarness(), f = demoFixture();
+  await app.load(sessionFixture()); app.seek(12345);
+  let release;
+  const pending = openDemo(app, demoFiles(f, (raw, name) => name === 'receipt.json' ? new Promise(resolve => { release = () => resolve(raw.buffer); }) : Promise.resolve(raw.buffer)));
+  assert.equal(app.loadCount(), 1); assert.equal(app.sample().tick, 12345); assert.equal(app.nodes.get('video').disabled, true);
+  assert.equal(app.nodes.get('cell-open').disabled, true); assert.equal(app.nodes.get('followup-open').disabled, true);
+  release(); await pending;
+  assert.equal(app.loadCount(), 2); assert.equal(app.sample().tick, 0); assert.equal(app.nodes.get('play').textContent, 'Play');
+  assert.ok(app.anatomy()); assert.ok(app.cell()); assert.equal(app.nodes.get('followup-content').hidden, true);
+  app.seek(f.recording.duration_ticks); assert.equal(app.nodes.get('followup-content').hidden, false);
+  await app.nodes.get('followup-download').handlers.click(); assert.deepEqual(new Uint8Array(await app.blobs.at(-1).arrayBuffer()), f.followup.markdown);
+  await app.nodes.get('download-plan').handlers.click(); assert.deepEqual(JSON.parse(await app.blobs.at(-1).text()), f.recording.plan);
+  app.seek(0); assert.equal(app.nodes.get('followup-content').hidden, true);
+  const cell = app.cell(), anatomy = app.anatomy(); app.seek(23456);
+  await openDemo(app, []); assert.equal(app.sample().tick, 23456);
+  const bad = demoFiles(f); bad[1] = { ...bad[1], size: 2, arrayBuffer: async () => new TextEncoder().encode('{}').buffer };
+  await openDemo(app, bad); assert.equal(app.loadCount(), 2); assert.equal(app.sample().tick, 23456); assert.equal(app.cell(), cell); assert.equal(app.anatomy(), anatomy);
+  app.seek(f.recording.duration_ticks); assert.equal(app.nodes.get('followup-content').hidden, false);
+  const exporting = app.nodes.get('video').handlers.click();
+  await openDemo(app, demoFiles(f, () => { assert.fail('Demo read during export'); })); await exporting;
+  await app.load(sessionFixture()); assert.equal(app.cell(), null); assert.equal(app.anatomy(), null); assert.equal(app.nodes.get('followup-content').hidden, true);
+});
+
+test('combined demo stale success/error and recording/hash replacement never publish obsolete state', async () => {
+  const app = mainHarness(), f = demoFixture(); await app.load(sessionFixture());
+  for (const reject of [false, true]) {
+    let finish;
+    const old = openDemo(app, demoFiles(f, (raw, name) => name === 'receipt.json' ? new Promise((resolve, fail) => { finish = () => reject ? fail(new Error('Obsolete demo error')) : resolve(raw.buffer); }) : Promise.resolve(raw.buffer)));
+    await app.load(sessionFixture()); const loads = app.loadCount(); finish(); await old;
+    assert.equal(app.loadCount(), loads); assert.equal(app.cell(), null); assert.equal(app.nodes.get('error').hidden, true);
+  }
+  let finish;
+  const oldRecording = app.load(sessionFixture(), new Promise(resolve => { finish = resolve; }));
+  await openDemo(app, demoFiles(f)); finish('{}'); await oldRecording;
+  assert.ok(app.cell()); assert.equal(app.nodes.get('error').hidden, true);
+  const original = crypto.subtle.digest.bind(crypto.subtle); let release;
+  crypto.subtle.digest = async (...args) => { if (!release) await new Promise(resolve => { release = resolve; }); return original(...args); };
+  try {
+    const old = openDemo(app, demoFiles(f)); while (!release) await new Promise(setImmediate);
+    await app.load(sessionFixture()); const loads = app.loadCount(); release(); await old;
+    assert.equal(app.loadCount(), loads); assert.equal(app.cell(), null);
+  } finally { crypto.subtle.digest = original; }
+});
+
+test('anatomy and cell obsolete catch/finally cannot alter newer imports after failed demo switch', async () => {
+  for (const role of ['anatomy', 'cell']) for (const rejects of [false, true]) {
+    const app = mainHarness(), f = demoFixture(); await app.load(f.recording); await new Promise(setImmediate);
+    const picker = app.nodes.get(`${role}-file`); let finishOld, finishNew;
+    picker.files = [{ size: 2, text: () => new Promise((resolve, reject) => { finishOld = () => rejects ? reject(new Error('Obsolete sidecar error')) : resolve('{}'); }) }];
+    const old = picker.handlers.change();
+    await openDemo(app, [{ name: 'wrong.json', size: 2, arrayBuffer: async () => new ArrayBuffer(2) }]);
+    const bytes = f.snapshots[role === 'cell' ? 'cell-activity.json' : 'anatomy.json'];
+    picker.files = [{ size: bytes.length, text: () => new Promise(resolve => { finishNew = () => resolve(new TextDecoder().decode(bytes)); }) }];
+    const current = picker.handlers.change(), previousError = app.nodes.get('error').textContent;
+    finishOld(); await old;
+    assert.equal(app.nodes.get('video').disabled, true); assert.equal(app.nodes.get('error').textContent, previousError);
+    finishNew(); await current; assert.ok(role === 'cell' ? app.cell() : app.anatomy()); assert.equal(app.nodes.get('error').hidden, true);
+  }
+});
 
 function companionInputs(app, files, read = async value => value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength)) {
   const picker = app.nodes.get('followup-files'); assert.ok(picker, 'Planning companion picker is missing');

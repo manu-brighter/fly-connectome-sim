@@ -65,7 +65,10 @@ understanding or a stable preference; it does not relabel the historical pilot.
 No simulation rerun is needed to open the accepted local bundle at
 `runs/cell-demo-20261108-02/`: load `session/recording.json`, then
 `cell-activity.json` and optional `anatomy.json` in the viewer. The existing film
-is `demo-30fps.webm`. For a separately justified new observation, use
+is `demo-30fps.webm`. Use the
+[combined local demo import](docs/getting-started.md#open-the-complete-saved-demo-together)
+to prepare the existing recording, cells, anatomy and planning companion in one
+folder and open all five files together. For a separately justified new observation, use
 `run-session` to record and export a local session in one command, then
 `inspect-session` to verify its raw-backed outputs without running the engine.
 Open the bundle's `recording.json` in the viewer; selected and deferred results

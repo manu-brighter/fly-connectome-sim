@@ -229,6 +229,39 @@ For a built preview, use `npm --prefix viewer run preview` after the build.
 Unix/native reproduction and browser capture availability require their own
 checks; current evidence is from the Windows environment described above.
 
+### Open the complete saved demo together
+
+The local demo can be prepared from its existing recording, cell counts,
+anatomy and planning companion without a simulation or API call. From the
+repository root, with Node 24 and the accepted local artifacts available:
+
+```powershell
+node scripts/prepare-demo.mjs `
+  --recording runs/cell-demo-20261108-02/session/recording.json `
+  --cell-activity runs/cell-demo-20261108-02/cell-activity.json `
+  --anatomy runs/cell-demo-20261108-02/anatomy.json `
+  --followup-dir runs/event-followup-live-20261108 `
+  --output-dir runs/local-demo-20261108
+```
+
+The output directory must be new and its parent must already exist. The command
+validates the selected files and writes byte-identical copies of only
+`recording.json`, `cell-activity.json`, `anatomy.json`, `followup.json` and
+`receipt.json`. It refuses existing outputs. These private local inputs are not
+included in a fresh checkout; use paths to your own compatible saved artifacts
+instead. A failed copy retains its incomplete folder for inspection.
+
+Start the existing viewer with `npm --prefix viewer run dev`, open the printed
+localhost URL, click **Open demo**, and select all five JSON files from the
+prepared folder in one picker. File order does not matter. The viewer checks
+every attachment before replacing the current view and starts paused at the
+beginning; planning notes appear only after the recorded selection. A failed
+combined import retains the previous recording and its layers. Individual
+imports remain available, including recordings without a selected plan.
+
+This folder is a viewing convenience, not a new native run or provenance
+certificate. It includes no raw events, checkpoints, movie, API request or key.
+
 ### Keyboard replay controls
 
 Tab to the replay canvas to use **Space** for play/pause, **Left/Right** for100ms

@@ -10,7 +10,8 @@
     <div id="app">
       <header class="masthead">
         <div class="identity"><span class="mark" aria-hidden="true">f</span><div><strong>Fly Connectome</strong><span>Measured replay</span></div></div>
-        <div class="file-actions"><button id="open" class="primary">Open recording</button><button id="cell-open" disabled>Open cell counts</button><button id="anatomy-open" disabled>Open anatomy</button><button id="source-toggle" disabled aria-expanded="false" aria-controls="source-panel">Source</button></div>
+        <div class="file-actions"><button id="open" class="primary">Open recording</button><button id="demo-open">Open demo</button><button id="cell-open" disabled>Open cell counts</button><button id="anatomy-open" disabled>Open anatomy</button><button id="source-toggle" disabled aria-expanded="false" aria-controls="source-panel">Source</button></div>
+        <input id="demo-files" type="file" accept=".json,application/json" multiple hidden />
         <input id="file" type="file" accept=".json,application/json" hidden />
         <input id="anatomy-file" type="file" accept=".json,application/json" hidden />
         <input id="cell-file" type="file" accept=".json,application/json" hidden />
@@ -18,6 +19,7 @@
       <main>
         <div class="heading"><div><h1>A window into the recording.</h1><p id="recording-name">Open measured-replay/v1, measured-video-replay/v1 or /v2, event-choice-replay/v1 or feed-event-replay/v1.</p></div><span id="status" class="status">No recording loaded</span></div>
         <p id="error" role="alert" hidden></p>
+        <p class="companion-help">Open demo: select recording.json, cell-activity.json, anatomy.json, followup.json and receipt.json together from one prepared folder.</p>
         <section class="experiment" aria-label="Recorded simulation replay">
           <div class="stage"><canvas id="stage" aria-label="Illustrative fruit fly, exact recorded stimulus and measured telemetry." aria-describedby="stage-help" tabindex="0"></canvas><p id="stage-help" class="stage-note">Illustrative geometry · drag to orbit. With canvas focused: Space play/pause · Left/Right seek 100 ms · Home beginning · End terminal sample.</p></div>
           <div id="replay-announcement" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
