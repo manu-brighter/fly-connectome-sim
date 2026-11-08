@@ -37,7 +37,12 @@ exact Markdown download and unchanged original plan. Separate declared fixtures
 cover replacement/defer; all 15 historical inputs and 41 package sources remain
 unchanged. Astra accepted the actual desktop/mobile screenshots and independently
 matched the inputs, package identity and downloads. This bounded viewer
-continuation is complete; final feature publication/CI is the remaining checkpoint.
+continuation is complete and published as `46e0200c2a94c88f984f8c4b5f65617e8cdffa94`.
+Its [clean-checkout CI](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42522727223)
+passed: 343 native/backend tests with 8 declared skips; 151 viewer tests with
+2 private-artifact parity skips, plus typecheck/build. Locally all 153 viewer
+tests passed without skips. No additional provider request or acquisition is
+needed for the completed companion/viewer scope.
 The learning assay and broader platform work remain separately parked.
 Aggregate group bins cannot reconstruct individual spikes; the new cell view uses
 separately captured counts. Static connections are not measured transmission.
@@ -272,6 +277,17 @@ inspection, not as a session recording accepted by the viewer.
 - [x] Independently inspect actual text/usage/source hashes and document the new
   source identity. No automatic provider retry. Feature publication and its
   compatibility outcome are established by the corresponding Git/CI receipts.
+
+### 2c. Local companion viewer — accepted
+
+- [x] Bind the two imported companion/receipt files to the exact original
+  recording and complete plan; download only checked Markdown bytes.
+- [x] Gate text/download by the current recorded choice, including rewind,
+  replacement, stale imports and deferred results; preserve original plan export.
+- [x] Independently accept actual desktop/mobile display, original downloads
+  and unchanged historical files; use declared fixtures only for race/defer checks.
+- [x] Publish the reviewed feature checkpoint and observe successful clean-checkout
+  CI. See the [viewer result](experiments/2026-11-08-followup-viewer.md).
 
 ### 3. Final demonstration and v1 close-out — presentation repaired
 

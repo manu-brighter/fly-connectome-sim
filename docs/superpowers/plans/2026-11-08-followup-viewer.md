@@ -57,7 +57,13 @@ Consumes Task1's unchanged local artifact/import/download contract.
 - [x] Check actual pending/final/rewind/defer/replacement behavior, downloads,
   console/network and original source hashes; preserve screenshots/evidence.
 - [x] Update usage, report and current handover; independently review results.
-- [ ] Inspect explicit staged diff; reviewed feature commit/push and observe CI.
+- [x] Inspect explicit staged diff; reviewed feature commit/push and observe CI.
+
+Accepted feature checkpoint: `46e0200c2a94c88f984f8c4b5f65617e8cdffa94`.
+[CI 42522727223](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42522727223)
+passed: 151 viewer tests / 2 private-artifact skips and build, 343 backend/native
+tests / 8 skips. Local viewer suite: 153 passed, no skips. See the
+[acceptance report](../../experiments/2026-11-08-followup-viewer.md).
 
 Self-review: Task1 source/interfaces agree with its tests and the spec. Task2
 consumes those interfaces and owns no concurrent source edits. No new provider

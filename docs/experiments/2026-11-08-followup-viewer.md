@@ -83,6 +83,14 @@ registrations check the private accepted Markdown and explicitly skip when
 those ignored artifacts are absent in a clean checkout. All ordinary parser
 and controller regressions use declared, data-free fixtures.
 
+Feature checkpoint `46e0200c2a94c88f984f8c4b5f65617e8cdffa94` was pushed to
+`origin/feat/connectome-experiment-core`. Its
+[clean-checkout CI](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42522727223)
+passed 151 viewer tests with the 2 expected private-artifact parity skips and a
+successful typecheck/build; native/backend compatibility passed 343 tests with
+8 declared skips. This automated tiny-native coverage is separate from the
+preserved fullgraph observation and does not repeat that acquisition.
+
 The controller independently reconstructed the exact original plan and session
 receipt bytes using the existing browser parser/canonical encoder. A read-only
 artifact audit matched all 15 pre-task historical files, both downloads and all
