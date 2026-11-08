@@ -27,6 +27,7 @@ from .experiment.measured_replay import export_measured_replay, record_observati
 from .experiment.video_observation import export_video_replay, record_video_observation_run
 from .experiment.event_choice import export_event_plan, export_event_replay, record_event_choice_run
 from .experiment.event_proposals import prepare_event_proposal
+from .experiment.event_followup import prepare_event_followup
 from .experiment.feed_event_session import export_session_plan, export_session_replay, record_feed_event_session
 from .experiment.session_workflow import inspect_session, run_session
 from .experiment.stimuli import AssayStimuli
@@ -128,6 +129,12 @@ def main(argv: list[str] | None = None) -> int:
     proposal_parser.add_argument("--max-output-tokens", type=int, required=True)
     proposal_parser.add_argument("--output-dir", type=Path, required=True)
     proposal_parser.add_argument("--allow-paid-request", action="store_true")
+    followup_parser = commands.add_parser("prepare-event-followup")
+    followup_parser.add_argument("--session-dir", type=Path, required=True)
+    followup_parser.add_argument("--output-dir", type=Path, required=True)
+    followup_parser.add_argument("--model", required=True)
+    followup_parser.add_argument("--max-output-tokens", type=int, required=True)
+    followup_parser.add_argument("--allow-paid-request", action="store_true")
     session_parser = commands.add_parser("feed-event-session")
     session_parser.add_argument("--playlist", type=Path, required=True)
     session_parser.add_argument("--proposal", type=Path, required=True)
@@ -161,6 +168,9 @@ def main(argv: list[str] | None = None) -> int:
                 max_budget_chf=args.max_budget_chf, model=args.model,
                 max_output_tokens=args.max_output_tokens, allow_paid_request=args.allow_paid_request,
             )
+        elif args.command == "prepare-event-followup":
+            summary = prepare_event_followup(args.output_dir, session_dir=args.session_dir, model=args.model,
+                                             max_output_tokens=args.max_output_tokens, allow_paid_request=args.allow_paid_request)
         elif args.command == "observe":
             summary = _verified_summary(record_observation_run(
                 args.output_dir, engine_factory=FlyEngine.from_prepared_graph,

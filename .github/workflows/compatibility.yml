@@ -92,6 +92,8 @@ jobs:
           tests/test_checkpoint.py::test_evolved_emitted_checkpoint_replays_with_native_kernel
           tests/experiment/test_replay.py::test_native_qualification_context_maps_and_single_factory
           tests/experiment/test_session_workflow.py
+          tests/experiment/test_event_proposals.py
+          tests/experiment/test_event_followup.py
           tests/experiment/test_recorder_limits.py
           tests/test_cli.py
 

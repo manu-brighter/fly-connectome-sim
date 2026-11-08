@@ -44,7 +44,7 @@ left/right preference.
 | Experiment state | Checkpoint restore, complete-state hashes, reset determinism, candidate-memory interventions and authenticated native map/schema context | A qualified production frozen configuration |
 | Assay evidence | Caller-owned native production, source-specific 408-pair tiny-native repeats, shared declaration arithmetic and a bounded pair checker with full EOF validation | Global grid/selected-evidence reconciliation/public freezing, fullgraph held-out confirmation and the `assay` CLI |
 | Resource pilots | Fullgraph components, trained 10-/70-second one-anchor pilots with isolated native replay, and a [reviewed detail-on first-training-prefix sample](docs/experiments/2026-11-02-fullgraph-detail-prefix-pilot.md) | Unprofiled controlled timing, complete grid/assay capacity and fullgraph cloud/Linux execution |
-| Product | Accepted genuine proposal → native session → measured choice → unchanged plan → 30 fps film, fixed-cohort cell counts/static connections and bounded visual/side diagnostic | Broader platform/model/account coverage and separately scoped research; no measured synaptic transmission or biological validation |
+| Product | Accepted genuine proposal → native session → measured choice → unchanged plan → 30 fps film, fixed-cohort cell counts/static connections, bounded visual/side diagnostic and a separately verified German planning companion | Broader platform/model/account coverage and separately scoped research; no measured synaptic transmission or biological validation |
 
 The [continuous session](docs/superpowers/specs/2026-11-03-feed-event-session.md)
 uses one fresh engine for fast-feed reels and then 2 s of event cards, without
@@ -86,6 +86,12 @@ cost opt-in enable one request. One live Responses request using
 `gpt-5.4-mini-2026-03-17` passed validation and its exact proposal completed the
 accepted session/plan/film chain. This does not establish compatibility with
 every model or account.
+The separate [follow-up command](docs/getting-started.md#optional-follow-up-to-a-fixed-event-choice)
+passes only the fixed selected option and brief back to the model. One
+[accepted live follow-up](docs/experiments/2026-11-08-event-followup.md) produced
+a German planning companion with preparation suggestions and open questions;
+the complete original plan and source recording remain unchanged. It defaults
+offline, makes no neural run, and never contacts the provider on a deferred choice.
 The historical standalone pilot selected Sunset House from final left2/right1 spikes;
 same-artifact Chrome/plan-download and150-frame/5s export checks passed. See the
 [event-choice report](docs/experiments/2026-11-02-event-choice-observation.md).
@@ -116,8 +122,9 @@ Implementation and verification details live in the
 The [assay design](docs/superpowers/specs/2026-09-24-associative-plasticity-pivot-design.md)
 defines the scientific boundaries; the [product specification](docs/specs/fly-event-planner.md)
 describes the broader event-planning goal. The agreed experimental observation
-scope is complete; post-choice narrative, broader platform work and training/
-research remain separately scoped.
+scope is complete. The user subsequently selected a bounded
+[post-choice planning companion](docs/superpowers/specs/2026-11-08-event-followup.md);
+broader platform work and training/research remain separately scoped.
 
 For a fresh cloud checkout, start with the versioned
 [cloud handover and live TODOs](docs/cloud-handover.md). Local runtime data,

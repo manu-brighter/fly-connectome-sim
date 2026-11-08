@@ -130,7 +130,9 @@ def _contains_key(value: object, key: str) -> bool:
     return False
 
 
-def _decode(raw: bytes, brief: dict, max_output_tokens: int, key: str) -> tuple[bytes, dict]:
+def _decode_response(raw: bytes, max_output_tokens: int, key: str,
+                     *, max_text_bytes: int = MAX_PROPOSAL_BYTES) -> tuple[bytes, dict]:
+    """Validate the shared Responses envelope; callers validate its JSON text."""
     try:
         if not 1 <= len(raw) <= MAX_RESPONSE_BYTES or key.encode("ascii") in raw:
             raise ValueError
@@ -176,16 +178,24 @@ def _decode(raw: bytes, brief: dict, max_output_tokens: int, key: str) -> tuple[
                 or content[0].get("type") != "output_text" or type(content[0].get("text")) is not str):
             raise ValueError
         text = content[0]["text"].encode("utf-8")
-        if not 1 <= len(text) <= MAX_PROPOSAL_BYTES:
+        if not 1 <= len(text) <= max_text_bytes:
             raise ValueError
+        return text, {"response_sha256": sha256(raw).hexdigest(),
+                      "response_id": response_id, "response_model": model, "usage": tokens}
+    except Exception:
+        raise RunArtifactError("Event proposal response rejected") from None
+
+
+def _decode(raw: bytes, brief: dict, max_output_tokens: int, key: str) -> tuple[bytes, dict]:
+    try:
+        text, provenance = _decode_response(raw, max_output_tokens, key)
         proposal = validate_event_proposal(_strict_load(text))
         if proposal["brief"] != brief or _contains_key(proposal, key):
             raise ValueError
         canonical = _canonical(proposal)
         if len(canonical) > MAX_PROPOSAL_BYTES:
             raise ValueError
-        return canonical, {"response_sha256": sha256(raw).hexdigest(),
-                           "response_id": response_id, "response_model": model, "usage": tokens}
+        return canonical, provenance
     except Exception:
         raise RunArtifactError("Event proposal response rejected") from None
 

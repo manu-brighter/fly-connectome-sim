@@ -78,12 +78,13 @@ assert DATA == runtime
 print(f"PyAV: {av.__version__}")
 print(json.dumps(model_fingerprint(), sort_keys=True))
 PY
-uv run --no-sync pytest -q tests/test_native_build.py tests/test_checkpoint.py::test_evolved_emitted_checkpoint_replays_with_native_kernel tests/experiment/test_replay.py::test_native_qualification_context_maps_and_single_factory tests/experiment/test_session_workflow.py tests/experiment/test_recorder_limits.py tests/test_cli.py
+uv run --no-sync pytest -q tests/test_export_anatomy.py tests/experiment/test_cell_activity.py tests/test_native_build.py tests/test_checkpoint.py::test_evolved_emitted_checkpoint_replays_with_native_kernel tests/experiment/test_replay.py::test_native_qualification_context_maps_and_single_factory tests/experiment/test_session_workflow.py tests/experiment/test_event_proposals.py tests/experiment/test_event_followup.py tests/experiment/test_recorder_limits.py tests/test_cli.py
 ```
 
 This explicitly requires PyAV and exercises native compilation/loading, evolved
-checkpoint continuation, tiny qualification context, session/recorder limits
-and CLI behavior. It downloads no MaleCNS data and does not run the general
+checkpoint continuation, tiny qualification context, anatomy/cell exports,
+session/recorder limits, offline provider adapters and CLI behavior. It downloads
+no MaleCNS data and does not run the general
 data-dependent suite or opt-in fullgraph cases. On Windows use PowerShell
 environment syntax and the documented Zig compiler; record the selected tool
 versions separately from hosted Linux results.
@@ -545,6 +546,47 @@ check the linked API organization's actual grant rather than assuming credit
 from the subscription alone. See the
 [transport contract](superpowers/specs/2026-11-06-event-proposal-transport.md)
 and [proposal handoff](event-proposal-prompt.md).
+
+## Optional follow-up to a fixed event choice
+
+`prepare-event-followup` consumes an existing, complete `run-session` bundle.
+It verifies the raw-backed recording, unchanged plan and completion receipt;
+it does not run the neural engine. Start with an offline preview:
+
+```powershell
+.venv/Scripts/python.exe -m fly_connectome_sim.cli prepare-event-followup --session-dir runs/my-session --output-dir runs/followup-preview --model YOUR_MODEL_ID --max-output-tokens 1024
+```
+
+The output directory must be new, its parent must exist, and it must be outside
+the source session. Inspect `request.json` and its `dry-run` receipt. Only the
+brief and selected option enter the provider input; recordings, neural counts,
+source identifiers and the other option stay local. A deferred choice yields
+`no-selection`, without requesting a key or contacting the provider.
+
+With the same local `OPENAI_API_KEY` setup described above, explicitly opt into
+one paid call using another fresh directory:
+
+```powershell
+.venv/Scripts/python.exe -m fly_connectome_sim.cli prepare-event-followup --session-dir runs/my-session --output-dir runs/followup-live --model YOUR_MODEL_ID --max-output-tokens 1024 --allow-paid-request
+```
+
+Successful output contains `followup.json` and a readable German `event-plan.md`.
+The original plan is retained exactly; a separate nonbinding supplement adds
+preparation suggestions and open questions. It cannot replace the selected
+option, budget or programme. Venue availability and estimates are unverified;
+check the text before using it to organize an event. No booking is made.
+
+The completion receipt is written last and binds source/request/output hashes
+and reported token usage. A changed source or rejected answer aborts completion;
+partial files remain for inspection. There are no retries or repair calls.
+The shared64KiB request/256KiB response bounds,30s socket timeout, credential
+checks and512..4096 output-token limits also apply here; they do not establish
+a monetary or whole-process deadline.
+See the [follow-up contract](superpowers/specs/2026-11-08-event-followup.md).
+The [accepted November8 follow-up](experiments/2026-11-08-event-followup.md)
+used the existing selected session, one1024-token-capped call and536actual
+tokens. Its German Markdown/JSON companions are local under
+`runs/event-followup-live-20261108/`; no simulation rerun is needed to read them.
 
 ## Separate assay commands
 

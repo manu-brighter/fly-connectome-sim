@@ -13,8 +13,20 @@ review with Astra, and preserve progress in tracked checkpoints.
 **The agreed experimental observation v1 scope is complete.** The genuine API
 proposal → continuous native session → measured choice → unchanged plan → film
 chain and the bounded recorded single-cell/static-connection view are accepted.
-No further acquisition, provider request or feature expansion is needed for this
-scope. The learning assay and broader platform work remain separately parked.
+No further acquisition, provider request or feature expansion is needed for that
+completed scope. The user subsequently selected **LLM feedback and event-plan
+continuation**: a separate German companion to the fixed, inspected selection.
+This is now **complete and independently accepted** under the
+[follow-up contract](superpowers/specs/2026-11-08-event-followup.md) and
+[plan](superpowers/plans/2026-11-08-event-followup.md): offline-first CLI,
+unchanged original plan, one bounded live acceptance, no new fullgraph recording.
+The [accepted result](experiments/2026-11-08-event-followup.md) is local at
+`runs/event-followup-live-20261108/event-plan.md` with JSON/request/receipt beside
+it. The single call used308input+228output=536tokens and15.562s, nominal
+USD0.001257 at the checked tariff; actual billing was not inspected. All seven
+historical source files and the full plan stayed identical. No more provider
+calls or acquisitions are needed for this selected continuation.
+The learning assay and broader platform work remain separately parked.
 Aggregate group bins cannot reconstruct individual spikes; the new cell view uses
 separately captured counts. Static connections are not measured transmission.
 
@@ -237,6 +249,18 @@ inspection, not as a session recording accepted by the viewer.
   programme and downloaded plan exactly match. Earlier pilots retain their authored
   `examples/event-options.json` origin and cannot substitute for this check.
 
+### 2b. Bounded feedback to the selected event — accepted
+
+- [x] Fix scope with the user: separate German planning companion, no changed
+  original plan or new neural recording. Astra design review completed.
+- [x] Implement offline-first `prepare-event-followup`, source binding, strict
+  response handling and JSON/Markdown publication; review/test before live use.
+- [x] Inspect one actual offline request, then make one bounded live acceptance
+  using the accepted session and pinned model,1024 output tokens,120 s deadline.
+- [x] Independently inspect actual text/usage/source hashes and document the new
+  source identity. No automatic provider retry. Feature publication and its
+  compatibility outcome are established by the corresponding Git/CI receipts.
+
 ### 3. Final demonstration and v1 close-out — presentation repaired
 
 - [x] Accept the November 8 genuine-proposal session with 256 recorded cells,
@@ -391,7 +415,14 @@ For an explicit research return use the archived handover and
 No complete production assay CLI, positive learning gate or formal qualification
 is established. Preserve genuine negative/inconclusive results.
 
-Current frozen raw-byte model identity (40 packaged source members):
+Current raw-byte model identity after the separate follow-up implementation
+(41 packaged source members):
+
+- Model fingerprint: `1f2a004c9dfcd37c4824a2fd220d1d723c7f95cc34620bb1ebbe7ced7634e77b`.
+- This source has no new fullgraph recording or formal qualification. The
+  historical recording remains bound to its original sources below.
+
+Historical November8 acquisition-freeze identity (40 packaged source members):
 
 - Model fingerprint: `dc83d0796fd51c46323ee0e96a7bcfc725d34c6d94371971d235d90ed4144db5`.
 - Accepted session engine identity: `13eb5c81d3898597224405ae06a62e03359d28588d0b81f5c1a51ead528ae1e7`.
