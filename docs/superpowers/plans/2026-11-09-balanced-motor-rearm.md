@@ -122,9 +122,13 @@ candidate input/result trace and honest descriptive metrics, not native evidence
 - [x] Astra independently reviews the actual trace and reproduces the candidate
   result. Distinguish synthetic software acceptance from development feasibility;
   preserve zero-result or dominant-route outcomes without tuning.
-- [ ] Inspect full explicit staged diff/size, publish the reviewed source/result
+- [x] Inspect full explicit staged diff/size, publish the reviewed source/result
   checkpoint, observe CI, and update the tracked continuation status. A new
   candidate/native acquisition/Stage C is not an automatic next task.
+
+Checkpoint `c73fa83384f698c4793a7b32d5ab84c1251f2a67` passed
+[CI42686215403](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42686215403):
+766 backend tests /41 skips in320.85s,243 viewer tests /four skips and build.
 
 Self-review: Task1 owns only the additional latch and v2 identity; Task2 consumes
 that public API after acceptance. The spec fixes timing, block alignment and

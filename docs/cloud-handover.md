@@ -127,11 +127,24 @@ replace the native v1 recording. No new simulation or provider call ran.
 Stage B remains open; no Stage C, favorable-window search, twenty-slot/price-policy
 qualification or new acquisition follows automatically. Completed run directories
 must not be reused. Stop local cutoff/rearm iteration: this candidate supplies no
-reason to repeat a native run. Next finish its reviewed source/result checkpoint
-and CI, then identify a distinct justified readout design question. The broader
-user-authorized market task remains open; do not automatically construct another
-threshold candidate or claim the price service is ready. Astra is advising this
-read-only architecture decision; no new implementation/acquisition is specified.
+reason to repeat a native run. Checkpoint
+`c73fa83384f698c4793a7b32d5ab84c1251f2a67` passed
+[CI42686215403](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42686215403):
+766 backend tests /41 skips in320.85s,243 viewer tests /four skips and build.
+
+**Next bounded task: recorded response structure**, under its prospectively
+accepted [spec](superpowers/specs/2026-11-09-response-structure-inventory.md) and
+[plan](superpowers/plans/2026-11-09-response-structure-inventory.md). Analyze the
+existing matched-state diagnostic only, with all64 arm/windows and224 fixed pairs.
+Twenty original KC groups plus the eleven excluded sampled KCs cover all231
+recorded KCs; exact composition comparisons distinguish scaling from distribution
+changes. Seven population profiles are tested for common scaling separately,
+without pretending that overlapping populations partition the brain. Zeros remain
+undefined normalized comparisons. No actual composition results have been computed.
+Sol implements the bounded external analyzer and synthetic tests; Astra reviews
+source and actual evidence before interpretation. No new model run, fitted decoder,
+threshold sweep or Stage C follows automatically. The broader user-authorized
+market task remains open.
 The protocol-only checkpoint `f07988a` triggered
 [CI42671895977](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42671895977),
 which failed before creating any jobs, including one unchanged retry. GitHub's

@@ -116,6 +116,10 @@ and all its artifact identities remain unchanged. The package fingerprint remain
 
 ## Technical decision
 
+Source/result checkpoint `c73fa83384f698c4793a7b32d5ab84c1251f2a67` passed
+[CI42686215403](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42686215403):
+766 backend tests /41 skips in320.85s,243 viewer tests /four skips and build.
+
 Retain this unsuccessful candidate and stop local cutoff/rearm iteration here.
 There is no evidence-based reason to acquire another native run solely to try
 this same candidate again. Neither synthetic route coverage nor the preserved
