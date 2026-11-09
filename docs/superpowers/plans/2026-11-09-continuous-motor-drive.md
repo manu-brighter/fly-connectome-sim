@@ -9,7 +9,11 @@
 neural package, old readouts, evidence or helpers, and without another acquisition.
 **Architecture:** Thin direct v1 subclass; unchanged support, mapping and guards.
 **Stack:** Existing Python3.12/pytest, no dependency or application integration.
-**Status:** Prospective contract independently accepted by Astra; no candidate result.
+**Status:** Protocol, source and one complete development replay independently
+accepted by Astra. The [result](../../experiments/2026-11-09-continuous-motor-drive.md)
+contains8 proposals for one favored drink, with450/500/550 Rappen; no input-causation
+claim.516 targeted tests pass,110 old files unchanged. Source/result publication
+and its CI remain to finish.
 
 ## Global constraints
 
@@ -25,17 +29,17 @@ Ownership: new `scripts/market_continuous_drive.py`, new
 `.github/workflows/compatibility.yml`.
 Controller handles documentation and ignored review logs.
 
-- [ ] Write meaningful synthetic tests and record the expected red result before
+- [x] Write meaningful synthetic tests and record the expected red result before
   creating the module. No actual recording inspection or candidate calculation.
-- [ ] Implement only the spec's three hooks plus identity rebinding. Preserve
+- [x] Implement only the spec's three hooks plus identity rebinding. Preserve
   all v1 support/price arithmetic and guard order; no sample consumed twice.
-- [ ] Construct all165 leaf routes across sizes10–20, at both price endpoints.
+- [x] Construct all165 leaf routes across sizes10–20, at both price endpoints.
   Verify complete disjoint support, repeated fresh commands, ambiguity/silence,
   discarded blocks, malformed/stale/ordering/source boundaries, input history, expiry,
   pause/reset, successful/failed reconfigure, configuration/hash copy isolation.
-- [ ] Run new tests plus unchanged98 base tests. Record real commands/results,
+- [x] Run new tests plus unchanged98 base tests. Record real commands/results,
   skips and old-source hashes. Add only the new file to the existing CI selection.
-- [ ] Astra independently reviews source and tests against the frozen contract;
+- [x] Astra independently reviews source and tests against the frozen contract;
   fix concrete findings and recheck affected cases before Task2.
 
 ## Task2 — One guarded development replay and checkpoint
@@ -43,16 +47,16 @@ Controller handles documentation and ignored review logs.
 Ownership: controller's new ignored helper/output; tracked result report,
 this plan and `docs/cloud-handover.md`. No production code or old helper edits.
 
-- [ ] Prepare a new helper by adapting the accepted old replay scaffold, preserve
+- [x] Prepare a new helper by adapting the accepted old replay scaffold, preserve
   all input/provenance guards, replace v2 latch-specific accounting, and retain
   every proposal's separate fresh evidence. Bound output to the192 observations.
-- [ ] Freeze exact command, source/configuration/input hashes and exclusive paths.
+- [x] Freeze exact command, source/configuration/input hashes and exclusive paths.
   Astra reviews concrete preflight before execution. Prepare does not consume
   samples or calculate candidate results.
-- [ ] Run once on all192 unchanged samples/clocks with native/network/process
+- [x] Run once on all192 unchanged samples/clocks with native/network/process
   starts prohibited. Record all results, counts, partial state and before/after
   artifact identities; never change the candidate based on its outcome.
-- [ ] Astra independently verifies the complete actual trace and conclusions.
+- [x] Astra independently verifies the complete actual trace and conclusions.
   Keep technical reachability separate from observed coverage and input causation.
 - [ ] Record the honest result, inspect full explicit staged diff/size, publish
   the feature checkpoint and observe CI. A later functional/input-sensitivity

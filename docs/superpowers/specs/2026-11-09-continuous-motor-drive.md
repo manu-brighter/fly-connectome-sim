@@ -1,7 +1,9 @@
 # Continuous Motor Drive v1
 
-Status: independently accepted prospective engineering contract; implementation and development
-replay not yet performed. Preserve all earlier negative candidates and recordings.
+Status: independently accepted contract, implementation and one fixed development
+replay. See the [result](../../experiments/2026-11-09-continuous-motor-drive.md).
+Preserve all earlier negative candidates and recordings; this original mapping
+remains frozen, without outcome-driven changes.
 
 ## Purpose and interpretation
 

@@ -195,7 +195,7 @@ experimental pilot, as long as every configured drink remains technically
 selectable. Actual all-drink occurrence in a finite recording is not required.
 Report technical versus observed coverage separately; no forced rotation or cadence.
 
-**Current next step:** the independently accepted
+**Latest completed readout:** the independently accepted
 [continuous motor drive contract](superpowers/specs/2026-11-09-continuous-motor-drive.md)
 and [two-task plan](superpowers/plans/2026-11-09-continuous-motor-drive.md).
 Quiet/recovery was an event-detector assumption, not a user requirement. This
@@ -203,12 +203,26 @@ distinct engineering mapping starts ready and consumes fresh supported four-samp
 blocks for every binary direction and a separate price block, preserving all v1
 thresholds, clocks, guards and provenance. Sustained newly measured drive may
 repeat a favorite; it does not establish repeated biological intention or image
-influence. Implement a tiny external subclass, prove all configured leaves and
-price endpoints synthetically, then review and execute one complete unchanged-clock
-development replay. No actual candidate calculation has occurred. Input/frame
+influence. The tiny external subclass and516 targeted tests are now accepted;
+all165 leaves across sizes10–20 and both price endpoints are synthetically covered.
+All110 old files remain byte-identical. One2.9660187s unchanged-clock development
+replay is independently accepted: [actual result](experiments/2026-11-09-continuous-motor-drive.md).
+All192 observations yield8 proposals for drink-00, with prices500/450/450/450/500/
+500/550/450 Rappen;33 lower decisions,7 unsupported blocks, no resets. Observed
+coverage1/20 is distinct from technical reachability. The final partial lower-half
+decision is not a ninth proposal. No new native/API run or sale-price activation.
+Trace SHA`fb1c0302c174bd2fd1090527430fdfc55fdc774e5b604231fccb4854e312a85f`,
+summary SHA`897693bdce9b0a34a90dcec8e6c08427229c98e8299f0d54d683c077649b0608`;
+both complete local artifacts are under `.tools/continuous-drive-20261109/`.
+Input/frame
 changes remain documented within a continuous path, as in v1; they are not reset
-boundaries. Previous negatives remain intact. Later held-out functional and input-
-sensitivity gates are distinct; no Stage C or acquisition follows automatically.
+boundaries. Previous negatives remain intact. Next finish this reviewed checkpoint
+and CI, then specify the separate held-out functional/input-sensitivity comparison.
+Its proposed shape is84model seconds:4s black prefix, common checkpoint, four20s
+arms (black, newA, newB, repeatA), each with a fresh decoder and unchanged real clocks.
+Exact images, output criteria, source and supervision must be frozen and reviewed
+before acquisition. Function and image influence are distinct; no Stage C follows
+automatically. Proposed bounds retain900s/4GiB/256MiB, not an execution guarantee.
 
 The protocol-only checkpoint `f07988a` triggered
 [CI42671895977](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42671895977),

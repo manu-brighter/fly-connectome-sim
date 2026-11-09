@@ -281,6 +281,17 @@ selectable. Do not require every drink to appear in a finite evaluation or add
 forced variety. Report synthetic selectable-output coverage separately from
 observed neural coverage; unsupported activity still cannot create a proposal.
 
+The distinct [continuous-drive contract](../specs/2026-11-09-continuous-motor-drive.md)
+and [implementation](2026-11-09-continuous-motor-drive.md) are independently accepted.
+Fresh four-observation blocks continuously advance the unchanged supported binary
+mapping, without a neutral latch. The [development result](../../experiments/2026-11-09-continuous-motor-drive.md)
+has8 proposals, all for drink-00, at450/500/550 Rappen;516 synthetic tests include
+all165 configured leaves across sizes10–20 with both endpoints. This establishes
+technical reachability and development function, not held-out image influence.
+The next separate protocol must compare fresh controlled inputs from an identical
+state, retain a repeat and distinguish functional proposals from input sensitivity.
+No current Stage C acceptance or new acquisition is implied.
+
 - Specify candidate group/cell channels, channel-to-drink mapping, price function,
   neutral/tie handling, threshold/rearm behavior and exact calibration/held-out
   inputs **before** examining acceptance results. Labels are engineered mappings.
