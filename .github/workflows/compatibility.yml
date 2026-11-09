@@ -95,6 +95,7 @@ jobs:
           tests/test_drive_input_comparison.py
           tests/test_population_excursion_screen.py
           tests/test_continuous_motor_supervisor.py
+          tests/test_drive_input_supervisor.py
           tests/test_market_response_diagnostic.py
           tests/test_response_structure.py
           tests/test_market_response_supervisor.py

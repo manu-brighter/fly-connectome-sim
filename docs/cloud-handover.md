@@ -228,7 +228,11 @@ Task1 runner/auditor is independently accepted:
 [software evidence](experiments/2026-11-09-drive-input-software.md),150 focused
 passes/330 deliberate exclusions/no skips. The pending-state reporting finding
 was corrected and independently rechecked; all57 old source files and the41-member
-package fingerprint are unchanged. Task2 supervision and Task3 acquisition have
+package fingerprint are unchanged. Task2 thin supervision is now independently
+accepted:139 focused passes/one Windows symlink-privilege skip/three deliberate
+private runtime-preflight exclusions in39.10s. Actual harmless-process receipts
+confirm completion/cancellation/owner-death cleanup and unrelated-process protection;
+all58 preexisting sources and the package fingerprint are unchanged. Task3 has
 not started. Protocol checkpoint CI42704146157 passed1350backend/41skips548.50s,
 243viewer/4skips and build; this precedes new Task1 source.
 Its fixed shape is84model seconds:4s black prefix, common checkpoint, four20s
@@ -238,8 +242,8 @@ equal pixel brightness, chosen without model/projection evaluation. Pure hashes
 are checked; optical projection and actual outputs have not been calculated.
 Function, output sensitivity and individual drink/price/timing components remain
 separate; timing-only effects cannot establish image-caused price changes.
-Implement the external runner/auditor, then the thin supervisor, and finish source/
-CI/concrete preflight reviews before one acquisition. No Stage C follows automatically.
+Both source-bearing tasks are complete. Finish final source-CI and independently
+review concrete preflight before one acquisition. No Stage C follows automatically.
 Fixed bounds retain900s/4GiB/256MiB; these are not an execution guarantee.
 
 The protocol-only checkpoint `f07988a` triggered

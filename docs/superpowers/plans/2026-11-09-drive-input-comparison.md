@@ -12,8 +12,9 @@ new thin adapter to the accepted Windows owned-job supervisor. No package edits.
 **Status:** Protocol/plan and Task1 runner/auditor independently accepted by Astra:
 [software evidence](../../experiments/2026-11-09-drive-input-software.md),150 focused
 passes/330 deliberate exclusions/no skips,57 old files and41-member package
-fingerprint unchanged. Task2 supervision, source-CI and concrete acquisition
-review remain; no new native execution or actual optical projection occurred.
+fingerprint unchanged. Task2 supervision is also independently accepted:139 passes,
+one Windows symlink-privilege skip and three private preflight exclusions. Source-CI,
+concrete preflight and acquisition remain; no actual projection/native run occurred.
 
 ## Global constraints
 
@@ -65,16 +66,16 @@ Own new `scripts/drive_input_supervision.py`, new
 `scripts/supervise-drive-input.ps1`, new `tests/test_drive_input_supervisor.py`,
 one CI test path. Task1 is accepted before this fresh worker starts.
 
-- [ ] Test-first new version/entrypoint/source/runtime/limit/path bindings and
+- [x] Test-first new version/entrypoint/source/runtime/limit/path bindings and
   actual-PID release; refuse altered protocol/readiness, reused paths or missing
   supervisor authority before engine construction.
-- [ ] Adapt the accepted continuous supervisor with only necessary binding/name
+- [x] Adapt the accepted continuous supervisor with only necessary binding/name
   differences, preserve the old module and PowerShell files byte-for-byte. Reuse
   monitor, compiler guard, owned-job cleanup and cancellation; no global patching.
-- [ ] Verify changed adapter behavior and unchanged monitor/frontend lifecycle
+- [x] Verify changed adapter behavior and unchanged monitor/frontend lifecycle
   assumptions with focused tests/byte comparisons; reuse existing accepted
   harmless-process evidence where the underlying path is exactly unchanged.
-- [ ] Astra reviews source and real execution boundaries. Freeze all source-bearing
+- [x] Astra reviews source and real execution boundaries. Freeze all source-bearing
   tasks and confirm unchanged package fingerprint before any concrete prepare.
 
 ## Task3 — One acquisition and accepted evidence

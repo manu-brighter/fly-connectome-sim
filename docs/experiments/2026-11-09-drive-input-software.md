@@ -1,7 +1,7 @@
 # Fixed-input comparison — software evidence
 
-Status: Task1 runner/auditor independently accepted by Astra. The supervisor and
-actual acquisition remain outstanding. All evidence below is synthetic software
+Status: Task1 runner/auditor and Task2 supervisor independently accepted by Astra.
+Source-CI, concrete preflight and actual acquisition remain outstanding. Evidence is software
 verification; no new neural response or actual optical projection was calculated.
 
 The [protocol](../superpowers/specs/2026-11-09-drive-input-comparison.md) and
@@ -72,7 +72,7 @@ passed. Astra accepted the final source, fix, complete test log and preservation
 All57 inventoried old package/script Python/C++/PowerShell files are byte-identical.
 The41-member packaged fingerprint remains
 `1f2a004c9dfcd37c4824a2fd220d1d723c7f95cc34620bb1ebbe7ced7634e77b`.
-The workflow adds exactly one new test path. Local logs and before/after inventories
+Task1 added one CI test path. Local logs and before/after inventories
 remain under `.tools/drive-input-comparison-implementation-20261109/`.
 
 | File | SHA256 |
@@ -80,7 +80,55 @@ remain under `.tools/drive-input-comparison-implementation-20261109/`.
 | Runner,36429 bytes | `ed7ca12a34193b1a4a01ca4dd305c396ad387708aa3b051f79209051b4d143d4` |
 | New tests,22332 bytes | `6df9c4ad874da06a0fe7b17ce6b1d9ec20cacd0fb2271a28de1258ac9383ed2b` |
 
-Next implement/review the thin supervisor adapter, complete all source-bearing
-tasks and source-CI, then independently review concrete preparation before one
-bounded acquisition. No real input sensitivity, neural target coverage, biological
-learning, selling-price activation or Stage C acceptance is established here.
+## Thin supervision binding
+
+Task2 adds `drive_input_supervision.py` and `supervise-drive-input.ps1`, reusing
+the unchanged Windows owned-job monitor. The adapter is exactly the accepted
+continuous adapter after explicit version/path/diagnostic substitutions (normalized
+newlines); the frontend is byte-exact after its sole helper filename replacement.
+Readiness binds the new sources and the unchanged legacy runtime snapshot. The
+fixed limits remain900s,4GiB actual-worker peak working set,256MiB combined new
+output/evidence/scratch and at-most2s polling. These are monitored stop thresholds,
+not hard quotas or aggregate process-tree RSS. No monitor globals are patched.
+
+Final focused host verification: **139 passed,1 skipped,3 deliberately deselected
+in39.10s**. All69 new cases are included (68 passes plus one actual Windows
+symlink-privilege skip, WinError1314), alongside71 unchanged monitor/adapter cases.
+The three exclusions are old private runtime/cache preparation and Zig-version
+checks, reserved for concrete controller preflight. CI adds the new test path.
+
+```powershell
+.venv/Scripts/python.exe -m pytest -q -rs -p no:cacheprovider --basetemp=.tools/drive-input-supervisor-implementation-20261109/final-focused tests/test_drive_input_supervisor.py tests/test_continuous_motor_supervisor.py tests/test_market_response_supervisor.py -k 'not actual_runtime_binds and not actual_preparation_binds and not actual_pinned_zig'
+```
+
+Use a fresh basetemp for a justified rerun. Initial missing-adapter RED preceded
+implementation; sandbox execution then failed24 cases at the unchanged hardlink
+writer (three passed,seven deselected). Regular approved host execution passed34
+cases, followed by68 passes/one privilege skip after expanded binding tests.
+No source checks or writer semantics were weakened to bypass that restriction.
+
+Tests cover actual copied source mutations, explicitly synthetic runtime/cache
+identity mutations, every limit's type/value/presence, malformed/oversized JSON,
+fresh/confined/disjoint paths, readiness/release/PID mismatches, scratch routing,
+post-release rechecks and rejection before native-engine construction. Harmless
+Windows harnesses use the new public frontend and supervisor with labelled
+synthetic configuration. Completion consumes an actual injected-runner receipt;
+it is not a fabricated native result. Independent review of the actual receipts
+confirmed distinct launcher/worker identities, cancellation and owner-death cleanup,
+zero remaining owned processes and survival of an unrelated test-owned process.
+
+Astra accepted final source/tests, real harmless-process evidence and preservation.
+All58 preexisting source/frontend files, including Task1, remain byte-identical;
+the41-member package fingerprint is unchanged. Evidence remains under
+`.tools/drive-input-supervisor-implementation-20261109/`.
+
+| File | SHA256 |
+| --- | --- |
+| Adapter,9470 bytes | `06aa2ad4aed00c91027a03147229f6c507cb5e5fb21af0f1a01b13156bf210f8` |
+| Frontend,8470 bytes | `a50e1b09135d4a74b8b0f343a162d4ad6a7c005191245897ee869d3dc234512b` |
+| New tests,26003 bytes | `9b77d9888a56ef3d53719474e1f5d70420c007721a86e24b4e38cc82cf841024` |
+
+All source-bearing tasks are complete. Next confirm source-CI and independently
+review concrete preparation before one bounded acquisition. Software tests do
+not establish actual run resource compliance, real input sensitivity, neural
+target coverage, biological learning, selling-price activation or Stage C acceptance.
