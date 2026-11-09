@@ -238,8 +238,12 @@ nonzero A input and spatially unequal receptor coverage.
 The fixed [sequential motor readout](../specs/2026-11-09-sequential-motor-readout.md)
 is implemented and independently accepted as offline software, with
 [98 passing synthetic tests](../../experiments/2026-11-09-sequential-motor-readout.md).
-The twenty literal routes do not establish neural reachability. Next deliverable:
-a prospectively frozen continuous-state test. No favorable-window search
+The twenty literal routes do not establish neural reachability. The next
+[continuous probe](../specs/2026-11-09-continuous-motor-probe.md) and
+[implementation plan](2026-11-09-continuous-motor-probe.md) are prospectively accepted:
+96model seconds of fixed new inputs, one continuous state and finite supervision.
+Runner/supervisor implementation and review precede an actual acquisition.
+No favorable-window search
 or new acquisition follows automatically. The user accepts slower-than-real-time
 model operation for the first local pilot; display the clocks/status honestly.
 Real-time cooldown remains 30 minutes; queue capacity/maximum delay remain to bound.

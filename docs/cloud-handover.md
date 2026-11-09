@@ -65,8 +65,18 @@ are independently accepted. The [software result](experiments/2026-11-09-sequent
 records 98 passing synthetic tests and Astra's additional 1,296-block direction
 matrix. Fixed binary decisions address the ordered drinks, with neutral
 rearm and a separate supported price block. This is an engineering mapping, not
-twenty biological channels. No neural reachability is claimed. Next, publish this
-checkpoint and define a bounded continuous-state test with fixed timing. Do not
+twenty biological channels. No neural reachability is claimed. Checkpoint
+`af4879b004f2eb7e263004a84c1e93cbe3adedac` is pushed; its
+[CI42669739632](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42669739632)
+passed: 580 backend tests / 34 skips, 243 viewer tests / four private-artifact
+skips and build. The next [continuous probe protocol](superpowers/specs/2026-11-09-continuous-motor-probe.md)
+and [plan](superpowers/plans/2026-11-09-continuous-motor-probe.md) are prospectively
+accepted:96model seconds,192observations, six new analytic patterns in two fixed
+orders, continuous engine/decoder and scheduled black intervals;900s/4GiB/256MiB
+bounds. Implement its external runner/auditor, then the thin new supervisor,
+review source/CI and concrete frozen preflight before one acquisition. No probe
+has run; even a positive result would show only path completion, not Stage C
+readiness. Do not
 choose favorable windows or infer 20-channel, price-policy or event-duration
 qualification. No further acquisition is implied by the accepted result.
 The user explicitly approved slower-than-real-time model operation for the first

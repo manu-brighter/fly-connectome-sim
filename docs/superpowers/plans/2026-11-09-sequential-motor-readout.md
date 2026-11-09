@@ -4,7 +4,10 @@ Use subagent-driven-development sequentially: Sol implements, Astra independentl
 reviews the contract and source. No worker agents. Preserve unrelated edits.
 
 **Status:** Task1 independently accepted; 98 local tests pass without skips.
-Controller checkpoint/publication is in progress; no neural acquisition occurred.
+Published as `af4879b`; [CI42669739632](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42669739632)
+passed 580 backend tests / 34 skips, 243 viewer tests / four private-artifact
+skips and build. The separate [continuous probe protocol](../specs/2026-11-09-continuous-motor-probe.md)
+is prospectively accepted; this offline plan is complete. No neural acquisition occurred.
 
 **Goal:** A bounded deterministic decoder with honest synthetic evidence; no new
 simulation, price activation or claim that all20drinks are neurally reachable.
@@ -75,10 +78,10 @@ all stored/emitted aggregate counts must also be JSON-safe.
 
 - [x] Verify all frozen diagnostic/core/historical identities unchanged. Run the
   meaningful targeted regression, not the previous native acquisition again.
-- [ ] Record tested software behavior and its synthetic-only scope; do not report
+- [x] Record tested software behavior and its synthetic-only scope; do not report
   real completed drink paths from generated traces. Review explicit staged paths,
   commit/push the feature branch and observe CI.
-- [ ] Only then define the separate continuous-state held-out protocol and its
+- [x] Only then define the separate continuous-state held-out protocol and its
   finite resources. No actual new acquisition or priceboard follows implicitly.
 
 Preflight: Task1 produces only decoder behavior and tests; Task2 consumes test/

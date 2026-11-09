@@ -1,7 +1,12 @@
 # Sequential motor readout — offline software evidence
 
 Status: implementation, synthetic tests and independent source review accepted;
-publication/clean-checkout CI pending. No new neural acquisition or actual-price change.
+published as `af4879b004f2eb7e263004a84c1e93cbe3adedac`.
+[Clean-checkout CI](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42669739632)
+passed: 580 backend tests / 34 declared skips, 243 viewer tests / four
+private-artifact skips and a successful build. No new neural acquisition or
+actual-price change. Windows-only supervision tests remain covered by the earlier
+actual host results; the new decoder suite has no platform or private-data skips.
 
 The [candidate contract](../superpowers/specs/2026-11-09-sequential-motor-readout.md)
 and [plan](../superpowers/plans/2026-11-09-sequential-motor-readout.md) define a
@@ -86,9 +91,10 @@ No raw or private evidence is included in the source commit.
 
 ## Remaining gate
 
-After publication, define a separate bounded
-continuous-state protocol with previously unused inputs, fixed order/timing,
-explicit neutral opportunities and finite resources. Measure completed paths,
+The separate [continuous-state protocol](../superpowers/specs/2026-11-09-continuous-motor-probe.md)
+is now prospectively accepted, with previously unused nonblack patterns, fixed
+order/timing, explicit neutral opportunities and finite resources. Its runner and
+supervisor remain to implement and review before acquisition. Measure completed paths,
 stalls, slot concentration, attainable prices and latency without favorable-window
 selection. No new acquisition, live board or event readiness follows from these
 synthetic tests. Slower model computation is accepted for the local pilot; the
