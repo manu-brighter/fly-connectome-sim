@@ -59,8 +59,14 @@ remains historical evidence; completed directories must not be resumed.
 The subsequent offline receptor check shows that A reaches receptors; it is not
 blind input. It does not isolate how coverage, spatial targets and network dynamics
 produce the output difference.
-Next: define a fixed sequential motor readout with neutral/rearm behavior, then
-review a bounded continuous-state test with prospectively fixed timing. Do not
+The [sequential motor readout contract](superpowers/specs/2026-11-09-sequential-motor-readout.md)
+and its [offline implementation](superpowers/plans/2026-11-09-sequential-motor-readout.md)
+are independently accepted. The [software result](experiments/2026-11-09-sequential-motor-readout.md)
+records 98 passing synthetic tests and Astra's additional 1,296-block direction
+matrix. Fixed binary decisions address the ordered drinks, with neutral
+rearm and a separate supported price block. This is an engineering mapping, not
+twenty biological channels. No neural reachability is claimed. Next, publish this
+checkpoint and define a bounded continuous-state test with fixed timing. Do not
 choose favorable windows or infer 20-channel, price-policy or event-duration
 qualification. No further acquisition is implied by the accepted result.
 The user explicitly approved slower-than-real-time model operation for the first

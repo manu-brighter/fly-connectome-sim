@@ -1,9 +1,10 @@
 # Matched-state image-response diagnostic
 
-Status: prospective protocol for the approved live-market continuation. No new
-fullgraph observation has run under this protocol. Source, supervisor and frozen
-manifest review precede one bounded acquisition. This is not the parked learning
-assay or an event-market qualification.
+Status: historical predeclared protocol for the approved live-market continuation.
+One bounded acquisition subsequently completed after source/supervisor/manifest
+review; see the [accepted result](../../experiments/2026-11-09-market-response-diagnostic.md).
+The numerical protocol below is unchanged. This is not the parked learning assay
+or an event-market qualification, and no additional run is implied.
 
 ## Question and interpretation
 

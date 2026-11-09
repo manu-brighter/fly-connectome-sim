@@ -235,8 +235,11 @@ primary input responses. Every active primary KC vector still peaks at group 10;
 this does not qualify a 20-drink adapter. The offline receptor check confirms
 nonzero A input and spatially unequal receptor coverage.
 
-Next deliverable: one fixed sequential motor readout contract with neutral/rearm
-rules and a prospectively frozen continuous-state test. No favorable-window search
+The fixed [sequential motor readout](../specs/2026-11-09-sequential-motor-readout.md)
+is implemented and independently accepted as offline software, with
+[98 passing synthetic tests](../../experiments/2026-11-09-sequential-motor-readout.md).
+The twenty literal routes do not establish neural reachability. Next deliverable:
+a prospectively frozen continuous-state test. No favorable-window search
 or new acquisition follows automatically. The user accepts slower-than-real-time
 model operation for the first local pilot; display the clocks/status honestly.
 Real-time cooldown remains 30 minutes; queue capacity/maximum delay remain to bound.
