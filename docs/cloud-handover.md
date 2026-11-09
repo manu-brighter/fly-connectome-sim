@@ -179,8 +179,10 @@ Software evidence:600 offline tests passed/11 genuine Windows symlink skips/four
 explicitly excluded native cases, plus five focused review-fix passes. All63 old
 source/package/lock files remain unchanged. Six production sources and seven original
 continuous artifacts matched before/after the actual calculation. No native/API
-execution occurred. Next finish this reviewed source/result checkpoint and CI;
-any further readout requires a distinct justified contract, not a silent rescue.
+execution occurred. Source/result checkpoint `93e6f1db66b8d9ae4fb504fa961a7bfb835f4f39`
+passed [CI42698918907](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42698918907):
+932 backend tests /41 skips in546.58s,243 viewer tests /four skips and build.
+Any further readout requires a distinct justified contract, not a silent rescue.
 Twenty engineered output regions do not require twenty biological channels;
 current matched-state data cannot establish robust continuous-state decisions.
 Specify calibration versus independent evaluation, abstention and separate neural
@@ -192,6 +194,22 @@ The user now explicitly accepts long quiet phases and drink favorites in the
 experimental pilot, as long as every configured drink remains technically
 selectable. Actual all-drink occurrence in a finite recording is not required.
 Report technical versus observed coverage separately; no forced rotation or cadence.
+
+**Current next step:** the independently accepted
+[continuous motor drive contract](superpowers/specs/2026-11-09-continuous-motor-drive.md)
+and [two-task plan](superpowers/plans/2026-11-09-continuous-motor-drive.md).
+Quiet/recovery was an event-detector assumption, not a user requirement. This
+distinct engineering mapping starts ready and consumes fresh supported four-sample
+blocks for every binary direction and a separate price block, preserving all v1
+thresholds, clocks, guards and provenance. Sustained newly measured drive may
+repeat a favorite; it does not establish repeated biological intention or image
+influence. Implement a tiny external subclass, prove all configured leaves and
+price endpoints synthetically, then review and execute one complete unchanged-clock
+development replay. No actual candidate calculation has occurred. Input/frame
+changes remain documented within a continuous path, as in v1; they are not reset
+boundaries. Previous negatives remain intact. Later held-out functional and input-
+sensitivity gates are distinct; no Stage C or acquisition follows automatically.
+
 The protocol-only checkpoint `f07988a` triggered
 [CI42671895977](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42671895977),
 which failed before creating any jobs, including one unchanged retry. GitHub's

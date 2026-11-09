@@ -120,10 +120,14 @@ plan and handover. Raw outputs stay ignored under a fresh evidence directory.
 - [x] Astra independently recomputes exact math/full coverage and assesses the
   predeclared stopping condition. No anchor/no opportunity stops this candidate
   before full implementation; an opportunity proves only a necessary condition.
-- [ ] Review complete staged diff/size, commit/push explicitly to the feature
+- [x] Review complete staged diff/size, commit/push explicitly to the feature
   branch, observe CI and update tracked continuation. Later scope depends on
   accepted evidence and cannot relabel this calibration as independent evaluation.
 
 Self-review: Task1 produces validated fixed math from immutable observations;
 Task2 supplies actual development data only after acceptance. User tolerance for
 quiet phases/favorites does not create proposals from unsupported activity.
+
+Checkpoint `93e6f1db66b8d9ae4fb504fa961a7bfb835f4f39` passed
+[CI42698918907](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42698918907):
+932 backend tests /41 skips in546.58s,243 viewer tests /four skips and build.
