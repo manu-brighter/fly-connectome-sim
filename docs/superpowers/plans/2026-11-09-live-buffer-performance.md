@@ -7,10 +7,11 @@
 **Spec:** [bounded performance protocol](../specs/2026-11-09-live-buffer-performance.md).
 **Goal:** Measure fixed rolling cell storage and one pending image against the
 accepted five-real-minute handoff bound without changing the engine/readout.
-**Status:** Protocol/plan and Task1 source independently accepted by Astra;
-[software evidence](../../experiments/2026-11-10-live-buffer-software.md):640 focused
-passes, no skips/warnings. Exact versioned ringhash bytes and independent vectors
-are accepted. Tasks2–4 remain; no native callback integration or measurement yet.
+**Status:** Protocol/plan and Tasks1–2 source independently accepted by Astra;
+[software evidence](../../experiments/2026-11-10-live-buffer-software.md): Task1
+640 passes; Task2 complete run694 passes/one fixture failure followed by the
+corrected single-case pass. All695 distinct focused cases passed their latest
+execution, no skips/warnings. Tasks3–4 remain; no native measurement yet.
 **Stack:** Existing Python3.12/NumPy/pytest/PowerShell. No new dependencies.
 
 ## Global constraints and boundaries
@@ -57,21 +58,21 @@ Fresh Sol owns new `scripts/run-live-buffer-performance.py`, new
 `tests/test_live_buffer_performance.py` and one CI test path. No actual runtime,
 graph/header construction, native run or model response during implementation.
 
-- [ ] Synthetic test-first protocol/engine/callback fixtures; label injected scope.
+- [x] Synthetic test-first protocol/engine/callback fixtures; label injected scope.
   Prepare exclusively pins exact frame/decoder/source/package identities, memory,
   schedule, metadata/journal bounds and ring/admission contracts.
-- [ ] Native construction is behind lazy Task3 authority import. Build/bind the
+- [x] Native construction is behind lazy Task3 authority import. Build/bind the
   unchanged static header once, install its ordered cohort before any advance,
   run all120×500ms intervals in one continuous engine/decoder and save two states.
-- [ ] Observe fixed A/B/black phases and exact queue exercise. Check pending-image
+- [x] Observe fixed A/B/black phases and exact queue exercise. Check pending-image
   age at the actual first observe boundary; expiry gets labelled black fallback.
   B/burst arrive after the first A observe; C after the first phase2 observe.
   Bind before/after transitions to observations; no hidden replacement/early stop
   or admission work between the handoff check and observe dispatch.
-- [ ] Export only bounded completed callback batches after observe. Record raw
+- [x] Export only bounded completed callback batches after observe. Record raw
   bins, aggregates, original group telemetry, real clocks, sink/copy timing and
   ring state. Snapshot-ready is local availability, not browser publication.
-- [ ] Implement bounded snapshot/full-EOF audit, including all6000 bins/600 windows,
+- [x] Implement bounded snapshot/full-EOF audit, including all6000 bins/600 windows,
   population relationships,120 complete driver results, ring hash/evictions,
   exact cohort/source/clock/queue semantics, checkpoints and strict caps.
   Group comparisons use bins; unique selected-cell union uses the required
@@ -80,17 +81,24 @@ graph/header construction, native run or model response during implementation.
   checks; do not add a fictitious old KC grouping. State that offline inspection
   cannot repeat the runtime/annotation data join, stride selection or topology proof.
   Separate validity, correct expiry and positive observed handoff throughput.
-- [ ] Test valid success, deadline-expiry fallback, no-proposal completion, invalid
+- [x] Test valid success, deadline-expiry fallback, no-proposal completion, invalid
   callback/partial-run retention, resealed cell/group/window/ring/queue/time/source
   alterations, parser/summary caps, iterator closure and no-native inspection.
-- [ ] Focused regression only, actual results/skips and preservation recorded;
+- [x] Focused regression only, actual results/skips and preservation recorded;
   independent Astra producer/auditor acceptance before the fresh Task3 worker.
 
 ## Task3 — Thin owned-supervision binding
 
 Fresh Sol owns new `scripts/live_buffer_supervision.py`, new
 `scripts/supervise-live-buffer.ps1`, new `tests/test_live_buffer_supervisor.py`
-and one CI test path. Preserve all accepted supervisor/frontend bytes.
+and the bounded CI split below. Preserve all accepted supervisor/frontend bytes.
+
+Task2 measured334.94s for its focused run; prior Linux backend runs took632–686s.
+Place the three new live-buffer test files in a separate15-minute job with the
+same pinned checkout/uv/Python/dependencies and empty-runtime import checks. Keep
+every preexisting test and both old jobs' budgets unchanged. Compare full test-path
+multisets and validate workflow syntax; Astra reviews the complete diff. This CI
+scheduling change does not alter900s native supervision or remove test coverage.
 
 - [ ] Test-first new protocol/version/entrypoint/source/path/runtime/limit/release
   bindings. Missing/altered authority must fail before engine construction.

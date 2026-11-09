@@ -268,9 +268,15 @@ Task1 ring/admission source is now independently accepted:
 [software evidence](experiments/2026-11-10-live-buffer-software.md),640 focused
 passes/no skips or warnings,60 old sources and41 package members unchanged.
 Ring storage stays288000 array bytes; explicit sequence watermarks prevent request
-revival. Five ringhash vectors were independently verified. No native callback
-integration or acquisition yet. Next Task2 uses a fresh Sol worker; all three
-source-bearing tasks precede concrete freeze and source-CI acceptance.
+revival. Five ringhash vectors were independently verified. Task1 is local
+checkpoint`b358f4ad10d54d6404e6f81bd5c82faba9b0787f`. Task2 producer/auditor is
+now independently accepted:55 new synthetic cases plus640 unchanged cases passed
+their latest execution. The complete run had694 passes and one incorrect reset
+fixture; the corrected case then passed alone in12.46s. All61 old sources and41
+packaged members remain unchanged. No actual native measurement occurred. Next
+is fresh Sol Task3 for the thin supervision binding and a separate pinned15-minute
+CI job for the three new test files; the measured334.94s additional suite exceeds
+the old job's remaining budget. All source tasks precede concrete freeze and CI.
 Preserve the old10-second collector/parser limits. No Stage C follows automatically.
 
 The protocol-only checkpoint `f07988a` triggered
