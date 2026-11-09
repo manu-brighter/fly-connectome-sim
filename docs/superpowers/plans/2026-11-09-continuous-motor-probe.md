@@ -13,8 +13,11 @@ binds the new entrypoints; no changes to historical scripts or packaged sources.
 **Tech Stack:** Existing Python3.12/NumPy/pytest, recorder, Windows ctypes monitor
 and PowerShell7; no new dependency or service.
 **Spec:** [continuous motor probe v1](../specs/2026-11-09-continuous-motor-probe.md).
-**Status:** Prospective protocol and plan independently accepted. Task1 is next;
-no implementation or acquisition yet.
+**Status:** Prospective protocol and plan independently accepted and published
+as `f07988a`. Task1 source is independently accepted:154 focused tests passed
+with one declared Windows symlink-privilege skip. See the
+[software evidence](../../experiments/2026-11-09-continuous-motor-software.md).
+Task2 supervision is next; no acquisition yet.
 
 ## Global constraints
 
@@ -82,25 +85,32 @@ Do not edit old runner, shared helpers or decoder. Controller owns docs.
   all proposed IDs/prices/timing, status/reason counts, direction signs, observed
   clocks/latencies and limitations from the spec. No price activation pass flag.
   Before implementation, report any remaining result-field naming decision.
+  Accepted names: `validity`, `scope`, `exact_counts`, `outcome`, `proposals`,
+  `route_metrics`, `status_counts`, `reason_counts`, `direction_counts`,
+  `final_pending_state`, `clocks`, `latency_ms`, `order_partitions`, `limitations`,
+  plus normal source/protocol/configuration identities. A valid full-session
+  outcome is `narrow-positive` or `negative`; validity means the complete integrity
+  audit only. Attribute a proposal to its completion partition without splitting
+  a path across48s or treating orders as independent.
 
-- [ ] Write RED frame/timeline tests: all six exact formulas and2048white pixels,
+- [x] Write RED frame/timeline tests: all six exact formulas and2048white pixels,
   distinct hashes versus A–D,12episodes/192observations/9600bins/194events. Include
   every black observation, no restore, and unchanged decoder across48s boundary.
-- [ ] Write synthetic recorder/engine tests for valid no-proposal and supported
+- [x] Write synthetic recorder/engine tests for valid no-proposal and supported
   proposal sessions; fake complete-state checkpoints are explicitly fixtures.
   Assert exact inputs, false learning/no stimulation, source/config digests and
   deterministic independent inspection. No private graph or native dependency.
-- [ ] Write resealed contradiction tests for bins/counts/rates/populations,
+- [x] Write resealed contradiction tests for bins/counts/rates/populations,
   sample/result/config/source/session/clock manipulation, learning/stimulation,
   wrong frame/order, gaps/overlap, missing/extra event and checkpoint mismatch.
   All invalid sources produce no summary/complete receipt.
-- [ ] Write limits/path/output collision/linked-path tests using existing safety
+- [x] Write limits/path/output collision/linked-path tests using existing safety
   patterns. Verify prepare/inspect never construct an engine or contact network.
   Test factory failure preserves partials and cannot create success artifacts.
-- [ ] Run focused suite RED, implement GREEN and record actual commands/skips.
+- [x] Run focused suite RED, implement GREEN and record actual commands/skips.
   Default monotonic milliseconds use actual observation start/end and call time.
   No actor changes or thresholds are introduced to make fixtures work.
-- [ ] Astra independently reviews source/arithmetic/bindings and claims. Fix
+- [x] Astra independently reviews source/arithmetic/bindings and claims. Fix
   findings test-first; freeze reviewed hashes/report before Task2 starts.
 
 ## Task2 — thin bounded Windows supervision (Sol)

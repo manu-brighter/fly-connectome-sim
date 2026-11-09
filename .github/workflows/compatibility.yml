@@ -89,6 +89,7 @@ jobs:
           tests/test_export_anatomy.py
           tests/test_market_feasibility.py
           tests/test_market_motor_readout.py
+          tests/test_continuous_motor_probe.py
           tests/test_market_response_diagnostic.py
           tests/test_market_response_supervisor.py
           tests/experiment/test_cell_activity.py

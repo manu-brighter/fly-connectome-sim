@@ -73,12 +73,23 @@ skips and build. The next [continuous probe protocol](superpowers/specs/2026-11-
 and [plan](superpowers/plans/2026-11-09-continuous-motor-probe.md) are prospectively
 accepted:96model seconds,192observations, six new analytic patterns in two fixed
 orders, continuous engine/decoder and scheduled black intervals;900s/4GiB/256MiB
-bounds. Implement its external runner/auditor, then the thin new supervisor,
-review source/CI and concrete frozen preflight before one acquisition. No probe
+bounds. Its external runner/auditor is now independently accepted:
+[software evidence](experiments/2026-11-09-continuous-motor-software.md),154 passing
+focused tests with one Windows symlink-privilege skip. A review finding corrected
+the whole-brain count lower bound for disjoint versus overlapping populations;
+all68 earlier diagnostic observations also satisfy it. Next implement the thin
+new supervisor, then review source/CI and concrete frozen preflight before one acquisition. No probe
 has run; even a positive result would show only path completion, not Stage C
 readiness. Do not
 choose favorable windows or infer 20-channel, price-policy or event-duration
 qualification. No further acquisition is implied by the accepted result.
+The protocol-only checkpoint `f07988a` triggered
+[CI42671895977](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42671895977),
+which failed before creating any jobs, including one unchanged retry. GitHub's
+visible annotation says "Internal server error" on both attempts. This is not a
+test failure or a successful check; the workflow and executable source match the
+successful `af4879b` run. Local implementation continued during that outage;
+Task1 is now accepted, with fresh source CI still required before the prospective acquisition.
 The user explicitly approved slower-than-real-time model operation for the first
 local pilot, with an honest model clock and fresh/queued status; the price lock
 still uses 30 minutes of real time. Queue capacity/maximum delay need later bounds.
