@@ -40,12 +40,26 @@ The next step is the [matched-state input-response diagnostic](superpowers/specs
 and [sequential implementation plan](superpowers/plans/2026-11-09-market-response-diagnostic.md):
 2 seconds black prefix plus eight restored 4-second arms, 34 executed model
 seconds, 900-second wall/4-GiB native peak-RSS/256-MiB new-output limits.
-Protocol/source/supervisor review and real host monitoring smoke precede one
-bounded acquisition. No new diagnostic acquisition has run yet. This tests fixed
+Diagnostic recording/offline audit are implemented and independently reviewed:
+587 initial passing tests / five declared Windows symlink skips; after a reviewed
+source-lock fix, all 40 diagnostic tests and two final fixture checks passed.
+Historical report bytes, 15 demo artifacts and 41 package sources stayed identical.
+Mandatory Windows supervision is implemented locally: actual worker PID
+handshake, kill-on-close process job, compiler-version-only guard and counted
+scratch space. Its initial 32 host checks include real console cancellation and
+forced frontend/supervisor exits; a genuine prepare-only command also succeeded.
+Three review issues are now corrected and independently accepted: the consumer
+uses the actual `receipt.json`; cleanup follows independently validated process
+identity/ancestry; and a locked fixed-size cancellation signal preserves terminal
+status/byte accounting. The affected 23-case regression and three final cutoff/
+watchdog cases passed. Retained evidence includes real Ctrl+C, forced parent/
+owner death and surviving unrelated processes. Old prepare-only manifests are
+stale after source fixes; fresh preparation and finite reviewed acquisition follow.
+No new diagnostic acquisition has run yet. This tests fixed
 input responses, not drink selection, learning or long-duration event readiness.
 User-supplied scale:
-10–20 drinks, 50–300 guests, usually 6–8 hours but also shorter or roughly 12-hour
-events. Duration stays configurable; 12 hours is the initial later long-run test
+10–20 drinks, 50–300 guests, usually 6–8 hours; shorter or roughly 12-hour
+events are exceptions. Duration stays configurable; 12 hours is the initial later long-run test
 reference, not an automatic shutdown limit. Necessary new measurements require
 a concrete reviewed protocol and finite resource bounds before execution;
 do not launch indefinite fullgraph runs or infer live learning, paid API use,

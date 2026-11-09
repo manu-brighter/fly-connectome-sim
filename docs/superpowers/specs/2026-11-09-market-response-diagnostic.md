@@ -141,20 +141,49 @@ matched state, not a live adapter with access to a counterfactual future.
 - Poll at most every 2 seconds; include startup/header construction and restore
   peaks. State actual platform memory semantics and sampling limits. These are
   stop thresholds, not a guarantee against every sub-poll disk overshoot.
-- The first supported host supervisor is Windows/PowerShell 7, operating the
-  actual directly launched Python child, not a wrapper PID. Start hidden, retain
-  the owned process handle/identity, terminate its owned process tree on deadline,
-  overrun, monitoring failure or cancellation, and wait for termination.
-- Native imports/builds may spawn compiler children; account for owned children
-  or explicitly prevent a new build by verifying the existing native cache
-  before launch. Do not launch an unsupervised compilation as a workaround.
+- The first supported host supervisor is Windows/PowerShell 7. A virtualenv
+  executable can forward to a second Python process. Before engine construction,
+  identify and hold the actual worker process by PID, creation time, executable
+  and descent from the launched process. Start hidden. Assign the launcher and
+  actual worker to an owned Windows Job Object with `KILL_ON_JOB_CLOSE` and no
+  breakaway flags before releasing the worker. Any failed identity or assignment
+  check aborts without release. Terminate the job on deadline, overrun, monitor
+  failure or cancellation; wait for all owned processes to terminate.
+- The fixed PowerShell frontend delegates Win32 ownership to the Python helper.
+  Before worker release, the helper confirms its actual owner PID/start identity,
+  holds the exact PowerShell parent handle and starts a parent-death watchdog.
+  Frontend cancellation signals the owner explicitly, waits boundedly and kills
+  that actual owner if needed. Hold a temporary candidate and independently
+  validate its identity and OS ancestry to the launched helper before promoting
+  it into any cleanup target; failed candidates are never killed. Parent death
+  also terminates and drains the job.
+  The owner's job handle is non-inheritable so abrupt owner death triggers
+  kill-on-close. A venv launcher PID alone is insufficient for either direction.
+- Cancellation uses a preallocated, counted fixed-size signal and a synchronized
+  terminal cutoff after the owned job is empty. Observe cancellation through
+  that cutoff. Later frontend cancellation cannot grow the counted signal or
+  change an already finalized outcome. Verify both sides of this boundary;
+  stopping the watchdog before final accounting is insufficient.
+- Monitor the actual worker's `PeakWorkingSetSize` through its held process
+  handle, including startup and restore. Job commit-memory limits are not RSS
+  limits; do not report them as such. Account separately for owned children.
+- The existing native builder always executes a compiler version probe, even
+  with a matching cache. Readiness binds the cache DLL/metadata, native source
+  and resolved compiler executable/hash/exact version command. Before engine
+  construction install a runner-local process-start guard allowing only that
+  version probe. Reject compile commands and other process starts; never bypass
+  the core cache validation or fall back to a new build. The probe inherits the
+  job and its timeout. This guard controls a known code path, not a general sandbox.
 - Prepared output and supervisor evidence have distinct new directories under
   this workspace. Reject undeclared existing or execution artifacts, unsafe links,
   ancestor/descendant overlap and nonempty undeclared contents. Count all new
   bytes there, including prepared manifest and logs; exclude unrelated old runs.
+  After preflight, bind the child's `TMP`/`TEMP` to new counted evidence scratch
+  space so private audit/checkpoint copies cannot evade the output threshold.
 - Partial output is preserved with failure status. A completion receipt is written
   only after all observations, sealed record and offline semantic audit succeed.
-  Exit 0 or a receipt alone is not scientific acceptance.
+  The diagnostic producer writes `receipt.json`; the supervisor consumes that
+  actual contract. Exit 0 or a receipt alone is not scientific acceptance.
 
 ## Preparation, verification and acceptance
 
@@ -174,6 +203,29 @@ directory inventories; it rechecks all bound values and current source identitie
 Any prior log, raw run, partial result or completion artifact rejects reuse.
 Execution logs and `run/` may be created only after that validation. These rules
 permit prepared inputs, but never make a failed output directory resumable.
+
+The native CLI additionally requires `--supervision-directory`,
+`--expected-readiness-sha256` and `--start-token`. After validated Run preflight,
+the supervisor creates a fresh token and starts the monotonic deadline before
+launch. The runner exclusively publishes `worker-ready.json` in the evidence
+directory with actual PID, token, protocol hash and readiness hash, then waits
+at most 30 seconds for `release.json`. The supervisor writes release only after
+identity/job assignment and the first resource sample; release binds the same
+PID, token and both hashes. Missing, malformed or mismatched release prevents
+engine construction. Handshake time and bytes count against the normal limits.
+Test-only injected engines remain independent of Windows; production cannot use
+that injection through the CLI. The external supervision helper and supervisor
+source identities are bound before launch too.
+
+Host smoke evidence must include virtualenv forwarding, missing/wrong release,
+job-assignment failure, a hanging version child, denied compile commands, each
+resource/monitor stop condition and cancellation of the whole owned job. Exercise
+frontend cancellation while it remains alive, forced frontend death, forced
+actual owner death and cancellation before/just after worker release, including
+a hanging grandchild. Measure detection/cleanup latency; no instantaneous-stop
+claim. Neither a receipt nor a normal `finally` test proves abrupt-exit cleanup.
+Windows API semantics follow [Job Objects](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects)
+and [process memory counters](https://learn.microsoft.com/en-us/windows/win32/api/psapi/ns-psapi-process_memory_counters).
 
 Offline inspection consumes a capped private snapshot and the existing verifier:
 2-MiB manifest, 1-MiB event line, 64-MiB events, at most 79 events and three

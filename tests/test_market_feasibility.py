@@ -21,6 +21,7 @@ GROUPS = ("pam11", "ppl101", "kc", "mbon07", "mbon11", "motor_left", "motor_righ
 
 def analyzer():
     assert SCRIPT.is_file(), "The bounded offline population analyzer is missing"
+    sys.path.insert(0, str(SCRIPT.parent))
     spec = importlib.util.spec_from_file_location("market_feasibility", SCRIPT)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -437,7 +438,8 @@ def cli(path, output):
              "def_forbidden = lambda *a, **k: (_ for _ in ()).throw(AssertionError('native/network forbidden')); "
              "FlyEngine.__init__ = def_forbidden; recorder.verify_replay_run = def_forbidden; "
              "socket.socket = def_forbidden; socket.create_connection = def_forbidden; "
-             "sys.argv = sys.argv[1:]; runpy.run_path(sys.argv[0], run_name='__main__')")
+             "sys.argv = sys.argv[1:]; sys.path.insert(0, str(__import__('pathlib').Path(sys.argv[0]).parent)); "
+             "runpy.run_path(sys.argv[0], run_name='__main__')")
     return subprocess.run([sys.executable, "-c", guard, str(SCRIPT), "--run-dir", str(path), "--output", str(output)],
                           capture_output=True, text=True, check=False)
 
