@@ -12,8 +12,10 @@ neural package, old readouts, evidence or helpers, and without another acquisiti
 **Status:** Protocol, source and one complete development replay independently
 accepted by Astra. The [result](../../experiments/2026-11-09-continuous-motor-drive.md)
 contains8 proposals for one favored drink, with450/500/550 Rappen; no input-causation
-claim.516 targeted tests pass,110 old files unchanged. Source/result publication
-and its CI remain to finish.
+claim.516 targeted tests pass,110 old files unchanged. Source/result checkpoint
+`979b67bbaf8529ad9de98ccfa45a415656b73756` passed
+[CI42702799722](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42702799722):
+1350 backend tests /41 skips in443.95s,243 viewer tests /four skips and build.
 
 ## Global constraints
 
@@ -58,7 +60,7 @@ this plan and `docs/cloud-handover.md`. No production code or old helper edits.
   artifact identities; never change the candidate based on its outcome.
 - [x] Astra independently verifies the complete actual trace and conclusions.
   Keep technical reachability separate from observed coverage and input causation.
-- [ ] Record the honest result, inspect full explicit staged diff/size, publish
+- [x] Record the honest result, inspect full explicit staged diff/size, publish
   the feature checkpoint and observe CI. A later functional/input-sensitivity
   gate requires its own prospective contract before any new acquisition.
 

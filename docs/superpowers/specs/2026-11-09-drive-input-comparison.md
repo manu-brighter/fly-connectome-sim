@@ -146,4 +146,8 @@ and strict new schedule/metadata/count/clock/readout semantics through EOF, with
 explicit iterator closure on failure. It reconstructs the complete summary rather
 than trusting producer flags. Verification mode remains `integrity-only`; source
 and file integrity are not native replay attestation or scientific qualification.
+Its data-derived function/sensitivity results are conditional on the separately
+reviewed supervisor receipt: the offline inspector cannot establish actual RSS,
+runtime or owned-process cleanup from neural records alone. A structurally valid
+repeat mismatch is retained as not evaluable, not hidden as a parser failure.
 One supervised acquisition only; partial/error artifacts retained honestly.

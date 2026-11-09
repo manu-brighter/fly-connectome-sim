@@ -17,6 +17,11 @@ The prospective checkpoint passed
 932 backend tests /41 skips in549.90s,243 viewer tests /four skips and build.
 This precedes the new source and is not its CI evidence.
 
+The subsequent source/result checkpoint `979b67bbaf8529ad9de98ccfa45a415656b73756`
+passed [CI42702799722](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42702799722):
+1350 backend tests /41 skips in443.95s,243 viewer tests /four skips and build.
+All418 new driver cases passed on Linux; local targeted verification is below.
+
 ## Software evidence
 
 `scripts/market_continuous_drive.py` is43 lines/1718 bytes. The only CI change adds

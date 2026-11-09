@@ -9,8 +9,11 @@
 **Architecture:** New external runner/auditor, existing engine/recorder/telemetry,
 new thin adapter to the accepted Windows owned-job supervisor. No package edits.
 **Stack:** Existing Python3.12/numpy/pytest and PowerShell; no dependencies.
-**Status:** Protocol/plan independently accepted by Astra; no implementation or
-new native execution. Source, supervision and concrete acquisition review remain.
+**Status:** Protocol/plan and Task1 runner/auditor independently accepted by Astra:
+[software evidence](../../experiments/2026-11-09-drive-input-software.md),150 focused
+passes/330 deliberate exclusions/no skips,57 old files and41-member package
+fingerprint unchanged. Task2 supervision, source-CI and concrete acquisition
+review remain; no new native execution or actual optical projection occurred.
 
 ## Global constraints
 
@@ -36,25 +39,25 @@ preparation/inspection does not depend on Task2 files already existing. Task1
 protocol pins its own/shared dependencies; readiness separately pins new adapter
 and frontend, following the accepted continuous-supervision pattern.
 
-- [ ] Record synthetic RED before implementation. Reuse appropriate existing
+- [x] Record synthetic RED before implementation. Reuse appropriate existing
   fixture patterns and small helpers; do not read actual input-response artifacts.
-- [ ] Implement deterministic frames/175-event schedule/source-bound preparation,
+- [x] Implement deterministic frames/175-event schedule/source-bound preparation,
   fixed decoder configuration and input-vector metadata. Projection must not
   advance state; bind actual ordered vectors and summaries to engine provenance.
-- [ ] Implement fresh-engine4s prefix and four restored20s branches; distinct
+- [x] Implement fresh-engine4s prefix and four restored20s branches; distinct
   fresh decoder per arm, actual clocks, exact complete-state checks and bounded
   three-checkpoint recording. Prefix is recorded without decoder consumption.
-- [ ] Implement independent full-snapshot/EOF inspection with exact fields/types,
+- [x] Implement independent full-snapshot/EOF inspection with exact fields/types,
   fixed schedule/provenance/telemetry, complete decoder reconstruction and all
   predetermined interpretation flags. Never trust stored summary success fields.
-- [ ] Test valid functional/sensitive, timing-only and count-only distinction,
+- [x] Test valid functional/sensitive, timing-only and count-only distinction,
   functional-without-sensitivity, all-deferred, repeat mismatch and wall failure.
   Exercise wrong state/branch/checkpoint/source/frame/decoder/time, resealed rate/
   bin/count tampering, projection metadata arithmetic, malformed/oversized input,
   iterator closure, write collision and forbidden native/network inspect paths.
-- [ ] Run focused new tests plus only relevant unchanged helper/driver regression;
+- [x] Run focused new tests plus only relevant unchanged helper/driver regression;
   record exact passes/skips, failures and old-source preservation. Add CI path.
-- [ ] Astra independently accepts producer/auditor/fixture scope and evidence.
+- [x] Astra independently accepts producer/auditor/fixture scope and evidence.
 
 ## Task2 — Thin supervision binding
 

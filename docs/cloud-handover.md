@@ -219,10 +219,19 @@ changes remain documented within a continuous path, as in v1; they are not reset
 boundaries. Previous negatives remain intact. Source/result checkpoint
 `979b67bbaf8529ad9de98ccfa45a415656b73756` is published; its
 [CI42702799722](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42702799722)
-is still running. The separate held-out functional/input-sensitivity
+passed:1350 backend tests /41 skips in443.95s,243 viewer tests /four skips and build.
+All418 new driver cases passed on Linux. The separate held-out functional/input-sensitivity
 [protocol](superpowers/specs/2026-11-09-drive-input-comparison.md) and
 [three-task plan](superpowers/plans/2026-11-09-drive-input-comparison.md) are now
-independently accepted. Its fixed shape is84model seconds:4s black prefix, common checkpoint, four20s
+independently accepted and published as `8fec9466a1a655fe46917d650f4d258ece2c7e0e`.
+Task1 runner/auditor is independently accepted:
+[software evidence](experiments/2026-11-09-drive-input-software.md),150 focused
+passes/330 deliberate exclusions/no skips. The pending-state reporting finding
+was corrected and independently rechecked; all57 old source files and the41-member
+package fingerprint are unchanged. Task2 supervision and Task3 acquisition have
+not started. Protocol checkpoint CI42704146157 passed1350backend/41skips548.50s,
+243viewer/4skips and build; this precedes new Task1 source.
+Its fixed shape is84model seconds:4s black prefix, common checkpoint, four20s
 arms (black, newA, newB, repeatA), each with a fresh decoder and unchanged real clocks.
 A/B are complementary32px quadrant patterns with exact logical RGB hashes and
 equal pixel brightness, chosen without model/projection evaluation. Pure hashes
