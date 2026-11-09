@@ -1,6 +1,7 @@
 # Passive-cell buffering and image admission — bounded performance protocol
 
-Status: independently accepted prospective protocol. No implementation or new run.
+Status: independently accepted prospective protocol. Task1 memory/admission
+software is accepted; native integration and the actual benchmark remain pending.
 
 ## Purpose and accepted boundary
 
@@ -177,6 +178,16 @@ length/position/evictions/hash and every queue transition. Validate cohort/heade
 identity, raw counts/population relationships, clocks, detached exports and fixed
 source/configuration bindings. No engine, native call or network during inspection.
 Self-recorded clock/callback-cost arithmetic is not independent clock attestation.
+
+The static header check binds exactly256 unique valid cell indices, population
+membership, at most512 structurally valid edges, finite/nullable positions and
+consistent identity/authoritative lock declarations. Contradictions to available
+lock values must fail. Without runtime arrays/annotations, offline inspection
+cannot independently reproduce the full KC stride selection, soma-data join or
+actual graph edges. Those remain declared, hashed results of the source-bound
+unchanged `build_header()` before advance, not a newly attested data join. Reuse
+only suitable checks; do not invent the old diagnostic's20-KC-group declaration
+merely to invoke its purpose-specific grouping validator.
 
 ## Outcome and next gate
 

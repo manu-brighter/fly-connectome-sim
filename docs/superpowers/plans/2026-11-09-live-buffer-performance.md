@@ -7,9 +7,10 @@
 **Spec:** [bounded performance protocol](../specs/2026-11-09-live-buffer-performance.md).
 **Goal:** Measure fixed rolling cell storage and one pending image against the
 accepted five-real-minute handoff bound without changing the engine/readout.
-**Status:** Protocol/plan independently accepted by Astra; no implementation or
-new measurement yet. Exact versioned ringhash bytes and independent test vectors
-are a Task1 source-acceptance requirement before any real data is acquired.
+**Status:** Protocol/plan and Task1 source independently accepted by Astra;
+[software evidence](../../experiments/2026-11-10-live-buffer-software.md):640 focused
+passes, no skips/warnings. Exact versioned ringhash bytes and independent vectors
+are accepted. Tasks2–4 remain; no native callback integration or measurement yet.
 **Stack:** Existing Python3.12/NumPy/pytest/PowerShell. No new dependencies.
 
 ## Global constraints and boundaries
@@ -31,23 +32,23 @@ Shared CI edits are sequential; controller documents actual failures/skips/resul
 Fresh Sol owns new `scripts/market_live_buffers.py`, new
 `tests/test_market_live_buffers.py` and one CI test path. No model/actual data run.
 
-- [ ] Record meaningful failing tests before implementation.
-- [ ] Implement the fixed1000×256 uint8 ring and four int64 index/tick arrays,
+- [x] Record meaningful failing tests before implementation.
+- [x] Implement the fixed1000×256 uint8 ring and four int64 index/tick arrays,
   strict atomic payload validation, chronology, wrap/evictions and declared hash.
   No unbounded callback history, file operations or rendering in the callback.
-- [ ] Export detached50-bin batches and five exact100-ms aggregates using safe
+- [x] Export detached50-bin batches and five exact100-ms aggregates using safe
   sum dtype. Keep sink-body timings distinct from engine-side observer preparation.
-- [ ] Implement at most one active/one pending identity with exact monotonic
+- [x] Implement at most one active/one pending identity with exact monotonic
   five-minute expiry, full rejection, duplicate protection and no double handoff.
   Strictly increasing request sequences/high-watermark include full rejections;
   distinguish request identity from frame identity. No implicit retry/retargeting
   or growing completed-request store; no durable restart claim.
-- [ ] Test wrap beyond capacity, detached exports, maximum valid counts, invalid
+- [x] Test wrap beyond capacity, detached exports, maximum valid counts, invalid
   casts/types/shapes/clock gaps, exact aggregate arithmetic and digest chronology.
   Test queue deadline−1/equality/+1, stalls, duplicates, full-slot retention,
   sequence reuse after terminal/rejected states and new-sequence same-frame use,
   many rejections and invalid clock behavior without unbounded state growth.
-- [ ] Run focused tests; record real failures/skips and old-source preservation.
+- [x] Run focused tests; record real failures/skips and old-source preservation.
   Astra independently accepts source/contracts and tests before Task2 begins.
 
 ## Task2 — New bounded benchmark producer and auditor
@@ -75,6 +76,9 @@ graph/header construction, native run or model response during implementation.
   exact cohort/source/clock/queue semantics, checkpoints and strict caps.
   Group comparisons use bins; unique selected-cell union uses the required
   interval total_spikes. Never fabricate unavailable per-bin whole-brain values.
+  Use a small appropriate static-header validator, preserving authoritative lock
+  checks; do not add a fictitious old KC grouping. State that offline inspection
+  cannot repeat the runtime/annotation data join, stride selection or topology proof.
   Separate validity, correct expiry and positive observed handoff throughput.
 - [ ] Test valid success, deadline-expiry fallback, no-proposal completion, invalid
   callback/partial-run retention, resealed cell/group/window/ring/queue/time/source

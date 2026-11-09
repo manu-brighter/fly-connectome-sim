@@ -263,8 +263,14 @@ and [four-task plan](superpowers/plans/2026-11-09-live-buffer-performance.md) ar
 independently accepted prospectively:60 model seconds,256 passive observed cells,
 1000 original bins in fixed arrays, one pending image, three synthetic full-queue
 rejections, exact five-minute expiry and unchanged900s/4GiB/256MiB supervision.
-No implementation or acquisition yet. Start Task1 with a fresh Sol worker after
-the prospective checkpoint; all source-bearing work precedes concrete freeze.
+Prospective checkpoint`1ad9f53b8e753b6176c942f66feed86e02137410` is published.
+Task1 ring/admission source is now independently accepted:
+[software evidence](experiments/2026-11-10-live-buffer-software.md),640 focused
+passes/no skips or warnings,60 old sources and41 package members unchanged.
+Ring storage stays288000 array bytes; explicit sequence watermarks prevent request
+revival. Five ringhash vectors were independently verified. No native callback
+integration or acquisition yet. Next Task2 uses a fresh Sol worker; all three
+source-bearing tasks precede concrete freeze and source-CI acceptance.
 Preserve the old10-second collector/parser limits. No Stage C follows automatically.
 
 The protocol-only checkpoint `f07988a` triggered

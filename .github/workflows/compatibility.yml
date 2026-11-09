@@ -90,6 +90,7 @@ jobs:
           tests/test_market_feasibility.py
           tests/test_market_motor_readout.py
           tests/test_market_continuous_drive.py
+          tests/test_market_live_buffers.py
           tests/test_market_motor_readout_v2.py
           tests/test_continuous_motor_probe.py
           tests/test_drive_input_comparison.py

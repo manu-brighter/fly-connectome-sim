@@ -301,8 +301,10 @@ Stage B question is bounded passive-cell/rolling-buffer performance and the
 five-minute image-admission limit. Its separate [protocol](../specs/2026-11-09-live-buffer-performance.md)
 and [four-task plan](2026-11-09-live-buffer-performance.md) are prospectively accepted:
 60 model seconds,256 passive cells,1000-bin fixed ring,one pending request, three
-fixed full-queue rejections and unchanged900s/4GiB/256MiB limits. No implementation
-or actual run yet; no Stage C or sustained-event acceptance.
+fixed full-queue rejections and unchanged900s/4GiB/256MiB limits. Task1 memory/
+admission [software](../../experiments/2026-11-10-live-buffer-software.md) is now
+independently accepted with640 focused passes/no skips or warnings. The runner,
+supervision binding and actual benchmark remain; no Stage C/event acceptance.
 
 - Specify candidate group/cell channels, channel-to-drink mapping, price function,
   neutral/tie handling, threshold/rearm behavior and exact calibration/held-out
