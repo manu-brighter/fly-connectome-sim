@@ -6,19 +6,29 @@
 
 **November 9 product discussion supersedes automatic continuation:** the user
 paused the next-feature discussion to define a live event drink-price market.
-The [concept draft](superpowers/specs/2026-11-09-live-drink-market-design.md)
+The [concept](superpowers/specs/2026-11-09-live-drink-market-design.md)
 records full jumps anywhere within each drink's allowed range and at least
 30 minutes of real time between actual changes of the same drink. There is
 **no CHF0.50 per-change cap** and no mandatory periodic price update. The user
 requested learning recommendations and concept definition before an implementation
-plan; neither this draft nor the earlier autonomous-continuation instruction
-authorizes starting this new product, a new acquisition, API calls or research.
+plan. The user has now answered both product questions: **staff adopts prices
+from the board manually; the model chooses the drink as well as its price.**
+There is no POS integration in the first pilot. The proposed activation semantics
+are an automatic durable server-side price version, without staff confirming
+every change, and a clearly marked last-known display state on disconnection.
+These are technical planning decisions, not a claim of simultaneous screen updates.
 The recommendation is activity-driven operation without new training first,
-with a separate evidence gate for any later learning claim. Manual bar transfer
-versus POS integration, and model versus uploader selection of the drink, are
-still unanswered product questions. Do not silently settle them or resume the
-previously suggested event-input editor. The concept is not yet user-approved;
-the existing demo and its evidence below remain complete and unchanged.
+with a separate evidence gate for any later learning claim. The
+[staged implementation plan](superpowers/plans/2026-11-09-live-drink-market.md)
+details an offline population/timing inventory as Stage A, then separately gated
+readout/performance measurements, price service/board, uploads/live display and
+rehearsal. **Planning is complete; implementation has not started.** A subsequent
+request to implement or continue this plan starts Stage A with Sol and Astra
+review. It does not authorize new native observations, training, API requests,
+POS access, deployment or a return to the previously suggested event-input editor.
+The plan does not claim that existing left/right output already supports multiple
+drinks or that the 9-second recording qualifies continuous event operation.
+The existing demo and its evidence below remain complete and unchanged.
 
 After the reviewed presentation repair, the user requested sequential autonomous
 continuation until the agreed work is finished, they say stop, or the token limit

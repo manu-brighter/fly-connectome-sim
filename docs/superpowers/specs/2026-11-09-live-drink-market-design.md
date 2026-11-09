@@ -1,8 +1,11 @@
 # Live-Getränkebörse mit dem Fliegenmodell
 
-Stand: 9. November 2026. **Konzeptentwurf zur Diskussion, noch kein freigegebener
-Umsetzungsplan.** Die bisherige Beobachtungsdemo ist abgeschlossen. Dieser Entwurf
-startet weder einen Simulationslauf noch API-Nutzung, Training oder Kassenzugriff.
+Stand: 9. November 2026. **Produktentscheidungen für die Planung geklärt;
+technische Ausgestaltung bleibt ein Vorschlag.** Der Nutzer hat die manuelle
+Preisübernahme von der Tafel und die Getränkeauswahl durch das Modell gewählt.
+Der zugehörige [Umsetzungsplan](../plans/2026-11-09-live-drink-market.md) beginnt
+mit einer begrenzten Auswertung vorhandener Daten. Die Planung startet weder
+Produktimplementierung noch Simulationsläufe, API-Nutzung oder Training.
 
 ## Ziel und bereits festgelegte Regeln
 
@@ -20,12 +23,16 @@ Vom Nutzer festgelegt:
   mindestens **30 Minuten realer Zeit**.
 - Innerhalb der Regeln soll das Modell Zeitpunkt, Häufigkeit und Ausmass
   bestimmen. Die Regeln schreiben keine regelmässigen Änderungen vor.
+- Das Modell bestimmt auch das betroffene Getränk. Gäste laden Bilder für die
+  gesamte Getränketafel hoch und wählen beim Upload kein Getränk aus.
+- Das Personal übernimmt die gültigen Preise von der Preistafel. Für den ersten
+  Pilot gibt es keine automatische Kassenschnittstelle.
 - Zuerst das Konzept klären; danach den Umsetzungsplan erstellen.
 
-Annahme für diesen Entwurf: Gemeint sind echte Verkaufspreise. Die erste
-Erprobung würde trotzdem mit ausdrücklich unverbindlichen Testpreisen erfolgen.
-Wie die Bar verbindliche Änderungen übernimmt und wer das betroffene Getränk
-auswählt, ist noch offen; siehe die Produktentscheidungen unten.
+Ziel sind echte Verkaufspreise. Vorgeschlagen ist eine erste Erprobung mit
+ausdrücklich unverbindlichen Testpreisen vor dem Verkaufseinsatz. Der folgende
+Aktivierungsablauf konkretisiert die manuelle Preisübernahme als technische
+Planungsentscheidung; er verlangt keine Bestätigung jedes Vorschlags.
 
 ## Empfehlung für die erste Version
 
@@ -57,9 +64,10 @@ optionaler Dienst für beispielsweise Bildmoderation wäre separat zu entscheide
 5. Eine unabhängige Preisverwaltung prüft Freigabe, Signalalter, erlaubten Bereich,
    Rundung und die Sperre dieses Getränks. Nur ein zulässiger Vorschlag kann einen
    verbindlichen Preiswechsel auslösen.
-6. Preiswechsel und Sperrende werden dauerhaft gespeichert und mit einer Version
-   an Bar und Tafel verteilt. Die genaue Aktivierung hängt von der gewählten
-   Übernahme an der Bar ab; ein fehlgeschlagener Übergang zählt nicht als Änderung.
+6. Die Preisverwaltung aktiviert eine neue Preisversion dauerhaft und
+   veröffentlicht sie auf der verbindlichen Tafel. Der serverseitige
+   Aktivierungszeitpunkt startet die Sperre. Die Bar übernimmt diesen Preis;
+   ein nicht gespeicherter Vorschlag ist noch keine gültige Änderung.
 
 Die Upload-Reihenfolge und Bilddauer sind Betriebsregeln, keine neuronalen
 Entscheidungen. Ein Upload garantiert weder eine Preissenkung noch überhaupt eine
@@ -107,8 +115,20 @@ Vorgeschlagene genaue Regeln:
 
 Die Bar erhält Pause/Fortsetzen, die gültige Preistafel und den Status ihrer
 Verbindung. Ein manueller Notbetrieb wird als solcher ausgewiesen und ist kein
-Preisentscheid der Fliege. Ob die Bar Preise nur abliest oder ein Kassensystem
-automatisch aktualisiert wird, ist noch nicht entschieden.
+Preisentscheid der Fliege. Für den ersten Pilot wird möglichst dieselbe Tafel
+für Bar und Publikum verwendet. Die Preisverwaltung aktiviert zulässige
+Modellentscheidungen automatisch; das Personal bestätigt nicht jeden Wechsel.
+Das tatsächliche Abrechnen zum angezeigten Preis bleibt Aufgabe der Bar.
+
+Aktivierungen benötigen eine frische Verbindung zur primären Tafel. Die spätere
+Service-Spezifikation legt Heartbeat und Erkennungsschwelle fest. Verbindungsausfall
+sperrt weitere Aktivierungen nach seiner Erkennung; eine Netztrennung lässt sich
+nicht augenblicklich oder durch blosses Absenden einer Nachricht ausschliessen.
+Ein abgetrennter Bildschirm zeigt seine letzte Version mit Zeitstempel und einer
+deutlichen Warnung, dass der aktuelle Stand unbekannt ist. Er kann eine bereits
+verbindlich gespeicherte Änderung verpasst haben. Diese wird nicht zurückgerollt.
+Nach Wiederverbindung wird der vollständige aktuelle Preisstand geladen; es gibt
+keine Behauptung, dass mehrere Displays oder eine manuelle Kasse atomar wechseln.
 
 ## Wie aus Aktivität eine Preisentscheidung wird
 
@@ -118,7 +138,7 @@ neuronale Aktivität keine klare Entscheidung liefert.
 
 Vorschlag für die Auslese:
 
-- **Getränk:** Falls das Modell auch das Getränk wählen soll, konkurrieren feste
+- **Getränk:** Für die gewählte Getränkeauswahl durch das Modell konkurrieren feste
   Auslesekanäle. Nur ein hinreichend starker und eindeutiger Gewinner liefert eine
   Auswahl. Die Zuordnung von Kanal zu Getränk ist technisch festgelegt; sie
   bedeutet nicht, dass diese Zellen ein Getränk erkennen.
@@ -227,15 +247,9 @@ Verzögerung und Kapazität werden vor der Eventfreigabe festgelegt.
   danach erst ein begrenzter Bar-Pilot. Eine Kassenschnittstelle ist eine
   zusätzliche Integration und braucht eigene Fehler-/Abgleichstests.
 
-## Noch offene Produktentscheidungen
+## Eventkonfiguration vor einem Verkaufspilot
 
-Bereits zur Klärung gestellt:
-
-1. Übernimmt das Personal Preise von der Tafel, oder sollen sie automatisch ins
-   Kassensystem gehen? Davon hängt der verbindliche Aktivierungsablauf ab.
-2. Wählt das Modell auch das Getränk, oder wählen Gäste es beim Upload?
-
-Vor einer konkreten Eventkonfiguration ausserdem erforderlich: Getränkeliste,
+Vor einer konkreten Eventkonfiguration erforderlich: Getränkeliste,
 Start-/Mindest-/Höchstpreise, Preiseinheit, Eventdauer und erwartete Uploadlast.
 Diese Werte müssen nicht erfunden werden, um zuerst die technische Machbarkeit
 zu planen. Eine zusätzliche globale Begrenzung zwischen Änderungen verschiedener
@@ -243,8 +257,9 @@ Getränke ist nur bei Bedarf eine weitere Produktentscheidung.
 
 ## Weg zum Umsetzungsplan
 
-Nach Klärung des Konzepts wird ein sequenzieller Plan erstellt: zuerst Auslese und
-Dauerbetrieb als begrenzte Machbarkeitsfragen, dann Preisverwaltung und Testtafel,
-anschliessend Uploads/Live-Darstellung und Generalprobe. Lernen bleibt ein eigener,
-später ausdrücklich gewählter Forschungsstrang. Neue aufwendige Messläufe werden
-mit konkreten Grenzen geplant; dieser Entwurf autorisiert sie nicht.
+Der [sequenzielle Plan](../plans/2026-11-09-live-drink-market.md) konkretisiert
+zuerst eine reine Bestandsauswertung und beschreibt die weiteren Etappen samt
+Übergangskriterien. Die vorhandene Sekundenaufnahme kann einen mehrstündigen
+Eventbetrieb nicht qualifizieren. Lernen bleibt ein eigener, später ausdrücklich
+gewählter Forschungsstrang. Neue aufwendige Messläufe benötigen ein geprüftes
+Protokoll mit konkreten Grenzen; dieser Entwurf autorisiert sie nicht.
