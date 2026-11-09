@@ -1,11 +1,11 @@
 # Live-Getränkebörse mit dem Fliegenmodell
 
-Stand: 9. November 2026. **Produktentscheidungen für die Planung geklärt;
-technische Ausgestaltung bleibt ein Vorschlag.** Der Nutzer hat die manuelle
-Preisübernahme von der Tafel und die Getränkeauswahl durch das Modell gewählt.
+Stand: 9. November 2026. **Etappenweise Umsetzung freigegeben und begonnen.**
+Der Nutzer hat die manuelle Preisübernahme von der Tafel und die Getränkeauswahl
+durch das Modell gewählt und anschliessend den Plan zur Umsetzung freigegeben.
 Der zugehörige [Umsetzungsplan](../plans/2026-11-09-live-drink-market.md) beginnt
-mit einer begrenzten Auswertung vorhandener Daten. Die Planung startet weder
-Produktimplementierung noch Simulationsläufe, API-Nutzung oder Training.
+mit einer begrenzten Auswertung vorhandener Daten. Aktuell werden keine neuen
+Simulationsläufe, API-Aufrufe oder Trainingsversuche durchgeführt.
 
 ## Ziel und bereits festgelegte Regeln
 
@@ -28,6 +28,12 @@ Vom Nutzer festgelegt:
 - Das Personal übernimmt die gültigen Preise von der Preistafel. Für den ersten
   Pilot gibt es keine automatische Kassenschnittstelle.
 - Zuerst das Konzept klären; danach den Umsetzungsplan erstellen.
+
+Vom Nutzer ergänzte Betriebsgrösse: gewöhnlich **10–20 Getränke**, **50–300 Gäste**
+und **6–8 Stunden**, gelegentlich deutlich kürzer oder ungefähr **12 Stunden**.
+Die Eventdauer bleibt konfigurierbar. Zwölf Stunden dienen als erste Referenz
+für die spätere Langzeitprüfung, nicht als automatische Abschaltgrenze.
+Gästezahl allein legt weder Uploadrate noch akzeptable Wartezeit fest.
 
 Ziel sind echte Verkaufspreise. Vorgeschlagen ist eine erste Erprobung mit
 ausdrücklich unverbindlichen Testpreisen vor dem Verkaufseinsatz. Der folgende

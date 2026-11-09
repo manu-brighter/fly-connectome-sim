@@ -21,10 +21,13 @@ none is installed or implicitly approved by this plan.
 
 **Spec:** [Live-Getränkebörse](../specs/2026-11-09-live-drink-market-design.md).
 
-**Status:** Planning only. Both product questions have been answered: manual
-price adoption by bar staff; model selects the drink. No implementation, new
-native observation, learning experiment, paid request or deployment has started.
-No claim that the remaining technical recommendations were explicitly accepted.
+**Status:** User approved sequential execution until finished or stopped on
+November 9. Stage A implementation and historical evidence are independently accepted locally; no new native observation,
+learning experiment, paid request or deployment has started. The user supplied
+10–20 drinks, 50–300 guests, usually 6–8 hours with shorter or approximately
+12-hour exceptions. Keep duration configurable; use 12 hours as the initial
+later soak-test reference, not an automatic runtime cap. Upload rate and
+acceptable delay still need an explicit load model before that test.
 
 ## Global constraints
 
@@ -34,6 +37,9 @@ No claim that the remaining technical recommendations were explicitly accepted.
 - Expiry permits a fresh decision; it neither forces nor queues a price change.
 - Model chooses drink, target and decision timing. Guests cannot pick a drink.
 - Staff reads the authoritative board; no POS integration in the first pilot.
+- Target all 20 drink slots at the upper stated size; do not quietly reduce the
+  product to the number of existing population channels. Guests: 50–300.
+  Runtime: configurable, typical 6–8 hours, initial long-run reference 12 hours.
 - Proposed activation: durable server-side price version, automatically applied;
   no per-change staff confirmation. Pause remains available.
 - Proposed first version: `learning=False`, no external DAN stimulation, normal
@@ -153,31 +159,31 @@ No cell reconstruction, new drink mapping, price prediction or recalibration.
   drink selection/price mapping and no long-run or real-time qualification.
   There is deliberately no overall scientific or market-feasibility pass flag.
 
-- [ ] Write synthetic `RunRecorder` fixtures with explicit test metadata and
+- [x] Write synthetic `RunRecorder` fixtures with explicit test metadata and
   hashed dummy checkpoint bytes; use the recorder's public ingest/seal interfaces.
   No native fixtures, private-run discovery or downloaded graph dependency.
-- [ ] Write `test_weighted_population_summary`: two contiguous observations of
+- [x] Write `test_weighted_population_summary`: two contiguous observations of
   100 and 200 ms, population size 2 and spike totals 2 and 8 must yield
   `observations == 2`, `simulated_ms == 300`, `spikes == 10`,
   `mean_rate_hz == pytest.approx(10 / (2 * 0.3))`; derive matching bin coverage.
   Other required groups may be silent and must retain zero counts/rates.
-- [ ] Write focused cases for altered bytes/hash failure; hash-valid rate
+- [x] Write focused cases for altered bytes/hash failure; hash-valid rate
   mismatch; bin gaps/overlap/wrong coverage; missing/empty groups; NaN/Infinity,
   booleans and negative counts; nonzero learning/stimulation; discontinuous
   branches; declared limit excess and oversized checkpoints.
-- [ ] Write CLI cases proving invalid input emits no report, output collision or
+- [x] Write CLI cases proving invalid input emits no report, output collision or
   dangling output link never overwrites, valid report labels all limitations,
   and a no-native/no-network guard fails the test if either path is invoked.
   Platform-specific link privilege skips must be stated, not counted as passes.
-- [ ] Run `.venv/Scripts/python.exe -m pytest tests/test_market_feasibility.py -q`
+- [x] Run `.venv/Scripts/python.exe -m pytest tests/test_market_feasibility.py -q`
   and record the actual expected RED failures before implementation.
-- [ ] Implement the script's two interfaces and CLI using existing verifier
+- [x] Implement the script's two interfaces and CLI using existing verifier
   patterns. Consume the full checked event stream before publishing the report;
   do not calculate statistics from a prefix and label the whole run checked.
-- [ ] Run the focused suite GREEN, then together with
+- [x] Run the focused suite GREEN, then together with
   `tests/experiment/test_recorder_limits.py`; add the new test to CI. Record real
   commands/counts/skips. Do not run unrelated neural acquisitions as regression.
-- [ ] Astra independently reviews source, input binding, arithmetic, bounded
+- [x] Astra independently reviews source, input binding, arithmetic, bounded
   reads and claims. Fix actionable findings test-first within these owned files.
 - [ ] Inspect complete explicit staged diff; make a reviewed feature commit.
 
@@ -190,7 +196,7 @@ the report has actually run; update this plan's checkboxes and
 **Consumes:** Task 1 CLI and report contract. **Produces:** reviewed evidence
 summary, clear missing measurements and the input to Stage B's bounded protocol.
 
-- [ ] Run exactly the offline analyzer against the existing accepted raw run:
+- [x] Run exactly the offline analyzer against the existing accepted raw run:
 
   ```powershell
   .venv/Scripts/python.exe scripts/analyze-market-feasibility.py --run-dir runs/cell-demo-20261108-02/session/run --output runs/market-feasibility-20261109.json
@@ -199,13 +205,13 @@ summary, clear missing measurements and the input to Stage B's bounded protocol.
   If the output already exists, select a new explicit filename; never overwrite.
   If the private original is unavailable, report that limitation and stop actual
   acceptance. Synthetic CI success cannot substitute for historical evidence.
-- [ ] Check expected historical scope (214 observations / 9 simulated seconds),
+- [x] Check expected historical scope (214 observations / 9 simulated seconds),
   independently inspect representative arithmetic and verify unchanged source
   bytes/package identity. Report discrepancies honestly; do not force agreement.
-- [ ] Record available groups, rate ranges/silence/overlap and recorded timing.
+- [x] Record available groups, rate ranges/silence/overlap and recorded timing.
   Explicitly state that this single feed/cards run contains no held-out market
   comparison and cannot validate multi-drink control or hours of operation.
-- [ ] Astra reviews actual report against source evidence; controller records
+- [x] Astra reviews actual report against source evidence; controller records
   conclusions, remaining gaps and the next protocol task in the handover.
 - [ ] Review docs and complete staged diff; commit/push explicitly to the feature
   branch and observe CI. No PR, merge, deployment or native run follows implicitly.
@@ -316,6 +322,7 @@ test task or a mandatory test contract in its later subsystem.
 
 Only Stage A is detailed enough for the next implementation assignment. Later
 subsystem plans must consume measured results rather than invent viable readouts,
-resource budgets or display-service contracts now. All checkboxes are pending.
+resource budgets or display-service contracts now. Stage A checks reflect actual
+local implementation/evidence; publication and CI remain pending until observed.
 The chosen execution method is already Sol implementation plus Astra review;
 there is no need to ask the user to select that method again.

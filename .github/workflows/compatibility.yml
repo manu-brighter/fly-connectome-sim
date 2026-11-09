@@ -87,6 +87,7 @@ jobs:
         run: >-
           uv run --no-sync pytest -q
           tests/test_export_anatomy.py
+          tests/test_market_feasibility.py
           tests/experiment/test_cell_activity.py
           tests/test_native_build.py
           tests/test_checkpoint.py::test_evolved_emitted_checkpoint_replays_with_native_kernel

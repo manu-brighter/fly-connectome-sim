@@ -22,10 +22,26 @@ with a separate evidence gate for any later learning claim. The
 [staged implementation plan](superpowers/plans/2026-11-09-live-drink-market.md)
 details an offline population/timing inventory as Stage A, then separately gated
 readout/performance measurements, price service/board, uploads/live display and
-rehearsal. **Planning is complete; implementation has not started.** A subsequent
-request to implement or continue this plan starts Stage A with Sol and Astra
-review. It does not authorize new native observations, training, API requests,
-POS access, deployment or a return to the previously suggested event-input editor.
+rehearsal. **The user approved the plan and autonomous execution on November 9:**
+continue until finished or explicitly stopped, with up to ten subagents requested;
+this platform permits three concurrent children. Stage A is now locally complete
+and independently accepted: [population inventory](experiments/2026-11-09-market-feasibility.md),
+148 passing tests / five declared Windows symlink-privilege skips, and actual
+sealed-run inspection without a new fullgraph run or API call. Publication and
+clean-checkout CI remain pending at this checkpoint. The separate
+[historical KC screen](experiments/2026-11-09-market-kc-screen.md) found that one
+of twenty fixed artificial groups dominated every strict maximum; it does not
+qualify twenty-drink control. Sampled-cohort recruitment began near two seconds
+despite nonblack inputs, so very short negative probes would be inconclusive.
+The next step is a finite, matched-state input-response diagnostic with reviewed
+source and supervision, not a drink-selection claim or long-duration event run.
+User-supplied scale:
+10–20 drinks, 50–300 guests, usually 6–8 hours but also shorter or roughly 12-hour
+events. Duration stays configurable; 12 hours is the initial later long-run test
+reference, not an automatic shutdown limit. Necessary new measurements require
+a concrete reviewed protocol and finite resource bounds before execution;
+do not launch indefinite fullgraph runs or infer live learning, paid API use,
+POS access or deployment. Do not return to the previous event-input editor.
 The plan does not claim that existing left/right output already supports multiple
 drinks or that the 9-second recording qualifies continuous event operation.
 The existing demo and its evidence below remain complete and unchanged.
