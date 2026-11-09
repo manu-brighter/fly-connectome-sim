@@ -22,7 +22,14 @@ Task1 is published as `c0c0887` with
 637 backend passed /34 skips,243 viewer passed /four private-artifact skips and
 build. Task2 supervision and host evidence are independently accepted:91 passing
 combined runner/supervisor tests, one existing Windows symlink-privilege skip.
-Final source CI and concrete acquisition preflight remain outstanding.
+Final source `1d32e1c` passed
+[CI42678625455](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42678625455):
+665 backend passed /41 skips,243 viewer passed /four private-artifact skips and
+build. Concrete preflight and the single actual acquisition are independently
+accepted. The [result is negative](../../experiments/2026-11-09-continuous-motor-probe.md):
+zero complete proposals, one partial direction and no later neutral rearm.
+Result checkpoint publication remains; Stage B stays open for an offline-first
+concept revision, with no additional acquisition implied.
 
 ## Global constraints
 
@@ -155,16 +162,16 @@ identity. No arbitrary command, fallback runtime or limit override is exposed.
 
 ## Task3 — source checkpoint, one acquisition, actual result (controller)
 
-- [ ] Integrate Tasks1/2, verify frozen core/decoder/old-source/artifact bytes,
+- [x] Integrate Tasks1/2, verify frozen core/decoder/old-source/artifact bytes,
   run the meaningful combined new tests and inspect explicit staged diff/size.
   Publish reviewed feature source and observe clean-checkout CI before acquisition.
-- [ ] Prepare unique output/evidence paths and frozen protocol/readiness; review
+- [x] Prepare unique output/evidence paths and frozen protocol/readiness; review
   actual bytes/hashes, free space, exact command and finite limits with Astra.
   Do not reuse any completed diagnostic directory or treat docs as a run receipt.
-- [ ] Execute exactly one bounded supervised acquisition under the authorized
+- [x] Execute exactly one bounded supervised acquisition under the authorized
   continuation; preserve aborts, no automatic retry. Inspect process cleanup and
   actual worker peak/output accounting, without claiming total-tree RSS.
-- [ ] Inspect complete raw data and independently check derived metrics/outcomes.
+- [x] Inspect complete raw data and independently check derived metrics/outcomes.
   Astra evaluates actual evidence. Record negative/inconclusive honestly and
   preserve all source and historical artifacts.
 - [ ] Update tracked experiment report, parent plan and handover; review/commit/

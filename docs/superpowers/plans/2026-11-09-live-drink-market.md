@@ -242,9 +242,14 @@ The twenty literal routes do not establish neural reachability. The next
 [continuous probe](../specs/2026-11-09-continuous-motor-probe.md) and
 [implementation plan](2026-11-09-continuous-motor-probe.md) are prospectively accepted:
 96model seconds of fixed new inputs, one continuous state and finite supervision.
-Runner/supervisor implementation and review precede an actual acquisition.
-No favorable-window search
-or new acquisition follows automatically. The user accepts slower-than-real-time
+Implementation, source CI and concrete preflight are complete. One actual run is
+independently accepted as a [valid negative result](../../experiments/2026-11-09-continuous-motor-probe.md):
+192 observations in804.609s wall, zero proposals, one lower-half decision and no
+later qualifying neutrality. The partial path expires by the real-time bound.
+Stage B remains open; next is a separately specified offline-first rearming
+revision that also addresses directional bias. Preserve v1 and its negative result.
+No favorable-window search or new acquisition follows automatically.
+The user accepts slower-than-real-time
 model operation for the first local pilot; display the clocks/status honestly.
 Real-time cooldown remains 30 minutes; queue capacity/maximum delay remain to bound.
 

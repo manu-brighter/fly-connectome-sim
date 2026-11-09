@@ -1,6 +1,9 @@
 # Continuous motor-readout probe v1
 
-Status: prospective protocol independently accepted. No acquisition has run.
+Status: prospective protocol independently accepted before acquisition. One
+subsequent run is now independently accepted as a
+[valid negative result](../../experiments/2026-11-09-continuous-motor-probe.md).
+The prospective rules below remain unchanged; no retry or tuning is implied.
 This follows the accepted [offline decoder](../../experiments/2026-11-09-sequential-motor-readout.md),
 published as `af4879b` with successful CI. The user accepts slower model computation
 for the local pilot. No actual prices, new training, API request or event-readiness

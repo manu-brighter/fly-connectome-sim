@@ -2,8 +2,9 @@
 
 Status: Task1 runner/auditor implemented, synthetically tested and independently
 accepted. Task2 supervision and its bounded host evidence are independently
-accepted as well. No native acquisition
-has run under the [prospective protocol](../superpowers/specs/2026-11-09-continuous-motor-probe.md).
+accepted as well. One later native acquisition under the
+[prospective protocol](../superpowers/specs/2026-11-09-continuous-motor-probe.md)
+is now independently accepted as a [valid negative result](2026-11-09-continuous-motor-probe.md).
 The [sequential plan](../superpowers/plans/2026-11-09-continuous-motor-probe.md)
 keeps source, supervision and actual-result acceptance separate.
 
@@ -12,6 +13,13 @@ Task1 is published as `c0c0887cd8299c18106fe4aaddee86d84a0286af`.
 passed637 backend tests /34 declared skips in263.48s,243 viewer tests /four
 private-artifact skips and build. All57 new probe cases passed on Linux, including
 the Windows-skipped symlink case.
+
+Final Task2 source checkpoint `1d32e1c89e9d94659e43a24b8cbbee08e1cf2425` passed
+[CI42678625455](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42678625455):
+665 backend tests /41 declared skips in264.03s,243 viewer tests /four
+private-artifact skips and build. Seven new Windows-only cases skip on Linux;
+all35 passed on the actual Windows host. Concrete preflight was independently
+accepted before the single acquisition described in its separate report.
 
 ## Task1 scope
 
@@ -172,6 +180,7 @@ and retained byte totals, with zero active processes and terminal signal `2`.
 The foreign-process evidence confirms survival without ACK. Task2 source and
 bounded host evidence are accepted, with no blocking finding.
 
-No actual acquisition or capacity result follows from these synthetic checks.
-The final reviewed source checkpoint, successful CI and concrete fresh-path
-preflight remain required.
+No actual acquisition or capacity result follows from these synthetic checks
+alone. The subsequent source CI, concrete preflight and actual result are recorded
+separately above; the negative result does not invalidate these software checks
+or establish a usable price-selection policy.

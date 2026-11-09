@@ -83,23 +83,43 @@ supervision cases passing on the host. Combined runner/supervisor verification:
 91 passed /one existing Windows symlink-privilege skip. Actual harmless-process
 completion, cancellation, owner-death and unrelated-PID evidence was independently
 checked; the package, decoder, old helpers and historical artifacts remain unchanged.
-Next publish final source/CI and review concrete frozen preflight before one acquisition.
 Task1 checkpoint `c0c0887cd8299c18106fe4aaddee86d84a0286af` passed
 [CI42676056860](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42676056860):
 637 backend tests /34 skips,243 viewer tests /four private-artifact skips and
-build. All57 new probe cases passed on Linux. Task2 source review is complete. No probe
-has run; even a positive result would show only path completion, not Stage C
-readiness. Do not
-choose favorable windows or infer 20-channel, price-policy or event-duration
-qualification. No further acquisition is implied by the accepted result.
+build. All57 new probe cases passed on Linux. Final Task2 source checkpoint
+`1d32e1c89e9d94659e43a24b8cbbee08e1cf2425` passed
+[CI42678625455](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42678625455):
+665 backend tests /41 declared skips,243 viewer tests /four private-artifact skips
+and build. Seven new Windows lifecycle cases skip on Linux; all35 passed locally.
+
+After independent concrete preflight, one continuous acquisition completed at
+`runs/continuous-motor-20261109-01/` and `.tools/continuous-motor-20261109-01/`.
+The [actual result](experiments/2026-11-09-continuous-motor-probe.md) is independently
+accepted as **valid negative**: all192 observations/9600 bins/194 events and two
+checkpoints, zero complete proposals. One3–5s block (L44/R17) selected the lower
+half `[0,10)`; no later observation met the neutral bound. Later black observations
+still contain6–27 combined motor spikes versus the maximum2. The partial path
+expired at39model seconds by its300-real-second bound. Increasing expiry alone
+would not supply the missing neutrality. The final pending state has no drink or price.
+Actual resources:804.609s wall,858718208bytes held-worker peak RSS,
+40652389bytes sampled output peak/20667412 retained,3131 samples,maxgap0.266s,
+zero active owned processes after cleanup and empty stderr. Source and old
+artifacts remain unchanged; no second attempt or paid request ran.
+
+**Next: an explicit offline-first rearming design revision**, also accounting for
+the observed directional bias. Preserve v1 and its accepted negative result.
+Stage B remains open; no Stage C, favorable-window search, twenty-slot/price-policy
+qualification or new acquisition follows automatically. Completed run directories
+must not be reused. Astra is advising the next bounded design; Sol implements only
+after its separate contract/plan is reviewed.
 The protocol-only checkpoint `f07988a` triggered
 [CI42671895977](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42671895977),
 which failed before creating any jobs, including one unchanged retry. GitHub's
 visible annotation says "Internal server error" on both attempts. This is not a
 test failure or a successful check; the workflow and executable source match the
 successful `af4879b` run. Local implementation continued during that outage;
-Task1 subsequently passed the source CI above. The final Task2 source/CI and
-concrete acquisition preflight gates remain required.
+Both later source checkpoints passed CI; the concrete acquisition preflight and
+actual-result review are complete. The outage remains historical evidence only.
 The user explicitly approved slower-than-real-time model operation for the first
 local pilot, with an honest model clock and fresh/queued status; the price lock
 still uses 30 minutes of real time. Queue capacity/maximum delay need later bounds.
