@@ -1,8 +1,24 @@
-# Continuation handover — experimental v1, 2026-11-08
+# Continuation handover — experimental v1, 2026-11-09
 
 ## Start here: accepted scope and current status
 
 ### Current continuation request
+
+**November 9 product discussion supersedes automatic continuation:** the user
+paused the next-feature discussion to define a live event drink-price market.
+The [concept draft](superpowers/specs/2026-11-09-live-drink-market-design.md)
+records full jumps anywhere within each drink's allowed range and at least
+30 minutes of real time between actual changes of the same drink. There is
+**no CHF0.50 per-change cap** and no mandatory periodic price update. The user
+requested learning recommendations and concept definition before an implementation
+plan; neither this draft nor the earlier autonomous-continuation instruction
+authorizes starting this new product, a new acquisition, API calls or research.
+The recommendation is activity-driven operation without new training first,
+with a separate evidence gate for any later learning claim. Manual bar transfer
+versus POS integration, and model versus uploader selection of the drink, are
+still unanswered product questions. Do not silently settle them or resume the
+previously suggested event-input editor. The concept is not yet user-approved;
+the existing demo and its evidence below remain complete and unchanged.
 
 After the reviewed presentation repair, the user requested sequential autonomous
 continuation until the agreed work is finished, they say stop, or the token limit
