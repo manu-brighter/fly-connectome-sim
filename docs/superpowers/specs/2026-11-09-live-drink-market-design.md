@@ -237,14 +237,18 @@ Der Nutzer hat nach der begrenzten Messung vom 9. November ausdrücklich akzepti
 dass der erste lokale Pilot langsamer als Echtzeit rechnet. Die Anzeige kennzeichnet
 Modellzeit und aktuelle beziehungsweise wartende Eingaben. Die Preissperre bleibt
 bei 30 echten Minuten. Diese Entscheidung ersetzt keine Messung von Durchsatz,
-Warteschlangengrenzen oder maximaler Verzögerung.
+Warteschlangenkapazität oder tatsächlicher Verzögerung. Der Nutzer hat anschließend
+höchstens **fünf reale Minuten Wartezeit** vom angenommenen Bild bis zur Übergabe
+an die Simulation festgelegt. Bei voller begrenzter Warteschlange werden weitere
+Uploads abgewiesen. Abgelaufene Einträge werden ausdrücklich verworfen und nicht
+verspätet gezeigt; ein ausgefallener Worker kann keine erfolgreiche Übergabe garantieren.
 
 Ein Pilot muss Durchsatz, Verzögerung und Ressourcenverbrauch über die geplante
 Eventdauer messen. Die Preis-Sperre verwendet reale Zeit, das neuronale Modell
 seine tatsächlich berechnete Zeit. Langsame Verarbeitung darf weder als aktuelle
 Reaktion ausgegeben werden noch unbegrenzt Uploads aufstauen. Gäste sehen
-Warteschlangenstatus und Ablehnung bei voller Kapazität. Die endgültige maximale
-Verzögerung und Kapazität werden vor der Eventfreigabe festgelegt.
+Warteschlangenstatus, Ablauf und Ablehnung bei voller Kapazität. Die feste Kapazität
+und die Einhaltung der Fünf-Minuten-Grenze werden vor der Eventfreigabe überprüft.
 
 ## Grenzen vor einem öffentlichen Einsatz
 

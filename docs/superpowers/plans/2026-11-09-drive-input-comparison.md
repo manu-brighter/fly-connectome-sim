@@ -13,8 +13,10 @@ new thin adapter to the accepted Windows owned-job supervisor. No package edits.
 [software evidence](../../experiments/2026-11-09-drive-input-software.md),150 focused
 passes/330 deliberate exclusions/no skips,57 old files and41-member package
 fingerprint unchanged. Task2 supervision is also independently accepted:139 passes,
-one Windows symlink-privilege skip and three private preflight exclusions. Source-CI,
-concrete preflight and acquisition remain; no actual projection/native run occurred.
+one Windows symlink-privilege skip and three private preflight exclusions. Final
+source-CI and concrete preflight passed. One acquisition is complete, with its
+[actual result](../../experiments/2026-11-09-drive-input-comparison.md) independently
+accepted; reviewed publication remains. No source changed during the acquisition.
 
 ## Global constraints
 
@@ -83,12 +85,12 @@ one CI test path. Task1 is accepted before this fresh worker starts.
 Controller owns ignored fresh protocol/readiness/output/evidence and tracked
 result report, plan/handover updates. No source edits during a frozen attempt.
 
-- [ ] Review a concrete command, finite limits, empty fresh paths, actual worker/
+- [x] Review a concrete command, finite limits, empty fresh paths, actual worker/
   compiler/cache identities, source and source-CI results. Independently check
   the preparation and supervisor release/cancellation bindings before launch.
-- [ ] Run exactly once under the owned supervisor. Observe actual resource bounds
+- [x] Run exactly once under the owned supervisor. Observe actual resource bounds
   until completion/termination, retain partials and confirm zero owned survivors.
-- [ ] Inspect complete actual artifacts; Astra independently verifies declared
+- [x] Inspect complete actual artifacts; Astra independently verifies declared
   states, every observation, proposal, projection, repeats, clocks and resources.
   Report each component's outcome without retuning or automatic retry.
 - [ ] Publish reviewed evidence with exact test/acquisition/CI results. Decide the

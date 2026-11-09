@@ -232,19 +232,31 @@ package fingerprint are unchanged. Task2 thin supervision is now independently
 accepted:139 focused passes/one Windows symlink-privilege skip/three deliberate
 private runtime-preflight exclusions in39.10s. Actual harmless-process receipts
 confirm completion/cancellation/owner-death cleanup and unrelated-process protection;
-all58 preexisting sources and the package fingerprint are unchanged. Task3 has
-not started. Protocol checkpoint CI42704146157 passed1350backend/41skips548.50s,
+all58 preexisting sources and the package fingerprint are unchanged.
+Protocol checkpoint CI42704146157 passed1350backend/41skips548.50s,
 243viewer/4skips and build; this precedes new Task1 source.
 Its fixed shape is84model seconds:4s black prefix, common checkpoint, four20s
 arms (black, newA, newB, repeatA), each with a fresh decoder and unchanged real clocks.
 A/B are complementary32px quadrant patterns with exact logical RGB hashes and
-equal pixel brightness, chosen without model/projection evaluation. Pure hashes
-are checked; optical projection and actual outputs have not been calculated.
+equal pixel brightness, chosen without model/projection evaluation.
 Function, output sensitivity and individual drink/price/timing components remain
 separate; timing-only effects cannot establish image-caused price changes.
-Both source-bearing tasks are complete. Finish final source-CI and independently
-review concrete preflight before one acquisition. No Stage C follows automatically.
-Fixed bounds retain900s/4GiB/256MiB; these are not an execution guarantee.
+Final source checkpoint`dd60d5584fd74f2d362667685cdec543cea3d68e` passed
+[CI42709083761](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42709083761):
+1469 backend tests /47 skips in618.99s,243 viewer tests /four skips and build.
+After independently accepted concrete preflight, exactly one acquisition completed
+at `runs/drive-input-comparison-20261109-01/` and matching `.tools/` evidence.
+The [actual result](experiments/2026-11-09-drive-input-comparison.md) is independently
+accepted:168 observations/8400 bins/175 events/
+three checkpoints; A450Rappen at18s, B500Rappen at14s, bothdrink-00; black0proposals,
+A repeats exactly. Full A/B motor sequences differ; no clock/path resets occurred.
+Observed1/20 coverage remains separate from all20 technical routes. Equal pixel
+brightness gives unequal retinal population coverage, so spatial vs population
+input-magnitude effects are not isolated. Resources:482.719s wall,856920064bytes
+worker peak,50399859bytes combined output peak/25571025retained,1880 samples,
+maxadjacentgap0.266s,cleanup0,stderr0. All frozen sources remain unchanged.
+No retry or paid call. Next specify a separate bounded cell-observer/
+rolling-buffer performance benchmark; no Stage C follows automatically.
 
 The protocol-only checkpoint `f07988a` triggered
 [CI42671895977](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42671895977),
@@ -256,7 +268,10 @@ Both later source checkpoints passed CI; the concrete acquisition preflight and
 actual-result review are complete. The outage remains historical evidence only.
 The user explicitly approved slower-than-real-time model operation for the first
 local pilot, with an honest model clock and fresh/queued status; the price lock
-still uses 30 minutes of real time. Queue capacity/maximum delay need later bounds.
+still uses30 minutes of real time. The user selected a maximum five real minutes
+queue wait until simulator handoff, with rejection when the finite queue is full.
+Expired entries must never be handed off late; concrete capacity and performance
+remain to establish. This does not guarantee delivery through a worker failure.
 User-supplied scale:
 10–20 drinks, 50–300 guests, usually 6–8 hours; shorter or roughly 12-hour
 events are exceptions. Duration stays configurable; 12 hours is the initial later long-run test
@@ -264,8 +279,8 @@ reference, not an automatic shutdown limit. Necessary new measurements require
 a concrete reviewed protocol and finite resource bounds before execution;
 do not launch indefinite fullgraph runs or infer live learning, paid API use,
 POS access or deployment. Do not return to the previous event-input editor.
-The plan does not claim that existing left/right output already supports multiple
-drinks or that the 9-second recording qualifies continuous event operation.
+Technical mapping covers all configured drinks; observed neural target variety
+and continuous event operation remain distinct, unqualified claims.
 The existing demo and its evidence below remain complete and unchanged.
 
 After the reviewed presentation repair, the user requested sequential autonomous

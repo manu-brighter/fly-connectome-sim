@@ -1,8 +1,9 @@
 # Fixed-input comparison — software evidence
 
 Status: Task1 runner/auditor and Task2 supervisor independently accepted by Astra.
-Source-CI, concrete preflight and actual acquisition remain outstanding. Evidence is software
-verification; no new neural response or actual optical projection was calculated.
+Final source-CI and concrete preflight passed; the separately documented
+[actual acquisition](2026-11-09-drive-input-comparison.md) is complete. Evidence
+below concerns software verification, not the later measured neural response.
 
 The [protocol](../superpowers/specs/2026-11-09-drive-input-comparison.md) and
 [plan](../superpowers/plans/2026-11-09-drive-input-comparison.md) were reviewed and
@@ -128,7 +129,11 @@ the41-member package fingerprint is unchanged. Evidence remains under
 | Frontend,8470 bytes | `a50e1b09135d4a74b8b0f343a162d4ad6a7c005191245897ee869d3dc234512b` |
 | New tests,26003 bytes | `9b77d9888a56ef3d53719474e1f5d70420c007721a86e24b4e38cc82cf841024` |
 
-All source-bearing tasks are complete. Next confirm source-CI and independently
-review concrete preparation before one bounded acquisition. Software tests do
-not establish actual run resource compliance, real input sensitivity, neural
-target coverage, biological learning, selling-price activation or Stage C acceptance.
+All source-bearing tasks are complete. Final checkpoint
+`dd60d5584fd74f2d362667685cdec543cea3d68e` passed
+[CI42709083761](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42709083761):
+1469 backend tests /47 skips in618.99s,243 viewer tests /four skips and build.
+The concrete native preparation was then independently accepted. Software tests
+alone do not establish actual run resource compliance, real input sensitivity,
+neural target coverage, biological learning, price activation or Stage C acceptance;
+the separate actual-result report supplies the acquisition evidence and its limits.

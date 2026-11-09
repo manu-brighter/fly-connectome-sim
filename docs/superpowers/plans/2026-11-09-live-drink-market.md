@@ -274,7 +274,10 @@ Stop this fixed candidate before full implementation/acquisition; no retuning or
 smaller-grid rescue. Preserve the complete development result.
 The user accepts slower-than-real-time
 model operation for the first local pilot; display the clocks/status honestly.
-Real-time cooldown remains 30 minutes; queue capacity/maximum delay remain to bound.
+Real-time cooldown remains30 minutes. The user subsequently fixed maximum queue
+wait at five real minutes until simulator handoff; a finite full queue rejects
+new uploads and expired entries must never be handed off late. Concrete capacity
+and measured admission behavior remain to establish.
 The user additionally accepts long quiet phases and persistent drink favorites
 for this experimental pilot, provided every configured drink remains technically
 selectable. Do not require every drink to appear in a finite evaluation or add
@@ -288,9 +291,14 @@ mapping, without a neutral latch. The [development result](../../experiments/202
 has8 proposals, all for drink-00, at450/500/550 Rappen;516 synthetic tests include
 all165 configured leaves across sizes10–20 with both endpoints. This establishes
 technical reachability and development function, not held-out image influence.
-The next separate protocol must compare fresh controlled inputs from an identical
-state, retain a repeat and distinguish functional proposals from input sensitivity.
-No current Stage C acceptance or new acquisition is implied.
+The separate [fixed-input protocol](../specs/2026-11-09-drive-input-comparison.md)
+and [implementation](2026-11-09-drive-input-comparison.md) are complete. Final
+source-CI and concrete preflight passed; one84-model-second acquisition produced
+the [recorded comparison](../../experiments/2026-11-09-drive-input-comparison.md),
+independently accepted: A yields450 Rappen at18s, B500 at14s, both
+drink-00; black yields no proposal and A repeats exactly. The next distinct
+Stage B question is bounded passive-cell/rolling-buffer performance and the
+five-minute image-admission limit. No Stage C or sustained-event acceptance yet.
 
 - Specify candidate group/cell channels, channel-to-drink mapping, price function,
   neutral/tie handling, threshold/rearm behavior and exact calibration/held-out
