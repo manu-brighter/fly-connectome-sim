@@ -13,9 +13,10 @@ from the same private snapshot. A separate controller step evaluates actual data
 **Tech Stack:** Existing Python3.12, standard library fractions, pytest and recorder
 helpers; no new dependencies or service.
 **Spec:** [bounded response inventory](../specs/2026-11-09-response-structure-inventory.md).
-**Status:** Prospectively accepted after independent protocol and builder review.
-No new normalized
-outcomes have been computed or selected.
+**Status:** Source, synthetic tests and one actual inventory independently accepted.
+[Actual result](../../experiments/2026-11-09-response-structure-inventory.md):64 vectors,
+224 comparisons; some active KC distributions differ, without decoder qualification.
+Source/result publication and clean-checkout CI remain to finish.
 
 ## Global constraints
 
@@ -72,34 +73,38 @@ validated20-group counts. Native population counts come from
 `event.telemetry.bins[].group_spikes`; cell counts from `event.cell_bins[].counts`.
 Grouping entries and excluded_kc_slots are cohort slots. Header cells describe
 their model indices and memberships. Close event generators on error paths.
+The analyzer owns the inspector's iterator under `contextlib.closing`, passing a
+minimal same-run manifest/mode/iterator view because the frozen inspector does not
+close its iterator on exception. Test early semantic rejection with a retained
+traceback: original error survives, iterator closes and snapshot is removed.
 Use `event.branch_id` and `(event.start_tick - 20000) // 5000` for the arm/window
 mapping, checking global observer ordinal `4 + arm_index*8 + window`. The existing
 SyntheticEngine fixture hardcodes220KC/226cells and cannot directly satisfy this
 231KC/256cell contract. Provide a faithful new fixture; reuse loaders/lock setup
 only on the same diagnostic module instance used by the analyzer.
 
-- [ ] Write RED exact math tests: scaled `[1,2]`/`[2,4]` gives proportional TV0;
+- [x] Write RED exact math tests: scaled `[1,2]`/`[2,4]` gives proportional TV0;
   `[3,1]`/`[1,3]` gives nonproportional TV1/2. Test both/one-silent null cases,
   malformed bool/negative/fractional/empty/mismatched values, large JSON-safe
   counts whose products and sums exceed2^53, reduced fractions and symmetric
   comparisons. Assert exact decimal-string sums above the safe-integer boundary.
-- [ ] Write synthetic fixed-partition tests including shuffled non-slot model
+- [x] Write synthetic fixed-partition tests including shuffled non-slot model
   indices, an excluded-bucket-only composition change, disjoint complete231KC
   coverage, wrong/missing/duplicate members and all21-bucket arithmetic.
-- [ ] Test overlapping seven-population memberships, exact rates and scaling;
+- [x] Test overlapping seven-population memberships, exact rates and scaling;
   no population shares/TV or distinct-cell summed-total claim is emitted.
-- [ ] Write complete synthetic integration using existing diagnostic fixtures or
+- [x] Write complete synthetic integration using existing diagnostic fixtures or
   faithful guarded recorder fixtures. Verify all64 rows/224 comparisons/28 primary
   flags and three repeated-input pairs at each window, source/hash binding, all
   secondary windows, and original files unchanged. Do not open private recordings.
-- [ ] Test wrong expected hashes, malformed/altered recorded values, inspector
+- [x] Test wrong expected hashes, malformed/altered recorded values, inspector
   rejection, omitted/extra windows, output collision/links/4MiB limit and bounded
   reads. Prove output derives from the validated snapshot, not changed originals.
   Invalid input never publishes a successful report; no native/network call occurs.
-- [ ] Run RED before source creation; implement minimally, then GREEN with
+- [x] Run RED before source creation; implement minimally, then GREEN with
   relevant unchanged diagnostic/artifact tests. Avoid broad native tests. Record
   real commands/results/skips; use host execution only for required file semantics.
-- [ ] Astra independently reviews source, arithmetic and actual synthetic evidence;
+- [x] Astra independently reviews source, arithmetic and actual synthetic evidence;
   fix findings test-first, then freeze accepted source identities before Task2.
 
 ## Task2 — actual inventory and checkpoint (controller)
@@ -108,11 +113,11 @@ only on the same diagnostic module instance used by the analyzer.
 after actual analysis; update this plan, parent market plan and handover. Raw JSON
 stays ignored under a fresh `.tools/response-structure-20261109/` evidence root.
 
-- [ ] Freeze reviewed command/source/three expected hashes and exclusive output;
+- [x] Freeze reviewed command/source/three expected hashes and exclusive output;
   obtain independent concrete offline preflight before calculating actual results.
-- [ ] Run once on the accepted diagnostic without native execution or source edits.
+- [x] Run once on the accepted diagnostic without native execution or source edits.
   Preserve all64 rows and224 comparisons, zeros, repeats and primary labels.
-- [ ] Independently audit actual vectors, fractions, matrix coverage and complete
+- [x] Independently audit actual vectors, fractions, matrix coverage and complete
   source preservation with Astra. Report only descriptive development evidence and
   follow the spec's stopping rules; no selected calibration or decoder is implied.
 - [ ] Inspect complete explicit staged diff/size, commit/push reviewed code/result,

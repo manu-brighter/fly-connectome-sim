@@ -254,11 +254,15 @@ cutoff/rearm iteration; a different, justified readout design question is needed
 This release-rule revision does not correct or qualify directional bias.
 Preserve both candidates and their negative results.
 No favorable-window search or new acquisition follows automatically.
-The next prospectively accepted [response-structure inventory](2026-11-09-response-structure-inventory.md)
+The subsequent prospectively accepted [response-structure inventory](2026-11-09-response-structure-inventory.md)
 uses the old matched-state recording only:64 arm/windows,21 fixed sampled-KC
 buckets and all224 pair/window comparisons, plus seven population scaling profiles.
-This asks whether recorded differences extend beyond global magnitude scaling;
-it does not fit another decoder or qualify Stage C. No new normalized results yet.
+The [actual inventory](../../experiments/2026-11-09-response-structure-inventory.md)
+is independently accepted:15 nonproportional KC pair/windows,7 proportional and202
+undefined silent comparisons. Primary B/C/D distributions differ with TV about
+0.037–0.046; the repeated C adds duplicate comparisons. This supports only a
+separately specified calibration/generalization question for population states,
+not a fitted decoder, robust20-outcome control or Stage C qualification.
 The user accepts slower-than-real-time
 model operation for the first local pilot; display the clocks/status honestly.
 Real-time cooldown remains 30 minutes; queue capacity/maximum delay remain to bound.

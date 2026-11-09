@@ -93,6 +93,7 @@ jobs:
           tests/test_continuous_motor_probe.py
           tests/test_continuous_motor_supervisor.py
           tests/test_market_response_diagnostic.py
+          tests/test_response_structure.py
           tests/test_market_response_supervisor.py
           tests/experiment/test_cell_activity.py
           tests/test_native_build.py

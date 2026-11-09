@@ -132,19 +132,36 @@ reason to repeat a native run. Checkpoint
 [CI42686215403](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42686215403):
 766 backend tests /41 skips in320.85s,243 viewer tests /four skips and build.
 
-**Next bounded task: recorded response structure**, under its prospectively
+**Latest completed measurement: recorded response structure**, under its prospectively
 accepted [spec](superpowers/specs/2026-11-09-response-structure-inventory.md) and
 [plan](superpowers/plans/2026-11-09-response-structure-inventory.md). Analyze the
 existing matched-state diagnostic only, with all64 arm/windows and224 fixed pairs.
 Twenty original KC groups plus the eleven excluded sampled KCs cover all231
 recorded KCs; exact composition comparisons distinguish scaling from distribution
 changes. Seven population profiles are tested for common scaling separately,
-without pretending that overlapping populations partition the brain. Zeros remain
-undefined normalized comparisons. No actual composition results have been computed.
-Sol implements the bounded external analyzer and synthetic tests; Astra reviews
-source and actual evidence before interpretation. No new model run, fitted decoder,
-threshold sweep or Stage C follows automatically. The broader user-authorized
-market task remains open.
+without pretending that overlapping populations partition the brain. Source and
+the [actual inventory](experiments/2026-11-09-response-structure-inventory.md) are
+independently accepted. One offline invocation took7.4114244s and preserved all
+old artifacts. KC relations:106 both-silent,96 one-silent,7 proportional and15
+nonproportional; normalized silent comparisons remain undefined. Primary B/C/D
+sampled totals250/260/270 have pairwise TV12/325,29/750,107/2340 (about3.7–4.6%).
+Repeated C contributes duplicate pairs; these are not independent replicates.
+All64 vectors/224 comparisons and repeat checks were independently recomputed.
+There are54 distinct new test passes/two Windows symlink skips and184 unchanged
+offline regression passes/five symlink skips/four explicitly excluded native cases.
+No new model run or API call occurred. The complete233732-byte report remains
+local at `.tools/response-structure-20261109/report.json`, SHA
+`eedb293babe890d136587365bcf476d682f7ced1fe6228de20275fc9eda6a481`.
+
+Next finish the reviewed source/result checkpoint and CI, then specify a distinct
+calibration/generalization question for a fixed population-state representation.
+Twenty engineered output regions do not require twenty biological channels;
+current matched-state data cannot establish robust continuous-state decisions.
+Specify calibration versus independent evaluation, abstention and separate neural
+contributions to drink, price and timing before mapping. Do not stretch small
+differences into20 outputs merely to obtain coverage. No fitted decoder, new
+acquisition, threshold sweep or Stage C follows automatically. The broader
+user-authorized market task remains open.
 The protocol-only checkpoint `f07988a` triggered
 [CI42671895977](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42671895977),
 which failed before creating any jobs, including one unchanged retry. GitHub's

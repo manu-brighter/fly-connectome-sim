@@ -1,8 +1,8 @@
 # Recorded response structure — bounded offline inventory
 
 Status: prospectively accepted after independent protocol and builder review.
-No new composition
-calculation has run. This follows the accepted negative motor v1/v2 results;
+At protocol freeze, no new composition calculation had run. This follows the
+accepted negative motor v1/v2 results;
 it is a different descriptive question, not another decoder threshold candidate.
 
 ## Question and fixed source
@@ -98,6 +98,13 @@ frozen diagnostic module's `_read_protocol(output, expected)` and its private
 `snapshot_recorded_run` context. After complete existing validation, iterate the
 same immutable `VerifiedRun` through EOF again to derive the new vectors. Do not
 validate one copy and then calculate from mutable original files.
+
+Own both event iterators explicitly until closed. The frozen inspector retains
+its iterator in an exception traceback, which can outlive snapshot cleanup on
+Windows. Pass it a minimal view of the same verified run's manifest and mode,
+whose `iter_events()` returns the analyzer-owned iterator under `closing`.
+Close that iterator before snapshot teardown even when the traceback is retained;
+the second analysis iterator is separately owned. This changes no inspected bytes.
 
 Require expected protocol, raw manifest and raw events SHA256 values from the
 caller. Verify them against the exact inspected bytes. For the actual source:
