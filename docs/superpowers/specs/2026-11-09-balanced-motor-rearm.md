@@ -1,7 +1,9 @@
 # Activity-balanced motor rearm — offline candidate v2
 
-Status: prospective offline candidate independently accepted. No candidate
-implementation or replay has run. This is a bounded technical continuation of
+Status: prospective offline candidate, synthetic implementation and one
+[negative development replay](../../experiments/2026-11-09-balanced-motor-rearm.md)
+are independently accepted. The prospective rules below remain unchanged.
+This is a bounded technical continuation of
 the authorized drink-market feasibility work, not a new product decision.
 Controller-selected engineering constants below are not user-specified or
 biologically validated.

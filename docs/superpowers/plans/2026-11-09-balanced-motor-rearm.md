@@ -12,9 +12,14 @@ all existing decision and ordering machinery remains in the frozen base. The
 controller subsequently replays the accepted recording as development evidence.
 **Tech Stack:** Existing Python 3.12, standard library and pytest; no dependency.
 **Spec:** [activity-balanced rearm v2](../specs/2026-11-09-balanced-motor-rearm.md).
-**Status:** Prospective offline scope independently accepted by Astra; no
-implementation or candidate replay has run. A separate builder check confirms
-that the frozen base supports the thin subclass without changes.
+**Status:** Prospective offline scope and Task1 source independently accepted by
+Astra. All199 focused tests pass (101new +98unchanged v1), zero skips;105 existing
+tracked source/helper/core/lock files remain byte-identical. Concrete preflight
+and one full development replay are independently accepted. The
+[result is negative](../../experiments/2026-11-09-balanced-motor-rearm.md): all192
+results equal v1, zero balanced releases and zero proposals. Source/result
+checkpoint publication and CI remain. No additional decoder iteration or native
+run is justified by this candidate's result.
 
 ## Global constraints
 
@@ -64,31 +69,31 @@ test. Successful reconfiguration rebinds v2 identity; failed reconfiguration kee
 the prior configuration/boundary and original ordering behavior. Post-anchor raw
 history still includes releases, but decision support never reuses those samples.
 
-- [ ] Write RED tests for quiet release, four `(3,3)` samples producing
+- [x] Write RED tests for quiet release, four `(3,3)` samples producing
   `balanced_ready`, insufficient total, and the exact band: `(9,11)` accepted,
   `(8,12)` rejected, in four-sample blocks. Two `(2,2)` plus two `(3,3)` meet
   total20 without a quiet release; four `(2,2)` remain below20. Interleaved
   `(0,0),(5,5),(0,0),(5,5)` uses balanced release; `(5,5),(5,5),(0,0),(0,0)`
   releases by the quiet route on the fourth sample despite satisfying both rules.
-- [ ] Write rejection cases for alternating `(10,0)/(0,10)` despite zero net,
+- [x] Write rejection cases for alternating `(10,0)/(0,10)` despite zero net,
   sustained one-sided activity, and a three-sample balanced suffix followed by
   a new block that would pass only if a sliding window were used. Verify that a
   valid quiet pair can span a rejected balance-block boundary.
-- [ ] Test release/decision support disjointness, partial-balance discard on
+- [x] Test release/decision support disjointness, partial-balance discard on
   quiet release, and all twenty literal routes using synthetic balanced releases
   plus unchanged supported direction and price blocks. Full400-to700 targets stay
   attainable synthetically, without implying a per-change cap or real selection.
-- [ ] Test stale/invalid samples, gap/overlap/source-session changes, rewind,
+- [x] Test stale/invalid samples, gap/overlap/source-session changes, rewind,
   pause/resume/reset, both expiry boundaries and successful/failed reconfigure
   while balance is partial. Dropped samples never count; previous ordering
   watermarks cannot decrease. Use exact JSON-safe boundaries and bool rejection.
-- [ ] Test left/right symmetry of rearming and supported directions, immutable
+- [x] Test left/right symmetry of rearming and supported directions, immutable
   detached configuration/results, distinct v2 digest and proposal identity,
   bounded rearm/history storage and unchanged imported v1 policy/configuration.
-- [ ] Run focused tests RED with the implementation absent; record actual output.
-- [ ] Implement the small subclass and fixed identity, then run the focused suite
+- [x] Run focused tests RED with the implementation absent; record actual output.
+- [x] Implement the small subclass and fixed identity, then run the focused suite
   GREEN plus the unchanged98-case base suite. Add exactly one CI filename.
-- [ ] Astra reviews the source, contracts, arithmetic and actual test evidence.
+- [x] Astra reviews the source, contracts, arithmetic and actual test evidence.
   Fix findings test-first, preserve old bytes and freeze reviewed source hashes.
 
 Example focused command (fresh basetemp if host execution is needed):
@@ -108,13 +113,13 @@ market plan and `docs/cloud-handover.md`. Local trace/metrics remain ignored und
 and the accepted public `inspect_probe` result. **Produces:** a separate complete
 candidate input/result trace and honest descriptive metrics, not native evidence.
 
-- [ ] Verify baseline public inspection and raw manifest/events hashes, review
+- [x] Verify baseline public inspection and raw manifest/events hashes, review
   the bounded replay command with Astra, and freeze candidate configuration/hash
   before executing it. Use all192 unchanged samples and original `readout_now_ms`.
-- [ ] Execute once without neural construction or network/process starts. Record
+- [x] Execute once without neural construction or network/process starts. Record
   all candidate results and rearm support indices, final partial state and
   counters; compare all source-recording hashes before and after. No cutoff sweep.
-- [ ] Astra independently reviews the actual trace and reproduces the candidate
+- [x] Astra independently reviews the actual trace and reproduces the candidate
   result. Distinguish synthetic software acceptance from development feasibility;
   preserve zero-result or dominant-route outcomes without tuning.
 - [ ] Inspect full explicit staged diff/size, publish the reviewed source/result

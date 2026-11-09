@@ -110,20 +110,28 @@ Result checkpoint `0c255b78e57b4a04cd284d47a9e9a6064e1e3705` passed
 [CI42682879706](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42682879706):
 665 backend tests /41 skips in267.32s,243 viewer tests /four skips and build.
 
-**Next: the independently accepted offline-first rearming candidate** under its
+**Latest completed candidate: the offline-first rearming revision** under its
 [separate spec](superpowers/specs/2026-11-09-balanced-motor-rearm.md) and
 [plan](superpowers/plans/2026-11-09-balanced-motor-rearm.md). It retains quiet rearm
 and adds four non-overlapping observations with block total at least20 and each
 within an exact10% left/right balance band. The band is an engineering choice,
 not fitted or biologically validated. A thin external v2 subclass preserves v1;
-it does not remove the observed left bias. After source acceptance, one complete
-unchanged-clock software replay is development evidence only. Preserve v1 and its
-accepted negative result; no candidate implementation/replay has run yet.
+it does not remove the observed left bias. One complete unchanged-clock software
+replay is independently accepted as [negative development evidence](experiments/2026-11-09-balanced-motor-rearm.md):
+all192 results equal v1, no balanced releases and no proposals. Preserve both
+candidates and their negative results. V2 source is independently accepted:101 new
+synthetic cases plus98 unchanged v1 cases pass, zero skips;105 existing tracked
+source/helper/core/lock files remain unchanged. Preflight, trace and summary are
+separate local evidence under `.tools/balanced-motor-rearm-20261109/`; they never
+replace the native v1 recording. No new simulation or provider call ran.
 Stage B remains open; no Stage C, favorable-window search, twenty-slot/price-policy
 qualification or new acquisition follows automatically. Completed run directories
-must not be reused. Astra accepted the prospective offline scope; a separate Sol
-builder check found no base API conflict. Next dispatch a fresh bounded Sol worker
-for the new candidate and tests, then independent source and development review.
+must not be reused. Stop local cutoff/rearm iteration: this candidate supplies no
+reason to repeat a native run. Next finish its reviewed source/result checkpoint
+and CI, then identify a distinct justified readout design question. The broader
+user-authorized market task remains open; do not automatically construct another
+threshold candidate or claim the price service is ready. Astra is advising this
+read-only architecture decision; no new implementation/acquisition is specified.
 The protocol-only checkpoint `f07988a` triggered
 [CI42671895977](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42671895977),
 which failed before creating any jobs, including one unchanged retry. GitHub's

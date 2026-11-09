@@ -247,9 +247,12 @@ independently accepted as a [valid negative result](../../experiments/2026-11-09
 192 observations in804.609s wall, zero proposals, one lower-half decision and no
 later qualifying neutrality. The partial path expires by the real-time bound.
 Stage B remains open; the next [offline rearming candidate](../specs/2026-11-09-balanced-motor-rearm.md)
-and [plan](2026-11-09-balanced-motor-rearm.md) are prospectively accepted. This
-release-rule revision retains the directional-bias limitation; it does not correct
-or qualify that bias. Preserve v1 and its negative result.
+and [plan](2026-11-09-balanced-motor-rearm.md) are now implemented and independently
+accepted as software plus a [negative development replay](../../experiments/2026-11-09-balanced-motor-rearm.md).
+All192 results equal v1; there are no balanced releases or proposals. Stop local
+cutoff/rearm iteration; a different, justified readout design question is needed.
+This release-rule revision does not correct or qualify directional bias.
+Preserve both candidates and their negative results.
 No favorable-window search or new acquisition follows automatically.
 The user accepts slower-than-real-time
 model operation for the first local pilot; display the clocks/status honestly.
