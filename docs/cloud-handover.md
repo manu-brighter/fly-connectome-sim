@@ -216,13 +216,22 @@ summary SHA`897693bdce9b0a34a90dcec8e6c08427229c98e8299f0d54d683c077649b0608`;
 both complete local artifacts are under `.tools/continuous-drive-20261109/`.
 Input/frame
 changes remain documented within a continuous path, as in v1; they are not reset
-boundaries. Previous negatives remain intact. Next finish this reviewed checkpoint
-and CI, then specify the separate held-out functional/input-sensitivity comparison.
-Its proposed shape is84model seconds:4s black prefix, common checkpoint, four20s
+boundaries. Previous negatives remain intact. Source/result checkpoint
+`979b67bbaf8529ad9de98ccfa45a415656b73756` is published; its
+[CI42702799722](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42702799722)
+is still running. The separate held-out functional/input-sensitivity
+[protocol](superpowers/specs/2026-11-09-drive-input-comparison.md) and
+[three-task plan](superpowers/plans/2026-11-09-drive-input-comparison.md) are now
+independently accepted. Its fixed shape is84model seconds:4s black prefix, common checkpoint, four20s
 arms (black, newA, newB, repeatA), each with a fresh decoder and unchanged real clocks.
-Exact images, output criteria, source and supervision must be frozen and reviewed
-before acquisition. Function and image influence are distinct; no Stage C follows
-automatically. Proposed bounds retain900s/4GiB/256MiB, not an execution guarantee.
+A/B are complementary32px quadrant patterns with exact logical RGB hashes and
+equal pixel brightness, chosen without model/projection evaluation. Pure hashes
+are checked; optical projection and actual outputs have not been calculated.
+Function, output sensitivity and individual drink/price/timing components remain
+separate; timing-only effects cannot establish image-caused price changes.
+Implement the external runner/auditor, then the thin supervisor, and finish source/
+CI/concrete preflight reviews before one acquisition. No Stage C follows automatically.
+Fixed bounds retain900s/4GiB/256MiB; these are not an execution guarantee.
 
 The protocol-only checkpoint `f07988a` triggered
 [CI42671895977](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42671895977),
