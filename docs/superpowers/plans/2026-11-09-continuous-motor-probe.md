@@ -17,7 +17,12 @@ and PowerShell7; no new dependency or service.
 as `f07988a`. Task1 source is independently accepted:154 focused tests passed
 with one declared Windows symlink-privilege skip. See the
 [software evidence](../../experiments/2026-11-09-continuous-motor-software.md).
-Task2 supervision is next; no acquisition yet.
+Task1 is published as `c0c0887` with
+[successful CI](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42676056860):
+637 backend passed /34 skips,243 viewer passed /four private-artifact skips and
+build. Task2 supervision and host evidence are independently accepted:91 passing
+combined runner/supervisor tests, one existing Windows symlink-privilege skip.
+Final source CI and concrete acquisition preflight remain outstanding.
 
 ## Global constraints
 
@@ -130,22 +135,22 @@ supervisor boundaries, with a new readiness version and honest entrypoint bindin
 The CLI/PowerShell parameters mirror existing Prepare/Run, paths/hashes and owner
 identity. No arbitrary command, fallback runtime or limit override is exposed.
 
-- [ ] Write RED binding tests for new runner/helper/frontend hashes, actual
+- [x] Write RED binding tests for new runner/helper/frontend hashes, actual
   Python/cache/compiler configuration, reused helper source, owner identity,
   release/token/hash mismatch and scratch confinement. An old diagnostic readiness
   record or wrong new entrypoint must fail before engine construction.
-- [ ] Implement a thin adapter around frozen `_run_owned`, `_wait_for_release`,
+- [x] Implement a thin adapter around frozen `_run_owned`, `_wait_for_release`,
   compiler guard and process helpers. A nested, honestly named snapshot of the
   old runtime configuration may be reused, with separate new-file bindings; never
   relabel the old entrypoint as the actual new one or monkeypatch old globals.
-- [ ] Preserve the PS ownership/ancestry/ACK/cancellation behavior in the new
+- [x] Preserve the PS ownership/ancestry/ACK/cancellation behavior in the new
   small frontend. Compare it to the frozen original apart from helper filename;
   do not duplicate the large Python monitor. Document private dependencies.
-- [ ] Exercise new public entrypoints with harmless non-neural workers on the
+- [x] Exercise new public entrypoints with harmless non-neural workers on the
   Windows host: normal completion contract, cancellation/owner death, unrelated
   ready PID rejection, late cancel after terminal cutoff and bounded cleanup.
   Static equality with old PS behavior supplements actual new-adapter smoke tests.
-- [ ] Run focused tests, record real host checks/skips, then Astra source and
+- [x] Run focused tests, record real host checks/skips, then Astra source and
   lifecycle evidence review. No fullgraph run is part of implementation tests.
 
 ## Task3 — source checkpoint, one acquisition, actual result (controller)

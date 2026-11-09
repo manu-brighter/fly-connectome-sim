@@ -77,8 +77,17 @@ bounds. Its external runner/auditor is now independently accepted:
 [software evidence](experiments/2026-11-09-continuous-motor-software.md),154 passing
 focused tests with one Windows symlink-privilege skip. A review finding corrected
 the whole-brain count lower bound for disjoint versus overlapping populations;
-all68 earlier diagnostic observations also satisfy it. Next implement the thin
-new supervisor, then review source/CI and concrete frozen preflight before one acquisition. No probe
+all68 earlier diagnostic observations also satisfy it. The thin new supervisor
+and preserved PowerShell frontend are now independently accepted, with all35 new
+supervision cases passing on the host. Combined runner/supervisor verification:
+91 passed /one existing Windows symlink-privilege skip. Actual harmless-process
+completion, cancellation, owner-death and unrelated-PID evidence was independently
+checked; the package, decoder, old helpers and historical artifacts remain unchanged.
+Next publish final source/CI and review concrete frozen preflight before one acquisition.
+Task1 checkpoint `c0c0887cd8299c18106fe4aaddee86d84a0286af` passed
+[CI42676056860](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42676056860):
+637 backend tests /34 skips,243 viewer tests /four private-artifact skips and
+build. All57 new probe cases passed on Linux. Task2 source review is complete. No probe
 has run; even a positive result would show only path completion, not Stage C
 readiness. Do not
 choose favorable windows or infer 20-channel, price-policy or event-duration
@@ -89,7 +98,8 @@ which failed before creating any jobs, including one unchanged retry. GitHub's
 visible annotation says "Internal server error" on both attempts. This is not a
 test failure or a successful check; the workflow and executable source match the
 successful `af4879b` run. Local implementation continued during that outage;
-Task1 is now accepted, with fresh source CI still required before the prospective acquisition.
+Task1 subsequently passed the source CI above. The final Task2 source/CI and
+concrete acquisition preflight gates remain required.
 The user explicitly approved slower-than-real-time model operation for the first
 local pilot, with an honest model clock and fresh/queued status; the price lock
 still uses 30 minutes of real time. Queue capacity/maximum delay need later bounds.

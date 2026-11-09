@@ -1,10 +1,17 @@
 # Continuous motor probe — software evidence
 
 Status: Task1 runner/auditor implemented, synthetically tested and independently
-accepted. Task2 supervision is not implemented. No native acquisition
+accepted. Task2 supervision and its bounded host evidence are independently
+accepted as well. No native acquisition
 has run under the [prospective protocol](../superpowers/specs/2026-11-09-continuous-motor-probe.md).
 The [sequential plan](../superpowers/plans/2026-11-09-continuous-motor-probe.md)
 keeps source, supervision and actual-result acceptance separate.
+
+Task1 is published as `c0c0887cd8299c18106fe4aaddee86d84a0286af`.
+[CI42676056860](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42676056860)
+passed637 backend tests /34 declared skips in263.48s,243 viewer tests /four
+private-artifact skips and build. All57 new probe cases passed on Linux, including
+the Windows-skipped symlink case.
 
 ## Task1 scope
 
@@ -97,3 +104,74 @@ Package fingerprint remains
 No packaged file, provenance lock, accepted decoder or historical helper/diagnostic
 was edited. The eventual actual run still requires reviewed supervision, successful
 source CI and concrete fresh-path/protocol/readiness preflight.
+
+## Task2 scope and host evidence
+
+The new `scripts/continuous_motor_supervision.py` is a thin adapter to the
+unchanged owned-process monitor. Its readiness record separately binds the new
+runner, adapter and PowerShell frontend. The old runtime inventory is retained
+as `legacy_runtime_configuration`, with its original names and meanings. The
+adapter derives the actual new worker command; no arbitrary command, limit or
+test-hook CLI option exists. The new frontend differs from the accepted original
+only in the helper filename; a byte-comparison test checks this relationship.
+
+Canonical JSON comparisons reject type-confused readiness and release bindings.
+A regression first demonstrated that the reused handshake accepts an integer
+PID represented as a float; the adapter rechecks the exact binding after that
+handshake, before entering the production context. The old helper stays unchanged.
+The new scratch-inclusive limit name maps explicitly to the old monitor's key,
+whose accounting already includes output, evidence and scratch. Limits remain
+900 seconds, 4 GiB actual worker peak RSS and 256 MiB counted files, with normal
+0.25-second sampling. These are sampled stop thresholds, not OS quotas or total
+process-tree memory limits.
+
+Final host command:
+
+```powershell
+.venv/Scripts/python.exe -m pytest -q -p no:cacheprovider tests/test_continuous_motor_supervisor.py tests/test_continuous_motor_probe.py --basetemp=.tools/continuous-supervisor-implementation-20261109/host-final-06
+```
+
+Result: **91 passed / 1 skipped in 110.99 seconds**, exit 0. All 35 new
+supervision cases passed; the one skip is the existing Windows symlink-privilege
+case. Initial complete RED was 27 failures for missing implementation. The first
+sandbox GREEN attempt encountered the unchanged atomic writer's access restriction;
+the authorized host run passed 27 cases. The added float-PID regression failed
+before the fix, followed by 35 passing supervision cases and the combined run.
+`py_compile`, `git diff --check` and frozen-source checks also passed.
+
+Harmless Windows workers exercise the exact shipped frontend and public
+prepare/run/production-start boundaries with an explicitly synthetic runtime
+configuration. Completion consumes the actual synthetic producer's `receipt.json`;
+it is not native evidence. Cancellation and owner death clean up worker and
+grandchild; an unrelated ready PID is rejected without termination. Repeated
+late cancellation leaves the terminal channel at one byte and does not grow
+evidence. The real runtime inventory is checked without starting a model; the
+separately guarded compiler child is only the pinned `zig.exe version` command.
+
+| Host fixture | Result | Actual worker peak bytes | Counted bytes | Cleanup active processes |
+| --- | --- | --- | --- | --- |
+| Normal completion | completed | 23,183,360 | 7,305 | 0 |
+| Cancellation | failed / cancelled | 23,187,456 | 6,168 | 0 |
+| Owner death | failed / owner-exited | 22,847,488 | 6,157 | 0 |
+
+Real console Ctrl+C was not newly injected; preserved frontend bytes supplement
+the actual cancellation and owner-death tests. The complete frozen monitor suite
+was not rerun. Logs, receipts and source inventory are local under
+`.tools/continuous-supervisor-implementation-20261109/`.
+
+| Accepted Task2 file | SHA256 |
+| --- | --- |
+| Adapter | `b2527b1817baaee0962d4c49007826ff78e51e55ee0122728376739c0a649add` |
+| Frontend | `16fcfee8458c693e01ab396d935750ff2bbb74dcc43c6dfc70accbb9cb2465f5` |
+| Tests | `5c551df46a2fb27acabd0c6e05e53997fc7c6da6414d93efc90af4feeda09f75` |
+
+Astra independently matched source/package hashes, actual runtime readiness,
+the preserved frontend relationship, canonical release checks and scratch
+accounting. All three lifecycle receipts match their hashes, handshake identities
+and retained byte totals, with zero active processes and terminal signal `2`.
+The foreign-process evidence confirms survival without ACK. Task2 source and
+bounded host evidence are accepted, with no blocking finding.
+
+No actual acquisition or capacity result follows from these synthetic checks.
+The final reviewed source checkpoint, successful CI and concrete fresh-path
+preflight remain required.
