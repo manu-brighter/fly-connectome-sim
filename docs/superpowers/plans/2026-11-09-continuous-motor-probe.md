@@ -28,7 +28,9 @@ Final source `1d32e1c` passed
 build. Concrete preflight and the single actual acquisition are independently
 accepted. The [result is negative](../../experiments/2026-11-09-continuous-motor-probe.md):
 zero complete proposals, one partial direction and no later neutral rearm.
-Result checkpoint publication remains; Stage B stays open for an offline-first
+Result checkpoint `0c255b78e57b4a04cd284d47a9e9a6064e1e3705` passed
+[CI42682879706](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42682879706).
+This three-task plan is complete. Stage B stays open for an offline-first
 concept revision, with no additional acquisition implied.
 
 ## Global constraints
@@ -174,7 +176,7 @@ identity. No arbitrary command, fallback runtime or limit override is exposed.
 - [x] Inspect complete raw data and independently check derived metrics/outcomes.
   Astra evaluates actual evidence. Record negative/inconclusive honestly and
   preserve all source and historical artifacts.
-- [ ] Update tracked experiment report, parent plan and handover; review/commit/
+- [x] Update tracked experiment report, parent plan and handover; review/commit/
   push checkpoint and observe CI. Decide next technical step from actual evidence;
   no Stage C, additional acquisition or revised decoder follows implicitly.
 

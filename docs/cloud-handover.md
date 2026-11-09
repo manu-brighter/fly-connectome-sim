@@ -106,12 +106,24 @@ Actual resources:804.609s wall,858718208bytes held-worker peak RSS,
 zero active owned processes after cleanup and empty stderr. Source and old
 artifacts remain unchanged; no second attempt or paid request ran.
 
-**Next: an explicit offline-first rearming design revision**, also accounting for
-the observed directional bias. Preserve v1 and its accepted negative result.
+Result checkpoint `0c255b78e57b4a04cd284d47a9e9a6064e1e3705` passed
+[CI42682879706](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42682879706):
+665 backend tests /41 skips in267.32s,243 viewer tests /four skips and build.
+
+**Next: the independently accepted offline-first rearming candidate** under its
+[separate spec](superpowers/specs/2026-11-09-balanced-motor-rearm.md) and
+[plan](superpowers/plans/2026-11-09-balanced-motor-rearm.md). It retains quiet rearm
+and adds four non-overlapping observations with block total at least20 and each
+within an exact10% left/right balance band. The band is an engineering choice,
+not fitted or biologically validated. A thin external v2 subclass preserves v1;
+it does not remove the observed left bias. After source acceptance, one complete
+unchanged-clock software replay is development evidence only. Preserve v1 and its
+accepted negative result; no candidate implementation/replay has run yet.
 Stage B remains open; no Stage C, favorable-window search, twenty-slot/price-policy
 qualification or new acquisition follows automatically. Completed run directories
-must not be reused. Astra is advising the next bounded design; Sol implements only
-after its separate contract/plan is reviewed.
+must not be reused. Astra accepted the prospective offline scope; a separate Sol
+builder check found no base API conflict. Next dispatch a fresh bounded Sol worker
+for the new candidate and tests, then independent source and development review.
 The protocol-only checkpoint `f07988a` triggered
 [CI42671895977](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42671895977),
 which failed before creating any jobs, including one unchanged retry. GitHub's

@@ -246,8 +246,10 @@ Implementation, source CI and concrete preflight are complete. One actual run is
 independently accepted as a [valid negative result](../../experiments/2026-11-09-continuous-motor-probe.md):
 192 observations in804.609s wall, zero proposals, one lower-half decision and no
 later qualifying neutrality. The partial path expires by the real-time bound.
-Stage B remains open; next is a separately specified offline-first rearming
-revision that also addresses directional bias. Preserve v1 and its negative result.
+Stage B remains open; the next [offline rearming candidate](../specs/2026-11-09-balanced-motor-rearm.md)
+and [plan](2026-11-09-balanced-motor-rearm.md) are prospectively accepted. This
+release-rule revision retains the directional-bias limitation; it does not correct
+or qualify that bias. Preserve v1 and its negative result.
 No favorable-window search or new acquisition follows automatically.
 The user accepts slower-than-real-time
 model operation for the first local pilot; display the clocks/status honestly.
