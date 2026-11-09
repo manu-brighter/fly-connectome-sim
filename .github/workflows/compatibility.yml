@@ -91,6 +91,7 @@ jobs:
           tests/test_market_motor_readout.py
           tests/test_market_motor_readout_v2.py
           tests/test_continuous_motor_probe.py
+          tests/test_population_excursion_screen.py
           tests/test_continuous_motor_supervisor.py
           tests/test_market_response_diagnostic.py
           tests/test_response_structure.py

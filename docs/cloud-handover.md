@@ -158,7 +158,7 @@ Source/result checkpoint `dfe16787573d911bd68973a3bbfe9e00e09a6249` passed
 822 backend tests /41 skips in263.92s,243 viewer tests /four skips and build.
 All56 new analyzer cases passed on Linux, including the local symlink skips.
 
-**Next bounded task:** the prospectively accepted
+**Latest completed candidate:** the prospectively accepted
 [population-excursion prerequisite screen](superpowers/specs/2026-11-09-population-excursion-screen.md)
 and [plan](superpowers/plans/2026-11-09-population-excursion-screen.md). Use all192
 old continuous observations/48 fixed blocks as development calibration only.
@@ -166,7 +166,21 @@ Freeze four-channel offsets/scales and fixed engineered MBON/DAN contrast axes,
 exact20-sector rays, support and excursion thresholds before actual calculation.
 No anchor or no adjacent confirming opportunity stops this candidate before a
 full decoder or acquisition. An opportunity alone proves neither a proposal nor
-price support. No actual calibration/screen outcomes have been calculated yet.
+price support. Source and the [actual negative screen](experiments/2026-11-09-population-excursion-screen.md)
+are now independently accepted. One offline invocation took3.3264181s; all192
+vectors/48 blocks were retained and independently recomputed. There are zero
+supported blocks, no anchor and no opportunity. Only block0 satisfies geometry,
+but its three support streams are silent and fail all absolute gates; blocks1–47 pass
+absolute support but fail the four-sample geometry. The fixed candidate stops;
+do not implement its full decoder, tune its constants or acquire another run for it.
+The482571-byte complete report at `.tools/population-excursion-20261109/report.json`
+has SHA`b0d8e64c99fe8bb57280c12591ab4e0a0d4e773058732692dfdbb75455f6e2b6`.
+Software evidence:600 offline tests passed/11 genuine Windows symlink skips/four
+explicitly excluded native cases, plus five focused review-fix passes. All63 old
+source/package/lock files remain unchanged. Six production sources and seven original
+continuous artifacts matched before/after the actual calculation. No native/API
+execution occurred. Next finish this reviewed source/result checkpoint and CI;
+any further readout requires a distinct justified contract, not a silent rescue.
 Twenty engineered output regions do not require twenty biological channels;
 current matched-state data cannot establish robust continuous-state decisions.
 Specify calibration versus independent evaluation, abstention and separate neural

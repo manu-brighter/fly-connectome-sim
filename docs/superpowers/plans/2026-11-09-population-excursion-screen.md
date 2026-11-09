@@ -12,8 +12,10 @@ reusing the complete frozen probe inspector and the same private snapshot.
 **Tech Stack:** Python3.12 standard-library fractions, existing recorder helpers
 and pytest; no dependencies or native/provider work.
 **Spec:** [fixed20-slot screen](../specs/2026-11-09-population-excursion-screen.md).
-**Status:** Prospectively accepted after independent protocol and builder reviews.
-No calibration outcomes.
+**Status:** Source, synthetic tests and one actual development screen independently
+accepted. [Actual result](../../experiments/2026-11-09-population-excursion-screen.md):
+zero supported blocks, no anchor or opportunities. Stop this fixed candidate;
+publication/CI remain to finish. No full decoder or acquisition follows.
 
 ## Global constraints and review focus
 
@@ -75,34 +77,34 @@ coverage. Synthetic lock patches must target the analyzer's same loaded probe.
 Pairwise disjointness is a new candidate precondition; the old inspector permits
 these memberships to overlap and must remain unchanged.
 
-- [ ] Write RED median/MAD cases with192 literal fixtures, even-middle ties,
+- [x] Write RED median/MAD cases with192 literal fixtures, even-middle ties,
   zero MAD, both scale floors, exact7413/5000 multiplication, malformed inputs,
   large safe counts and signed reduced-string outputs. Constant complete input
   must have zero coordinates and no supported block.
-- [ ] Test all20 sector interiors using literal ray sums; boundary rays and axes
+- [x] Test all20 sector interiors using literal ray sums; boundary rays and axes
   abstain, radius equality passes, smaller radius fails. Assert frozen table
   digest, opposite/quadrant symmetry and non-overlap. Use exact rational witnesses
   such as `(24/13,10/13)` on radius2 inside sector1.
-- [ ] Test support thresholds19/20, two/three active observations, mixed sectors,
+- [x] Test support thresholds19/20, two/three active observations, mixed sectors,
   one failed radius/angle, pair overlap and retained rejection details. Combined
   pair counts are distinct-cell support only after disjointness validation.
-- [ ] Test fixed48-block alignment, first-anchor selection, inclusive squared
+- [x] Test fixed48-block alignment, first-anchor selection, inclusive squared
   excursion4, both adjacent blocks required, same-sector excursion allowed,
   interrupted/nonadjacent confirmation rejected and full unranked opportunity list.
-- [ ] Test positive synthetic coordinate opportunities through full calibration
+- [x] Test positive synthetic coordinate opportunities through full calibration
   using a majority unchanged baseline and bounded supported excursions. Synthetic
   opportunities must not be called proposals or actual neural feasibility.
-- [ ] Build a guarded faithful synthetic continuous recording using existing test
+- [x] Build a guarded faithful synthetic continuous recording using existing test
   fixtures on the same loaded probe instance. Verify all192 rows/48 blocks, pins,
   original clocks/provenance, full inspector rejection and same-snapshot derivation
   after originals mutate. No private actual recordings during implementation.
-- [ ] Test bounds, wrong pins, malformed counts/memberships, error-path generator
+- [x] Test bounds, wrong pins, malformed counts/memberships, error-path generator
   closure, output collision/links/exact newline-inclusive4MiB and no success file
   on rejection. Native construction/replay and network are forbidden in tests.
-- [ ] Run RED before production source, then focused GREEN and relevant unchanged
+- [x] Run RED before production source, then focused GREEN and relevant unchanged
   probe/helper tests. Record actual commands/results/skips; host execution is
   allowed for required Windows file semantics, never weaken checks.
-- [ ] Astra independently reviews source, math, integrity and actual synthetic
+- [x] Astra independently reviews source, math, integrity and actual synthetic
   evidence. Fix concrete findings test-first and freeze final source identities.
 
 ## Task2 — one actual development screen and checkpoint (controller)
@@ -111,11 +113,11 @@ these memberships to overlap and must remain unchanged.
 `docs/experiments/2026-11-09-population-excursion-screen.md`; current plan, market
 plan and handover. Raw outputs stay ignored under a fresh evidence directory.
 
-- [ ] Freeze reviewed command, source hashes, original pins and absent output;
+- [x] Freeze reviewed command, source hashes, original pins and absent output;
   independent concrete preflight before actual calibration/screen calculation.
-- [ ] Run once; retain all calibration values, observations, blocks, failures and
+- [x] Run once; retain all calibration values, observations, blocks, failures and
   opportunities. Verify source/original artifacts before and after. No rerun/tuning.
-- [ ] Astra independently recomputes exact math/full coverage and assesses the
+- [x] Astra independently recomputes exact math/full coverage and assesses the
   predeclared stopping condition. No anchor/no opportunity stops this candidate
   before full implementation; an opportunity proves only a necessary condition.
 - [ ] Review complete staged diff/size, commit/push explicitly to the feature

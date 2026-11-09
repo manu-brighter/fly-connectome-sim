@@ -1,8 +1,8 @@
 # Population excursion candidate — fixed twenty-slot prerequisite screen
 
 Status: prospectively accepted after independent protocol and builder reviews.
-No calibration or screen
-outcomes have been computed. This is a new engineered candidate, not a revision
+At protocol freeze, no calibration or screen outcomes had been computed.
+This is a new engineered candidate, not a revision
 of the preserved negative motor decoders or their thresholds.
 
 ## Scope and accepted product tradeoff

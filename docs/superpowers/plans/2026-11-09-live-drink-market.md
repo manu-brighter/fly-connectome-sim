@@ -266,7 +266,12 @@ not a fitted decoder, robust20-outcome control or Stage C qualification.
 The next [population-excursion prerequisite screen](2026-11-09-population-excursion-screen.md)
 is prospectively accepted: one fixed calibration and engineered geometry on the
 old192-observation continuous development trace, testing necessary supported
-excursions before building full lifecycle/price logic. No actual screen results yet.
+excursions before building full lifecycle/price logic. Its
+[actual negative result](../../experiments/2026-11-09-population-excursion-screen.md)
+is independently accepted:zero supported blocks, no anchor/opportunities. Only
+initial silence meets geometry and is correctly rejected by absolute support.
+Stop this fixed candidate before full implementation/acquisition; no retuning or
+smaller-grid rescue. Preserve the complete development result.
 The user accepts slower-than-real-time
 model operation for the first local pilot; display the clocks/status honestly.
 Real-time cooldown remains 30 minutes; queue capacity/maximum delay remain to bound.
