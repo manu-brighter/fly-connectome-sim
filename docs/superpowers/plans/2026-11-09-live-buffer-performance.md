@@ -7,11 +7,13 @@
 **Spec:** [bounded performance protocol](../specs/2026-11-09-live-buffer-performance.md).
 **Goal:** Measure fixed rolling cell storage and one pending image against the
 accepted five-real-minute handoff bound without changing the engine/readout.
-**Status:** Protocol/plan and Tasks1–2 source independently accepted by Astra;
+**Status:** Protocol/plan and all three source tasks independently accepted by Astra;
 [software evidence](../../experiments/2026-11-10-live-buffer-software.md): Task1
 640 passes; Task2 complete run694 passes/one fixture failure followed by the
 corrected single-case pass. All695 distinct focused cases passed their latest
-execution, no skips/warnings. Tasks3–4 remain; no native measurement yet.
+execution, no skips/warnings. Task3 final218 passes/two true Windows privilege
+skips/three private preflight exclusions; source/CI split/lifecycle evidence accepted.
+Final source publication/CI and Task4 remain; no native measurement yet.
 **Stack:** Existing Python3.12/NumPy/pytest/PowerShell. No new dependencies.
 
 ## Global constraints and boundaries
@@ -100,16 +102,16 @@ every preexisting test and both old jobs' budgets unchanged. Compare full test-p
 multisets and validate workflow syntax; Astra reviews the complete diff. This CI
 scheduling change does not alter900s native supervision or remove test coverage.
 
-- [ ] Test-first new protocol/version/entrypoint/source/path/runtime/limit/release
+- [x] Test-first new protocol/version/entrypoint/source/path/runtime/limit/release
   bindings. Missing/altered authority must fail before engine construction.
-- [ ] Adapt the accepted thin adapter/frontend by necessary names only; reuse
+- [x] Adapt the accepted thin adapter/frontend by necessary names only; reuse
   frozen monitor, compiler guard, counted scratch and owned-process lifecycle.
   No monitor-global patch or new process-killing implementation.
-- [ ] Verify new bindings and harmless public completion/cancellation/owner-death
+- [x] Verify new bindings and harmless public completion/cancellation/owner-death
   behavior, actual worker identity and unrelated-process survival. Preserve exact
   old-source byte evidence; do not run private model/runtime preflight here.
-- [ ] Astra accepts actual evidence and source; publish final source checkpoint,
-  confirm package fingerprint and successful source CI before Task4 preparation.
+- [x] Astra accepts actual evidence/source/CI split and unchanged package fingerprint.
+- [ ] Publish final source checkpoint and successful source CI before Task4 preparation.
 
 ## Task4 — One acquisition, independent result and next decision
 

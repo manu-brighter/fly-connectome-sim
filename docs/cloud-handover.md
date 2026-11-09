@@ -273,10 +273,16 @@ checkpoint`b358f4ad10d54d6404e6f81bd5c82faba9b0787f`. Task2 producer/auditor is
 now independently accepted:55 new synthetic cases plus640 unchanged cases passed
 their latest execution. The complete run had694 passes and one incorrect reset
 fixture; the corrected case then passed alone in12.46s. All61 old sources and41
-packaged members remain unchanged. No actual native measurement occurred. Next
-is fresh Sol Task3 for the thin supervision binding and a separate pinned15-minute
-CI job for the three new test files; the measured334.94s additional suite exceeds
-the old job's remaining budget. All source tasks precede concrete freeze and CI.
+packaged members remain unchanged. Task2 local checkpoint is
+`e1dd77df21054e00a010226a0599e7e91233e3cb`. Task3 thin supervision and the separate
+pinned15-minute CI job are now independently accepted:218 passing focused tests,
+two true Windows symlink-privilege skips, three explicitly excluded private runtime
+preflight cases. Actual harmless completion/cancellation/owner-death receipts have
+cleanup0; unrelated-process protection passed. All62 old sources/41 package members
+remain unchanged. CI preserves every old test and adds exactly one new supervisor
+path; Actionlint passed. All source tasks are complete. Next publish the final
+source checkpoint and require successful CI, then concrete independent preflight
+before the one bounded native measurement. No actual acquisition has started.
 Preserve the old10-second collector/parser limits. No Stage C follows automatically.
 
 The protocol-only checkpoint `f07988a` triggered

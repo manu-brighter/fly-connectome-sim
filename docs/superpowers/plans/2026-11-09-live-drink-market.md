@@ -303,8 +303,12 @@ and [four-task plan](2026-11-09-live-buffer-performance.md) are prospectively ac
 60 model seconds,256 passive cells,1000-bin fixed ring,one pending request, three
 fixed full-queue rejections and unchanged900s/4GiB/256MiB limits. Task1 memory/
 admission [software](../../experiments/2026-11-10-live-buffer-software.md) is now
-independently accepted with640 focused passes/no skips or warnings. The runner,
-supervision binding and actual benchmark remain; no Stage C/event acceptance.
+independently accepted with640 focused passes/no skips or warnings. The runner
+and thin supervision binding are now independently accepted too:55 new runner
+cases and79 new supervisor passes/one true Windows privilege skip; actual harmless
+process lifecycle receipts and preservation checked. The separate15-minute CI job
+retains all old tests. Final source CI/concrete preflight and the actual benchmark
+remain; no Stage C/event acceptance.
 
 - Specify candidate group/cell channels, channel-to-drink mapping, price function,
   neutral/tie handling, threshold/rearm behavior and exact calibration/held-out

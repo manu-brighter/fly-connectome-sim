@@ -1,8 +1,8 @@
 # Live buffer performance — software evidence
 
-Tasks1 and2 are independently accepted. Fixed buffers and the synthetic-tested
-producer/auditor are implemented; supervision binding and actual native performance
-measurement remain outstanding.
+All three source tasks are independently accepted. Fixed buffers, the bounded
+producer/auditor and owned supervision binding are implemented. Final source CI,
+concrete native preflight and the actual performance measurement remain outstanding.
 The [protocol](../superpowers/specs/2026-11-09-live-buffer-performance.md) and
 [plan](../superpowers/plans/2026-11-09-live-buffer-performance.md) were published
 prospectively as`1ad9f53b8e753b6176c942f66feed86e02137410` before implementation.
@@ -158,3 +158,60 @@ test files into their own pinned15-minute CI job. New measured test time plus ol
 632–686s Linux backend runs would exceed the existing15-minute budget; this is an
 estimate, not hosted Linux timing. All old tests and simulation resource limits
 remain unchanged. Final source CI and actual measurement are outstanding.
+
+## Thin supervision binding and final source checks
+
+`live_buffer_supervision.py` adapts the accepted fixed-input supervisor only through
+required names/versions/paths. `supervise-live-buffer.ps1` differs from its predecessor
+only by the helper filename. Existing monitor/runtime declarations and receipt
+semantics remain intact. Protocol/readiness jointly bind every executed source;
+native authority is checked before construction and again after actual PID release.
+Scratch accounting, held process identities, owner ancestry, cancellation/death
+cleanup and the pinned version-only compiler guard all use the unchanged monitor.
+
+Final command:
+
+```powershell
+.venv/Scripts/python.exe -m pytest -q -p no:cacheprovider tests/test_live_buffer_supervisor.py tests/test_drive_input_supervisor.py tests/test_continuous_motor_supervisor.py tests/test_market_response_supervisor.py -k 'not actual_runtime_binds_python_worker_cache_compiler_without_native_launch and not actual_preparation_binds_existing_cache_without_starting_processes and not actual_pinned_zig_version_allowed_but_compilation_denied' --durations=12 --junitxml=.tools/live-buffer-supervisor-implementation-20261110/focused-host-02.xml --basetemp=.tools/live-buffer-supervisor-implementation-20261110/pytest-focused-host-02
+```
+
+**218 passed/two genuine Windows symlink-privilege skips/three explicitly excluded
+private runtime preflight cases in53.05s**, exit0 and no warnings. New supervisor:
+79 passed/one skip; unchanged regressions:139 passed/one skip. All four new actual
+public-frontend cases passed: harmless completion, cancellation, owner death and
+an unrelated same-executable process surviving rejected forged readiness. Actual
+held worker/owner/release identities and cleanup0 were independently checked.
+The completion receipt comes from the real Task2 synthetic producer; no native
+execution or fabricated successful producer receipt was used.
+
+Test-first evidence retains69 missing-adapter failures, then two additional REDs.
+Initial sandbox execution had63 unchanged-writer hardlink permission failures and
+eight passes. Ordinary host execution passed70/one genuine WinError1314 skip;
+nine additional source/runtime mutation cases extended coverage to both sides of
+PID release before the final218-case pass. No old validation or source was changed.
+
+The new `market_buffers` CI job has the same pinned checkout/uv/Python/locked
+dependencies and empty-runtime import/fingerprint checks as the native job.
+All jobs keep15-minute budgets. The two new buffer/runner paths moved from the
+native command; the supervisor path is the only addition. Independent multiset
+comparison confirms24→25 paths with no loss/duplicates, unchanged viewer bytes
+and otherwise identical native/setup blocks. Existing Actionlint1.7.12 exited0.
+This source has not yet run in hosted CI.
+
+Astra independently accepted final source, concrete lifecycle receipts, JUnit,
+workflow diff and preservation. All62 old tracked sources/frontends, old tests
+and41 package members remain byte-identical. Among264 prior tracked files only
+the assigned workflow changed during implementation. The package fingerprint
+remains the value above. No actual runtime/cache/compiler or graph preflight ran.
+
+| File | SHA256 |
+| --- | --- |
+| `scripts/live_buffer_supervision.py` | `75dd275bd3a6e867fafd0d2d17c6adc0df38fb215752b5c404322dfab0246055` |
+| `scripts/supervise-live-buffer.ps1` | `ff23ea6ca3b83f00a88d5bd98f947c16e99e358c91a77a3e8ce54d97e11060cd` |
+| `tests/test_live_buffer_supervisor.py` | `6748a667891661c877c4b392a1b9a05a2abb5886bbd737d421c9854b71e80994` |
+| `.github/workflows/compatibility.yml` | `d6cc6acb83e23631bb0d8901c067a94ec14d1aabc9f1e559f2346ff37acfb962` |
+
+Actual logs, lifecycle inventories and CI/preservation comparisons remain under
+`.tools/live-buffer-supervisor-implementation-20261110/`. Source publication and
+successful CI precede preparation of the one60-model-second native measurement;
+software tests establish neither native throughput nor event capacity.

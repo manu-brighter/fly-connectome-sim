@@ -90,8 +90,6 @@ jobs:
           tests/test_market_feasibility.py
           tests/test_market_motor_readout.py
           tests/test_market_continuous_drive.py
-          tests/test_market_live_buffers.py
-          tests/test_live_buffer_performance.py
           tests/test_market_motor_readout_v2.py
           tests/test_continuous_motor_probe.py
           tests/test_drive_input_comparison.py
@@ -110,6 +108,75 @@ jobs:
           tests/experiment/test_event_followup.py
           tests/experiment/test_recorder_limits.py
           tests/test_cli.py
+
+  market_buffers:
+    name: Market buffer software compatibility
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      FLY_CONNECTOME_SIM_DATA: ${{ github.workspace }}/.tools/ci/runtime
+      FLY_CONNECTOME_SIM_FULL_TEST: ''
+      FLY_CONNECTOME_SIM_CXX: ''
+      PYTHONPATH: ''
+      PYTHONHOME: ''
+      UV_NO_CACHE: 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require a fresh empty data root
+        run: |
+          mkdir -p .tools/ci
+          mkdir .tools/ci/runtime
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: '0.12.15'
+          python-version: '3.12.14'
+          enable-cache: false
+      - name: Record checkout and toolchain
+        run: |
+          git rev-parse HEAD
+          printf 'Runner image: %s %s\n' "$ImageOS" "$ImageVersion"
+          cat /etc/os-release
+          uname -a
+          command -v c++
+          c++ --version
+          uv --version
+      - name: Install locked Python and media dependencies
+        run: uv sync --locked --extra test --extra media --python 3.12.14
+      - name: Verify isolated imports and record source identity
+        run: |
+          uv run --no-sync python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import sys
+
+          runtime = Path(os.environ["FLY_CONNECTOME_SIM_DATA"]).resolve()
+          assert runtime.is_dir() and not any(runtime.iterdir()), runtime
+
+          import av
+          import fly_connectome_sim
+          from fly_connectome_sim.neural.checkpoint import model_fingerprint
+          from fly_connectome_sim.neural.common import DATA
+
+          package = Path(fly_connectome_sim.__file__).resolve()
+          expected = Path.cwd() / "src" / "fly_connectome_sim" / "__init__.py"
+          assert package == expected.resolve(), package
+          assert DATA == runtime, DATA
+          print(sys.version)
+          print(f"Python executable: {sys.executable}")
+          print(f"Package: {package}")
+          print(f"PyAV: {av.__version__}")
+          print(f"Empty runtime: {runtime}")
+          print(json.dumps(model_fingerprint(), sort_keys=True))
+          PY
+      - name: Run market buffer software tests
+        run: >-
+          uv run --no-sync pytest -q
+          tests/test_market_live_buffers.py
+          tests/test_live_buffer_performance.py
+          tests/test_live_buffer_supervisor.py
 
   viewer:
     name: Viewer tests and build
