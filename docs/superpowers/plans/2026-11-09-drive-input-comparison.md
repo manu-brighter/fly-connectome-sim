@@ -16,7 +16,10 @@ fingerprint unchanged. Task2 supervision is also independently accepted:139 pass
 one Windows symlink-privilege skip and three private preflight exclusions. Final
 source-CI and concrete preflight passed. One acquisition is complete, with its
 [actual result](../../experiments/2026-11-09-drive-input-comparison.md) independently
-accepted; reviewed publication remains. No source changed during the acquisition.
+accepted and published as4862f84ff681fe958ffb852528ada7a2a589e8aa.
+CI42713559202 passed1469 backend tests/47 skips in685.71s,243 viewer tests/four
+skips and build. No source changed during the acquisition. This plan is complete;
+the next [bounded performance plan](2026-11-09-live-buffer-performance.md) is separate.
 
 ## Global constraints
 
@@ -93,7 +96,7 @@ result report, plan/handover updates. No source edits during a frozen attempt.
 - [x] Inspect complete actual artifacts; Astra independently verifies declared
   states, every observation, proposal, projection, repeats, clocks and resources.
   Report each component's outcome without retuning or automatic retry.
-- [ ] Publish reviewed evidence with exact test/acquisition/CI results. Decide the
+- [x] Publish reviewed evidence with exact test/acquisition/CI results. Decide the
   next Stage B deliverable from the actual result, keeping service/load gates open.
 
 Self-review: Task1 defines protocol/public run/inspect interfaces; Task2 binds them

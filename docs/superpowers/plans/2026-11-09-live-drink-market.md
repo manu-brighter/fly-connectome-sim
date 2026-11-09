@@ -298,7 +298,11 @@ the [recorded comparison](../../experiments/2026-11-09-drive-input-comparison.md
 independently accepted: A yields450 Rappen at18s, B500 at14s, both
 drink-00; black yields no proposal and A repeats exactly. The next distinct
 Stage B question is bounded passive-cell/rolling-buffer performance and the
-five-minute image-admission limit. No Stage C or sustained-event acceptance yet.
+five-minute image-admission limit. Its separate [protocol](../specs/2026-11-09-live-buffer-performance.md)
+and [four-task plan](2026-11-09-live-buffer-performance.md) are prospectively accepted:
+60 model seconds,256 passive cells,1000-bin fixed ring,one pending request, three
+fixed full-queue rejections and unchanged900s/4GiB/256MiB limits. No implementation
+or actual run yet; no Stage C or sustained-event acceptance.
 
 - Specify candidate group/cell channels, channel-to-drink mapping, price function,
   neutral/tie handling, threshold/rearm behavior and exact calibration/held-out

@@ -255,8 +255,17 @@ brightness gives unequal retinal population coverage, so spatial vs population
 input-magnitude effects are not isolated. Resources:482.719s wall,856920064bytes
 worker peak,50399859bytes combined output peak/25571025retained,1880 samples,
 maxadjacentgap0.266s,cleanup0,stderr0. All frozen sources remain unchanged.
-No retry or paid call. Next specify a separate bounded cell-observer/
-rolling-buffer performance benchmark; no Stage C follows automatically.
+No retry or paid call. Result checkpoint`4862f84ff681fe958ffb852528ada7a2a589e8aa`
+passed [CI42713559202](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42713559202):
+1469 backend tests /47 skips in685.71s,243 viewer tests /four skips and build.
+The next separate [passive-cell/rolling-buffer protocol](superpowers/specs/2026-11-09-live-buffer-performance.md)
+and [four-task plan](superpowers/plans/2026-11-09-live-buffer-performance.md) are
+independently accepted prospectively:60 model seconds,256 passive observed cells,
+1000 original bins in fixed arrays, one pending image, three synthetic full-queue
+rejections, exact five-minute expiry and unchanged900s/4GiB/256MiB supervision.
+No implementation or acquisition yet. Start Task1 with a fresh Sol worker after
+the prospective checkpoint; all source-bearing work precedes concrete freeze.
+Preserve the old10-second collector/parser limits. No Stage C follows automatically.
 
 The protocol-only checkpoint `f07988a` triggered
 [CI42671895977](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42671895977),

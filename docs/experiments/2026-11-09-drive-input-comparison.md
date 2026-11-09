@@ -3,6 +3,11 @@
 Status: complete native recording, public integrity inspection and independent
 raw-data/resource acceptance. No price has been activated.
 
+Published result checkpoint`4862f84ff681fe958ffb852528ada7a2a589e8aa` passed
+[CI42713559202](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42713559202):
+1469 backend tests /47 skips in685.71s,243 viewer tests /four skips and build.
+This documentation checkpoint preserves the acquisition's accepted source bytes.
+
 The prospectively frozen [protocol](../superpowers/specs/2026-11-09-drive-input-comparison.md)
 and [plan](../superpowers/plans/2026-11-09-drive-input-comparison.md) use the
 unchanged `continuous-motor-drive/v1` candidate and20 technical drink IDs.
@@ -137,8 +142,9 @@ remain separate under `.tools/drive-input-comparison-controller-20261109/`.
 | `.tools/drive-input-comparison-20261109-01/supervisor-receipt.json` | 2250 | `91cbe0134643f29558e5c878a099167429eb2681a67fda8ace88d9d644ce5a07` |
 | `.tools/drive-input-comparison-20261109-01/samples.jsonl` | 283658 | `37fb3067c4cce7b39101dd2cd1aff7d3ea6fb2052bfd5c8066ae50aaa3d9d2cb` |
 
-Next, separately specify the bounded passive-cell/rolling-buffer performance
-benchmark and image-admission behavior. The user chose a maximum five real minutes
+The next separate [performance protocol](../superpowers/specs/2026-11-09-live-buffer-performance.md)
+and [plan](../superpowers/plans/2026-11-09-live-buffer-performance.md) are prospectively
+accepted, with no implementation or acquisition yet. The user chose a maximum five real minutes
 from accepted upload to model handoff; a finite full queue rejects new uploads,
 and expired entries must never be handed off late. Source/measurement review and
 a concrete finite protocol precede that benchmark. Price service, live uploads,
