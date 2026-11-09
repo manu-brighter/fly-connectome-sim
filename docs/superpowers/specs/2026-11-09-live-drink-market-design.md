@@ -229,6 +229,12 @@ summieren rund 70 Sekunden Kernberechnung. Das Problem besteht also nicht nur
 aus Startzeit; ein dauerhaft laufender Prozess allein garantiert keine Echtzeit.
 Diese Werte betreffen den damaligen Aufbau und sind kein neuer Benchmark.
 
+Der Nutzer hat nach der begrenzten Messung vom 9. November ausdrücklich akzeptiert,
+dass der erste lokale Pilot langsamer als Echtzeit rechnet. Die Anzeige kennzeichnet
+Modellzeit und aktuelle beziehungsweise wartende Eingaben. Die Preissperre bleibt
+bei 30 echten Minuten. Diese Entscheidung ersetzt keine Messung von Durchsatz,
+Warteschlangengrenzen oder maximaler Verzögerung.
+
 Ein Pilot muss Durchsatz, Verzögerung und Ressourcenverbrauch über die geplante
 Eventdauer messen. Die Preis-Sperre verwendet reale Zeit, das neuronale Modell
 seine tatsächlich berechnete Zeit. Langsame Verarbeitung darf weder als aktuelle

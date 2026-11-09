@@ -112,7 +112,7 @@ Add the new tests to `.github/workflows/compatibility.yml`. No other source chan
 - [x] Astra reviews the source/test diff against protocol; fix test-first and
   re-review. No acquisition or source publication claim before actual evidence.
 
-**Task 1 reviewed checkpoint:** diagnostic, capped audit and shared Stage A helpers
+**Historical Task 1 reviewed checkpoint:** diagnostic, capped audit and shared Stage A helpers
 are implemented. Initial combined regression: 587 passed / five declared Windows
 symlink-privilege skips. Astra identified one source-lock consistency gap; four
 resealed counterexamples reproduced it. The corrected diagnostic passed all
@@ -176,7 +176,7 @@ identities in preparation. A static cache check alone does not prevent compilati
   hanging version child, compile rejection and whole-job cancellation.
 - [x] Astra reviews actual source plus host smoke evidence before native launch.
 
-**Task 2 reviewed checkpoint:** fixed PowerShell entrypoint, held actual Python
+**Historical Task 2 reviewed checkpoint:** fixed PowerShell entrypoint, held actual Python
 processes, owned kill-on-close job, parent watchdog, compiler-version-only guard
 and counted scratch are implemented. Initial 32 Windows tests passed. Three
 review findings were corrected test-first: actual `receipt.json` consumption,
@@ -199,7 +199,10 @@ Repeat the public tests with:
 Use a fresh basetemp. Windows sandbox hardlink/host-API restrictions required
 normal host execution locally; checks were not weakened. The genuine earlier
 prepare-only smoke is now stale because the reviewed fixes changed sources.
-No diagnostic native acquisition has run; prepare both manifests afresh below.
+At that source checkpoint no diagnostic native acquisition had run. Both manifests
+were subsequently prepared afresh for the completed Task 3 acquisition; see the
+[accepted result](../../experiments/2026-11-09-market-response-diagnostic.md).
+Those completed paths cannot be reused.
 
 ## Task 3 — bounded acquisition and actual evidence (controller)
 
@@ -207,15 +210,15 @@ No diagnostic native acquisition has run; prepare both manifests afresh below.
 `runs/market-response-20261109-01/` and
 `.tools/market-response-20261109-01/`. Never reuse a failed output path.
 
-- [ ] Verify unchanged baseline/core and protocol/source hashes; prepare the
+- [x] Verify unchanged baseline/core and protocol/source hashes; prepare the
   exact fresh manifest and supervisor readiness without neural advancement.
-- [ ] Review the complete concrete command/paths/limits and actual readiness.
+- [x] Review the complete concrete command/paths/limits and actual readiness.
   Execute one supervised Run under the user's approved sequential continuation;
   no automatic retry after a failed or inconclusive acquisition.
-- [ ] Inspect sealed raw data and summary; independently compare all repeated
+- [x] Inspect sealed raw data and summary; independently compare all repeated
   arms, primary/secondary vectors, cell/population arithmetic and resource logs.
   An aborted/invalid run remains incomplete; do not create a successful result.
-- [ ] Astra reviews actual evidence and unchanged original/source identities.
+- [x] Astra reviews actual evidence and unchanged original/source identities.
   Report observed input differences or null/invalid results within the exact
   declared scope. Decide the next technical step from evidence, not desired prices.
 - [ ] Review complete explicit staged files, commit/push the feature branch,

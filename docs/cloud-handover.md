@@ -36,27 +36,36 @@ and build. All five locally skipped analyzer symlink cases passed on Linux. The 
 of twenty fixed artificial groups dominated every strict maximum; it does not
 qualify twenty-drink control. Sampled-cohort recruitment began near two seconds
 despite nonblack inputs, so very short negative probes would be inconclusive.
-The next step is the [matched-state input-response diagnostic](superpowers/specs/2026-11-09-market-response-diagnostic.md)
-and [sequential implementation plan](superpowers/plans/2026-11-09-market-response-diagnostic.md):
-2 seconds black prefix plus eight restored 4-second arms, 34 executed model
-seconds, 900-second wall/4-GiB native peak-RSS/256-MiB new-output limits.
-Diagnostic recording/offline audit are implemented and independently reviewed:
-587 initial passing tests / five declared Windows symlink skips; after a reviewed
-source-lock fix, all 40 diagnostic tests and two final fixture checks passed.
-Historical report bytes, 15 demo artifacts and 41 package sources stayed identical.
-Mandatory Windows supervision is implemented locally: actual worker PID
-handshake, kill-on-close process job, compiler-version-only guard and counted
-scratch space. Its initial 32 host checks include real console cancellation and
-forced frontend/supervisor exits; a genuine prepare-only command also succeeded.
-Three review issues are now corrected and independently accepted: the consumer
-uses the actual `receipt.json`; cleanup follows independently validated process
-identity/ancestry; and a locked fixed-size cancellation signal preserves terminal
-status/byte accounting. The affected 23-case regression and three final cutoff/
-watchdog cases passed. Retained evidence includes real Ctrl+C, forced parent/
-owner death and surviving unrelated processes. Old prepare-only manifests are
-stale after source fixes; fresh preparation and finite reviewed acquisition follow.
-No new diagnostic acquisition has run yet. This tests fixed
-input responses, not drink selection, learning or long-duration event readiness.
+The [matched-state input-response diagnostic](experiments/2026-11-09-market-response-diagnostic.md)
+is now executed and independently accepted within its declared scope. Source
+`5c3611bb686bcfc56ba8a006aaf52be5181ce95f` passed
+[CI42661319868](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42661319868):
+482 backend tests / 34 skips, 243 viewer tests / four private-artifact skips and build.
+The reviewed runner and Windows supervisor preserve the neural package and old
+artifacts, bind the actual Python process/cache/compiler, count scratch and use
+owned-job cleanup plus tested cancellation. Source/test history is retained in
+the [implementation plan](superpowers/plans/2026-11-09-market-response-diagnostic.md).
+
+One fresh acquisition at `runs/market-response-20261109-01/` and
+`.tools/market-response-20261109-01/` executed 34 model seconds, 68 observations,
+79 sealed events and 3,400 bins. Resources: 151.89 s wall, 877,383,680 bytes actual worker
+peak RSS, 45,719,150 bytes sampled output peak / 22,946,791 retained, zero active processes
+after cleanup. Black/A/C repetitions match exactly. A/B and C/D primary responses
+differ; all active primary KC vectors still peak at group 10, so 20-way selection
+is not established. Motor signs vary across windows. There was no training/API call.
+The [frozen protocol](superpowers/specs/2026-11-09-market-response-diagnostic.md)
+remains historical evidence; completed directories must not be resumed.
+
+The subsequent offline receptor check shows that A reaches receptors; it is not
+blind input. It does not isolate how coverage, spatial targets and network dynamics
+produce the output difference.
+Next: define a fixed sequential motor readout with neutral/rearm behavior, then
+review a bounded continuous-state test with prospectively fixed timing. Do not
+choose favorable windows or infer 20-channel, price-policy or event-duration
+qualification. No further acquisition is implied by the accepted result.
+The user explicitly approved slower-than-real-time model operation for the first
+local pilot, with an honest model clock and fresh/queued status; the price lock
+still uses 30 minutes of real time. Queue capacity/maximum delay need later bounds.
 User-supplied scale:
 10–20 drinks, 50–300 guests, usually 6–8 hours; shorter or roughly 12-hour
 events are exceptions. Duration stays configurable; 12 hours is the initial later long-run test

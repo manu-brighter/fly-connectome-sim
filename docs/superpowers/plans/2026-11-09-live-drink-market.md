@@ -23,8 +23,9 @@ none is installed or implicitly approved by this plan.
 
 **Status:** User approved sequential execution until finished or stopped on
 November 9. Stage A implementation and historical evidence are independently
-accepted and published as `dcb7f79`; clean-checkout CI passed. No new fullgraph observation,
-learning experiment, paid request or deployment has started. The user supplied
+accepted and published as `dcb7f79`; clean-checkout CI passed. One reviewed
+matched-state fullgraph observation subsequently completed and was independently
+accepted; no learning experiment, paid request or deployment has started. The user supplied
 10–20 drinks, 50–300 guests, usually 6–8 hours with shorter or approximately
 12-hour exceptions. Keep duration configurable; use 12 hours as the initial
 later soak-test reference, not an automatic runtime cap. Upload rate and
@@ -228,8 +229,17 @@ The first concrete step is the
 [implementation plan](2026-11-09-market-response-diagnostic.md), informed by the
 actual Stage A and historical KC evidence. It does not yet qualify a live adapter.
 
-Next deliverable: an exact reviewed measurement protocol and a dedicated runner
-outside the package, followed only by an authorized bounded acquisition.
+The first [matched-state result](../../experiments/2026-11-09-market-response-diagnostic.md)
+is accepted: 34 model seconds in 151.89 s wall, identical declared repeats and distinct
+primary input responses. Every active primary KC vector still peaks at group 10;
+this does not qualify a 20-drink adapter. The offline receptor check confirms
+nonzero A input and spatially unequal receptor coverage.
+
+Next deliverable: one fixed sequential motor readout contract with neutral/rearm
+rules and a prospectively frozen continuous-state test. No favorable-window search
+or new acquisition follows automatically. The user accepts slower-than-real-time
+model operation for the first local pilot; display the clocks/status honestly.
+Real-time cooldown remains 30 minutes; queue capacity/maximum delay remain to bound.
 
 - Specify candidate group/cell channels, channel-to-drink mapping, price function,
   neutral/tie handling, threshold/rearm behavior and exact calibration/held-out
