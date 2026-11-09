@@ -22,7 +22,8 @@ none is installed or implicitly approved by this plan.
 **Spec:** [Live-Getränkebörse](../specs/2026-11-09-live-drink-market-design.md).
 
 **Status:** User approved sequential execution until finished or stopped on
-November 9. Stage A implementation and historical evidence are independently accepted locally; no new native observation,
+November 9. Stage A implementation and historical evidence are independently
+accepted and published as `dcb7f79`; clean-checkout CI passed. No new fullgraph observation,
 learning experiment, paid request or deployment has started. The user supplied
 10–20 drinks, 50–300 guests, usually 6–8 hours with shorter or approximately
 12-hour exceptions. Keep duration configurable; use 12 hours as the initial
@@ -185,7 +186,7 @@ No cell reconstruction, new drink mapping, price prediction or recalibration.
   commands/counts/skips. Do not run unrelated neural acquisitions as regression.
 - [x] Astra independently reviews source, input binding, arithmetic, bounded
   reads and claims. Fix actionable findings test-first within these owned files.
-- [ ] Inspect complete explicit staged diff; make a reviewed feature commit.
+- [x] Inspect complete explicit staged diff; make a reviewed feature commit.
 
 ### Task 2 — actual historical report and checkpoint (controller)
 
@@ -213,7 +214,7 @@ summary, clear missing measurements and the input to Stage B's bounded protocol.
   comparison and cannot validate multi-drink control or hours of operation.
 - [x] Astra reviews actual report against source evidence; controller records
   conclusions, remaining gaps and the next protocol task in the handover.
-- [ ] Review docs and complete staged diff; commit/push explicitly to the feature
+- [x] Review docs and complete staged diff; commit/push explicitly to the feature
   branch and observe CI. No PR, merge, deployment or native run follows implicitly.
 
 **Stage A completion:** analyzer tests and real report accepted, or a documented
@@ -221,6 +222,11 @@ unavailable-input outcome. This is a software/evidence checkpoint, not a market
 feasibility pass. Stage B cannot be replaced by an attractive synthetic price demo.
 
 ## Stage B — separately bounded readout and continuous-operation feasibility
+
+The first concrete step is the
+[input-response protocol](../specs/2026-11-09-market-response-diagnostic.md) and
+[implementation plan](2026-11-09-market-response-diagnostic.md), informed by the
+actual Stage A and historical KC evidence. It does not yet qualify a live adapter.
 
 Next deliverable: an exact reviewed measurement protocol and a dedicated runner
 outside the package, followed only by an authorized bounded acquisition.
@@ -320,9 +326,11 @@ controls to D; actual event configuration and rehearsal to E. Learning options
 remain deliberately outside the first version. Every review focus has an owning
 test task or a mandatory test contract in its later subsystem.
 
-Only Stage A is detailed enough for the next implementation assignment. Later
-subsystem plans must consume measured results rather than invent viable readouts,
+Stage A is complete; the first bounded Stage B diagnostic now has a separate
+implementation assignment. Later subsystem plans must consume measured results
+rather than invent viable readouts,
 resource budgets or display-service contracts now. Stage A checks reflect actual
-local implementation/evidence; publication and CI remain pending until observed.
+implementation, evidence, publication and successful CI; Stage B's first bounded
+diagnostic now has its own concrete protocol/plan.
 The chosen execution method is already Sol implementation plus Astra review;
 there is no need to ask the user to select that method again.

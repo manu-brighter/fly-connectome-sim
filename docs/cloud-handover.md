@@ -24,17 +24,25 @@ details an offline population/timing inventory as Stage A, then separately gated
 readout/performance measurements, price service/board, uploads/live display and
 rehearsal. **The user approved the plan and autonomous execution on November 9:**
 continue until finished or explicitly stopped, with up to ten subagents requested;
-this platform permits three concurrent children. Stage A is now locally complete
+this platform permits three concurrent children. Stage A is now complete
 and independently accepted: [population inventory](experiments/2026-11-09-market-feasibility.md),
 148 passing tests / five declared Windows symlink-privilege skips, and actual
-sealed-run inspection without a new fullgraph run or API call. Publication and
-clean-checkout CI remain pending at this checkpoint. The separate
+sealed-run inspection without a new fullgraph run or API call. Published feature
+`dcb7f79a24bcab16b07fa1d2b13e4cb516a277cc` passed
+[clean-checkout CI](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42648225025):
+429 backend tests / eight skips, 243 viewer tests / four private-artifact skips
+and build. All five locally skipped analyzer symlink cases passed on Linux. The separate
 [historical KC screen](experiments/2026-11-09-market-kc-screen.md) found that one
 of twenty fixed artificial groups dominated every strict maximum; it does not
 qualify twenty-drink control. Sampled-cohort recruitment began near two seconds
 despite nonblack inputs, so very short negative probes would be inconclusive.
-The next step is a finite, matched-state input-response diagnostic with reviewed
-source and supervision, not a drink-selection claim or long-duration event run.
+The next step is the [matched-state input-response diagnostic](superpowers/specs/2026-11-09-market-response-diagnostic.md)
+and [sequential implementation plan](superpowers/plans/2026-11-09-market-response-diagnostic.md):
+2 seconds black prefix plus eight restored 4-second arms, 34 executed model
+seconds, 900-second wall/4-GiB native peak-RSS/256-MiB new-output limits.
+Protocol/source/supervisor review and real host monitoring smoke precede one
+bounded acquisition. No new diagnostic acquisition has run yet. This tests fixed
+input responses, not drink selection, learning or long-duration event readiness.
 User-supplied scale:
 10–20 drinks, 50–300 guests, usually 6–8 hours but also shorter or roughly 12-hour
 events. Duration stays configurable; 12 hours is the initial later long-run test

@@ -114,8 +114,13 @@ implementation/review notes are plan-scoped ignored scratch. Actual result,
 scope and limitations are retained here so continuation does not depend on that
 scratch. Independent historical-evidence review accepted every population/rate,
 time total, manifest/event binding, report hash, unchanged input/source set and
-the separate KC-screen claims. Clean-checkout CI remains pending at this
-checkpoint; it is not implied by local test success.
+the separate KC-screen claims. Feature `dcb7f79a24bcab16b07fa1d2b13e4cb516a277cc`
+was pushed to the named feature branch.
+[Clean-checkout CI 42648225025](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42648225025)
+passed 429 backend tests with eight existing skips; all 86 analyzer cases passed,
+including the five link tests skipped locally. The unchanged viewer passed 243
+tests with four private-artifact skips and its build. These are actual hosted
+results, separate from the Windows local counts above.
 
 ## Next diagnostic boundary
 
