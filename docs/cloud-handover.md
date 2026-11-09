@@ -153,8 +153,20 @@ No new model run or API call occurred. The complete233732-byte report remains
 local at `.tools/response-structure-20261109/report.json`, SHA
 `eedb293babe890d136587365bcf476d682f7ced1fe6228de20275fc9eda6a481`.
 
-Next finish the reviewed source/result checkpoint and CI, then specify a distinct
-calibration/generalization question for a fixed population-state representation.
+Source/result checkpoint `dfe16787573d911bd68973a3bbfe9e00e09a6249` passed
+[CI42691875940](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42691875940):
+822 backend tests /41 skips in263.92s,243 viewer tests /four skips and build.
+All56 new analyzer cases passed on Linux, including the local symlink skips.
+
+**Next bounded task:** the prospectively accepted
+[population-excursion prerequisite screen](superpowers/specs/2026-11-09-population-excursion-screen.md)
+and [plan](superpowers/plans/2026-11-09-population-excursion-screen.md). Use all192
+old continuous observations/48 fixed blocks as development calibration only.
+Freeze four-channel offsets/scales and fixed engineered MBON/DAN contrast axes,
+exact20-sector rays, support and excursion thresholds before actual calculation.
+No anchor or no adjacent confirming opportunity stops this candidate before a
+full decoder or acquisition. An opportunity alone proves neither a proposal nor
+price support. No actual calibration/screen outcomes have been calculated yet.
 Twenty engineered output regions do not require twenty biological channels;
 current matched-state data cannot establish robust continuous-state decisions.
 Specify calibration versus independent evaluation, abstention and separate neural
@@ -162,6 +174,10 @@ contributions to drink, price and timing before mapping. Do not stretch small
 differences into20 outputs merely to obtain coverage. No fitted decoder, new
 acquisition, threshold sweep or Stage C follows automatically. The broader
 user-authorized market task remains open.
+The user now explicitly accepts long quiet phases and drink favorites in the
+experimental pilot, as long as every configured drink remains technically
+selectable. Actual all-drink occurrence in a finite recording is not required.
+Report technical versus observed coverage separately; no forced rotation or cadence.
 The protocol-only checkpoint `f07988a` triggered
 [CI42671895977](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42671895977),
 which failed before creating any jobs, including one unchanged retry. GitHub's

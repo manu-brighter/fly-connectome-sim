@@ -27,6 +27,10 @@ Vom Nutzer festgelegt:
   gesamte Getränketafel hoch und wählen beim Upload kein Getränk aus.
 - Das Personal übernimmt die gültigen Preise von der Preistafel. Für den ersten
   Pilot gibt es keine automatische Kassenschnittstelle.
+- Lange Ruhephasen und klare Getränkefavoriten sind für den experimentellen Pilot
+  akzeptiert. Alle konfigurierten Getränke müssen technisch auswählbar bleiben;
+  sie müssen nicht alle in einer endlichen Testaufnahme tatsächlich vorkommen.
+  Technische Erreichbarkeit und beobachtete Auswahl werden getrennt ausgewiesen.
 - Zuerst das Konzept klären; danach den Umsetzungsplan erstellen.
 
 Vom Nutzer ergänzte Betriebsgrösse: gewöhnlich **10–20 Getränke**, **50–300 Gäste**

@@ -16,7 +16,10 @@ helpers; no new dependencies or service.
 **Status:** Source, synthetic tests and one actual inventory independently accepted.
 [Actual result](../../experiments/2026-11-09-response-structure-inventory.md):64 vectors,
 224 comparisons; some active KC distributions differ, without decoder qualification.
-Source/result publication and clean-checkout CI remain to finish.
+Source/result checkpoint `dfe16787573d911bd68973a3bbfe9e00e09a6249` is published
+and passed [CI42691875940](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42691875940):
+822 backend tests /41 skips in263.92s,243 viewer tests /four skips and build.
+All56 new analyzer cases passed on Linux, including the local symlink skips.
 
 ## Global constraints
 
@@ -120,7 +123,7 @@ stays ignored under a fresh `.tools/response-structure-20261109/` evidence root.
 - [x] Independently audit actual vectors, fractions, matrix coverage and complete
   source preservation with Astra. Report only descriptive development evidence and
   follow the spec's stopping rules; no selected calibration or decoder is implied.
-- [ ] Inspect complete explicit staged diff/size, commit/push reviewed code/result,
+- [x] Inspect complete explicit staged diff/size, commit/push reviewed code/result,
   observe CI and update tracked continuation. Decide any distinct next scope only
   from accepted evidence; no automatic acquisition or Stage C.
 

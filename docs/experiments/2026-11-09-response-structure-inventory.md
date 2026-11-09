@@ -37,14 +37,19 @@ precise original-error assertion and one all21-bucket arithmetic case were added
 The unchanged offline regression passed184 cases with five Windows symlink skips
 and four explicitly excluded native-construction cases in263.34s. The first host
 run's two test-only snapshot-path failures and earlier sandbox hardlink failures
-are retained in local logs; they are not reported as passes. Linux CI remains to
-exercise the symlink cases. All62 inventoried old source/package/lock files remain
+are retained in local logs; they are not reported as passes. All62 inventoried
+old source/package/lock files remain
 byte-identical; the workflow adds only the new test filename.
 
 Prospective checkpoint `8e484224c459d1b08e2815c13159dc659bfaa415` passed
 [CI42688192608](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42688192608):
 766 backend tests /41 skips in259.34s,243 viewer tests /four skips and build.
 That checkpoint predates the new analyzer and is not its clean-checkout test result.
+
+Source/result checkpoint `dfe16787573d911bd68973a3bbfe9e00e09a6249` passed
+[CI42691875940](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42691875940):
+822 backend tests /41 skips in263.92s,243 viewer tests /four skips and build.
+All56 new analyzer cases passed on Linux, including both locally skipped symlink cases.
 
 ## Actual execution and complete comparison counts
 

@@ -263,9 +263,18 @@ undefined silent comparisons. Primary B/C/D distributions differ with TV about
 0.037–0.046; the repeated C adds duplicate comparisons. This supports only a
 separately specified calibration/generalization question for population states,
 not a fitted decoder, robust20-outcome control or Stage C qualification.
+The next [population-excursion prerequisite screen](2026-11-09-population-excursion-screen.md)
+is prospectively accepted: one fixed calibration and engineered geometry on the
+old192-observation continuous development trace, testing necessary supported
+excursions before building full lifecycle/price logic. No actual screen results yet.
 The user accepts slower-than-real-time
 model operation for the first local pilot; display the clocks/status honestly.
 Real-time cooldown remains 30 minutes; queue capacity/maximum delay remain to bound.
+The user additionally accepts long quiet phases and persistent drink favorites
+for this experimental pilot, provided every configured drink remains technically
+selectable. Do not require every drink to appear in a finite evaluation or add
+forced variety. Report synthetic selectable-output coverage separately from
+observed neural coverage; unsupported activity still cannot create a proposal.
 
 - Specify candidate group/cell channels, channel-to-drink mapping, price function,
   neutral/tie handling, threshold/rearm behavior and exact calibration/held-out
