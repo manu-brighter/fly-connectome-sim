@@ -8,7 +8,9 @@ short-lived process, preserving D1's original decode deadline.
 **Status:** Both tasks and complete local integration independently accepted after
 effective PNG-depth and terminal cleanup/EOF corrections. Final decoder suite225
 passed/four Windows privilege skips; full Market540 passed/five privilege skips.
-Publication and all four source CI jobs remain pending.
+Published `cbc41a35eec5b1b64cdd1dce33082a6a70e060b2` passed all four CI42814654483
+jobs. D2 is complete; [evidence](../../experiments/2026-11-10-image-decoding.md)
+separates actual Windows ownership checks from portable Linux results.
 The [exact D2 contract](../specs/2026-11-10-image-decoding-design.md) governs both tasks.
 
 **Architecture:** A private portable transform/protocol worker and a Windows parent
@@ -105,7 +107,7 @@ DecodedImage only after all identity, process, pipe, deadline and cleanup checks
 - [x] Independent Astra reviews full D2 source/evidence, including trusted import,
   frame digest consistency, parent death, clock/timeout/cleanup precedence and
   preserving all prior sources. Fix actionable issues with meaningful regressions.
-- [ ] Root records reviewed evidence in handover/plan/result docs, verifies the
+- [x] Root records reviewed evidence in handover/plan/result docs, verifies the
   complete staged diff and preservation manifest, commits explicit first-party
   paths and pushes only feat/connectome-experiment-core. Await every CI job.
 

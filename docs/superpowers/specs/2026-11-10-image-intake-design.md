@@ -1,7 +1,7 @@
 # Local image intake, sanitized preview and moderation — prospective design
 
 Status: **Independently accepted prospectively; not implemented**. Protocol/security
-review corrections are accepted. Implementation waits for D2 source CI completion.
+review corrections are accepted. D2 source CI is complete; Task1 implementation has started.
 Compose accepted [D1](2026-11-10-image-admission-design.md) and
 [D2](2026-11-10-image-decoding-design.md); local D2 acceptance does not replace its CI gate.
 

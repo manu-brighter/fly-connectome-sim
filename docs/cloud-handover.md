@@ -383,8 +383,16 @@ and corrected results. Task2 ownership/cleanup and complete local D2 integration
 are now independently accepted after final cancellation/EOF corrections:225
 decoder passes/four Windows privilege skips,540 full Market passes/five privilege
 skips,14 Windows checks and16 independent correction checks.
-Publication and all source CI jobs remain pending. The next local intake/preview/
-approval contract is prospectively reviewed; its implementation waits for D2 CI.
+Published source`cbc41a35eec5b1b64cdd1dce33082a6a70e060b2` passed all four
+[CI42814654483 jobs](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42814654483):
+529 Market passes/16 Windows-only skips,1469 native/session passes/47 skips,253
+buffer passes/six Windows-only skips,266 viewer passes/four private-artifact skips
+and build. All five locally skipped symlink cases passed on Linux. D2 is complete.
+The next local [intake/preview/approval contract](superpowers/specs/2026-11-10-image-intake-design.md)
+and [three-task plan](superpowers/plans/2026-11-10-image-intake.md) are independently
+accepted prospectively after public auth/rate API, capability separation and
+verified-preview corrections. Task1 coordinator implementation has started;
+HTTP and UI integration follow sequentially, with no connected neural worker yet.
 Continuous native integration and measured live presentation remain later.
 The preservation baseline records all 270 preexisting tracked files, all 64 frozen
 helpers unchanged and the same 41-member package fingerprint. No new dependency

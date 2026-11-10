@@ -7,7 +7,7 @@ show only sanitized pixels to the operator and record explicit approval/rejectio
 
 **Status:** Independently accepted prospectively with the
 [exact intake contract](../specs/2026-11-10-image-intake-design.md).
-D2 source/Windows review is accepted; implementation waits for its source CI gate.
+D2 source/Windows review and all four source CI jobs passed. Task1 is in progress.
 
 **Architecture:** One coordinator composes unchanged D1 lifecycle and D2 decoder;
 the existing HTTP server gains optional image routes, followed by bounded guest/
@@ -54,7 +54,7 @@ Ownership: create market/image_intake.py and tests/market/test_image_intake.py.
 Consume unchanged AdmissionController/ImageDecoder/Clock APIs; produce the exact
 ImageIntake methods and DTOs. No HTTP/browser/native integration in this task.
 
-- [ ] Capture accepted contract/plan and prior source/artifact identities.
+- [x] Capture accepted contract/plan and prior source/artifact identities.
 - [ ] Write meaningful failing tests for reserve/body/admit timing, asynchronous
   completion, original phase boundaries, capability/pixel capacity/pruning,
   lost acceptance response semantics, normal decoder rejection versus fatal

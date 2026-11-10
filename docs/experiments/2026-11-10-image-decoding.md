@@ -2,8 +2,9 @@
 
 Status: both tasks implemented and independently accepted locally after their
 corrections. Final local Market suite:540 passed/five Windows privilege skips.
-Source publication and clean-checkout CI remain pending. This is a local decoder
-component, not a usable upload service or an OS security sandbox.
+Published source `cbc41a35eec5b1b64cdd1dce33082a6a70e060b2` passed all four
+clean-checkout CI jobs. D2 is complete as a local decoder component, not a usable
+upload service or an OS security sandbox.
 
 The private worker consumes only bounded request metadata and image bytes,
 rechecks source identity, and returns one bounded result. Its fixed
@@ -47,7 +48,7 @@ The431-pass full-suite result belongs to the initial worker revision. After the
 narrow PNG correction, the entire affected worker suite was rerun; the subsequent
 Task2 full Market result below includes this correction. Two trusted CLI tests are
 Windows-only due to the fixed repository venv bootstrap; portable pixel/wire tests are separate.
-No source CI or Linux decoder test result is claimed yet.
+The later source CI results below include the corrected worker and parent.
 
 At the initial Task1 review, all305 preexisting tracked files were unchanged
 except five independently accepted D1 completion documents. All64 frozen helpers,
@@ -101,9 +102,27 @@ Independent review accepted complete local D2 source/integration after inspectin
 these actual logs and running the16 additional controls. Frozen64 helpers,41
 package members and seven historical artifacts remain unchanged.
 
+## Published source CI
+
+All four [CI42814654483 jobs](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42814654483)
+completed successfully for `cbc41a35eec5b1b64cdd1dce33082a6a70e060b2`:
+
+| Job | Actual result |
+| --- | --- |
+| Market software | 529 passed,16 Windows-only skips,25.76s |
+| Existing native/session compatibility | 1469 passed,47 declared skips,335.98s |
+| Existing buffer compatibility | 253 passed,six Windows-only skips,357.80s |
+| Viewer | 266 passed,four private-artifact skips,88.000853785s; build334ms |
+
+All five locally skipped symlink cases passed on Linux. Its16 Market skips are
+the14 Windows checks and two fixed-Windows-venv worker CLI cases; they are not
+portable process-ownership evidence. Every job's checkout matches the published
+source. Terminal metadata and complete logs remain in the private local evidence
+directory. The source-freeze package and historical artifacts remain unchanged.
+
 ## Remaining boundary
 
-Clean-checkout CI remains required. Windows process evidence and portable pixel/
+Windows process evidence and portable pixel/
 protocol tests are separate; no Linux process containment is claimed. There is no
 HTTP intake, moderation, native handoff, secure erasure, event-capacity or public-
 operation evidence. Upload/preview/approval is the next separately reviewed slice.
