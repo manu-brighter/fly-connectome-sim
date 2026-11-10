@@ -381,11 +381,13 @@ clearly marked test data. It does not count as neural or public-event acceptance
 
 ## Stage D — bounded uploads, native worker and live display
 
-The first bounded slice is the prospectively accepted
+The first bounded slice is the locally implemented and independently accepted
 [image-admission lifecycle](../specs/2026-11-10-image-admission-design.md) and its
 [implementation plan](2026-11-10-image-admission.md). It establishes metadata
 states/deadlines/capacity before adding untrusted decoding, HTTP or a native worker;
-it does not constitute the integrated StageD deliverable by itself.
+it does not constitute the integrated StageD deliverable by itself. Its134 focused
+and315 complete Market tests pass with one Windows symlink skip; source publication
+and CI remain pending. See [actual evidence](../../experiments/2026-11-10-image-admission.md).
 
 - Write the service/security specification before exposing an endpoint: upload
   size/pixel/type limits, decode isolation, queue/backpressure, retention,

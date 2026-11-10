@@ -1,6 +1,7 @@
 # Local image admission lifecycle — prospective D1 design
 
-Status: **independently accepted prospectively; not implemented yet**.
+Status: **implemented and independently accepted locally; source publication/CI pending**.
+See [actual evidence](../../experiments/2026-11-10-image-admission.md).
 Stage-C source `b2eda225` passed all four CI42741755078 jobs. Independent protocol
 review accepted this contract after clarifying receipt timing, contradiction
 precedence and index overflow. This is the first bounded Stage-D slice of the

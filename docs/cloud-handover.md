@@ -362,6 +362,15 @@ Receipt timing and retry/contradiction/index-overflow precedence were corrected
 before implementation. This starts no decoder, HTTP upload or native worker and
 changes no price; those are later reviewed slices. No sale prices, public readiness
 or neural integration are claimed.
+Local D1 implementation now exists in `market/image_admission.py` with134 focused
+passes and315 complete Market passes/one Windows symlink-privilege skip. An
+independent review found shared mutable metadata references; Sol corrected them
+with18 additional regressions; independent fix re-review accepted the complete
+D1 slice with seven additional reproductions. The
+[implementation evidence](experiments/2026-11-10-image-admission.md) records the
+exact limits. Source publication and clean-checkout CI remain pending. The next
+decoder design is undergoing separate prospective review; it must wait for D1's
+evidence gate before implementation.
 The preservation baseline records all 270 preexisting tracked files, all 64 frozen
 helpers unchanged and the same 41-member package fingerprint. No new dependency
 or native/API run is needed. The planning checkpoint passed

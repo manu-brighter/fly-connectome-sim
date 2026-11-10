@@ -1,6 +1,6 @@
 # Local Image Admission Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Implement the first Stage-D metadata lifecycle with bounded admission,
 immutable image deadlines and honest worker-outcome states.
@@ -14,8 +14,9 @@ reuse public Clock/ClockSample/SystemClock from the unchanged market authority.
 
 **Spec:** [Exact D1 contract](../specs/2026-11-10-image-admission-design.md).
 
-**Status:** Independently accepted prospectively; no D1 implementation or test pass
-is claimed. Stage-C source `b2eda225cf9709f1abf5d383c19106d707eb5444` passed all four
+**Status:** D1 implementation independently accepted locally after the detached-data
+fix;134 focused tests and315 complete Market tests pass with one Windows
+symlink-privilege skip. Source publication and clean-checkout CI remain pending. Stage-C source `b2eda225cf9709f1abf5d383c19106d707eb5444` passed all four
 [CI42741755078 jobs](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42741755078).
 The user's ongoing autonomous execution authorization covers technical choices;
 prospective review resolved the exact contract before product code starts.
@@ -85,10 +86,10 @@ reserve, cancel_reservation, admit, decoded, decode_failed, moderate, dispatch,
 started, complete, stop, maintain, status and snapshot. Downstream adapters do not
 exist yet. Do not add speculative public helpers or accept arbitrary dictionaries.
 
-- [ ] Capture the exact reviewed spec/plan and unchanged Stage-C source identities.
+- [x] Capture the exact reviewed spec/plan and unchanged Stage-C source identities.
   Confirm prescribed branch/tracking and read current handover. Root retains the
   original package/artifact fingerprint before any source changes.
-- [ ] Write meaningful failing metadata tests, using fixed UUIDs/digests and a
+- [x] Write meaningful failing metadata tests, using fixed UUIDs/digests and a
   controllable nanosecond clock. At minimum cover these independently observable
   cases (parameterize boundaries/invalid exact types without duplicating tests):
   `test_concurrent_reservations_never_overbook`,
@@ -112,21 +113,21 @@ exist yet. Do not add speculative public helpers or accept arbitrary dictionarie
   times, preserved started fields, idempotent retries and unchanged unrelated work.
   Worker-receipt tests also include a known accepted/queued ID not dispatched yet,
   and ensure an exact active-start retry does not reapply the receipt deadline.
-- [ ] Run initial `.venv/Scripts/python.exe -m pytest -q tests/market/test_image_admission.py`
+- [x] Run initial `.venv/Scripts/python.exe -m pytest -q tests/market/test_image_admission.py`
   with a fresh task-local --basetemp and `-p no:cacheprovider`; retain actual output
   and exit code. Missing module/API or false behavioral assertions are genuine RED;
   infrastructure errors are reported separately, never relabeled product failures.
-- [ ] Implement the exact lifecycle in one cohesive module, following the spec's
+- [x] Implement the exact lifecycle in one cohesive module, following the spec's
   worker-receipt branch order before generic idempotency. One lock owns sample,
   expiry, pruning and transitions. Validate syntax before state mutation. Reserve
   terminal capacity at ingress, store at most the fixed operation records, and
   keep all state private and process-local. No payload bytes/file handles/callbacks.
-- [ ] Run green focused tests, then the complete `tests/market` suite with fresh
+- [x] Run green focused tests, then the complete `tests/market` suite with fresh
   basetemp/cache disabled. Use `.venv/Scripts/python.exe -m pytest`; never the
   AppControl-blocked pytest.exe. Known sandbox asset resolution errors may use
   identical approved host execution, not weakened assertions. Record all actual
   skips/failures, and preserve the original182-case Linux baseline separately.
-- [ ] Provide stable source hashes and exact command/log evidence under ignored
+- [x] Provide stable source hashes and exact command/log evidence under ignored
   `.tools/image-admission-20261110/` and the controller's private progress record.
   Confirm no images decoded, no native worker/HTTP started and no prices changed.
 - [ ] Independent Astra evaluates complete source, spec, tests and actual evidence,
