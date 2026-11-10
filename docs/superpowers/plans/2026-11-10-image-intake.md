@@ -9,7 +9,9 @@ show only sanitized pixels to the operator and record explicit approval/rejectio
 [exact intake contract](../specs/2026-11-10-image-intake-design.md).
 D2 source/Windows review and all four source CI jobs passed. Task1 coordinator is
 independently accepted locally:458 affected passes/four Windows privilege skips
-and39 independent correction checks. Task2 optional HTTP/CLI integration follows.
+and39 independent correction checks. Task2 optional HTTP/CLI is independently
+accepted after maintenance-failure fencing:713 Market passes/five unchanged
+Windows privilege skips and seven independent loopback scenarios. Task3 UI follows.
 
 **Architecture:** One coordinator composes unchanged D1 lifecycle and D2 decoder;
 the existing HTTP server gains optional image routes, followed by bounded guest/
@@ -90,11 +92,11 @@ tests/market/test_image_intake_http.py and test_image_intake_process.py. Existin
 test_price_http/process files change only for a justified shared regression.
 Consume accepted Task1 and D2. Root owns docs and browser work.
 
-- [ ] Write failing route/auth/body/timeout tests before optional-server changes.
+- [x] Write failing route/auth/body/timeout tests before optional-server changes.
   Cover disabled mode, all cross-role attempts, matching status capability,
   private preview, literal route grammar, auth/reserve before body, slow/oversize
   bodies, rate limits and sensitive response/request logging boundaries.
-- [ ] Add only the optional collaborator, fixed raw route and route-specific role/
+- [x] Add only the optional collaborator, fixed raw route and route-specific role/
   length/MIME selection; preserve every original parser/header/price limit and
   overload/pause behavior. Extend reachable guest assets only when enabled.
   Authenticate image capabilities and account image rates through the accepted
@@ -103,11 +105,11 @@ Consume accepted Task1 and D2. Root owns docs and browser work.
   bucket once, without duplicated secret maps or client-selected roles. Validate
   ig./is. plus43-character suffixes as46-character image capabilities; original
   43-character price capabilities retain their existing generation/authentication.
-- [ ] Wire explicit CLI --image-work-root, shared clock and ordered startup/failure
+- [x] Wire explicit CLI --image-work-root, shared clock and ordered startup/failure
   cleanup. Test actual local HTTP→owned decode→preview→approval/expiry with safe
   fixtures, failed bind/startup, lost202/no automatic replay, shutdown during
   receive/decode and unconfirmed cleanup nonzero/retained ownership.
-- [ ] Run focused/full Market regression with actual source hashes and honest
+- [x] Run focused/full Market regression with actual source hashes and honest
   Windows skips. Independent Astra security/protocol review checks the changed
   HTTP boundary and actual lifecycle evidence; resolve actionable findings.
 

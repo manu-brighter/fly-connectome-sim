@@ -396,7 +396,12 @@ after fixing final-read expiry/pruning/clock inconsistencies:458 affected passes
 four Windows privilege skips, all99 coordinator cases and39 independent boundary
 checks. [Component evidence](experiments/2026-11-10-image-intake.md) records the
 actual owned generated-image fixture and the test-only512-receipt pressure seam.
-Task2 optional HTTP/CLI integration follows, then the guest/operator UI. No neural
+Task2 optional HTTP/CLI is also independently accepted after correcting a
+maintenance-failure fence:74 focused passes,713 full Market passes/five unchanged
+Windows privilege skips and seven independent loopback scenarios. Actual generated
+PNG→owned D2→private RGB→moderation and CLI shutdown cases passed; controlled-clock
+expiry and injected failures are labelled in the component evidence. The guest/
+operator UI, actual browser checks and complete integration CI follow. No neural
 worker is connected; approved images queue and expire without a processed claim.
 Continuous native integration and measured live presentation remain later.
 The preservation baseline records all 270 preexisting tracked files, all 64 frozen

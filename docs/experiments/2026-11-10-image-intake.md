@@ -1,7 +1,7 @@
 # Local image intake — component evidence
 
-Status: Task1 coordinator implemented, tested and independently accepted after
-correction review. HTTP/CLI and guest/operator UI are not implemented. No native worker
+Status: Task1 coordinator and Task2 optional HTTP/CLI implemented, tested and
+independently accepted after correction reviews. Guest/operator UI is not implemented. No native worker
 is connected, and no image has changed a drink price.
 
 The coordinator composes unchanged admission and owned decoding. It retains one
@@ -74,9 +74,59 @@ historical artifacts remain unchanged. No process containment, public readiness,
 event capacity, native measurement or scientific validity follows from these
 coordinator tests.
 
+## Task2 HTTP/CLI checks and corrections
+
+The optional `--image-work-root` composes the existing loopback server, shared
+clock and owned decoder. Default synthetic mode remains unchanged. Five bounded
+image routes enforce role-specific capabilities, original deadlines and private
+canonical previews; image actions never change prices. The guest asset route was
+checked with generated build fixtures; its actual frontend remains Task3.
+
+| Check | Actual result |
+| --- | --- |
+| Initial HTTP/CLI suite |70 passed,19.76s |
+| Initial full Market suite |709 passed, five privilege skips,101.05s |
+| Maintenance-failure regressions before correction |5 failed |
+| Corrected maintenance-failure regressions |5 passed,55 deselected,3.68s |
+| Final HTTP/CLI suite |74 passed,28.84s |
+| Final full Market suite |713 passed, five privilege skips,134.88s |
+| Independent correction scenarios over actual loopback HTTP |7 passed |
+
+The independent review found one P2 failure: a swallowed maintenance exception
+left image routes accepting work. The correction irreversibly fences image
+actions before requesting public coordinator stop. Confirmed stop retains finite,
+truthful diagnostics; failed stop refuses all image routes and retains ownership.
+Bodies already being received cannot mutate after the failure. Price maintenance
+continues independently. Independent re-review accepted Task2 with no open blocker.
+
+Final full command:
+
+```powershell
+.venv/Scripts/python.exe -m pytest tests/market -q -p no:cacheprovider --basetemp=.tools/image-intake-20261110/task2-fix1-market-host-01
+```
+
+The five skips are the unchanged Windows1314 symlink cases: four decoder cases
+and one existing price HTTP case. Actual generated69-byte PNG uploads produced
+12288 canonical RGB bytes through owned D2, then preview, approval/expiry or
+rejection and confirmed cleanup. Expiry uses a controlled clock, not a five-minute
+rehearsal. Actual CLI child processes covered a deliberately unread202 and shutdown
+during receive. A separate direct-server case covered owned Job cancellation;
+an injected CLI close-failure case verified retained ownership.
+The cancellation case uses a harmless waiting child, not an active image conversion;
+the close failure is injected, not a physical OS fault. Neither proves an OS
+termination guarantee. Seven independent correction scenarios use actual HTTP,
+real D1/coordinator and a logic decoder, not a new native or D2 conversion run.
+
+Initial setup/sandbox failures and the eager optional-helper import regression
+remain recorded. Lazy optional imports preserve all four original default-mode
+no-native process checks. Optional-mode guards allow only the existing package,
+experiment package and recorder helper imports; no simulation engine executes.
+No original price assertion, D1/D2 source, frozen helper, package member or
+historical artifact changed. Complete integration CI remains outstanding.
+
 ## Remaining integration
 
-The accepted [plan](../superpowers/plans/2026-11-10-image-intake.md) next adds optional
-routes to the existing local server, then a guest page and private operator preview.
-Actual HTTP, browser and whole-slice review/CI evidence remain outstanding.
+The accepted [plan](../superpowers/plans/2026-11-10-image-intake.md) next adds
+a guest page and private operator preview. Actual browser and whole-slice
+review/CI evidence remain outstanding.
 Continuous native handoff, measured display and real price admission are later work.

@@ -1,5 +1,7 @@
 """Bounded, capability-authenticated loopback transport for synthetic prices."""
 
+from __future__ import annotations
+
 from dataclasses import asdict
 import hmac
 import json
@@ -10,9 +12,13 @@ import secrets
 import socketserver
 import threading
 import time
+from typing import TYPE_CHECKING
 
 from .fixtures import _decode_json, parse_scenario
 from .price_service import MarketError, PriceAuthority
+
+if TYPE_CHECKING:
+    from .image_intake import ImageIntake
 
 
 _CSP = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; font-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
@@ -24,13 +30,14 @@ _STATUS = {
     "primary_busy": 409, "superseded": 409, "length_required": 411,
     "body_too_large": 413, "unsupported_media_type": 415,
     "headers_too_large": 431, "clock": 503, "storage": 503,
-    "capacity": 503, "claim_capacity": 503,
+    "capacity": 503, "claim_capacity": 503, "full": 409, "busy": 409,
+    "invalid_transition": 409, "rate_limited": 429,
 }
 _PHRASE = {
-    200: "OK", 400: "Bad Request", 401: "Unauthorized", 403: "Forbidden",
+    200: "OK", 202: "Accepted", 400: "Bad Request", 401: "Unauthorized", 403: "Forbidden",
     404: "Not Found", 405: "Method Not Allowed", 408: "Request Timeout",
     409: "Conflict", 411: "Length Required", 413: "Content Too Large",
-    415: "Unsupported Media Type", 431: "Request Header Fields Too Large",
+    415: "Unsupported Media Type", 429: "Too Many Requests", 431: "Request Header Fields Too Large",
     503: "Service Unavailable",
 }
 _HEADER_NAME = re.compile(rb"[!#$%&'*+.^_`|~0-9A-Za-z-]+\Z")
@@ -42,6 +49,8 @@ _ROUTES = {
     "/api/resume": ("POST", {"request_id"}),
     "/api/fixtures": ("POST", {"request_id", "scenario"}),
 }
+_ID = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+_IMAGE_ROUTE = re.compile(r"/api/images/(?:(status|moderate)/(" + _ID + r")|preview/(" + _ID + r")/([0-9a-f]{64}))\Z", re.ASCII)
 
 
 def _validate_bind(host, port):
@@ -73,7 +82,7 @@ def _asset_path(root, relative):
     return path
 
 
-def _load_assets(assets_dir):
+def _load_assets(assets_dir, *, images_enabled=False):
     source = Path(assets_dir).absolute()
     for path in (source, *source.parents):
         if path.is_symlink():
@@ -86,10 +95,12 @@ def _load_assets(assets_dir):
         raise ValueError("Invalid Vite manifest") from None
     if type(manifest) is not dict or type(manifest.get("market.html")) is not dict:
         raise ValueError("Missing market manifest entry")
-    entry = manifest["market.html"]
-    if entry.get("isEntry") is not True or entry.get("src") != "market.html":
-        raise ValueError("Invalid market manifest entry")
-    files = {"market.html"}
+    entries = {"market.html", "market-image.html"} if images_enabled else {"market.html"}
+    for name in entries:
+        entry = manifest.get(name)
+        if type(entry) is not dict or entry.get("isEntry") is not True or entry.get("src") != name:
+            raise ValueError("Invalid market manifest entry")
+    files = set(entries)
     seen = set()
     def visit(key):
         if key in seen:
@@ -98,7 +109,7 @@ def _load_assets(assets_dir):
         record = manifest.get(key)
         if type(record) is not dict or not isinstance(record.get("file"), str):
             raise ValueError("Invalid reachable manifest record")
-        if key != "market.html" and record.get("isEntry"):
+        if key not in entries and record.get("isEntry"):
             raise ValueError("Market assets cannot expose another entry")
         files.add(record["file"])
         for field in ("css", "assets"):
@@ -112,11 +123,12 @@ def _load_assets(assets_dir):
                 raise ValueError("Invalid reachable import list")
             for value in values:
                 visit(value)
-    visit("market.html")
+    for name in entries:
+        visit(name)
     result = {}
     for relative in files:
         path = _asset_path(root, relative)
-        if relative != "market.html" and (
+        if relative not in entries and (
             not relative.startswith("assets/") or path.suffix.lower() in (".map", ".json", ".html")
         ):
             raise ValueError("Forbidden market asset")
@@ -172,14 +184,16 @@ class _RequestReader:
             raise MarketError("request_timeout")
         while len(self.buffer) < length:
             self.receive()
-        return bytes(self.buffer[:length])
+        payload = bytes(self.buffer[:length])
+        self.buffer.clear()
+        return payload
 
 
 class _Handler(socketserver.BaseRequestHandler):
     def handle(self):
         try:
             self._handle_request()
-        except MarketError as error:
+        except self.server._request_errors as error:
             self._json({"error": error.code}, _STATUS.get(error.code, 503))
         except (OSError, TimeoutError):
             pass
@@ -201,7 +215,7 @@ class _Handler(socketserver.BaseRequestHandler):
     def _json(self, value, status=200):
         data = json.dumps(value, ensure_ascii=False, allow_nan=False,
                           separators=(",", ":")).encode("utf-8")
-        if len(data) > 65536:
+        if len(data) > getattr(self, "_json_limit", 65536):
             self._send(b'{"error":"capacity"}', 503, "application/json")
             return
         self._send(data, status, "application/json")
@@ -248,10 +262,28 @@ class _Handler(socketserver.BaseRequestHandler):
             raise MarketError("forbidden_origin")
         if method not in ("GET", "POST"):
             raise MarketError("method_not_allowed")
+        image_route = None
+        if path == "/api/images":
+            image_route = ("upload", None, None)
+        elif path == "/api/images/state":
+            image_route = ("state", None, None)
+        else:
+            match = _IMAGE_ROUTE.fullmatch(path)
+            if match is not None:
+                kind, item_id, preview_id, digest = match.groups()
+                image_route = (kind or "preview", item_id or preview_id, digest)
+        if path == "/api/images" or path.startswith("/api/images/"):
+            self._json_limit = 8192
+            if self.server.image_intake is None or image_route is None:
+                raise MarketError("not_found")
+        if path == "/market-image.html" and self.server.image_intake is None:
+            raise MarketError("not_found")
+        raw_upload = image_route is not None and image_route[0] == "upload"
         lengths = headers.get("content-length", [])
         if lengths and not re.fullmatch(r"0|[1-9][0-9]*", lengths[0], re.ASCII):
             raise MarketError("invalid_http")
-        if lengths and (len(lengths[0]) > 4 or int(lengths[0]) > 8192):
+        maximum = 2097152 if raw_upload else 8192
+        if lengths and (len(lengths[0]) > len(str(maximum)) or int(lengths[0]) > maximum):
             raise MarketError("body_too_large")
         length = int(lengths[0]) if lengths else 0
         if method == "GET" and length:
@@ -259,8 +291,14 @@ class _Handler(socketserver.BaseRequestHandler):
         if method == "POST":
             if not lengths:
                 raise MarketError("length_required")
-            if headers.get("content-type") != ["application/json"]:
+            allowed_types = (["image/jpeg"], ["image/png"]) if raw_upload else (["application/json"],)
+            if headers.get("content-type") not in allowed_types:
                 raise MarketError("unsupported_media_type")
+            if raw_upload and length == 0:
+                raise MarketError("invalid_request")
+        if image_route is not None:
+            self._handle_image(reader, method, image_route, headers, length)
+            return
         if path in self.server._assets:
             if method != "GET":
                 raise MarketError("method_not_allowed")
@@ -307,6 +345,52 @@ class _Handler(socketserver.BaseRequestHandler):
             reply = authority.run_fixture(payload["request_id"], parse_scenario(payload["scenario"]))
         self._json(asdict(reply))
 
+    def _handle_image(self, reader, method, route, headers, length):
+        from .image_intake import IntakeError
+        kind, item_id, digest = route
+        if method != ("POST" if kind in ("upload", "moderate") else "GET"):
+            raise MarketError("method_not_allowed")
+        credential = headers.get("authorization", [""])[0]
+        if not credential.startswith("Bearer ") or not credential[7:]:
+            raise IntakeError("unauthorized")
+        bearer = credential[7:]
+        intake = self.server.image_intake
+        self.server._check_image_transport()
+        if kind == "upload":
+            reservation = intake.reserve_upload(bearer)
+            try:
+                payload = reader.body(length)
+                self.server._check_image_transport()
+                reply = intake.accept_upload(reservation.id, headers["content-type"][0], payload)
+            except BaseException:
+                intake.abandon_upload(reservation.id)
+                raise
+            self._json(reply, 202)
+            return
+        # Only the original operator token authorizes moderation and pixels.
+        # Never call price-primary resolution or infer an image role from a body.
+        operator = hmac.compare_digest(bearer.encode("utf-8"), self.server._operator_token.encode("ascii"))
+        if kind == "status" and not operator:
+            self._json(intake.guest_status(item_id, bearer))
+            return
+        if not operator:
+            raise IntakeError("unauthorized")
+        intake.charge_operator(diagnostic=kind in ("state", "status"))
+        if kind == "state":
+            reply = intake.operator_state()
+        elif kind == "status":
+            reply = intake.operator_status(item_id)
+        elif kind == "preview":
+            self._send(intake.preview(item_id, digest), 200, "application/octet-stream")
+            return
+        else:
+            payload = _decode_json(reader.body(length))
+            self.server._check_image_transport()
+            if type(payload) is not dict or set(payload) != {"incarnation", "action_id", "approved"}:
+                raise IntakeError("invalid_request")
+            reply = intake.moderate(item_id, payload["incarnation"], payload["action_id"], payload["approved"])
+        self._json(reply)
+
 
 class LocalMarketServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     """Eight handlers, a separate maintenance tick and explicit ownership close."""
@@ -315,12 +399,19 @@ class LocalMarketServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     daemon_threads = False
     block_on_close = True
 
-    def __init__(self, authority, host, port, assets):
+    def __init__(self, authority, host, port, assets, image_intake=None):
         self.authority = authority
+        self.image_intake = image_intake
+        self._request_errors = (MarketError,)
+        if image_intake is not None:
+            from .image_intake import IntakeError
+            self._request_errors += (IntakeError,)
         self._assets = assets
         self._slots = threading.BoundedSemaphore(8)
         self._stop_maintenance = threading.Event()
         self._maintenance_thread = None
+        self._image_maintenance_failed = threading.Event()
+        self._image_stop_confirmed = threading.Event()
         self._operator_token = secrets.token_urlsafe(32)
         self._view_token = secrets.token_urlsafe(32)
         while self._view_token == self._operator_token:
@@ -335,6 +426,12 @@ class LocalMarketServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     @property
     def view_url(self) -> str:
         return f"{self._origin}/market.html#view={self._view_token}"
+
+    @property
+    def guest_url(self) -> str | None:
+        if self.image_intake is None:
+            return None
+        return f"{self._origin}/market-image.html#guest={self.image_intake.guest_capability}"
 
     def _authenticate(self, token):
         # compare_digest(str, str) rejects non-ASCII input; bytes are total here.
@@ -370,12 +467,30 @@ class LocalMarketServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
         # No stock tracebacks: they can include a request or application payload.
         pass
 
+    def _check_image_transport(self):
+        if self._image_maintenance_failed.is_set() and not self._image_stop_confirmed.is_set():
+            raise MarketError("intake_fault")
+
     def _maintain(self):
         while not self._stop_maintenance.wait(0.1):
             try:
                 self.authority.maintain()
             except MarketError:
                 pass
+            if self.image_intake is not None and not self._image_maintenance_failed.is_set():
+                try:
+                    self.image_intake.maintain()
+                except Exception:
+                    # Fence requests before stopping through the public lifecycle.
+                    # Failed stopping keeps transport fenced and ownership retained;
+                    # server_close still retries actual cleanup independently.
+                    self._image_maintenance_failed.set()
+                    try:
+                        self.image_intake.begin_stop()
+                    except Exception:
+                        pass
+                    else:
+                        self._image_stop_confirmed.set()
 
     def serve_forever(self, poll_interval=0.1):
         self._maintenance_thread = threading.Thread(target=self._maintain, name="market-maintenance")
@@ -388,14 +503,24 @@ class LocalMarketServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
     def server_close(self):
         self._stop_maintenance.set()
-        super().server_close()
-        if self._maintenance_thread is not None:
-            self._maintenance_thread.join()
-        self.authority.close()
+        try:
+            if self.image_intake is not None:
+                self.image_intake.begin_stop()
+        finally:
+            try:
+                super().server_close()
+                if self._maintenance_thread is not None:
+                    self._maintenance_thread.join()
+            finally:
+                try:
+                    self.authority.close()
+                finally:
+                    if self.image_intake is not None:
+                        self.image_intake.finish_close()
 
 
 def create_server(authority: PriceAuthority, host: str, port: int,
-                  assets_dir: Path) -> LocalMarketServer:
+                  assets_dir: Path, *, image_intake: ImageIntake | None = None) -> LocalMarketServer:
     _validate_bind(host, port)
-    assets = _load_assets(assets_dir)
-    return LocalMarketServer(authority, host, port, assets)
+    assets = _load_assets(assets_dir, images_enabled=image_intake is not None)
+    return LocalMarketServer(authority, host, port, assets, image_intake)
