@@ -15,8 +15,8 @@ Node >=24 direct node:test, TypeScript 7.0.2 and Vite 8.3.5 already locked.
 **Spec:** [Exact design and contracts](../specs/2026-11-10-local-price-board-design.md).
 
 **Status:** Prospectively accepted at `b05ce33`; all four local implementations
-and their evidence are independently accepted. Feature publication and actual
-new-source Linux CI remain pending. The user already authorized autonomous sequential
+and their evidence are independently accepted. Source `b2eda225` is published and
+all four jobs in CI42741755078 passed. The user already authorized autonomous sequential
 execution with Sol implementation/Astra review; no new approval loop is added.
 These prospective docs and accepted result `6c7685c` were published before
 product code. Parent/root controls acceptance, publication and closure.
@@ -332,13 +332,13 @@ and owned-process termination; do not kill unrelated processes.
   without rewriting them. Experimental report distinguishes fake-clock proofs,
   actual process/HTTP/browser observations and unavailable checks; no soak/load,
   neural integration, sales/public-event or science claim.
-- [ ] Obtain final independent Astra review of complete source/evidence/diff,
+- [x] Obtain final independent Astra review of complete source/evidence/diff,
   repair actionable findings with regression tests, and controller inspects full
   staged diff/size with explicit first-party paths only. Create reviewed source
   checkpoint and explicit feature push; await final CI jobs to terminal outcome,
   recording actual run link/SHA/counts/skips/failures. Do not claim cancelled or
   unavailable CI passed. Grouped source push avoids canceling preceding task runs.
-- [ ] Controller updates handover/current TODO/report at reviewed checkpoint with
+- [x] Controller updates handover/current TODO/report at reviewed checkpoint with
   actual browser/Windows/Linux CI evidence and limitations, commits/pushes docs
   as appropriate. Under the user's ongoing authorization, continue to the next
   separately specified technical stage after its evidence gate; do not infer
@@ -360,7 +360,7 @@ symlink-privilege skip in 27.14 s. Static independent review checked the actual
 source and retained logs without executing project code. Real socket deadlines,
 overload and later-resume races, lost responses and restart are covered. CLI
 interruption was injected at serve entry; it was not an OS-console Ctrl+C test.
-Vite/browser checks were assigned to Task3; Linux symlink checks remain pending.
+Vite/browser checks were assigned to Task3; Linux symlink checks passed in final CI.
 Port 80 uses canonical
 Host/Origin/URLs without :80; all other configured ports remain explicit.
 
@@ -375,7 +375,7 @@ overflow. Actual hidden tabs and desktop zoom remain unverified, and favicon404
 is incidental. Exact activation duration is proved by independent deterministic
 render tests; browser feedback predates snapshot arrival and is not its start clock.
 No process-restart transparent reconnection is claimed: a new process prints new
-opening capabilities. Source publication and Linux CI closure remain pending.
+opening capabilities. Source publication and Linux CI are now complete.
 
 Task4 local source/evidence is independently accepted: four real process cases
 pass in2.20s, independently rerun in2.15s. The complete Windows Market suite passes
@@ -387,13 +387,18 @@ separate sentinel survives. No product source changed for these tests. Final
 preservation confirms263 of270 original tracked files unchanged, seven planned
 documentation/CI/build-support changes, all64 frozen helpers/41 package members
 and seven historical artifacts unchanged. The old offline inspector reproduces
-the retained summary exactly. The new Linux job and source publication still
-require actual terminal results before StageC closure.
+the retained summary exactly. Published source
+`b2eda225cf9709f1abf5d383c19106d707eb5444` passed all four
+[CI42741755078 jobs](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42741755078):
+182 price passes/no skips in22.18s,1469 existing native/session passes/47 declared
+skips in632.97s,253 buffer passes/six Windows-only skips in260.97s,266 viewer
+passes/four private-artifact skips and build. StageC is closed within its declared
+local synthetic scope; later upload/native/display/rehearsal gates remain distinct.
 
 Spec coverage maps authority/clock/presence/safety/store to Task1, fixture/HTTP
 bounds to Task2, board/build to Task3 and process/CI/docs to Task4. Later tasks
 consume the exact spec DTOs and Task1 methods; they cannot add competing clock,
 presence or proposal-admission logic. All five Review Focus items have explicit
 tests. Independent prospective review accepted the design and plan after correcting
-the shared-clock wording. Task4 checkboxes remain open; no future test or
-publication success is inferred.
+the shared-clock wording. All four tasks are closed on observed local review and
+published-source CI evidence; no future integration success is inferred.

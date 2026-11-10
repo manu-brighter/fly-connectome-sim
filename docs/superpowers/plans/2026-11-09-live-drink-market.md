@@ -349,6 +349,14 @@ authority, transport and board contract. Product source lives under `market/`,
 separate from `src/fly_connectome_sim/` and replay parsers. Implementation follows
 publication of the accepted prospective documents; no new native run is needed.
 
+StageC is now independently accepted and complete within its synthetic local
+scope. Source `b2eda225cf9709f1abf5d383c19106d707eb5444` passed all four
+[CI42741755078 jobs](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42741755078),
+including182 Linux price cases without skips. Actual Windows/browser evidence and
+limits are in the [result](../../experiments/2026-11-10-local-price-board.md).
+Native proposals remain a separate StageD admission path; no synthetic fixture is
+relabeled as neural activity.
+
 - Durable authoritative state: integer Rappen, drink range/grid, current version,
   activation timestamp, per-drink cooldown, event-ID deduplication and pause state.
 - Fresh measurement proposals carry identity, model/wall clocks, selected drink,

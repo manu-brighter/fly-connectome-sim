@@ -346,8 +346,15 @@ result and ledger counts. A verified real-interpreter PID fixes the Windows
 test harness, with no product change. Normal CLI interruption is test-injected,
 not a physical-console Ctrl+C observation. See the [result and limits](experiments/2026-11-10-local-price-board.md)
 and [local start instructions](getting-started.md#local-synthetic-drink-price-board).
-Next: publish the reviewed feature source and await all four complete Linux CI
-jobs before closing StageC. No sale prices, public readiness or neural integration are claimed.
+StageC is complete within that local synthetic scope. Published source
+`b2eda225cf9709f1abf5d383c19106d707eb5444` passed all four
+[CI42741755078 jobs](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42741755078):
+182 price passes/no skips in22.18s (including POSIX ownership and symlink rejection),
+1469 existing backend passes/47 skips in632.97s,253 buffer passes/six Windows-only
+skips in260.97s,266 viewer passes/four private-artifact skips and build. The local
+270-pass viewer evidence remains separate. Next is a separately reviewed StageD
+image-admission lifecycle, before untrusted decoding, HTTP uploads or native-worker
+integration. No sale prices, public readiness or neural integration are claimed.
 The preservation baseline records all 270 preexisting tracked files, all 64 frozen
 helpers unchanged and the same 41-member package fingerprint. No new dependency
 or native/API run is needed. The planning checkpoint passed

@@ -112,8 +112,9 @@ uv run --no-sync python -m pytest -q tests/market
 
 The native and market-buffer job commands remain unchanged. The viewer's existing
 `npm test` discovers the market tests too, and its build retains both HTML entries.
-The new price job's Linux outcome remains pending until an actual source CI run;
-see the [local price-board result](experiments/2026-11-10-local-price-board.md).
+The price job passed all182 cases without skips on source `b2eda225`; the same
+[CI run](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42741755078)
+passed all four jobs. See the [local price-board result](experiments/2026-11-10-local-price-board.md).
 
 None of these jobs restores dependency caches, uploads artifacts, deploys or accesses
 secrets. Passing compatibility checks does not establish native-history

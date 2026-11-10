@@ -1,8 +1,9 @@
 # Local synthetic price board — bounded software result, 2026-11-10
 
 Status: All four tasks and the complete local implementation/evidence are
-independently accepted. Feature publication and actual new-source Linux CI remain
-pending. This is a synthetic local price-service demonstration,
+independently accepted and published. Source `b2eda225cf9709f1abf5d383c19106d707eb5444`
+passed all four [Linux CI jobs](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42741755078).
+This is a synthetic local price-service demonstration,
 not sale prices, neural integration, training or scientific qualification.
 
 The [accepted design](../superpowers/specs/2026-11-10-local-price-board-design.md)
@@ -40,11 +41,12 @@ are outside this local technical test.
 | Task3 build |Exit0 |Both HTML entries retained; market-only manifest graph served; existing replay chunk-size warning retained |
 | Task4 final process-only suite |4 passed,0 skipped,2.20s on Windows |Real CLI child processes, ownership/release, crash after COMMIT before anchor, lost HTTP result then restart |
 | Task4 complete Market suite |181 passed,1 skipped,29.85s on Windows |All seven price test files, including the four new process cases |
-| New Ubuntu24.04 `market_price` job |Configured; not yet executed/accepted |POSIX ownership and Linux symlink assertions remain pending actual source CI |
+| Ubuntu24.04 `market_price` job |182 passed,0 skipped,22.18s |All price cases including POSIX ownership and the Windows-skipped symlink assertion |
 
 The Windows skip is `test_symlink_assets_rejected`: creating the test symlink
 fails with WinError1314 because this account lacks the privilege. Rejection code
-and assertions remain unchanged; no skip stands in for Linux execution. These
+and assertions remain unchanged; that assertion and all other price cases passed
+in the source Linux run. These
 results do not relabel earlier failures or skips: Task3's earlier complete run
 reported267 passes/1 skip; the final approved host run includes the formerly
 skipped dangling-output-link case and all270 pass.
@@ -142,8 +144,18 @@ text and the viewer job remain unchanged. The viewer's existing `npm test`
 discovers market tests and builds both entries. Final independent local review
 accepted the complete implementation/evidence, reran all four process cases
 (4 passed in2.15s), and verified all27 prior task source hashes,159 protected
-original files, seven artifacts and complete old CI command texts. No Linux
-success or final source CI link/SHA is claimed before those checks occur.
+original files, seven artifacts and complete old CI command texts.
+
+Published source `b2eda225cf9709f1abf5d383c19106d707eb5444` completed
+[CI42741755078](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42741755078)
+successfully in all four jobs:1469 existing native/session passes with47 declared
+platform/private-artifact skips in632.97s;253 buffer passes with six Windows-only
+skips in260.97s;182 price passes without skips in22.18s;266 viewer passes with four
+private-artifact skips in46833.037492ms, followed by successful two-entry build
+(210ms). The price job records Python3.12.14, SQLite3.53.1 and
+clock_gettime(CLOCK_MONOTONIC), monotonic/nonadjustable,1ns reported resolution.
+These Linux results complement the actual Windows observations; they do not
+claim a real browser or fullgraph event rehearsal on the CI runner.
 
 No MaleCNS acquisition, provider spend, sales/public event, deployment, soak/load,
 neural-market integration, biological learning or scientific qualification is
