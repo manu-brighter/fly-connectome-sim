@@ -470,9 +470,23 @@ now advances its injected clock inside the second observation, retaining exact
 discard/partial-seal/inspection assertions.18 focused checks passed. Independent
 review accepts successful CI jobs with identical relevant production sources for
 the bounded80/600 run; no failed workflow is relabelled green. The test-only CI
-continues separately. No actual native worker has yet run. Next: concrete finite local
-acceptance with generated images, actual source-bound execution/browser inspection,
-then the usable local pilot. Preserve the distinction from multi-hour performance,
+continues separately. Checkpoint760d03b subsequently passed all four jobs in
+CI42886745926:1021 Market passes/77 skips,1469 native passes/47 skips,253 buffer
+passes/6 skips,315 Viewer passes/4 skips and build.
+Actual finite pilot01 then failed before observations at the5-second probe-start
+deadline; independent evidence confirms worker exit1 and complete cleanup. That
+delay remains unexplained. An independently reviewed probe-only diagnostic passed
+within the unchanged deadline. A separate startup-context diagnostic completed the
+probe and existing fullgraph engine construction, then exposed a concrete build
+identity comparison defect: immutable expected flags were a tuple, while genuine
+JSON build flags were a list. The worker now deep-converts only expected metadata;
+all exact build fields, extra-field rejection and zero-clock checks remain.100
+focused tests passed; source review accepted the fix. No observations or successful
+integrated price pilot are claimed from these diagnostics. Failure evidence and
+the separate original timeout remain retained; no deadline was increased.
+Fresh finite pilot02 is prepared for80 observations/600 seconds with the corrected
+worker and two generated images. Next: its reviewed source-bound execution/browser
+inspection, then the usable local pilot. Preserve the distinction from multi-hour performance,
 public deployment and scientific support. Continue until the local pilot works.
 Independent source/CI and
 concrete finite preflight gates precede one actual run. The330-file baseline

@@ -69,6 +69,14 @@ def _bootstrap_dependencies(bindings):
         raise protocol.ProtocolError("source") from None
 
 
+def _initial_identity(engine, bindings):
+    """Match the initial engine against every prepared native build field."""
+    identity = engine.identity()
+    _require(identity["model_provenance"]["build"] == dict(bindings.native_metadata.to_dict(),
+        model="stonkfly-dual-compartment-v1") and engine.brain.sim_ms == 0, "source")
+    return identity
+
+
 @owned
 class _Worker:
     """Single-owner call loop; direct fake injection is private and never a CLI option."""
@@ -361,9 +369,7 @@ def main():
         from fly_connectome_sim.experiment.cell_activity import build_header
         engine = FlyEngine.from_prepared_graph()
         guard.verify_cache()
-        identity = engine.identity()
-        _require(identity["model_provenance"]["build"] == dict(bindings.native_metadata,
-                 model="stonkfly-dual-compartment-v1") and engine.brain.sim_ms == 0, "source")
+        identity = _initial_identity(engine, bindings)
         header = build_header(identity, bindings.runtime_root)
         protocol.validate_header(header, bindings=bindings)
         worker = _Worker(engine, header, clock, pipe.send, pipe.receive,

@@ -271,3 +271,35 @@ def test_binding_accepts_only_checksum_pinned_empty_preserved_source(tmp_path):
         empty.write_bytes(b'')
         with pytest.raises(ValueError, match='source'):
             n._binding(empty, 1048576, time.perf_counter_ns() + 1000000000)
+
+
+def test_initial_identity_accepts_exact_json_build_from_frozen_bindings():
+    from market.native_protocol import FrozenRecord
+    header = header_fixture()
+    metadata = dict(header['engine_identity']['model_provenance']['build'])
+    metadata.pop('model')
+    bindings = FrozenRecord(dict(native_metadata=metadata))
+    engine = FakeEngine(header)
+    assert type(bindings.native_metadata.flags) is tuple
+    assert type(engine.identity()['model_provenance']['build']['flags']) is list
+    assert api()._initial_identity(engine, bindings) == header['engine_identity']
+
+
+@pytest.mark.parametrize('field', ['source_sha256', 'compiler', 'flags', 'library', 'binary_sha256', 'model', 'extra', 'clock'])
+def test_initial_identity_rejects_each_changed_build_field_and_nonzero_clock(field):
+    from market.native_protocol import FrozenRecord
+    header = header_fixture()
+    build = header['engine_identity']['model_provenance']['build']
+    metadata = {key: value for key, value in build.items() if key != 'model'}
+    bindings = FrozenRecord(dict(native_metadata=metadata))
+    engine = FakeEngine(header)
+    if field == 'clock':
+        engine.brain.sim_ms = 500
+    elif field == 'flags':
+        build[field] = [*build[field], '-unbound']
+    elif field == 'extra':
+        build['extra'] = 'unbound'
+    else:
+        build[field] = '0' * 64 if field.endswith('sha256') else 'unbound'
+    with pytest.raises(ValueError, match='source'):
+        api()._initial_identity(engine, bindings)
