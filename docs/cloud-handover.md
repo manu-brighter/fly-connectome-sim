@@ -352,9 +352,16 @@ StageC is complete within that local synthetic scope. Published source
 182 price passes/no skips in22.18s (including POSIX ownership and symlink rejection),
 1469 existing backend passes/47 skips in632.97s,253 buffer passes/six Windows-only
 skips in260.97s,266 viewer passes/four private-artifact skips and build. The local
-270-pass viewer evidence remains separate. Next is a separately reviewed StageD
-image-admission lifecycle, before untrusted decoding, HTTP uploads or native-worker
-integration. No sale prices, public readiness or neural integration are claimed.
+270-pass viewer evidence remains separate. The next StageD
+[image-admission contract](superpowers/specs/2026-11-10-image-admission-design.md)
+and [single-task plan](superpowers/plans/2026-11-10-image-admission.md) are now
+independently accepted prospectively. Implement only the metadata lifecycle:
+one receiving-or-pending slot plus one active image, immutable300s acceptance-to-
+handoff deadline, finite receipt history and explicit unknown worker outcomes.
+Receipt timing and retry/contradiction/index-overflow precedence were corrected
+before implementation. This starts no decoder, HTTP upload or native worker and
+changes no price; those are later reviewed slices. No sale prices, public readiness
+or neural integration are claimed.
 The preservation baseline records all 270 preexisting tracked files, all 64 frozen
 helpers unchanged and the same 41-member package fingerprint. No new dependency
 or native/API run is needed. The planning checkpoint passed
