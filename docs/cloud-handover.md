@@ -391,8 +391,13 @@ and build. All five locally skipped symlink cases passed on Linux. D2 is complet
 The next local [intake/preview/approval contract](superpowers/specs/2026-11-10-image-intake-design.md)
 and [three-task plan](superpowers/plans/2026-11-10-image-intake.md) are independently
 accepted prospectively after public auth/rate API, capability separation and
-verified-preview corrections. Task1 coordinator implementation has started;
-HTTP and UI integration follow sequentially, with no connected neural worker yet.
+verified-preview corrections. Task1 coordinator is now independently accepted
+after fixing final-read expiry/pruning/clock inconsistencies:458 affected passes/
+four Windows privilege skips, all99 coordinator cases and39 independent boundary
+checks. [Component evidence](experiments/2026-11-10-image-intake.md) records the
+actual owned generated-image fixture and the test-only512-receipt pressure seam.
+Task2 optional HTTP/CLI integration follows, then the guest/operator UI. No neural
+worker is connected; approved images queue and expire without a processed claim.
 Continuous native integration and measured live presentation remain later.
 The preservation baseline records all 270 preexisting tracked files, all 64 frozen
 helpers unchanged and the same 41-member package fingerprint. No new dependency

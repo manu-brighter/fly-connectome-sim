@@ -7,7 +7,9 @@ show only sanitized pixels to the operator and record explicit approval/rejectio
 
 **Status:** Independently accepted prospectively with the
 [exact intake contract](../specs/2026-11-10-image-intake-design.md).
-D2 source/Windows review and all four source CI jobs passed. Task1 is in progress.
+D2 source/Windows review and all four source CI jobs passed. Task1 coordinator is
+independently accepted locally:458 affected passes/four Windows privilege skips
+and39 independent correction checks. Task2 optional HTTP/CLI integration follows.
 
 **Architecture:** One coordinator composes unchanged D1 lifecycle and D2 decoder;
 the existing HTTP server gains optional image routes, followed by bounded guest/
@@ -55,28 +57,30 @@ Consume unchanged AdmissionController/ImageDecoder/Clock APIs; produce the exact
 ImageIntake methods and DTOs. No HTTP/browser/native integration in this task.
 
 - [x] Capture accepted contract/plan and prior source/artifact identities.
-- [ ] Write meaningful failing tests for reserve/body/admit timing, asynchronous
+- [x] Write meaningful failing tests for reserve/body/admit timing, asynchronous
   completion, original phase boundaries, capability/pixel capacity/pruning,
   lost acceptance response semantics, normal decoder rejection versus fatal
   clock/ownership/integration errors, and no processed state without a worker.
-- [ ] Implement one coordinator lock with documented fixed lock order; never
+- [x] Implement one coordinator lock with documented fixed lock order; never
   hold it during decode/body/socket/join. Capture completion identity/generation,
   preserve D1's state authority and discard late bytes after expiry/stop.
-- [ ] Test callback/maintenance/moderation races, one busy task even after D1
+- [x] Test callback/maintenance/moderation races, one busy task even after D1
   pending release, status/preview identity and capability retirement, exact bucket
   boundaries, stop/join/cleanup failure and retained owner context. Include one
   actual owned D2 conversion of a generated safe fixture; doubles prove only logic.
   Test explicit public receipt-authentication/rate APIs without private-field
   access, auth failure with no bucket/state change, exactly-once role accounting,
-  pruned tokens, clock-faulted diagnostics and closed-state HTTP outcomes. Include
+  pruned tokens, clock-faulted diagnostics and closed-state intake errors for later
+  HTTP mapping. Include
   deterministic same-role collisions with bounded failure and cross-role/future
   primary separation; no authority token-generator changes.
   Exercise reserve_upload(guest_capability), atomic guest_status(id,status_capability),
   charge_operator(diagnostic) and uncharged operator_status/state/preview/moderate.
   Failed clocks spend only frozen remaining diagnostic credits, without refill,
-  then return429; closed returns503. Test all four pre-admit mint attempts and
+  then raise rate_limited; closed raises closed (HTTP429/503 mapping belongs to
+  Task2). Test all four pre-admit mint attempts and
   release only the caller's reservation on collision exhaustion.
-- [ ] Run focused tests and independent Astra spec/quality review; fix concrete
+- [x] Run focused tests and independent Astra spec/quality review; fix concrete
   findings with regressions and record the reviewed local checkpoint.
 
 ## Task 2 — Optional HTTP/CLI integration without price regressions
