@@ -14,8 +14,9 @@ Node >=24 direct node:test, TypeScript 7.0.2 and Vite 8.3.5 already locked.
 
 **Spec:** [Exact design and contracts](../specs/2026-11-10-local-price-board-design.md).
 
-**Status:** Prospectively accepted after independent review; no implementation
-or passing tests are claimed. User already authorized autonomous sequential
+**Status:** Prospectively accepted at `b05ce33`; Task 1 implementation is now
+independently accepted. Tasks 2–4 remain pending. The user already authorized
+autonomous sequential
 execution with Sol implementation/Astra review; no new approval loop is added.
 Controller must accept and push these docs with accepted result `6c7685c` before
 product code. Parent/root controls acceptance, publication and closure.
@@ -65,14 +66,14 @@ product code. Parent/root controls acceptance, publication and closure.
 
 - [x] Independently review both prospective documents against the accepted StageC
   scope and architecture; fix findings without claiming the review already passed.
-- [ ] Verify branch/tracking `feat/connectome-experiment-core` / origin. Publish
+- [x] Verify branch/tracking `feat/connectome-experiment-core` / origin. Publish
   accepted docs with already accepted result; explicit push only
   `git push -u origin feat/connectome-experiment-core`. No implementation first.
-- [ ] Record the spec's exact protected preexisting tracked file SHA256 manifest and neural
+- [x] Record the spec's exact protected preexisting tracked file SHA256 manifest and neural
   `model_fingerprint()` in ignored `.tools/market-local-20261110/`; preserve the
   historical artifact/source manifest from the accepted performance result.
   Record installed Python/SQLite/Node/Vite paths and versions without installing.
-- [ ] Confirm local Python3.12 explicit transaction mode/PRAGMA behavior and
+- [x] Confirm local Python3.12 explicit transaction mode/PRAGMA behavior and
   `perf_counter` information. Runtime notes already checked Python3.12.14,
   SQLite3.53.1 and explicit BEGIN/ROLLBACK; this is not application verification.
   Inspect installed stdlib HTTP deadline/header hooks and ownership APIs before
@@ -95,7 +96,7 @@ idempotent and releases DB/OS ownership; context-manager support is allowed but
 not consumed by later tasks. Tests provide `FakeClock.sample/describe`, explicit
 proposal constructors and `make_present` helpers only in conftest.
 
-- [ ] Write failing `test_price_service.py` config/price/terminal tests. Fix
+- [x] Write failing `test_price_service.py` config/price/terminal tests. Fix
   these assertions by name: `test_full_jump` gives activated400→700 and version1;
   `test_exact_cooldown` uses fresh events at+1,799,999ms (`cooldown`) and
   +1,800,000ms (`activated`); `test_independent_drinks` activates drink01 while00
@@ -103,7 +104,7 @@ proposal constructors and `make_present` helpers only in conftest.
   activation count and deadline; `test_expiry_alone_does_nothing` advances fake
   time and asserts no new activation. Refresh presence with fresh ACKs in boundary
   tests; an expired board must not accidentally mask cooldown assertions.
-- [ ] Add failing `test_sequence_age_and_reasons`: exact ages -1ns,0,
+- [x] Add failing `test_sequence_age_and_reasons`: exact ages -1ns,0,
   4,999,999,999ns,5,000,000,000ns; current-source seq3 consumes high-water,
   seq2 rejects reordered, gaps accepted, old session/generation/config/unknown
   drink/stale drink version/range/off-grid reject with exact first-failure reason.
@@ -111,14 +112,14 @@ proposal constructors and `make_present` helpers only in conftest.
   ProposalResult after time, pause and restart; changed digest conflicts without
   advancing high-water. Validate bool money, duplicate IDs, unknown config fields,
   bounds/encoding/names and counters at JSON-safe exhaustion.
-- [ ] Add failing `test_price_clock.py`: `test_postcommit_anchor_includes_latency`
+- [x] Add failing `test_price_clock.py`: `test_postcommit_anchor_includes_latency`
   delays COMMIT with fake elapsed time and asserts full1800s remains afterward;
   `test_clock_fault_after_commit_preserves_price`, `test_backward_clock_fences`,
   `test_invalid_clock_samples`, `test_utc_jumps_do_not_unlock`,
   `test_repeated_restart_full_lock`. Assert untouched drinks start eligible,
   every previously changed drink starts recovery lock, UTC estimates only label,
   and ceil(remaining_ns/1e6) never rounds toward early eligibility.
-- [ ] Add failing `test_price_presence.py`: claim→rendered snapshot→ACK is present
+- [x] Add failing `test_price_presence.py`: claim→rendered snapshot→ACK is present
   with one revision increment and no ACK loop; read-only polling never replaces
   challenge; revision change rejects old ACK; expiry equality fences once before
   reconnect even without maintenance; no snapshot issuance renews lease.
@@ -126,35 +127,35 @@ proposal constructors and `make_present` helpers only in conftest.
   generation fence, replaces token/challenge, rejects retired ID superseded;
   `test_claim_history_bound` accepts64 replacements, rejects65 claim_capacity,
   retains current retry/ACK and rejects stale-incarnation retry before history.
-- [ ] Add failing `test_savepoint_retains_presence_fence`: inject expiry between
+- [x] Add failing `test_savepoint_retains_presence_fence`: inject expiry between
   tentative activation and final check; assert rejected result, no activation,
   durable absent state, generation/revision increment exactly once, consumed
   sequence and immutable request mapping after reopen. Inject persistence failure
   separately and assert in-memory activation fence remains latched.
-- [ ] Add failing safety tests with threading barriers:
+- [x] Add failing safety tests with threading barriers:
   `test_later_pause_defeats_resume_before_commit` and
   `test_later_pause_defeats_resume_during_commit` capture old ingress_epoch,
   block resume, request newer safety pause, release; assert snapshot.paused true,
   newer generation before subsequent activation, ResumeReply preserves historical
   result plus superseding_reason and only a newly captured resume can clear.
   Also assert repeated pause changes neither revision nor generation once reconciled.
-- [ ] Add failing `test_price_storage.py`: explicit rollback leaves no accepted
+- [x] Add failing `test_price_storage.py`: explicit rollback leaves no accepted
   request/event mapping; fixture worst-case row reservation enforces9000 limit;
   control reserve reaches10000 without eviction; full-ledger pause still works
   with audit_recorded false; failed durable pause returns durable false and
   storage latch. Validate64MiB page cap, refusal of oversize existing DB/journal,
   bounded journal envelope, SQLite-full failure, malformed/incompatible DB and
   exact reopen config. Two authority objects cannot own one DB on different ports.
-- [ ] Run red: `.venv/Scripts/python.exe -m pytest -q tests/market/test_price_service.py tests/market/test_price_clock.py tests/market/test_price_presence.py tests/market/test_price_storage.py`.
+- [x] Run red: `.venv/Scripts/python.exe -m pytest -q tests/market/test_price_service.py tests/market/test_price_clock.py tests/market/test_price_presence.py tests/market/test_price_storage.py`.
   Record actual missing-implementation/assertion failures; no skip replacing red.
-- [ ] Implement minimal complete spec behavior. Keep all transaction/clock/presence
+- [x] Implement minimal complete spec behavior. Keep all transaction/clock/presence
   state in authority. Use real SQLite tests with injectable clock and monkeypatch
   private `_commit_transaction() -> None` /
   `_anchor_committed_activation(drink_id: str) -> None` only as deterministic
   commit barriers; production hooks have no external control route. Reapply
   detected presence transitions after savepoint rollback. Pause ingress epoch
   must remain available while a long authority operation holds its lock.
-- [ ] Run the same command green, inspect all failures/skips, and inspect SQL
+- [x] Run the same command green, inspect all failures/skips, and inspect SQL
   constraints/PRAGMA results on actual runtime. Controller obtains independent
   Astra review of source and evidence; fix findings with red/green regression.
   Controller alone creates the reviewed local Task1 checkpoint, explicit paths.
@@ -299,7 +300,7 @@ and owned-process termination; do not kill unrelated processes.
   ownership evidence; POSIX equivalent runs in CI, never label unrun platform passed.
 - [ ] Add a separate15-minute Ubuntu24.04 `market_price` CI job reusing existing
   pinned checkout/setup-uv/Python3.12.14 and locked test environment. Exact new
-  command `uv run --no-sync pytest -q tests/market` includes all seven test files;
+  command `uv run --no-sync python -m pytest -q tests/market` includes all seven test files;
   record Python/SQLite/clock identity, run without MaleCNS data/provider credentials.
   Existing native and market_buffers job commands remain byte-for-byte unchanged;
   existing viewer `npm test` discovers market-*.test.mjs and builds both entries.
@@ -337,6 +338,15 @@ and owned-process termination; do not kill unrelated processes.
   permission for PR, merge, deployment or additional acquisition from this stage.
 
 ## Plan self-check
+
+Task 1 is independently accepted after one review correction round: 95 tests
+passed without skips in 8.24 s on Windows. Public-method regressions now preserve
+the capacity fence across immediate restart and later clock/storage failures;
+closed proposal methods return the domain error. Independent re-review verified
+late capacity after tentative activation and failed fence persistence too. Linux,
+HTTP and browser checks remain for their later tasks. The CI command uses the
+same `python -m pytest` entry as local verification, making the repository-local
+`market/` import explicit without changing package installation or test coverage.
 
 Spec coverage maps authority/clock/presence/safety/store to Task1, fixture/HTTP
 bounds to Task2, board/build to Task3 and process/CI/docs to Task4. Later tasks

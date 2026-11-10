@@ -130,6 +130,6 @@ handover/plan updates and publication. No frozen source edits during the attempt
 - [x] Public offline full inspection and Astra independent raw-cell/group/ring/
   queue/clock/resource audit. Report actual waits, gaps and all outcome dimensions.
   No automatic retry, retuning or rate/generalization claims from a short burst.
-- [ ] Publish reviewed evidence and update the continuation record. Decide whether
+- [x] Publish reviewed evidence and update the continuation record. Decide whether
   the scoped performance result supports the local synthetic Stage C board;
   keep real upload/display/load/rehearsal and public-use gates distinct.

@@ -313,9 +313,23 @@ Python/SQLite owns prices, postcommit cooldowns, restart recovery, presence and
 idempotency; a separate TypeScript board uses the existing viewer build. All service
 durations share the high-resolution authority clock. Race tests cover late pause
 versus resume, presence loss during rollback and retired primary sessions.
-Implementation has not started; publish these prospective documents alongside
-accepted result checkpoint `6c7685c`, then execute the four bounded tasks with Sol
-and independent Astra reviews. No new dependency or native/API run is needed.
+Prospective checkpoint `b05ce336600ed1e8031907b2a3bad10813ab93ba` and accepted result
+`6c7685c` are published on the feature branch. Execute the four bounded tasks with
+Sol and independent Astra reviews. Task 1's authority is independently accepted:
+95 tests passed without skips in 8.24 s on Windows, including real SQLite-full,
+rollback-journal and process-ownership evidence. One review correction preserves
+capacity across immediate restart and later clock/storage faults; a separate
+re-review accepted both that fix and closed-authority error handling. Price jumps,
+postcommit cooldowns, idempotency, presence fences and pause/resume races are
+covered. Task 2 adds the bounded local HTTP/fixture adapter next; Linux/HTTP/browser
+and complete new-source CI are still pending. No active sale prices are claimed.
+The preservation baseline records all 270 preexisting tracked files, all 64 frozen
+helpers unchanged and the same 41-member package fingerprint. No new dependency
+or native/API run is needed. The planning checkpoint passed
+[CI42730169795](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42730169795):
+1469 existing backend passes / 47 skips in 634.51 s, 253 buffer passes / six
+Windows-only skips in 355.87 s, 243 viewer passes / four private-artifact skips
+and build. This CI precedes the new application implementation.
 
 The protocol-only checkpoint `f07988a` triggered
 [CI42671895977](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42671895977),
