@@ -279,9 +279,9 @@ class _Handler(socketserver.BaseRequestHandler):
                 raise MarketError("not_found")
         if path == "/market-image.html" and self.server.image_intake is None:
             raise MarketError("not_found")
-        native_route = path == "/api/native/state"
+        native_route = path in ("/api/native/state", "/api/native/frame")
         if path == "/api/native" or path.startswith("/api/native/"):
-            self._json_limit = 16384
+            self._json_limit = 24576 if path == "/api/native/frame" else 16384
             if (not native_route or self.server.image_intake is None
                     or not self.server.image_intake.native_enabled):
                 raise MarketError("not_found")
@@ -313,13 +313,15 @@ class _Handler(socketserver.BaseRequestHandler):
             if not credential.startswith("Bearer ") or not credential[7:]:
                 raise MarketError("unauthorized")
             role, _ = self.server._authenticate(credential[7:])
+            if path == "/api/native/frame" and role not in ("operator", "view"):
+                raise MarketError("unauthorized")
             intake = self.server.image_intake
             self.server._check_image_transport()
             if role == "operator":
                 intake.charge_operator(diagnostic=True)
             else:
                 intake.charge_native_read()
-            self._json(intake.native_state())
+            self._json(intake.native_frame() if path == "/api/native/frame" else intake.native_state())
             return
         if path in self.server._assets:
             if method != "GET":

@@ -518,6 +518,50 @@ The330-file baseline preserves all64 frozen helpers,41 package members and seven
 historical artifacts. Native price admission is implemented; richer live cell/anatomy
 presentation remains separate from this minimal seven-group pane. Never route real
 evidence through the synthetic fixture path. No public deployment or API call ran.
+
+**Latest continuation: Fly Exchange visual pilot.** The user explicitly requested
+the animated fly, phone swipes and daytrader-style price gestures. The new view
+reuses the existing fly factory without changing the
+historical event renderer. A freestanding phone shows only approved, started RGB
+matching the latest fresh native observation; confirmed price transitions move a
+physical slider beside a trading monitor. Browser-observed step histories and
+seven population traces retain missing intervals. Reduced motion, WebGL fallback,
+phone/body/limb clearance, stale-photo clearing and disposal are covered. The
+animation is illustrative; no measured motor behavior or live anatomical rendering
+is claimed. Cooldowns remain visible; full configured price jumps remain possible.
+
+The new original-operator/view-only `/api/native/frame` route retains one12288-byte
+sanitized image and returns at most24576bytes of JSON. Pending/unreviewed pixels,
+guest/primary credentials, stale/mismatched/ended inputs are excluded. Independent
+backend/frontend integrity reviews accepted this change after fixing an old scene
+price surviving a connected session reset.198 affected backend tests passed;
+the full viewer suite passed339 with one existing Windows symlink skip, and the
+final TypeScript/build passed. The existing large Three.js chunk warning remains.
+
+The earlier interactive live02 was interrupted for this source upgrade: exec60278
+exited1, no final/cleanup seal was written, and host inspection found no matching
+pilot processes or18767 listener. This is retained as an unsealed interruption,
+not a successful archival completion. The accepted finite02 artifacts are unchanged.
+One freshly bound interactive visual run is now at
+`.tools/native-pilot-trader-20261110-01/`, with its separate sibling SQLite database,
+port18767,480real-minute/86400-observation upper bounds and owned exec92726.
+Prepared SHA256 `3173b952240c08d8ef4140045624e262457975a72c7bcfa1598e1d8802f60c02`.
+Only the two reviewed backend file bindings differ from the prior accepted live
+source; core, worker, guard and frozen helpers are unchanged. Private role URLs
+are in `.tools/trader-visual-20261110/live-01.log`; prices remain paused for user
+takeover/resume. Always recheck actual process state on continuation.
+
+Actual browser verification uploaded/approved generated A once: receipt
+`20281577-b98b-432b-a352-4db56106de78`, observations52–59,8/8 processed.
+At completed observation53, the phone displayed the exact canonical RGB digest
+`0ed4b02146ccfceb967bc55c1499deb88de0676eb4d8807d44e8a7088829d968`;
+the captured response has12288bytes and independently verifies against that digest.
+The later black response contains no RGB and the phone clears. Screenshots, original
+HTTP response bodies and verification are local under `.tools/trader-visual-20261110/`.
+Separate explicitly labelled browser fixtures exercised rising/falling prices,
+gaps, disconnect and390px mobile layout; these are animation tests, not additional
+native price activations. The new live run is ongoing and unsealed, not an8-hour
+rehearsal or scientific qualification. No paid API or public deployment was used.
 The preservation baseline records all 270 preexisting tracked files, all 64 frozen
 helpers unchanged and the same 41-member package fingerprint. No new dependency,
 provider call or fullgraph acquisition was needed for the completed local intake.

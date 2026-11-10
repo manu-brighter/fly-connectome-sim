@@ -60,8 +60,11 @@ its queue-only behavior. The separate [local native pilot](docs/getting-started.
 connects approved images, measured activity and experimental price decisions in one
 session. One finite Windows run processed two approved images through eight
 observations each and changed one test price from CHF4 to CHF5; independent
-inspection accepted this bounded result. The live pane shows seven measured groups,
-without rich cell/anatomy rendering. No API key is used by this local simulation.
+inspection accepted this bounded result. **Fly Exchange** adds an animated 3D fruit
+fly at a trading desk: approved measured images appear on its phone, and confirmed
+price changes drive a physical price slider. Observed price histories and seven
+population traces accompany the scene. Motion is illustrative; live cell/anatomy
+rendering remains separate. No API key is used by this local simulation.
 
 The [continuous session](docs/superpowers/specs/2026-11-03-feed-event-session.md)
 uses one fresh engine for fast-feed reels and then 2 s of event cards, without

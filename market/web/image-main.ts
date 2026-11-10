@@ -4,8 +4,15 @@ import { adoptImageReceipt, adoptOperatorState, adoptPaintedPreview, createImage
 import type { ImageState, Painted } from './image-state.ts';
 import { clearPreview, createGuestView, createNativeView, createOperatorView, paintRgb, renderNative, renderOperator, remainingText, statusText } from './image-view.ts';
 import { parseNativeState } from './native-protocol.ts';
-import { adoptNativeState, createNativeState, disconnectNative, nativeAllowsImages } from './native-state.ts';
+import { adoptNativeState, createNativeState, disconnectNative, nativeAllowsImages, nativeFreshness } from './native-state.ts';
 import type { NativeState } from './native-state.ts';
+import { frameMatchesNative, parseNativeFrame } from './trader-state.ts';
+import type { VerifiedNativeFrame } from './trader-state.ts';
+
+export type NativePresentation = {
+  onState: (state: NativeState, nowMs: number) => void;
+  onFrame: (frame: VerifiedNativeFrame | null) => void;
+};
 
 class HttpError extends Error { status: number; constructor(status: number) { super('Bildanfrage abgelehnt'); this.status = status; } }
 function readable(window: Window): boolean { return !window.document.hidden && window.navigator.onLine !== false; }
@@ -216,11 +223,62 @@ export function startOperatorImage(root: HTMLElement, operatorToken: string, nat
     for (const dispose of disposers) dispose(); clearPreview(view.canvas); state = disconnectImage(state); render(); };
 }
 
-export function startNative(root: HTMLElement, token: string): { dispose: () => void; getState: () => NativeState } {
+export function startNative(root: HTMLElement, token: string, presentation?: NativePresentation): { dispose: () => void; getState: () => NativeState } {
   const document = root.ownerDocument, window = document.defaultView!, view = createNativeView(root), disposers: (() => void)[] = [];
   let state = createNativeState(), stopped = false, absent = false, busy = false, serial = 0;
   let timer: number | undefined, clockTimer: number | undefined, active: AbortController | null = null, deadline: number | undefined;
-  function render() { renderNative(view, state, window.performance.now()); }
+  let frameKey: string | null = null, frameSerial = 0, frameAttempt = -Infinity, paintedKey: string | null = null;
+  let frameRequest: AbortController | null = null, frameDeadline: number | undefined;
+  function notifyFrame(frame: VerifiedNativeFrame | null) {
+    try { presentation?.onFrame(frame); } catch { /* Rendering cannot change native transport. */ }
+  }
+  function clearFrame() {
+    frameSerial++; frameRequest?.abort(); frameRequest = null;
+    window.clearTimeout(frameDeadline); frameDeadline = undefined;
+    frameKey = paintedKey = null; notifyFrame(null);
+  }
+  async function fetchFrame(key: string) {
+    const operation = ++frameSerial, controller = new AbortController(); frameRequest = controller;
+    frameAttempt = window.performance.now();
+    frameDeadline = window.setTimeout(() => controller.abort(), 5000);
+    const current = () => !stopped && !controller.signal.aborted && operation === frameSerial && frameKey === key && readable(window);
+    try {
+      const response = await request(window, '/api/native/frame', token, controller.signal);
+      if (!response.ok) throw new HttpError(response.status);
+      const bytes = await readBoundedResponse(response, 24576, false);
+      const frame = parseNativeFrame(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)));
+      if (!current() || !frameMatchesNative(frame, state, window.performance.now())) return;
+      const decoded = window.atob(frame.rgb_base64!), pixels = Uint8Array.from(decoded, char => char.charCodeAt(0));
+      await verifyRgb(pixels, frame.frame_sha256!, window.crypto);
+      if (!current() || !frameMatchesNative(frame, state, window.performance.now())) return;
+      const { rgb_base64: _, ...metadata } = frame;
+      paintedKey = key; notifyFrame({ ...metadata, pixels });
+    } catch {
+      if (current()) { paintedKey = null; notifyFrame(null); }
+    } finally {
+      if (frameRequest === controller) {
+        window.clearTimeout(frameDeadline); frameDeadline = undefined; frameRequest = null;
+      }
+    }
+  }
+  function syncFrame() {
+    if (!presentation) return;
+    const snapshot = state.snapshot, now = window.performance.now(), fresh = nativeFreshness(state, now);
+    if (stopped || !readable(window) || !fresh.live || fresh.ageMs === null || fresh.ageMs >= 5000 || snapshot?.fault !== null || snapshot.input_kind !== 'image') {
+      if (frameKey !== null || paintedKey !== null || frameRequest !== null) clearFrame();
+      else notifyFrame(null);
+      return;
+    }
+    const key = `${snapshot.incarnation}/${snapshot.worker_session}/${snapshot.observations_completed}/${snapshot.image_id}/${snapshot.frame_sha256}`;
+    if (key !== frameKey) { clearFrame(); frameKey = key; frameAttempt = -Infinity; }
+    if (!frameRequest && paintedKey !== key && now - frameAttempt >= 1000) void fetchFrame(key);
+  }
+  function render() {
+    const now = window.performance.now();
+    renderNative(view, state, now);
+    try { presentation?.onState(state, now); } catch { /* Keep the measured pane and polling independent. */ }
+    syncFrame();
+  }
   function schedule() { window.clearTimeout(timer); if (!stopped && !absent) timer = window.setTimeout(() => { void poll(); }, 2000); }
   function interrupt() { serial++; active?.abort(); window.clearTimeout(deadline); state = disconnectNative(state); render(); }
   async function poll() {
@@ -249,7 +307,7 @@ export function startNative(root: HTMLElement, token: string): { dispose: () => 
   function tick() { if (stopped || absent) return; render(); clockTimer = window.setTimeout(tick, 250); }
   clockTimer = window.setTimeout(tick, 250); void poll();
   return { getState: () => state, dispose: () => {
-    stopped = true; interrupt(); window.clearTimeout(timer); window.clearTimeout(clockTimer);
+    stopped = true; clearFrame(); interrupt(); window.clearTimeout(timer); window.clearTimeout(clockTimer);
     for (const dispose of disposers) dispose();
   } };
 }

@@ -761,7 +761,10 @@ Windows run completed 80 observations / 40 model seconds, processed two approved
 with eight observations each and activated one test price change, CHF4→5. Independent
 inspection accepted that finite result; it establishes no multi-hour capacity or
 public use.
-The current live pane displays seven measured groups, not rich cell/anatomy rendering.
+The Fly Exchange view includes a 3D fly, phone swipes, an animated price slider,
+observed price histories and seven measured population traces. It reuses the
+event demo's fly geometry; its movements are illustrative, not measured behavior.
+Live cell/anatomy rendering remains separate.
 See the [actual run evidence](experiments/2026-11-10-native-worker-software.md#actual-finite-local-run).
 
 Build the viewer first. Use a fresh work-root name and an existing empty decoder
@@ -789,6 +792,13 @@ Open the printed operator URL, claim the primary display, then resume prices whe
 its acknowledgement is current. Open the guest URL locally to upload and use the
 operator's private preview to approve. Images expire at their original five-minute
 handoff deadline; a processed result requires eight validated500ms observations.
+Only an approved, started image matching a fresh native observation appears on the
+fly's phone. Unavailable, black, stale and disconnected inputs clear the photo.
+Unreviewed uploads remain private. The original operator and view links can see
+this confirmed input; guest upload/status links cannot fetch it.
+Charts start at the current page's confirmed baseline and mark missing intervals;
+opening or reconnecting does not replay historical price gestures. Cooldowns remain
+visible on the board. Reduced-motion preferences and a static WebGL fallback are supported.
 The model can run slower than real time. The pane separates model progress and
 measurement freshness; price cooldowns always use30real minutes per drink. Full
 jumps within each drink's bounds are allowed. Quiet periods and favorites are valid.

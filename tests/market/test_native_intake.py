@@ -529,3 +529,107 @@ def test_live_wall_end_with_inflight_image_retains_partial_watermark(live_native
     value = intake.native_state()
     assert value["state"] == "ended" and value["fault"] is None
     assert value["observations_completed"] == 53
+
+
+def test_native_frame_hides_pending_and_unobserved_approved_pixels(native):
+    intake, _, decoder, _, session = native
+    accepted = upload(intake, decoder)
+    item_id = accepted["image"]["id"]
+    settled(intake, decoder, item_id)
+    assert intake.native_frame()["rgb_base64"] is None
+    intake.moderate(item_id, INC, "frame-approve", True)
+    assert intake.native_frame()["rgb_base64"] is None
+    intake.maintain()
+    session.start_image()
+    intake.maintain()
+    assert intake.native_frame()["rgb_base64"] is None
+    assert intake.native_frame()["input_kind"] == "black"
+
+
+def frame_started(native):
+    intake, _, _, _, session = native
+    item_id = ready(native)["image"]["id"]
+    intake.maintain()
+    session.start_image()
+    session.observation(1)
+    intake.maintain()
+    return item_id
+
+
+def test_native_frame_returns_exact_started_sanitized_rgb_and_detached_metadata(native):
+    import base64
+    intake, _, _, _, session = native
+    item_id = frame_started(native)
+    value = intake.native_frame()
+    assert value == dict(schema="market-native-frame/v1", incarnation=INC, worker_session=WORKER,
+        observations_completed=2, input_kind="image", image_id=item_id, frame_sha256=FRAME,
+        rgb_base64=base64.b64encode(RGB).decode("ascii"))
+    assert len(base64.b64decode(value["rgb_base64"], validate=True)) == 12288
+    value["rgb_base64"] = "changed response"
+    assert intake.native_frame()["rgb_base64"] != value["rgb_base64"]
+
+
+@pytest.mark.parametrize("change", ["id", "hash", "dispatch", "black", "stale", "ended", "clock"])
+def test_native_frame_never_reveals_mismatched_unavailable_or_stale_pixels(native, change):
+    intake, _, _, clock, session = native
+    frame_started(native)
+    if change == "id":
+        session.latest = {**session.latest, "image_id": "00000000-0000-4000-8000-000000000099"}
+    elif change == "hash":
+        session.latest = {**session.latest, "frame_sha256": "f" * 64}
+    elif change == "dispatch":
+        session.permit = replace(session.permit, dispatch_id="00000000-0000-4000-8000-000000000099")
+    elif change == "black":
+        session.latest = session.measured(1)
+        session.permit = None
+    elif change == "stale":
+        clock.ns += 5_000_000_001
+    elif change == "ended":
+        session.state = "ended"
+        session.issued = session.completed = 40
+        session.latest = session.measured(39, session.permit.id)
+        session.permit = session.boundary = None
+    else:
+        clock.failure = RuntimeError("clock")
+    value = intake.native_frame()
+    assert value["rgb_base64"] is None
+    assert value["input_kind"] == ("black" if change == "black" else "image")
+    if change in ("black", "ended", "clock"):
+        assert intake._active_pixels is None
+
+
+def test_native_frame_cache_clears_on_complete_before_black_and_never_changes_ttl(native):
+    intake, _, _, _, session = native
+    item_id = frame_started(native)
+    deadline = intake._receipts[item_id].deadline_ns
+    for index in range(2, 9):
+        session.observation(index)
+        intake.maintain()
+    session.complete_image(1)
+    intake.maintain()
+    assert intake.native_frame()["rgb_base64"] is None
+    assert intake._active_pixels is None
+    assert intake._receipts[item_id].deadline_ns == deadline
+    assert intake.operator_status(item_id)["completed_observations"] == 8
+
+
+def test_native_frame_cache_stays_one_frame_and_cannot_show_queued_b(native):
+    intake, _, decoder, clock, session = native
+    first = frame_started(native)
+    clock.ns += 10_000_000_000
+    second = upload(intake, decoder)["image"]["id"]
+    settled(intake, decoder, second)
+    intake.moderate(second, INC, "second-frame", True)
+    session.latest = {**session.latest, "wall_completion_ns": clock.ns}
+    assert intake.native_frame()["image_id"] == first
+    assert intake.native_frame()["rgb_base64"] is not None
+    for index in range(2, 9):
+        session.observation(index)
+        intake.maintain()
+    session.complete_image(1)
+    intake.maintain()
+    session.boundary = session.offer(9)
+    intake.maintain()
+    assert len(intake._active_pixels[-1]) == 12288
+    value = intake.native_frame()
+    assert value["image_id"] == first and value["rgb_base64"] is None

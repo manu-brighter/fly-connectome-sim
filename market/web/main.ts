@@ -3,6 +3,8 @@ import type { Snapshot } from './protocol.ts';
 import { applySnapshot, createState, disconnect, isFresh } from './state.ts';
 import { element, renderBoard } from './render.ts';
 import { startNative, startOperatorImage } from './image-main.ts';
+import type { NativePresentation } from './image-main.ts';
+import type { BoardState } from './state.ts';
 
 type Mutation = { path: string; body: Record<string, unknown>; kind: 'claim' | 'pause' | 'resume' | 'fixture' };
 class HttpError extends Error {
@@ -10,7 +12,7 @@ class HttpError extends Error {
   constructor(status: number) { super('Serveranfrage abgelehnt'); this.status = status; }
 }
 
-export function startBoard(root: HTMLElement): () => void {
+export function startBoard(root: HTMLElement, presentation?: NativePresentation & { onBoard: (state: BoardState, nowMs: number) => void }): () => void {
   const document = root.ownerDocument, window = document.defaultView!;
   // Read once, erase before any network operation, retain only in this closure.
   const fragment = new URLSearchParams(window.location.hash.slice(1));
@@ -38,6 +40,8 @@ export function startBoard(root: HTMLElement): () => void {
   }
   function render() {
     renderBoard(root, state, now());
+    // Optional presentation must never interrupt the authority/ACK lifecycle.
+    try { presentation?.onBoard(state, now()); } catch { /* The confirmed board remains available. */ }
     // Polling must not disable and blur a focused operator button. A deliberate
     // action during the serial read/ACK cycle queues once and runs after it.
     const enabled = !stopped && visible() && activeMutation === null && queuedMutation === null && isFresh(state, now());
@@ -218,7 +222,7 @@ export function startBoard(root: HTMLElement): () => void {
     details.append(fields, actions, help, feedback); root.append(details); render();
     disposeImage = startOperatorImage(root, operatorToken, () => native!.getState());
   }
-  if (readToken) native = startNative(root, readToken);
+  if (readToken) native = startNative(root, readToken, presentation);
   function clock() {
     if (stopped) return;
     render(); clockTimer = window.setTimeout(clock, 250);

@@ -5,6 +5,7 @@ Optional native mode composes the existing D1 lifecycle and bounded session APIs
 """
 
 from dataclasses import asdict, replace
+import base64
 import hashlib
 import hmac
 import re
@@ -123,6 +124,7 @@ class ImageIntake:
         self._task = None
         self._cancel = None
         self._pixels = None
+        self._active_pixels = None
         self._capabilities = {}
         self._upload_bucket = _Bucket(1, 10_000_000_000)
         self._operator_bucket = _Bucket(120, 500_000_000)
@@ -175,6 +177,7 @@ class ImageIntake:
             self._fault = fault
             self._generation += 1
         self._pixels = None
+        self._active_pixels = None
         self._dispatch_wait = None
         if self._cancel is not None:
             self._cancel.set()
@@ -475,6 +478,10 @@ class ImageIntake:
             if self._fault:
                 self._request_native_stop("session_fault")
         snapshot = self._native_admission
+        if (self._active_pixels is not None and (self._stopping or self._fault is not None
+                or self._clock_fault or native.state != "running" or native.fault is not None
+                or native.active_dispatch_id != self._active_pixels[0].dispatch_id)):
+            self._active_pixels = None
         if self._pixels is not None:
             pending = snapshot.pending
             if (pending is None or self._pixels[:2] != (pending.id, pending.frame_sha256)
@@ -558,6 +565,45 @@ class ImageIntake:
             self._sync()
             self._native_read_bucket.charge(self._now())
 
+    def native_frame(self):
+        """Only a fresh, started, native-confirmed sanitized input; never pending pixels."""
+        with self._lock:
+            self._open()
+            if self._native is None:
+                raise IntakeError("not_found")
+            self._sync()
+            native = self._native.snapshot()
+            latest = native.latest
+            value = {
+                "schema": "market-native-frame/v1", "incarnation": self._incarnation,
+                "worker_session": self._worker_session,
+                "observations_completed": native.completed_observations,
+                "input_kind": None if latest is None else latest.input_kind,
+                "image_id": None if latest is None else latest.image_id,
+                "frame_sha256": None if latest is None else latest.frame_sha256,
+                "rgb_base64": None,
+            }
+            cached = self._active_pixels
+            if (cached is None or latest is None or latest.input_kind != "image"
+                    or self._stopping or self._fault is not None or self._clock_fault
+                    or native.state != "running" or native.fault is not None
+                    or self._last_ns is None
+                    or not 0 <= self._last_ns - latest.wall_completion_ns <= 5_000_000_000):
+                return value
+            permit, rgb = cached
+            receipt = self._receipts.get(permit.id)
+            if (receipt is not None and receipt.status == "processing"
+                    and receipt.first_observation_index is not None
+                    and receipt.first_observation_index <= latest.observation_index
+                    < receipt.first_observation_index + 8
+                    and native.active_dispatch_id == permit.dispatch_id == receipt.dispatch_id
+                    and permit.incarnation == receipt.incarnation == self._incarnation
+                    and permit.worker_session == receipt.worker_session == native.worker_session == self._worker_session
+                    and permit.id == receipt.id == latest.image_id
+                    and permit.frame_sha256 == receipt.frame_sha256 == latest.frame_sha256):
+                value["rgb_base64"] = base64.b64encode(rgb).decode("ascii")
+            return value
+
     def _drive_native(self):
         if self._stopping or self._fault is not None or self._receipts_finished:
             return
@@ -598,7 +644,11 @@ class ImageIntake:
         if self._native_admission.fault is not None:
             return
         try:
+            if permit is not None or boundary.active_dispatch_id is None:
+                self._active_pixels = None
             self._native.advance(boundary.id, permit, rgb)
+            if permit is not None:
+                self._active_pixels = (permit, rgb)
         except Exception:
             self._emergency_stop("worker_failed")
 
@@ -936,6 +986,7 @@ class ImageIntake:
                 self._native_close_deadline = time.perf_counter() + 25
             self._generation += 1
             self._pixels = None
+            self._active_pixels = None
             self._dispatch_wait = None
             if self._cancel is not None:
                 self._cancel.set()

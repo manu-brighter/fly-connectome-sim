@@ -135,3 +135,32 @@ def test_server_calls_native_pump_outside_intake_lock_and_pauses_on_failure(auth
         server.shutdown()
         thread.join(7)
         server.server_close()
+
+
+def test_native_frame_only_original_operator_and_view_and_bounded_json(native_server):
+    from test_image_intake import settled, upload
+    from test_native_intake import FRAME, RGB
+    import base64
+    import json
+    server, intake, decoder, session = native_server
+    item_id = upload(intake, decoder)["image"]["id"]
+    settled(intake, decoder, item_id)
+    intake.moderate(item_id, INC, "approve-frame", True)
+    session.boundary = session.offer(1)
+    intake.maintain()
+    session.start_image()
+    session.observation(1)
+    intake.maintain()
+    claim = server.authority.claim_primary(server.authority.snapshot().incarnation, "frame-primary")
+    for credential in (token(server, "guest"), claim.primary_token, "bad"):
+        assert request(server, path="/api/native/frame", bearer=credential)[0] == 401
+    for role in ("operator", "view"):
+        code, headers, value = request(server, path="/api/native/frame", bearer=token(server, role))
+        assert code == 200 and value["schema"] == "market-native-frame/v1"
+        assert value["image_id"] == item_id and value["frame_sha256"] == FRAME
+        assert base64.b64decode(value["rgb_base64"], validate=True) == RGB
+        assert len(json.dumps(value).encode("utf-8")) <= 24576
+        assert headers["Cache-Control"] == "no-store"
+        assert not any(key in value for key in ("pending", "status_capability", "source_sha256"))
+    assert request(server, path="/api/native/frame", headers={"Host": "evil.test"})[0] == 403
+    assert request(server, "POST", "/api/native/frame", {})[0] == 405
