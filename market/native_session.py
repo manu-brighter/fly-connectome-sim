@@ -192,7 +192,9 @@ class NativeNotice(_DTO):
 def _binding(path, cap, deadline_ns):
     path = _ordinary(path)
     before = path.stat()
-    _require(path.is_file() and 0 < before.st_size <= cap, "source")
+    relative_source = path.relative_to(ROOT).as_posix() if path.is_relative_to(ROOT) else None
+    minimum = 0 if protocol.PRESERVED_SOURCES.get(relative_source) == protocol.EMPTY_SHA256 else 1
+    _require(path.is_file() and minimum <= before.st_size <= cap, "source")
     expected = protocol._stat_identity(before)
     digest = hashlib.sha256()
     with path.open("rb") as stream:

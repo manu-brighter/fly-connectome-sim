@@ -8,6 +8,8 @@ import time
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("native_software_paths")
+
 from test_native_protocol import INCARNATION, SESSION, DIGEST
 from test_native_evidence import receipt_fixture
 from test_native_evidence import prepared_fixtures, monitor_fixture, cleanup_fixture, write_complete_fixture
@@ -294,7 +296,7 @@ class FakeTransport:
 
 def software_session(tmp_path, *, mutate=None, eof_at=None, bound_fixture=False, profile=None, wall_ns=None):
     clock = api().SystemClock()
-    declaration, bindings = prepared_fixtures(tmp_path)
+    declaration, bindings = prepared_fixtures(tmp_path, local_files=True)
     if profile is not None:
         declaration.update(schema=api().protocol.schema("protocol"), proof=profile.name, constants=api().protocol.limits())
         bindings["schema"] = api().protocol.schema("bindings")
@@ -752,7 +754,7 @@ def test_later_clock_notice_does_not_replace_first_fault(tmp_path, clock):
 
 
 def loadable_prepared_fixture(tmp_path, monkeypatch):
-    declaration, bindings = prepared_fixtures(tmp_path)
+    declaration, bindings = prepared_fixtures(tmp_path, local_files=True)
     root = tmp_path / "native"
     root.mkdir()
     (root / "scratch").mkdir()

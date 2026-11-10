@@ -502,3 +502,51 @@ def test_image_wire_missing_duplicate_order_partial_and_deadline(mutation):
         for direction, message, binary in messages:
             validator.accept(message, direction, binary, receipt_ns=wire_receipt_ns(message))
         validator.finish()
+
+
+def test_explicit_native_fixture_path_mapping_preserves_closed_windows_validation():
+    from native_fixtures import logical_local_path
+    from market.native_protocol import _local_path
+    roots = ('/tmp/native-fixture', '/workspace/source')
+    result = logical_local_path('/tmp/native-fixture/project\\src/module.py', roots, _local_path)
+    assert result == _local_path('C:\\tmp\\native-fixture\\project\\src\\module.py')
+    assert logical_local_path('C:\\tools\\python.exe', roots, _local_path) == _local_path('C:\\tools\\python.exe')
+    for rejected in (
+        '/outside/fixture/file.py', 'relative/file.py',
+        '/tmp/native-fixture/../escape', '/tmp/native-fixture-neighbor/file.py',
+    ):
+        with pytest.raises(ValueError):
+            logical_local_path(rejected, roots, _local_path)
+
+
+def test_posix_fake_bindings_use_real_paths_and_original_windows_checks(monkeypatch):
+    from native_fixtures import logical_local_path
+    from test_native_evidence import prepared_fixtures
+    protocol = api()
+    declaration, bindings = prepared_fixtures()
+    project = '/tmp/native-fixture/project'
+
+    def relocate(value):
+        if type(value) is str:
+            return value.replace('C:\\project', project)
+        if type(value) is dict:
+            return {key: relocate(item) for key, item in value.items()}
+        if type(value) is list:
+            return [relocate(item) for item in value]
+        return value
+
+    bindings = relocate(bindings)
+    for binding in bindings['files'].values():
+        if binding['path'].startswith(project + '\\'):
+            binding['path'] = binding['path'].replace('\\', '/')
+    bindings.update(work_root='/tmp/native-fixture/native', decoder_work_root='/tmp/native-fixture/decoder')
+    bindings['environment'].update(TMP='/tmp/native-fixture/native/scratch', TEMP='/tmp/native-fixture/native/scratch')
+    bindings['compiler_probe']['environment_sha256'] = protocol.canonical_sha256(bindings['environment'])
+    original = protocol._local_path
+    monkeypatch.setattr(protocol, '_local_path', lambda value: logical_local_path(value, ('/tmp/native-fixture',), original))
+    accepted = protocol.validate_bindings(bindings, declaration)
+    assert accepted.project_root == project
+    assert accepted.files['src/fly_connectome_sim/neural/arrays.lock.json'].path == project + '/src/fly_connectome_sim/neural/arrays.lock.json'
+    bindings['files']['src/fly_connectome_sim/neural/arrays.lock.json']['path'] = '/outside/arrays.lock.json'
+    with pytest.raises(ValueError):
+        protocol.validate_bindings(bindings, declaration)

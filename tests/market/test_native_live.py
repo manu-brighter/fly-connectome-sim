@@ -1,6 +1,8 @@
 """Versioned live execution, all tests use the same private fake engine."""
 import importlib
 import pytest
+
+pytestmark = pytest.mark.usefixtures("native_software_paths")
 from test_native_worker import FakeEngine, TickClock
 from test_native_protocol import header_fixture, envelope, INCARNATION, SESSION, DIGEST
 

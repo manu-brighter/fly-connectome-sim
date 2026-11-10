@@ -451,7 +451,15 @@ plus build; grouped core fixes passed89 affected tests and17 final live tests.
 The four core findings and three price handoff findings are independently closed;
 the HTTP/intake/UI review found no blocking source defect. See the updated
 [software evidence](experiments/2026-11-10-native-worker-software.md).
-No actual native worker has yet run. Next: exact-source CI, concrete finite local
+The first integrated CI42881306187 failed its Market job on Windows-only fixture
+path assumptions (65 failures,943 passes,76 skips,11 errors); the other three jobs
+passed. The narrow correction preserves production Windows path validation and
+adapts only declared software-fixture roots. Actual public preparation then exposed
+an empty preserved package initializer rejected by the new binding reader; only
+that checksum-pinned empty source is now allowed, without editing the frozen core.
+The corrected80-observation/600-second preparation succeeded without native release;
+its concrete bindings and the two-image acceptance client were independently reviewed.
+No actual native worker has yet run. Next: corrected exact-source CI, concrete finite local
 acceptance with generated images, actual source-bound execution/browser inspection,
 then the usable local pilot. Preserve the distinction from multi-hour performance,
 public deployment and scientific support. Continue until the local pilot works.

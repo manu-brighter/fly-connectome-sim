@@ -198,7 +198,7 @@ def test_cleanup_variant_matrix_no_fictional_identity_or_success():
             api().validate_cleanup(bad)
 
 
-def prepared_fixtures(root=None):
+def prepared_fixtures(root=None, *, local_files=False):
     protocol = dict(schema="market-native-protocol/v1", proof="bounded-image20s/v1",
                     constants=dict(api().CONSTANTS), preserved_sources=dict(api().PRESERVED_SOURCES),
                     application_sources={key: DIGEST for key in api().APPLICATION_SOURCES},
@@ -206,7 +206,7 @@ def prepared_fixtures(root=None):
                     package_fingerprint=api().PACKAGE_FINGERPRINT)
     project, runtime = "C:\\project", "C:\\project\\data\\malecns-v1.0\\runtime"
     if root is not None:
-        project = str(root / "project") if sys.platform == "win32" else "C:\\native-protocol-fixture\\project"
+        project = str(root / "project") if sys.platform == "win32" or local_files else "C:\\native-protocol-fixture\\project"
         runtime = project + "\\data\\malecns-v1.0\\runtime"
     files = {}
     for group in ("preserved_sources", "application_sources", "lock_sources"):
@@ -255,6 +255,10 @@ def prepared_fixtures(root=None):
                                         timeout_ns=5000000000, stdout_limit=4096, stderr_limit=4096),
                     native_metadata=metadata, dependencies=dict(site_packages=site, numpy="2.4.6", pandas="3.0.5", pyarrow="25.0.1"),
                     package_fingerprint=api().PACKAGE_FINGERPRINT, prepared_ns=0)
+    if local_files and sys.platform != "win32":
+        for binding in files.values():
+            if binding["path"].startswith(project + "\\"):
+                binding["path"] = binding["path"].replace("\\", "/")
     return protocol, bindings
 
 

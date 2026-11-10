@@ -213,6 +213,7 @@ def test_bootstrap_declared_packages_reject_shadow_and_wrong_version(tmp_path, m
         api()._bootstrap_dependencies(bindings)
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="installed bootstrap binds the fixed Windows .venv/Lib layout")
 def test_bootstrap_declared_existing_venv_imports_only_fixed_versions():
     root = Path(__file__).absolute().parents[2]
     site = root / ".venv/Lib/site-packages"
@@ -250,3 +251,23 @@ def test_bootstrap_private_package_versions_checked_after_origin(tmp_path, monke
     modules["pandas"].__version__ = "0.0.0"
     with pytest.raises(ValueError, match="source"):
         api()._bootstrap_dependencies(bindings)
+
+
+def test_binding_accepts_only_checksum_pinned_empty_preserved_source(tmp_path):
+    from market import native_session as n, native_protocol as p, native_windows as w
+    import hashlib
+    import time
+    source = n.ROOT / 'src/fly_connectome_sim/neural/__init__.py'
+    assert source.read_bytes() == b''
+    assert p.PRESERVED_SOURCES['src/fly_connectome_sim/neural/__init__.py'] == hashlib.sha256(b'').hexdigest()
+    binding = n._binding(source, 1048576, time.perf_counter_ns() + 1000000000)
+    assert binding['bytes'] == 0 and binding['sha256'] == p.EMPTY_SHA256
+    w.compare_bound_files(
+        dict(files={'src/fly_connectome_sim/neural/__init__.py': binding}),
+        deadline_ns=time.perf_counter_ns() + 1000000000,
+    )
+    for name in ('unbound.py', 'memory.dll', 'graph.npz', 'protocol.json'):
+        empty = tmp_path / name
+        empty.write_bytes(b'')
+        with pytest.raises(ValueError, match='source'):
+            n._binding(empty, 1048576, time.perf_counter_ns() + 1000000000)

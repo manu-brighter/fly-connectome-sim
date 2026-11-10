@@ -9,6 +9,8 @@ from types import SimpleNamespace
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("native_software_paths")
+
 from market import native_protocol as protocol
 from market.native_session import NativeConfig, PreparedNative
 from test_native_protocol import INCARNATION, SESSION, DIGEST
@@ -112,7 +114,7 @@ def test_unsupported_platform_is_closed_prerequisite_without_reflected_input(mon
     assert not list(tmp_path.iterdir())
 
 @pytest.fixture
-def start_fixture(monkeypatch, tmp_path):
+def start_fixture(monkeypatch, tmp_path, native_software_paths):
     module = cli()
     from market import native_session, image_decode, image_intake, local_server, price_service
     project = tmp_path / "project"

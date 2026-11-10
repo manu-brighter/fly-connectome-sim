@@ -81,3 +81,30 @@ def proposal(authority, clock, **changes):
         clock.utc.isoformat().replace("+00:00", "Z"),
     )
     return replace(value, **changes)
+
+
+@pytest.fixture
+def native_software_paths(monkeypatch, tmp_path):
+    """Map only declared fake filesystem roots into logical Windows paths on CI.
+
+    NativeConfig/bindings intentionally describe a Windows-only owner. The fake
+    parent/worker/evidence tests still use real POSIX temporary bytes and strict
+    Windows lexical validation, without changing the production launch policy.
+    """
+    import sys
+    if sys.platform == "win32":
+        return
+    from pathlib import Path
+    from market import native_protocol as protocol
+    from native_fixtures import logical_local_path
+
+    roots = (str(tmp_path), str(Path(__file__).resolve().parents[2]))
+    validate = protocol._local_path
+    monkeypatch.setattr(protocol, "_local_path", lambda value: logical_local_path(value, roots, validate))
+    bound_path = protocol._bound_path
+    prefix = "C:\\native-protocol-fixture\\project\\"
+    def resolve(declared):
+        if declared.startswith(prefix):
+            return tmp_path / "project" / Path(declared[len(prefix):].replace("\\", "/"))
+        return bound_path(declared)
+    monkeypatch.setattr(protocol, "_bound_path", resolve)
