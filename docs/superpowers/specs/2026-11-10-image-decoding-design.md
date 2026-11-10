@@ -1,8 +1,9 @@
 # Isolated local image decoding — prospective D2 design
 
-Status: **independently accepted prospectively; not implemented yet**. This follows the
-[accepted D1 metadata contract](2026-11-10-image-admission-design.md). Implement
-only after its preceding evidence gate and this contract's independent review.
+Status: **Task1 worker independently accepted locally; Task2 parent remains open**.
+See [component evidence](../../experiments/2026-11-10-image-decoding.md). The
+[preceding D1](2026-11-10-image-admission-design.md) source CI gate and this
+contract's independent prospective review are complete.
 
 ## Boundary and inspected basis
 

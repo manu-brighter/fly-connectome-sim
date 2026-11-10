@@ -5,9 +5,10 @@
 **Goal:** Convert one bounded JPEG/PNG into the exact canonical image in an owned,
 short-lived process, preserving D1's original decode deadline.
 
-**Status:** Independently accepted prospectively after five concrete contract
-corrections. No D2 implementation or test pass yet. Implementation still waits for
-D1 clean-checkout CI; the [exact D2 contract](../specs/2026-11-10-image-decoding-design.md) governs both tasks.
+**Status:** D1 passed all four source CI jobs. Task1 worker is implemented and
+independently accepted after fixing effective PNG source-depth validation;120
+focused tests pass with three Windows symlink-privilege skips. Task2 remains open.
+The [exact D2 contract](../specs/2026-11-10-image-decoding-design.md) governs both tasks.
 
 **Architecture:** A private portable transform/protocol worker and a Windows parent
 owner. Reuse unchanged process/Job primitives; only the bounded process-creation
@@ -55,18 +56,18 @@ The request schema is market-image-decode/v1; both response variants use
 market-image-decode-result/v1. Text-limit units and EXIF-only handling follow
 the corrected spec rather than inferred Pillow mode/metadata behavior.
 
-- [ ] Root captures reviewed spec/plan and unchanged-source/artifact identities.
-- [ ] Write failing portable behavioral tests: JPEG/PNG/MIME, dimensions/pixels,
+- [x] Root captures reviewed spec/plan and unchanged-source/artifact identities.
+- [x] Write failing portable behavioral tests: JPEG/PNG/MIME, dimensions/pixels,
   modes/frame count, malformed/truncated data, PNG text bounds, all orientations,
   alpha/palette/grayscale, odd padding/rounding/upscaling and exact canonical hash.
   Check strict request keys/types, source hash, one-message lengths and no metadata.
   Include RGB16/RGBA16 PNG source depth, XMP-only/conflicting orientation, repeated
   and uncompressed/multibyte text, and the exact response schema/rejection reasons.
-- [ ] Implement only the private worker and deterministic transform. Verify/load
+- [x] Implement only the private worker and deterministic transform. Verify/load
   against the same bounded immutable input and strip metadata by raw RGB output.
-- [ ] Run focused green tests; record initial RED and any fixture/infrastructure
+- [x] Run focused green tests; record initial RED and any fixture/infrastructure
   corrections separately. No test result claims a native input or real admission.
-- [ ] Independent Astra reviews actual source/evidence and the exact pixel/protocol
+- [x] Independent Astra reviews actual source/evidence and the exact pixel/protocol
   contract. Resolve findings with regressions, then root records the local checkpoint.
 
 ## Task 2 — Windows ownership, bounded pipes and cleanup

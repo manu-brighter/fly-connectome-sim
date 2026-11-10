@@ -375,8 +375,12 @@ six Windows-only skips,266 viewer passes/four private-artifact skips and build.
 D1 is complete within its metadata-only scope. The next
 [decoder contract](superpowers/specs/2026-11-10-image-decoding-design.md) and
 [plan](superpowers/plans/2026-11-10-image-decoding.md) are independently accepted
-prospectively; Sol now implements Task1, the private canonical pixel/protocol
-worker. Parent ownership/cleanup is Task2; HTTP and native integration remain later.
+prospectively. Task1, the private canonical pixel/protocol worker, is now
+independently accepted locally after closing a duplicate-PNG-header depth bypass:
+120 focused passes/three Windows symlink skips and15 independent re-review passes.
+[Component evidence](experiments/2026-11-10-image-decoding.md) separates the
+initial full-suite result from the corrected focused result. Task2 parent
+ownership/cleanup follows; HTTP and native integration remain later.
 The preservation baseline records all 270 preexisting tracked files, all 64 frozen
 helpers unchanged and the same 41-member package fingerprint. No new dependency
 or native/API run is needed. The planning checkpoint passed
