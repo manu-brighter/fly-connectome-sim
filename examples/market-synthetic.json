@@ -1,0 +1,165 @@
+{
+  "schema": "market-config-v1",
+  "drinks": [
+    {
+      "id": "drink-00",
+      "name": "Testgetränk 01",
+      "minimum_rappen": 400,
+      "maximum_rappen": 700,
+      "grid_rappen": 50,
+      "initial_rappen": 400
+    },
+    {
+      "id": "drink-01",
+      "name": "Testgetränk 02",
+      "minimum_rappen": 400,
+      "maximum_rappen": 700,
+      "grid_rappen": 50,
+      "initial_rappen": 400
+    },
+    {
+      "id": "drink-02",
+      "name": "Testgetränk 03",
+      "minimum_rappen": 400,
+      "maximum_rappen": 700,
+      "grid_rappen": 50,
+      "initial_rappen": 400
+    },
+    {
+      "id": "drink-03",
+      "name": "Testgetränk 04",
+      "minimum_rappen": 400,
+      "maximum_rappen": 700,
+      "grid_rappen": 50,
+      "initial_rappen": 400
+    },
+    {
+      "id": "drink-04",
+      "name": "Testgetränk 05",
+      "minimum_rappen": 400,
+      "maximum_rappen": 700,
+      "grid_rappen": 50,
+      "initial_rappen": 400
+    },
+    {
+      "id": "drink-05",
+      "name": "Testgetränk 06",
+      "minimum_rappen": 400,
+      "maximum_rappen": 700,
+      "grid_rappen": 50,
+      "initial_rappen": 400
+    },
+    {
+      "id": "drink-06",
+      "name": "Testgetränk 07",
+      "minimum_rappen": 400,
+      "maximum_rappen": 700,
+      "grid_rappen": 50,
+      "initial_rappen": 400
+    },
+    {
+      "id": "drink-07",
+      "name": "Testgetränk 08",
+      "minimum_rappen": 400,
+      "maximum_rappen": 700,
+      "grid_rappen": 50,
+      "initial_rappen": 400
+    },
+    {
+      "id": "drink-08",
+      "name": "Testgetränk 09",
+      "minimum_rappen": 400,
+      "maximum_rappen": 700,
+      "grid_rappen": 50,
+      "initial_rappen": 400
+    },
+    {
+      "id": "drink-09",
+      "name": "Testgetränk 10",
+      "minimum_rappen": 400,
+      "maximum_rappen": 700,
+      "grid_rappen": 50,
+      "initial_rappen": 400
+    },
+    {
+      "id": "drink-10",
+      "name": "Testgetränk 11",
+      "minimum_rappen": 400,
+      "maximum_rappen": 700,
+      "grid_rappen": 50,
+      "initial_rappen": 400
+    },
+    {
+      "id": "drink-11",
+      "name": "Testgetränk 12",
+      "minimum_rappen": 400,
+      "maximum_rappen": 700,
+      "grid_rappen": 50,
+      "initial_rappen": 400
+    },
+    {
+      "id": "drink-12",
+      "name": "Testgetränk 13",
+      "minimum_rappen": 400,
+      "maximum_rappen": 700,
+      "grid_rappen": 50,
+      "initial_rappen": 400
+    },
+    {
+      "id": "drink-13",
+      "name": "Testgetränk 14",
+      "minimum_rappen": 400,
+      "maximum_rappen": 700,
+      "grid_rappen": 50,
+      "initial_rappen": 400
+    },
+    {
+      "id": "drink-14",
+      "name": "Testgetränk 15",
+      "minimum_rappen": 400,
+      "maximum_rappen": 700,
+      "grid_rappen": 50,
+      "initial_rappen": 400
+    },
+    {
+      "id": "drink-15",
+      "name": "Testgetränk 16",
+      "minimum_rappen": 400,
+      "maximum_rappen": 700,
+      "grid_rappen": 50,
+      "initial_rappen": 400
+    },
+    {
+      "id": "drink-16",
+      "name": "Testgetränk 17",
+      "minimum_rappen": 400,
+      "maximum_rappen": 700,
+      "grid_rappen": 50,
+      "initial_rappen": 400
+    },
+    {
+      "id": "drink-17",
+      "name": "Testgetränk 18",
+      "minimum_rappen": 400,
+      "maximum_rappen": 700,
+      "grid_rappen": 50,
+      "initial_rappen": 400
+    },
+    {
+      "id": "drink-18",
+      "name": "Testgetränk 19",
+      "minimum_rappen": 400,
+      "maximum_rappen": 700,
+      "grid_rappen": 50,
+      "initial_rappen": 400
+    },
+    {
+      "id": "drink-19",
+      "name": "Testgetränk 20",
+      "minimum_rappen": 400,
+      "maximum_rappen": 700,
+      "grid_rappen": 50,
+      "initial_rappen": 400
+    }
+  ]
+}

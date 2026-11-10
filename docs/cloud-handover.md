@@ -321,8 +321,14 @@ rollback-journal and process-ownership evidence. One review correction preserves
 capacity across immediate restart and later clock/storage faults; a separate
 re-review accepted both that fix and closed-authority error handling. Price jumps,
 postcommit cooldowns, idempotency, presence fences and pause/resume races are
-covered. Task 2 adds the bounded local HTTP/fixture adapter next; Linux/HTTP/browser
-and complete new-source CI are still pending. No active sale prices are claimed.
+covered. Task 2's bounded local HTTP/fixture adapter is independently accepted too:
+the complete Market suite passed 177 tests / one Windows symlink-privilege skip
+in 27.14 s. Actual sockets cover deadlines, eight-handler overload, later overload
+versus resume, lost responses and restart. The independent static security review
+found no actionable issue; it read actual source/logs and did not execute code.
+CLI interruption was injected at serve entry, not an OS-console Ctrl+C test.
+Task 3 implements the separate browser board next. Actual Vite/browser, Linux
+symlink behavior and complete new-source CI remain pending. No sale prices are claimed.
 The preservation baseline records all 270 preexisting tracked files, all 64 frozen
 helpers unchanged and the same 41-member package fingerprint. No new dependency
 or native/API run is needed. The planning checkpoint passed

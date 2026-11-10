@@ -14,8 +14,8 @@ Node >=24 direct node:test, TypeScript 7.0.2 and Vite 8.3.5 already locked.
 
 **Spec:** [Exact design and contracts](../specs/2026-11-10-local-price-board-design.md).
 
-**Status:** Prospectively accepted at `b05ce33`; Task 1 implementation is now
-independently accepted. Tasks 2–4 remain pending. The user already authorized
+**Status:** Prospectively accepted at `b05ce33`; Tasks 1–2 implementations are now
+independently accepted. Tasks 3–4 remain pending. The user already authorized
 autonomous sequential
 execution with Sol implementation/Astra review; no new approval loop is added.
 Controller must accept and push these docs with accepted result `6c7685c` before
@@ -176,41 +176,41 @@ Server provides `serve_forever/shutdown/server_close`, `operator_url: str`,
 functions live in `market/fixtures.py`. Use the spec's seven exact API paths/bodies/response shapes
 and HTTP mapping. Task1 generates Proposal only within `run_fixture` transaction.
 
-- [ ] Write failing `test_price_fixtures.py`: exact20-row example and strict
+- [x] Write failing `test_price_fixtures.py`: exact20-row example and strict
   four-field scenario parser; same request/digest yields original event/outcome
   after restart; changed scenario conflicts; factory rollback creates no accepted
   mapping; client cannot provide source/clock/sequence/model fields. Assert real
   synthetic labels and no raw-proposal endpoint.
-- [ ] Write failing `test_price_http.py` with actual loopback sockets and temporary
+- [x] Write failing `test_price_http.py` with actual loopback sockets and temporary
   built-asset fixtures: exact Host/Origin/bearer role matrix; read-only no claim
   or challenge; primary cannot operator-resume; wrong-incarnation claim409,
   superseded retry409 and claim_capacity503; immutable terminal responses200;
   JSON/field/status errors per spec; single-event lookup only and404 unknown.
   Verify no mutations occur on malformed/auth/framing failures.
-- [ ] Add boundary cases8192/8193-byte body,65536-byte response cap, duplicate
+- [x] Add boundary cases8192/8193-byte body,65536-byte response cap, duplicate
   JSON keys/Content-Length, transfer encoding, missing length, header16KiB/64-field
   and request-line2048 bounds, slow headers/body total5s and socket2s timeout.
   Tests use bounded <=6s socket waits, not arbitrary sleeps. Validate path/query,
   symlink/traversal rejection, manifest allowlist, no replay/manifest/source map
   access, no-store/CSP/security headers and absence of credentials/body in logs.
-- [ ] Add `test_eight_handlers_overload_latches_pause`: hold all8 handlers at
+- [x] Add `test_eight_handlers_overload_latches_pause`: hold all8 handlers at
   read barriers, open ninth, assert socket closes, price unchanged and immediate
   effective pause without ninth handler. Drain; assert it stays paused. Add
   `test_overload_defeats_older_resume_during_commit` using Task1 barriers and
   actual HTTP ingress; only a fresh authenticated resume restores eligibility.
   Do not assert a successful pause HTTP reply while slots are saturated.
-- [ ] Add actual HTTP lease/restart/lost-response tests: current replacement
+- [x] Add actual HTTP lease/restart/lost-response tests: current replacement
   invalidates old bearer/challenge, read-only poll cannot steal challenge,
   missed heartbeat fences before next maintenance, GET never renews, successful
   commit with dropped response retries same fixture ID without another change.
-- [ ] Run red: `.venv/Scripts/python.exe -m pytest -q tests/market/test_price_fixtures.py tests/market/test_price_http.py`.
-- [ ] Implement parser/adapter/CLI. Capture resume safety epoch at authenticated
+- [x] Run red: `.venv/Scripts/python.exe -m pytest -q tests/market/test_price_fixtures.py tests/market/test_price_http.py`.
+- [x] Implement parser/adapter/CLI. Capture resume safety epoch at authenticated
   ingress and request pause/overload latch immediately; all long state work calls
   authority. Maintenance cadence100ms. Validate CLI host/port/assets before
   starting, acquire authority ownership, and close gracefully on Ctrl+C/failure.
   Parse actual Vite manifest-reachable market entry only; tests' tiny asset tree
   exercises the same loader used later by actual dist.
-- [ ] Run green: `.venv/Scripts/python.exe -m pytest -q tests/market`.
+- [x] Run green: `.venv/Scripts/python.exe -m pytest -q tests/market`.
   Independently review transport/storage/safety interactions with Astra before
   controller's explicit-path local checkpoint. Record runtime/deadline limitations.
 
@@ -347,6 +347,14 @@ late capacity after tentative activation and failed fence persistence too. Linux
 HTTP and browser checks remain for their later tasks. The CI command uses the
 same `python -m pytest` entry as local verification, making the repository-local
 `market/` import explicit without changing package installation or test coverage.
+
+Task 2 is independently accepted: complete Market suite 177 passed / one Windows
+symlink-privilege skip in 27.14 s. Static independent review checked the actual
+source and retained logs without executing project code. Real socket deadlines,
+overload and later-resume races, lost responses and restart are covered. CLI
+interruption was injected at serve entry; it was not an OS-console Ctrl+C test.
+Actual Vite/browser and Linux symlink checks remain pending. Port 80 uses canonical
+Host/Origin/URLs without :80; all other configured ports remain explicit.
 
 Spec coverage maps authority/clock/presence/safety/store to Task1, fixture/HTTP
 bounds to Task2, board/build to Task3 and process/CI/docs to Task4. Later tasks
