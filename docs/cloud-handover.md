@@ -306,6 +306,17 @@ restart/clock handling. This does not accept live uploads, browser performance,
 300-guest/12-hour load or public operation. Preserve old10-second parsers and the
 core; no further readout tuning or native acquisition is required for Stage C.
 
+The [local synthetic board design](superpowers/specs/2026-11-10-local-price-board-design.md)
+and [four-task implementation plan](superpowers/plans/2026-11-10-local-price-board.md)
+are now prospectively accepted after independent architecture and contract review.
+Python/SQLite owns prices, postcommit cooldowns, restart recovery, presence and
+idempotency; a separate TypeScript board uses the existing viewer build. All service
+durations share the high-resolution authority clock. Race tests cover late pause
+versus resume, presence loss during rollback and retired primary sessions.
+Implementation has not started; publish these prospective documents alongside
+accepted result checkpoint `6c7685c`, then execute the four bounded tasks with Sol
+and independent Astra reviews. No new dependency or native/API run is needed.
+
 The protocol-only checkpoint `f07988a` triggered
 [CI42671895977](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42671895977),
 which failed before creating any jobs, including one unchanged retry. GitHub's

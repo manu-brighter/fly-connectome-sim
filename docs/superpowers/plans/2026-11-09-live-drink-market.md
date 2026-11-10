@@ -343,9 +343,11 @@ the sustained-operation pilot; they are not invented in Stage A.
 
 ## Stage C — price service and local test board
 
-Next subsystem specification/plan lives under the same docs hierarchy; source
-lives under `market/`, separate from `src/fly_connectome_sim/` and replay parsers.
-Define its state/transport contract after Stage B establishes viable inputs.
+The [prospectively accepted design](../specs/2026-11-10-local-price-board-design.md)
+and [four-task plan](2026-11-10-local-price-board.md) fix the local synthetic
+authority, transport and board contract. Product source lives under `market/`,
+separate from `src/fly_connectome_sim/` and replay parsers. Implementation follows
+publication of the accepted prospective documents; no new native run is needed.
 
 - Durable authoritative state: integer Rappen, drink range/grid, current version,
   activation timestamp, per-drink cooldown, event-ID deduplication and pause state.
