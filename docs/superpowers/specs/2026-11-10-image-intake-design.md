@@ -1,8 +1,8 @@
 # Local image intake, sanitized preview and moderation — prospective design
 
 Status: **All three components and the complete local integration independently accepted**.
-Corrections, real browser expiry/cleanup and protocol/security review are complete;
-exact intake-source CI remains outstanding. D2 source CI is complete.
+Corrections, real browser expiry/cleanup and protocol/security review are complete.
+Published source31f8294 passed all four exact-source CI jobs. D2 source CI is complete.
 See [component evidence](../../experiments/2026-11-10-image-intake.md).
 Compose accepted [D1](2026-11-10-image-admission-design.md) and
 [D2](2026-11-10-image-decoding-design.md); local D2 acceptance does not replace its CI gate.

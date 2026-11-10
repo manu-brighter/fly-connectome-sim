@@ -14,7 +14,8 @@ accepted after maintenance-failure fencing:713 Market passes/five unchanged
 Windows privilege skips and seven independent loopback scenarios. Task3 UI is
 independently accepted:290 viewer passes/one existing Windows skip, build0,
 72 independent correction checks and actual corrected-browser expiry/cleanup.
-Complete local integration accepted; exact-source CI remains outstanding.
+Complete local integration accepted; published source31f8294 passed all four
+exact-source CI42834493163 jobs. This local intake plan is complete.
 
 **Architecture:** One coordinator composes unchanged D1 lifecycle and D2 decoder;
 the existing HTTP server gains optional image routes, followed by bounded guest/
@@ -149,7 +150,7 @@ Task2 ownership; do not silently widen its accepted authorization/body policy.
   tabs/server/decoder and verify cleanup. No synthetic processed animation.
 - [x] Independent final Astra review covers this complete integration and concrete
   browser/process/security evidence; all actionable findings corrected and verified.
-- [ ] Finish reviewed handover/result/plan, verify preserved sources and exact
+- [x] Finish reviewed handover/result/plan, verify preserved sources and exact
   staged diff, commit/push the feature and
   await all existing clean-checkout CI jobs.
 

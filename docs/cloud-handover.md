@@ -406,13 +406,21 @@ operator UI is now implemented and corrected after three independent findings:
 checks include matching D2/canvas pixels, real five-minute expiry and confirmed
 owner cleanup. Corrected-build checks also passed real expiry, mobile/focus/offline
 behavior and cleanup;72 independent correction cases passed. All three components
-and the complete local integration are independently accepted. Exact-source
-integration CI remains outstanding. No neural
+and the complete local integration are independently accepted. Published source
+`31f82947451899577b4607c2616e5cb3dc5ed055` passed all four
+[CI42834493163 jobs](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42834493163):
+693 Market passes/25 Windows-specific skips,1469 native/session passes/47 skips,
+253 buffer passes/six Windows-only skips,287 viewer passes/four absent historical
+artifact skips and build. The local intake slice is complete. No neural
 worker is connected; approved images queue and expire without a processed claim.
-Continuous native integration and measured live presentation remain later.
+Next: separately specify one owned native worker, genuine image handoff/completion
+and bounded measured telemetry. Preserve intake-only mode; native price admission
+and richer measured live presentation follow. Do not route real evidence through
+the synthetic fixture path or launch an unbounded native run.
 The preservation baseline records all 270 preexisting tracked files, all 64 frozen
-helpers unchanged and the same 41-member package fingerprint. No new dependency
-or native/API run is needed. The planning checkpoint passed
+helpers unchanged and the same 41-member package fingerprint. No new dependency,
+provider call or fullgraph acquisition was needed for the completed local intake.
+The earlier planning checkpoint passed
 [CI42730169795](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42730169795):
 1469 existing backend passes / 47 skips in 634.51 s, 253 buffer passes / six
 Windows-only skips in 355.87 s, 243 viewer passes / four private-artifact skips

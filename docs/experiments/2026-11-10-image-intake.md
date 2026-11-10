@@ -1,8 +1,8 @@
 # Local image intake — component evidence
 
 Status: all three components and the complete local intake integration are
-independently accepted after corrections and actual browser checks. Source CI
-remains outstanding. No native worker
+independently accepted after corrections and actual browser checks. All four
+exact-source CI jobs passed. No native worker
 is connected, and no image has changed a drink price.
 
 The coordinator composes unchanged admission and owned decoding. It retains one
@@ -123,7 +123,7 @@ remain recorded. Lazy optional imports preserve all four original default-mode
 no-native process checks. Optional-mode guards allow only the existing package,
 experiment package and recorder helper imports; no simulation engine executes.
 No original price assertion, D1/D2 source, frozen helper, package member or
-historical artifact changed. Complete integration CI remains outstanding.
+historical artifact changed. Complete integration CI is recorded below.
 
 ## Task3 browser interface and corrections
 
@@ -192,8 +192,30 @@ load test,12-hour rehearsal or neural measurement. The [local setup](../getting-
 uses the optional Windows decoder; opening capabilities and generated/private
 evidence stay outside Git.
 
-## Remaining integration
+## Published source and clean-checkout CI
 
-The accepted [plan](../superpowers/plans/2026-11-10-image-intake.md) awaits the
-reviewed source checkpoint and its four existing CI jobs.
-Continuous native handoff, measured display and real price admission are later work.
+Source `31f82947451899577b4607c2616e5cb3dc5ed055` is published on the existing
+feature branch. Its [CI42834493163](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42834493163)
+completed successfully; each job recorded that exact checkout:
+
+| Job | Actual result |
+| --- | --- |
+| Market software |693 passed,25 Windows-specific skips,93.89s |
+| Tiny native/session compatibility |1469 passed,47 skips,329.83s |
+| Buffer software |253 passed,six Windows-only skips,358.02s |
+| Viewer |287 passed,four unavailable historical-artifact skips,53.808s; build306ms |
+
+The25 Market skips are14 Windows Job cases,two fixed Windows decoder-bootstrap
+cases,one actual intake/D2 case and eight Windows optional CLI/process cases.
+The five local Windows symlink-privilege skips passed on Linux; the local viewer
+link skip also passed there. No skip was introduced to turn a failure green.
+CI establishes portable compatibility, not Linux D2 ownership, fullgraph capacity
+or public-event readiness. Core/package/frozen helpers and historical artifacts
+remain unchanged. The complete local intake slice is closed.
+
+## Next integration
+
+The accepted [plan](../superpowers/plans/2026-11-10-image-intake.md) is complete.
+One owned continuous native worker, genuine handoff/completion and bounded measured
+telemetry are the next separately reviewed implementation slice. Native price
+admission and richer measured display follow; approval alone still cannot drive prices.
