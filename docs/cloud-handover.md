@@ -464,7 +464,13 @@ That run exposed a separate unchanged Viewer test race: twenty event-loop turns
 did not guarantee completion of WebCrypto. The test now waits for actual canvas
 painting and additionally verifies that pending digest validation cannot enable approval.
 No Viewer production source changed; actual SHA256 and pixel assertions remain.
-No actual native worker has yet run. Next: corrected exact-source CI, concrete finite local
+CI42885432067 then exposed a separate wall-test scheduling assumption (1020 passes,
+one failure,77 skips): the valid wall end occurred between observations. The test
+now advances its injected clock inside the second observation, retaining exact
+discard/partial-seal/inspection assertions.18 focused checks passed. Independent
+review accepts successful CI jobs with identical relevant production sources for
+the bounded80/600 run; no failed workflow is relabelled green. The test-only CI
+continues separately. No actual native worker has yet run. Next: concrete finite local
 acceptance with generated images, actual source-bound execution/browser inspection,
 then the usable local pilot. Preserve the distinction from multi-hour performance,
 public deployment and scientific support. Continue until the local pilot works.

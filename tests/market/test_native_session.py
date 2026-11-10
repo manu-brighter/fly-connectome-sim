@@ -294,8 +294,8 @@ class FakeTransport:
         return api().protocol.validate_cleanup(receipt)
 
 
-def software_session(tmp_path, *, mutate=None, eof_at=None, bound_fixture=False, profile=None, wall_ns=None):
-    clock = api().SystemClock()
+def software_session(tmp_path, *, mutate=None, eof_at=None, bound_fixture=False, profile=None, wall_ns=None, clock=None):
+    clock = api().SystemClock() if clock is None else clock
     declaration, bindings = prepared_fixtures(tmp_path, local_files=True)
     if profile is not None:
         declaration.update(schema=api().protocol.schema("protocol"), proof=profile.name, constants=api().protocol.limits())

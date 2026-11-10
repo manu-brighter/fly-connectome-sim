@@ -160,33 +160,41 @@ def test_live_hello_binds_absolute_wall_deadline_and_rejects_unbound():
         message['wall_deadline_ns']=60000001000
         assert p.validate_message(message,'parent').wall_deadline_ns==60000001000
 
-def test_live_session_normal_wall_end_seals_partial_without_counting_inflight(tmp_path,monkeypatch):
-    import time
+def test_live_session_normal_wall_end_seals_partial_without_counting_inflight(tmp_path, monkeypatch):
     from market import native_protocol as p
-    from test_native_session import software_session,drive_software
+    from conftest import FakeClock
+    from test_native_session import software_session, drive_software
     from test_native_worker import FakeEngine
-    real_observe=FakeEngine.observe
-    def delayed(self,*args,**kwargs):
-        result=real_observe(self,*args,**kwargs)
-        time.sleep(.15)
+
+    clock = FakeClock()
+    real_observe = FakeEngine.observe
+
+    def cross_wall_during_second_observation(self, *args, **kwargs):
+        result = real_observe(self, *args, **kwargs)
+        if len(self.frames) == 2:
+            # Wall time advances only inside this in-flight call. Scheduling
+            # between observations cannot consume the declared wall budget.
+            clock.advance(milliseconds=501)
         return result
-    monkeypatch.setattr(FakeEngine,'observe',delayed)
-    with p.scope(p.NativeProfile('live-pilot/v1',1,48)) as unused:
-        value=software_session(tmp_path,profile=p.current_profile(),wall_ns=650000000)
+
+    monkeypatch.setattr(FakeEngine, 'observe', cross_wall_during_second_observation)
+    with p.scope(p.NativeProfile('live-pilot/v1', 1, 48)):
+        value = software_session(tmp_path, profile=p.current_profile(), wall_ns=500000000, clock=clock)
         drive_software(value)
         assert value.snapshot().fault is None
-        assert value.snapshot().state=='ended'
-        assert value._terminal_reason=='wall_limit'
-        completed=value.snapshot().completed_observations
-        assert 0<completed<48 and len(value._transport.engine.frames)==completed+1
+        assert value.snapshot().state == 'ended'
+        assert value._terminal_reason == 'wall_limit'
+        completed = value.snapshot().completed_observations
+        assert completed == 1
+        assert 0 < completed < 48 and len(value._transport.engine.frames) == completed + 1
         value.finish_receipts()
-        subset=p.source_subset(value._protocol,value._bindings,value._prepared.protocol_sha256,value._prepared.bindings_sha256)
-        monkeypatch.setattr(value,'_final_source_check',lambda:p.FrozenRecord(dict(scope='prepared-source-lock-tool-cache/v1',
-            started_ns=value._stop_ns,finished_ns=value._stop_ns,file_count=subset.file_count,
-            bindings_subset_sha256=subset.bindings_subset_sha256,all_match=True)))
+        subset = p.source_subset(value._protocol, value._bindings, value._prepared.protocol_sha256, value._prepared.bindings_sha256)
+        monkeypatch.setattr(value, '_final_source_check', lambda: p.FrozenRecord(dict(scope='prepared-source-lock-tool-cache/v1',
+            started_ns=value._stop_ns, finished_ns=value._stop_ns, file_count=subset.file_count,
+            bindings_subset_sha256=subset.bindings_subset_sha256, all_match=True)))
         value.finish_close()
-    final=p.inspect_evidence(value.config.work_root)
-    assert final.status=='partial' and final.terminal_reason=='wall_limit' and final.observations==completed
+    final = p.inspect_evidence(value.config.work_root)
+    assert final.status == 'partial' and final.terminal_reason == 'wall_limit' and final.observations == completed
 
 def test_live_protocol_event_monitor_caps_are_versioned_and_strict():
     from market import native_protocol as p
