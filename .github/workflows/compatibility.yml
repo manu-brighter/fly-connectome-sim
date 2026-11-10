@@ -178,6 +178,62 @@ jobs:
           tests/test_live_buffer_performance.py
           tests/test_live_buffer_supervisor.py
 
+  market_price:
+    name: Local synthetic price software compatibility
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      FLY_CONNECTOME_SIM_DATA: ${{ github.workspace }}/.tools/ci/market-price/runtime
+      FLY_CONNECTOME_SIM_FULL_TEST: ''
+      FLY_CONNECTOME_SIM_CXX: ''
+      PYTHONPATH: ''
+      PYTHONHOME: ''
+      UV_NO_CACHE: 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require a fresh empty data root
+        run: |
+          mkdir -p .tools/ci/market-price
+          mkdir .tools/ci/market-price/runtime
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: '0.12.15'
+          python-version: '3.12.14'
+          enable-cache: false
+      - name: Record checkout and toolchain
+        run: |
+          git rev-parse HEAD
+          printf 'Runner image: %s %s\n' "$ImageOS" "$ImageVersion"
+          cat /etc/os-release
+          uname -a
+          uv --version
+      - name: Install locked Python test dependencies
+        run: uv sync --locked --extra test --python 3.12.14
+      - name: Record price-service Python, SQLite and clock identity
+        run: |
+          uv run --no-sync python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import sqlite3
+          import sys
+
+          from market.price_service import SystemClock
+
+          runtime = Path(os.environ["FLY_CONNECTOME_SIM_DATA"]).resolve()
+          assert runtime.is_dir() and not any(runtime.iterdir()), runtime
+          assert not any(name == "fly_connectome_sim" or name.startswith("fly_connectome_sim.") for name in sys.modules)
+          print(sys.version)
+          print(f"Python executable: {sys.executable}")
+          print(f"SQLite: {sqlite3.sqlite_version}")
+          print(f"Empty runtime: {runtime}")
+          print(json.dumps(SystemClock().describe(), sort_keys=True))
+          PY
+      - name: Run local synthetic price software tests
+        run: uv run --no-sync python -m pytest -q tests/market
+
   viewer:
     name: Viewer tests and build
     runs-on: ubuntu-24.04

@@ -14,11 +14,11 @@ Node >=24 direct node:test, TypeScript 7.0.2 and Vite 8.3.5 already locked.
 
 **Spec:** [Exact design and contracts](../specs/2026-11-10-local-price-board-design.md).
 
-**Status:** Prospectively accepted at `b05ce33`; Tasks 1–2 implementations are now
-independently accepted. Tasks 3–4 remain pending. The user already authorized
-autonomous sequential
+**Status:** Prospectively accepted at `b05ce33`; all four local implementations
+and their evidence are independently accepted. Feature publication and actual
+new-source Linux CI remain pending. The user already authorized autonomous sequential
 execution with Sol implementation/Astra review; no new approval loop is added.
-Controller must accept and push these docs with accepted result `6c7685c` before
+These prospective docs and accepted result `6c7685c` were published before
 product code. Parent/root controls acceptance, publication and closure.
 
 ## Global Constraints
@@ -290,18 +290,22 @@ Test helper child processes may import authority and barriers directly for
 deterministic crash timing. Subprocesses have explicit <=15s cleanup deadlines
 and owned-process termination; do not kill unrelated processes.
 
-- [ ] Write failing subprocess tests: two live authorities same DB/different
+- [x] Write subprocess tests: two live authorities same DB/different
   port reject ownership on Windows/POSIX; normal stop releases; killed owner
   releases without lock deletion; exact prices/versions/results persist. Kill
   child after real COMMIT before anchor, reopen, assert activation durable,
   startup paused/new incarnation and full recovery cooldown. Lost HTTP result
   followed by restart/same request ID returns original result, not a fresh event.
   Assert fixtures cannot import/execute native package and unrelated PIDs survive.
-- [ ] Run red `.venv/Scripts/python.exe -m pytest -q tests/market/test_price_process.py`;
+- [x] Run initial `.venv/Scripts/python.exe -m pytest -q tests/market/test_price_process.py`;
   implement only necessary integration fixes and tests. Green the same command
   plus `.venv/Scripts/python.exe -m pytest -q tests/market`. Record actual Windows
   ownership evidence; POSIX equivalent runs in CI, never label unrun platform passed.
-- [ ] Add a separate15-minute Ubuntu24.04 `market_price` CI job reusing existing
+  Initial failures were sandbox/harness failures, not missing product behavior.
+  The accepted product already satisfied the new cases; no artificial RED or
+  production change was needed. Verified actual child PIDs fixed the Windows
+  venv redirector test harness; immediate owner release is asserted unchanged.
+- [x] Add a separate15-minute Ubuntu24.04 `market_price` CI job reusing existing
   pinned checkout/setup-uv/Python3.12.14 and locked test environment. Exact new
   command `uv run --no-sync python -m pytest -q tests/market` includes all seven test files;
   record Python/SQLite/clock identity, run without MaleCNS data/provider credentials.
@@ -314,14 +318,14 @@ and owned-process termination; do not kill unrelated processes.
   native-build, named checkpoint/replay tests, session-workflow, event-proposals,
   event-followup, recorder-limits and CLI; market_buffers' live-buffers,
   live-buffer-performance and live-buffer-supervisor. No exclusions or weakened gates.
-- [ ] Document exact operator commands from spec: viewer `npm run build`; CLI
+- [x] Document exact operator commands from spec: viewer `npm run build`; CLI
   `--config examples/market-synthetic.json --db .tools/market-local/state.sqlite3
   --host 127.0.0.1 --port 8765 --assets viewer/dist`; local opening fragments,
   primary claim/ACK, explicit resume, fixture/retry, pause, restart recovery and
   Ctrl+C stop. Explain lost commit visibility, safety pause under overload,
   full30-minute restart lock and last-known unknown board. Do not commit real
   capabilities, DBs, generated assets/screenshots or raw artifacts.
-- [ ] Controller runs actual bounded synthetic local workflow and complete
+- [x] Controller runs actual bounded synthetic local workflow and complete
   relevant regressions, preserves outputs under `.tools/market-local-20261110/`,
   compares the spec's protected original source/helper/lock SHA256 manifest and
   `model_fingerprint()` unchanged, and independently verifies old artifacts
@@ -356,7 +360,8 @@ symlink-privilege skip in 27.14 s. Static independent review checked the actual
 source and retained logs without executing project code. Real socket deadlines,
 overload and later-resume races, lost responses and restart are covered. CLI
 interruption was injected at serve entry; it was not an OS-console Ctrl+C test.
-Actual Vite/browser and Linux symlink checks remain pending. Port 80 uses canonical
+Vite/browser checks were assigned to Task3; Linux symlink checks remain pending.
+Port 80 uses canonical
 Host/Origin/URLs without :80; all other configured ports remain explicit.
 
 Task3 source is independently accepted after the activation-indicator regression
@@ -370,7 +375,20 @@ overflow. Actual hidden tabs and desktop zoom remain unverified, and favicon404
 is incidental. Exact activation duration is proved by independent deterministic
 render tests; browser feedback predates snapshot arrival and is not its start clock.
 No process-restart transparent reconnection is claimed: a new process prints new
-opening capabilities. Task4 process/CI/documentation closure remains pending.
+opening capabilities. Source publication and Linux CI closure remain pending.
+
+Task4 local source/evidence is independently accepted: four real process cases
+pass in2.20s, independently rerun in2.15s. The complete Windows Market suite passes
+181 cases with one genuine symlink-privilege skip in29.85s. Crash occurs after an
+observed real COMMIT before anchoring; exact restart recovery uses a frozen test
+clock. Normal CLI interruption is test-injected, not a physical-console Ctrl+C
+observation. Verified actual interpreter PIDs bound targeted termination, and a
+separate sentinel survives. No product source changed for these tests. Final
+preservation confirms263 of270 original tracked files unchanged, seven planned
+documentation/CI/build-support changes, all64 frozen helpers/41 package members
+and seven historical artifacts unchanged. The old offline inspector reproduces
+the retained summary exactly. The new Linux job and source publication still
+require actual terminal results before StageC closure.
 
 Spec coverage maps authority/clock/presence/safety/store to Task1, fixture/HTTP
 bounds to Task2, board/build to Task3 and process/CI/docs to Task4. Later tasks

@@ -42,11 +42,13 @@ uv sync --locked --extra test --cache-dir .tools/uv-cache --python 3.12.14
 
 ## Clean-checkout compatibility
 
-The [GitHub Actions workflow](../.github/workflows/compatibility.yml) has two
-independent Ubuntu 24.04 jobs, triggered by feature pushes, pull requests or
+The [GitHub Actions workflow](../.github/workflows/compatibility.yml) defines four
+independent Ubuntu 24.04 jobs: native/session, market buffers, local synthetic
+prices and viewer. They are triggered by feature pushes, pull requests or
 manual dispatch. It pins uv 0.12.15, Python 3.12.14 and Node 24.21.0, installs
 locked dependencies, and records the runner image, tool/compiler versions and
-the actual checkout's source fingerprint. The first actual
+the actual checkout's source fingerprint in the native/buffer jobs. The price job
+records Python, SQLite and authority-clock identity separately. The first actual
 [hosted Linux acceptance](experiments/2026-11-07-clean-checkout-ci.md) passed
 142 Python tests with one Windows-only skip, plus 97 viewer tests/build.
 The system C++17 compiler and runner image are not pinned.
@@ -99,10 +101,82 @@ npm test
 npm run build
 ```
 
-Neither job restores dependency caches, uploads artifacts, deploys or accesses
+The separate 15-minute `market_price` job installs the locked test environment
+and runs all seven `tests/market/test_price_*.py` files without MaleCNS data or
+provider credentials. Its exact test command is:
+
+```sh
+uv sync --locked --extra test --python 3.12.14
+uv run --no-sync python -m pytest -q tests/market
+```
+
+The native and market-buffer job commands remain unchanged. The viewer's existing
+`npm test` discovers the market tests too, and its build retains both HTML entries.
+The new price job's Linux outcome remains pending until an actual source CI run;
+see the [local price-board result](experiments/2026-11-10-local-price-board.md).
+
+None of these jobs restores dependency caches, uploads artifacts, deploys or accesses
 secrets. Passing compatibility checks does not establish native-history
 attestation, scientific qualification, fullgraph capacity, macOS/hosted Windows
 support, live API compatibility, or browser/video-encoding acceptance.
+
+## Local synthetic drink-price board
+
+This separate local test uses synthetic proposals, SQLite and loopback HTTP. It
+needs no MaleCNS download, native engine, provider key or neural run. Its permanent
+labels are `Lokaler Testbetrieb`, `Testvorschläge, keine Verkaufspreise.` and
+`Synthetischer lokaler Test — keine Verkaufspreise / keine Neuronendaten`.
+Use the Python/Node environment above; build the viewer before starting the service:
+
+```powershell
+Push-Location viewer
+npm ci
+npm run build
+Pop-Location
+.venv/Scripts/python.exe scripts/run-market-price-service.py --config examples/market-synthetic.json --db .tools/market-local/state.sqlite3 --host 127.0.0.1 --port 8765 --assets viewer/dist
+```
+
+On Linux use `.venv/bin/python` for the same script and arguments. The service
+creates the selected DB parent directory. Retain that database when restarting;
+its configuration is fixed, and incompatible or damaged stores are refused.
+Only one process can own the database, even with different HTTP ports. The
+`.owner.lock` file remains on disk; never delete it to bypass ownership.
+
+1. Open the newly printed local `/market.html#operator=<capability>` URL. The
+   second `/market.html#view=<capability>` URL opens a read-only board. These
+   secret fragments are consumed and removed immediately; retain the terminal
+   output privately and never copy real opening URLs into reports or screenshots.
+2. Expand the operator controls and choose **Primäre Tafel übernehmen**. Keep this
+   board visible. After rendering a full snapshot, it automatically ACKs the
+   current challenge; wait for primary presence to become `anwesend`.
+3. Choose **Fortsetzen** explicitly: every startup is paused. Select a synthetic
+   drink, enter `700` Rappen and choose **Testvorschlag senden**. Initial `400`
+   becomes CHF7.00 only after a durable activation and a fresh snapshot. A
+   subsequent `700` is `no_change`; an immediate `400` is rejected `cooldown`.
+4. If the response is uncertain, use **Ungewisse Aktion wiederholen**: it retains
+   the exact request ID and payload. A deliberate new action gets a new ID. A
+   lost HTTP response can hide an already committed activation; it cannot undo
+   that price. Check the fresh board/result rather than assuming failure.
+5. Choose **Pausieren** to stop acceptance. Connection overload also latches a
+   safety pause; closing excess connections never resumes automatically. Only
+   a newer explicit healthy **Fortsetzen** can clear the pause.
+6. Stop the terminal service with **Ctrl+C**. Restart with the same command and
+   database, then open the **newly printed URL**: each process rotates its opening
+   capabilities and incarnation. Claim/ACK and explicitly resume again. Every
+   previously changed drink receives a complete new 30-minute recovery lock,
+   regardless of downtime; unchanged drinks remain eligible. Recovery rows say
+   `Sicherheitswartezeit nach Neustart`.
+
+After five seconds without a confirmed full snapshot, the board keeps dated
+last-known prices and marks the current state unknown; it disables mutations and
+does not imply those prices are currently confirmed. Hiding/disconnecting the
+primary stops ACKs, and server-side presence expires independently. Visible
+countdowns estimate eligibility; elapsed time alone never changes a price. Each
+actual change locks only that drink for at least 30 minutes measured from the
+postcommit authority clock. Full jumps within CHF4.00–7.00 are allowed; there is
+no CHF0.50 per-change limit. This board does not synchronize physical signs or a
+POS; any later staff adoption is manual. See the [bounded evidence and remaining
+limits](experiments/2026-11-10-local-price-board.md).
 
 ## Download, verify, stage and prepare
 

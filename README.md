@@ -45,6 +45,13 @@ left/right preference.
 | Assay evidence | Caller-owned native production, source-specific 408-pair tiny-native repeats, shared declaration arithmetic and a bounded pair checker with full EOF validation | Global grid/selected-evidence reconciliation/public freezing, fullgraph held-out confirmation and the `assay` CLI |
 | Resource pilots | Fullgraph components, trained 10-/70-second one-anchor pilots with isolated native replay, and a [reviewed detail-on first-training-prefix sample](docs/experiments/2026-11-02-fullgraph-detail-prefix-pilot.md) | Unprofiled controlled timing, complete grid/assay capacity and fullgraph cloud/Linux execution |
 | Product | Accepted genuine proposal → native session → measured choice → unchanged plan → 30 fps film, fixed-cohort cell counts/static connections, bounded visual/side diagnostic and a separately verified German planning companion | Broader platform/model/account coverage and separately scoped research; no measured synaptic transmission or biological validation |
+| Drink-price experiment | Separate local SQLite price authority and synthetic test board; bounded prices, per-drink 30-minute cooldowns, pause and explicit disconnected state | Guest uploads, continuous neural integration, sustained rehearsal and separately authorized public operation |
+
+The [local synthetic drink-price board](docs/getting-started.md#local-synthetic-drink-price-board)
+can be exercised without a simulation or API key. It is a separate test display;
+its synthetic choices are not neural measurements or sale prices. See the
+[implementation evidence](docs/experiments/2026-11-10-local-price-board.md) for
+actual checks and remaining limits.
 
 The [continuous session](docs/superpowers/specs/2026-11-03-feed-event-session.md)
 uses one fresh engine for fast-feed reels and then 2 s of event cards, without

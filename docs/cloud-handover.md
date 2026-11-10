@@ -337,8 +337,17 @@ activated individually; all20 cooldown rows fit at1920x1080 and1280x720, with
 normal single-column scrolling at390px. Reduced motion and the10.62:1 main color
 pair were checked. Actual hidden-tab behavior could not be induced in the
 headless browser; its abort/no-ACK behavior has unit coverage. A harmless favicon404
-remains. Task4 adds cross-process recovery, operator instructions and complete
-new-source Linux CI; no sale prices, public readiness or neural integration are claimed.
+remains. Task4's cross-process tests, CI configuration and operator instructions
+are now independently accepted locally: four real process cases passed in2.20s
+(independently2.15s), complete Market suite181 passed/one Windows symlink skip
+in29.85s. Actual COMMIT-before-anchor crash retains the activation and restarts
+paused with full recovery; lost-response retry after restart preserves the same
+result and ledger counts. A verified real-interpreter PID fixes the Windows
+test harness, with no product change. Normal CLI interruption is test-injected,
+not a physical-console Ctrl+C observation. See the [result and limits](experiments/2026-11-10-local-price-board.md)
+and [local start instructions](getting-started.md#local-synthetic-drink-price-board).
+Next: publish the reviewed feature source and await all four complete Linux CI
+jobs before closing StageC. No sale prices, public readiness or neural integration are claimed.
 The preservation baseline records all 270 preexisting tracked files, all 64 frozen
 helpers unchanged and the same 41-member package fingerprint. No new dependency
 or native/API run is needed. The planning checkpoint passed
