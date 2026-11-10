@@ -5,9 +5,10 @@
 **Goal:** Convert one bounded JPEG/PNG into the exact canonical image in an owned,
 short-lived process, preserving D1's original decode deadline.
 
-**Status:** D1 passed all four source CI jobs. Task1 worker is implemented and
-independently accepted after fixing effective PNG source-depth validation;120
-focused tests pass with three Windows symlink-privilege skips. Task2 remains open.
+**Status:** Both tasks and complete local integration independently accepted after
+effective PNG-depth and terminal cleanup/EOF corrections. Final decoder suite225
+passed/four Windows privilege skips; full Market540 passed/five privilege skips.
+Publication and all four source CI jobs remain pending.
 The [exact D2 contract](../specs/2026-11-10-image-decoding-design.md) governs both tasks.
 
 **Architecture:** A private portable transform/protocol worker and a Windows parent
@@ -80,12 +81,12 @@ Consume Task1's fixed files/wire message and unchanged Clock/SystemClock,
 DatabaseOwnership, WindowsJob and WindowsProcess. Produce the exact immutable
 DecodedImage only after all identity, process, pipe, deadline and cleanup checks.
 
-- [ ] Write failing parent protocol/timing/capacity tests and actual harmless
+- [x] Write failing parent protocol/timing/capacity tests and actual harmless
   Windows child ownership tests before adding the adapter/controller.
-- [ ] Implement verified startup-only primitive import, atomically assigned Job
+- [x] Implement verified startup-only primitive import, atomically assigned Job
   creation, exact executable/handle identity, bounded pipe polling and scratch
   ownership. Reject unsupported platforms/configurations without an unsafe fallback.
-- [ ] Verify normal decode, timeout/cancel/flood/crash, memory/poll failure, clock
+- [x] Verify normal decode, timeout/cancel/flood/crash, memory/poll failure, clock
   failure, failed cleanup and stale/foreign/reparse paths. Exercise actual parent
   death including launch; prove zero owned survivors and an unrelated sentinel
   survives. Distinguish synthetic monitor tests from measured OS lifecycle evidence.
@@ -96,12 +97,12 @@ DecodedImage only after all identity, process, pipe, deadline and cleanup checks
   trusted package fixture with absent/stale caches, not the real environment.
   Cover closed-before-busy/fault precedence, idempotent successful close and
   cleanup retry through retained exact handles only, without process discovery.
-- [ ] Prove a late result cannot renew D1's accepted-time deadline or escape after
+- [x] Prove a late result cannot renew D1's accepted-time deadline or escape after
   failed cleanup. Busy calls retain no extra payload; a faulted instance cannot
   silently recover. Record actual resource peaks and private-file cleanup limits.
-- [ ] Run focused and complete tests/market under the appropriate Windows host
+- [x] Run focused and complete tests/market under the appropriate Windows host
   permissions; preserve honest platform skips. No HTTP/browser/native run is needed.
-- [ ] Independent Astra reviews full D2 source/evidence, including trusted import,
+- [x] Independent Astra reviews full D2 source/evidence, including trusted import,
   frame digest consistency, parent death, clock/timeout/cleanup precedence and
   preserving all prior sources. Fix actionable issues with meaningful regressions.
 - [ ] Root records reviewed evidence in handover/plan/result docs, verifies the

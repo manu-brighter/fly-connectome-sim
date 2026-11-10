@@ -1,6 +1,7 @@
 # Isolated local image decoding — prospective D2 design
 
-Status: **Task1 worker independently accepted locally; Task2 parent remains open**.
+Status: **Complete local D2 source/integration independently accepted; publication
+and clean-checkout CI pending**.
 See [component evidence](../../experiments/2026-11-10-image-decoding.md). The
 [preceding D1](2026-11-10-image-admission-design.md) source CI gate and this
 contract's independent prospective review are complete.

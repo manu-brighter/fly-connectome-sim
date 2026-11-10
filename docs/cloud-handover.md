@@ -364,8 +364,8 @@ changes no price; those are later reviewed slices. No sale prices, public readin
 or neural integration are claimed.
 Local D1 implementation now exists in `market/image_admission.py` with134 focused
 passes and315 complete Market passes/one Windows symlink-privilege skip. An
-independent review found shared mutable metadata references; Sol corrected them
-with18 additional regressions; independent fix re-review accepted the complete
+independent review found shared mutable metadata references; the correction added
+18 regression cases, and independent fix re-review accepted the complete
 D1 slice with seven additional reproductions. The
 [implementation evidence](experiments/2026-11-10-image-admission.md) records the
 exact limits. Published source `6d72ed70353cb0ef3404303be6f071078f77da23` passed
@@ -378,9 +378,14 @@ D1 is complete within its metadata-only scope. The next
 prospectively. Task1, the private canonical pixel/protocol worker, is now
 independently accepted locally after closing a duplicate-PNG-header depth bypass:
 120 focused passes/three Windows symlink skips and15 independent re-review passes.
-[Component evidence](experiments/2026-11-10-image-decoding.md) separates the
-initial full-suite result from the corrected focused result. Task2 parent
-ownership/cleanup follows; HTTP and native integration remain later.
+[Component evidence](experiments/2026-11-10-image-decoding.md) separates historical
+and corrected results. Task2 ownership/cleanup and complete local D2 integration
+are now independently accepted after final cancellation/EOF corrections:225
+decoder passes/four Windows privilege skips,540 full Market passes/five privilege
+skips,14 Windows checks and16 independent correction checks.
+Publication and all source CI jobs remain pending. The next local intake/preview/
+approval contract is prospectively reviewed; its implementation waits for D2 CI.
+Continuous native integration and measured live presentation remain later.
 The preservation baseline records all 270 preexisting tracked files, all 64 frozen
 helpers unchanged and the same 41-member package fingerprint. No new dependency
 or native/API run is needed. The planning checkpoint passed
