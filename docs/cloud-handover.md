@@ -441,7 +441,20 @@ confirmation and the framed-write cap. Earlier host integration:211 passes;
 final transport source:50 passes/zero skips, with actual harmless-process evidence
 distinguished from injected faults. The required frozen-helper import chain is
 stdlib recorder/package initializers only, with no simulator initialization.
-Next is Task3 worker/session integration; no native worker has yet run.
+Tasks3–5 and the requested complete local pilot implementation are now independently
+source-reviewed, including native price admission, versioned live profile and minimal
+measured display. The strict40-observation v1 proof remains separate. The user asked
+to prioritize direct implementation, with no further specification rounds and no
+pause at intermediate commits. Root's integrated pre-core-fix checks passed1084
+Market tests/5 existing Windows symlink skips and318 viewer tests/1 existing skip,
+plus build; grouped core fixes passed89 affected tests and17 final live tests.
+The four core findings and three price handoff findings are independently closed;
+the HTTP/intake/UI review found no blocking source defect. See the updated
+[software evidence](experiments/2026-11-10-native-worker-software.md).
+No actual native worker has yet run. Next: exact-source CI, concrete finite local
+acceptance with generated images, actual source-bound execution/browser inspection,
+then the usable local pilot. Preserve the distinction from multi-hour performance,
+public deployment and scientific support. Continue until the local pilot works.
 Independent source/CI and
 concrete finite preflight gates precede one actual run. The330-file baseline
 preserves all64 frozen helpers,41 package members

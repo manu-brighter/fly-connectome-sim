@@ -19,6 +19,70 @@ import struct
 from types import MappingProxyType
 from uuid import UUID
 
+from contextlib import contextmanager
+from contextvars import ContextVar
+from functools import wraps
+
+
+@dataclass(frozen=True, slots=True)
+class NativeProfile:
+    name: str = 'bounded-image20s/v1'
+    duration_minutes: int = 480
+    max_observations: int = 86400
+
+    def __post_init__(self):
+        if self.name not in ('bounded-image20s/v1', 'live-pilot/v1'):
+            raise ValueError('profile')
+        if type(self.duration_minutes) is not int or not 1 <= self.duration_minutes <= 720:
+            raise ValueError('duration')
+        if type(self.max_observations) is not int or not 1 <= self.max_observations <= 86400:
+            raise ValueError('observations')
+
+    @property
+    def live(self):
+        return self.name == 'live-pilot/v1'
+
+
+_CURRENT = ContextVar('native_execution_profile', default=NativeProfile())
+
+
+def current_profile():
+    return _CURRENT.get()
+
+
+@contextmanager
+def scope(profile):
+    if type(profile) is not NativeProfile:
+        raise ValueError('profile')
+    token = _CURRENT.set(profile)
+    try:
+        yield
+    finally:
+        _CURRENT.reset(token)
+
+
+def owned(cls):
+    """Enter each owner's bound profile, including methods used as thread targets."""
+    for name, method in tuple(vars(cls).items()):
+        if callable(method) and name != '__init__':
+            @wraps(method)
+            def call(self, *args, __method=method, **kwargs):
+                with scope(self.profile):
+                    return __method(self, *args, **kwargs)
+            setattr(cls, name, call)
+    return cls
+
+
+def from_declaration(value):
+    if value.get('schema') == 'market-native-protocol/v2':
+        constants = value['constants']
+        ns = constants['wall_ns']
+        if type(ns) is not int or ns % 60000000000:
+            raise ValueError('duration')
+        return NativeProfile(value['proof'], ns // 60000000000, constants['model_observations'])
+    return NativeProfile()
+
+
 
 MAX_NS = 2 ** 63 - 1
 MAX_U64 = 2 ** 64 - 1
@@ -42,6 +106,28 @@ CONSTANTS = MappingProxyType(dict(
     event_bytes=33554432, event_records=4096, monitor_bytes=25165824,
     monitor_records=12000, receipt_batches=32, receipt_batch_bytes=8192,
 ))
+
+
+def limits():
+    values = dict(CONSTANTS)
+    profile = current_profile()
+    if profile.live:
+        values.update(model_observations=profile.max_observations,
+            wall_ns=profile.duration_minutes * 60000000000,
+            combined_output_bytes=8589934592, evidence_bytes=8053063680,
+            event_bytes=6442450944, event_records=1500000,
+            monitor_bytes=1073741824, monitor_records=440000)
+    return values
+
+
+def application_sources():
+    return APPLICATION_SOURCES + (("market/native_price.py",) if current_profile().live else ())
+
+
+def schema(kind):
+    return "market-native-" + kind + ("/v2" if current_profile().live else "/v1")
+
+
 _DIGEST = re.compile(r"[0-9a-f]{64}\Z", re.ASCII)
 _ENVELOPE = "schema type seq incarnation worker_session protocol_sha256 launch_nonce"
 _TUPLE = "id incarnation dispatch_id worker_session frame_sha256"
@@ -283,10 +369,10 @@ BLACK_SHA256 = rgb_sha256(bytes(12288))
 
 
 def free_observations(issued, unissued_active):
-    _int(issued, 0, 40)
+    _int(issued, 0, limits()["model_observations"])
     _int(unissued_active, 0, 7)
-    _require(issued + unissued_active <= 40)
-    return 40 - issued - unissued_active
+    _require(issued + unissued_active <= limits()["model_observations"])
+    return limits()["model_observations"] - issued - unissued_active
 
 
 def validate_clock_brackets(brackets):
@@ -332,7 +418,7 @@ def _start(value):
     for key in _TUPLE.split():
         (_digest if key == "frame_sha256" else _uuid)(value[key])
     _int(value["started_ns"])
-    _int(value["first_observation_index"], 0, 32)
+    _int(value["first_observation_index"], 0, limits()["model_observations"] - 8)
 
 
 def validate_start(start, permit):
@@ -351,7 +437,7 @@ def _complete(value):
     _int(value["completed_ns"])
     _array(value["observation_indices"], 8)
     for index in value["observation_indices"]:
-        _int(index, 0, 39)
+        _int(index, 0, limits()["model_observations"] - 1)
     first = value["observation_indices"][0]
     _require(value["observation_indices"] == list(range(first, first + 8)))
 
@@ -384,7 +470,7 @@ def _group_map(value, rates=False):
 
 
 def _observation_shape(value, binary):
-    index = _int(value["observation_index"], 0, 39)
+    index = _int(value["observation_index"], 0, limits()["model_observations"] - 1)
     _literal(value["input_kind"], "black", "image")
     for name in ("image_id", "dispatch_id"):
         _optional(value[name], _uuid)
@@ -436,12 +522,14 @@ def validate_message(message, direction, binary=b"", *, persisted=False):
     kind = value.get("type")
     _require(type(kind) is str and kind in (_PARENT if direction == "parent" else _WORKER))
     extra = ("bindings_sha256 parent_clock" if direction == "parent" else "bindings_sha256 worker worker_clock") if kind == "hello" else _EXTRAS[kind]
+    if kind == "hello" and direction == "parent" and current_profile().live:
+        extra += " wall_deadline_ns"
     base = _ENVELOPE.split()
     if persisted:
         base.remove("launch_nonce")
     _keys(value, base + extra.split())
-    _literal(value["schema"], "market-native-ipc/v1")
-    _int(value["seq"], 0, 4095)
+    _literal(value["schema"], schema("ipc"))
+    _int(value["seq"], 0, limits()["event_records"] - 1)
     _uuid(value["incarnation"])
     _uuid(value["worker_session"])
     _digest(value["protocol_sha256"])
@@ -453,6 +541,8 @@ def validate_message(message, direction, binary=b"", *, persisted=False):
     if kind not in ("ack", "observation"):
         _require(not binary)
     if kind == "hello":
+        if direction == "parent" and current_profile().live:
+            _int(value["wall_deadline_ns"])
         _clock(value["parent_clock" if direction == "parent" else "worker_clock"])
         if direction == "worker":
             _identity(value["worker"])
@@ -463,7 +553,7 @@ def validate_message(message, direction, binary=b"", *, persisted=False):
             _int(value["child_ns"])
             _require(value["child_ns"] >= value["p0_ns"])
     elif kind == "probe_allow":
-        _int(value["request_seq"], 0, 4095)
+        _int(value["request_seq"], 0, limits()["event_records"] - 1)
         _int(value["allowed_ns"])
     elif kind in ("probe_started", "probe_finished"):
         _identity(value["process"])
@@ -489,22 +579,22 @@ def validate_message(message, direction, binary=b"", *, persisted=False):
         _int(value["ready_ns"])
     elif kind in ("release", "ack"):
         last, nxt, action = value["last_observation_index"], value["next_observation_index"], value["action"]
-        _optional(last, lambda v: _int(v, 0, 39))
-        _optional(nxt, lambda v: _int(v, 0, 39))
+        _optional(last, lambda v: _int(v, 0, limits()["model_observations"] - 1))
+        _optional(nxt, lambda v: _int(v, 0, limits()["model_observations"] - 1))
         _literal(action, "black", "image", "continue_image", "end")
         if kind == "release":
             _require(last is None and nxt == 0 and action == "black")
         elif action == "end":
-            _require(last == 39 and nxt is None)
+            _require(last == limits()["model_observations"] - 1 and nxt is None)
         else:
-            _require(last is not None and last < 39 and nxt == last + 1)
+            _require(last is not None and last < limits()["model_observations"] - 1 and nxt == last + 1)
         if action in ("black", "end"):
             _require(not binary and all(value[key] is None for key in ("permit", "dispatch_id", "exposure_ordinal")))
         elif action == "image":
             _permit(value["permit"])
             _uuid(value["dispatch_id"])
             _int(value["exposure_ordinal"], 0, 0)
-            _require(nxt <= 32 and value["permit"]["dispatch_id"] == value["dispatch_id"])
+            _require(nxt <= limits()["model_observations"] - 8 and value["permit"]["dispatch_id"] == value["dispatch_id"])
             _require(all(value["permit"][key] == value[key] for key in ("incarnation", "worker_session")))
             _require(rgb_sha256(binary) == value["permit"]["frame_sha256"])
         else:
@@ -524,15 +614,15 @@ def validate_message(message, direction, binary=b"", *, persisted=False):
     elif kind == "fault":
         _literal(value["code"], *FAULTS)
         _literal(value["phase"], "bootstrap", "probe", "startup", "observe", "delivery", "shutdown")
-        _optional(value["observation_index"], lambda v: _int(v, 0, 39))
+        _optional(value["observation_index"], lambda v: _int(v, 0, limits()["model_observations"] - 1))
         _optional(value["dispatch_id"], _uuid)
         _optional(value["wall_ns"], _int)
-        _int(value["observations_completed"], 0, 40)
+        _int(value["observations_completed"], 0, limits()["model_observations"])
         _require(value["wall_ns"] is not None or value["code"] == "clock")
     elif kind == "ended":
-        _literal(value["reason"], "model_limit", "cancelled", "fault")
-        count = _int(value["observations_completed"], 0, 40)
-        _optional(value["last_observation_index"], lambda v: _int(v, 0, 39))
+        _literal(value["reason"], *( ("model_limit", "cancelled", "fault", "wall_limit") if current_profile().live else ("model_limit", "cancelled", "fault") ))
+        count = _int(value["observations_completed"], 0, limits()["model_observations"])
+        _optional(value["last_observation_index"], lambda v: _int(v, 0, limits()["model_observations"] - 1))
         _require(value["last_observation_index"] == (count - 1 if count else None))
         _int(value["last_tick"], count * 5000, count * 5000)
         _optional(value["wall_ns"], _int)
@@ -541,7 +631,7 @@ def validate_message(message, direction, binary=b"", *, persisted=False):
         _require((value["reason"] == "fault") == (value["fault"] is not None))
         _require(value["wall_ns"] is not None or value["fault"] == "clock")
         if value["reason"] == "model_limit":
-            _require(count == 40 and value["header_sha256"] is not None)
+            _require(count == limits()["model_observations"] and value["header_sha256"] is not None)
     return FrozenRecord(value)
 
 
@@ -932,12 +1022,13 @@ class ProtocolValidator:
         self._ended = None
         self._issued_ns = None
         self._fault = None
+        self._wall_deadline = None
 
     def accept_header(self, header, worker_seq, *, receipt_ns=None):
         """Journal substitute for static_header, whose full bytes live in header.json."""
         _require(self._identity is not None)
         message = dict(zip(("incarnation", "worker_session", "protocol_sha256"), self._identity))
-        message.update(schema="market-native-ipc/v1", type="static_header", seq=worker_seq, header=_plain(header))
+        message.update(schema=schema("ipc"), type="static_header", seq=worker_seq, header=_plain(header))
         return self.accept(message, "worker", receipt_ns=receipt_ns, persisted=True)
 
     def accept(self, message, direction, binary=b"", *, receipt_ns=None, persisted=False):
@@ -968,7 +1059,7 @@ class ProtocolValidator:
             self._phase = "faulted"
             return FrozenRecord(value)
         if kind == "ended":
-            _require(self._phase in ("ending", "stopping", "faulted"))
+            _require(self._phase in ("ending", "stopping", "faulted") or (current_profile().live and value["reason"] == "wall_limit"))
             _require(value["observations_completed"] == self._completed)
             if self._header is None:
                 _require(value["header_sha256"] is None)
@@ -977,6 +1068,9 @@ class ProtocolValidator:
                 _require(value["engine_identity_sha256"] == self._header["engine_identity"]["sha256"])
             if value["reason"] == "model_limit":
                 _require(self._phase == "ending" and self._fault is None)
+            elif value["reason"] == "wall_limit":
+                _require(current_profile().live and self._fault is None)
+                _require(value["wall_ns"] >= self._wall_deadline, "clock")
             elif value["reason"] == "cancelled":
                 _require(self._phase == "stopping" and self._fault is None)
             else:
@@ -990,6 +1084,10 @@ class ProtocolValidator:
             expected = "parent" if self._phase == "parent_hello" else "worker"
             _require(kind == "hello" and direction == expected)
             if direction == "parent":
+                if current_profile().live:
+                    self._wall_deadline = value["wall_deadline_ns"]
+                    if receipt_ns is not None:
+                        _require(receipt_ns < self._wall_deadline <= receipt_ns + limits()["wall_ns"], "clock")
                 self._clock = value["parent_clock"]
                 self._bindings = value["bindings_sha256"]
                 self._phase = "worker_hello"
@@ -1041,20 +1139,20 @@ class ProtocolValidator:
         elif self._phase in ("release", "command"):
             _require(kind == ("release" if self._phase == "release" else "ack"))
             _require(value["last_observation_index"] == (self._completed - 1 if self._completed else None))
-            _require(value["next_observation_index"] == (self._completed if self._completed < 40 else None))
+            _require(value["next_observation_index"] == (self._completed if self._completed < limits()["model_observations"] else None))
             if receipt_ns is not None and self._previous is not None:
                 _require(receipt_ns < self._previous["wall_completion_ns"] + CONSTANTS["exchange_ns"], "deadline")
             self._issued_ns = receipt_ns
             action = value["action"]
             if action == "end":
-                _require(self._completed == 40 and self._permit is None)
+                _require(self._completed == limits()["model_observations"] and self._permit is None)
                 self._phase = "ending"
             elif self._permit is not None:
                 _require(action == "continue_image" and value["dispatch_id"] == self._permit["dispatch_id"] and value["exposure_ordinal"] == self._ordinal + 1)
                 self._ordinal += 1
                 self._phase = "observation"
             elif action == "image":
-                _require(self._completed <= 32 and self._dispatches < 5)
+                _require(self._completed <= limits()["model_observations"] - 8 and self._dispatches < limits()["model_observations"] // 8)
                 self._permit = value["permit"]
                 if receipt_ns is not None:
                     _require(receipt_ns < self._permit["deadline_ns"], "deadline")
@@ -1079,6 +1177,8 @@ class ProtocolValidator:
                 _require(value["exposure_ordinal"] == self._ordinal)
                 if self._ordinal == 0:
                     _require(value["start_receipt"] == self._start)
+            if current_profile().live:
+                _require(value["wall_completion_ns"] < self._wall_deadline, "deadline")
             validate_observation(value, binary, self._header, permit=self._permit, previous=self._previous, receipt_ns=receipt_ns)
             if self._issued_ns is not None and receipt_ns is not None:
                 _require(self._issued_ns <= value["wall_start_ns"] and receipt_ns < self._issued_ns + CONSTANTS["observe_ns"] + CONSTANTS["exchange_ns"], "deadline")
@@ -1100,8 +1200,8 @@ class ProtocolValidator:
 
     def finish(self, *, complete=True):
         if complete:
-            _require(self._ended is not None and self._ended["reason"] == "model_limit")
-            _require(self._completed == 40 and self._fault is None)
+            _require(self._ended is not None and self._ended["reason"] in (("model_limit", "wall_limit") if current_profile().live else ("model_limit",)))
+            _require((self._completed == limits()["model_observations"] or (current_profile().live and self._ended["reason"] == "wall_limit")) and self._fault is None)
         return FrozenRecord(dict(observations=self._completed, model_ticks=self._completed * 5000,
                                  image_dispatches=self._dispatches, processed_images=self._processed))
 
@@ -1138,7 +1238,7 @@ def validate_receipt(receipt):
         _optional(value[name], _uuid)
     _optional(value["frame_sha256"], _digest)
     _optional(value["preprocessing_version"], lambda v: _literal(v, "market-rgb64/v1"))
-    _optional(value["first_observation_index"], lambda v: _int(v, 0, 32))
+    _optional(value["first_observation_index"], lambda v: _int(v, 0, limits()["model_observations"] - 8))
     _int(value["revision"], 1, 6)
     _bool(value["time_uncertain"])
     _require((value["frame_sha256"] is None) == (value["preprocessing_version"] is None))
@@ -1195,7 +1295,7 @@ class ReceiptEvidence:
         previous = self._latest.get(value["id"])
         if previous is None:
             _require(value["revision"] == 1 and value["status"] == "accepted" and value["detail"] == "decoding", "journal_gap")
-            _require(len(self._latest) < 512, "resource")
+            _require(len(self._latest) < (65536 if current_profile().live else 512), "resource")
         else:
             if value["revision"] == previous["revision"]:
                 _require(value == previous, "journal_gap")
@@ -1230,7 +1330,7 @@ def _cause(value):
     _keys(value, "operation target_id notice_seq read_pass")
     _literal(value["operation"], "reserve", "cancel_reservation", "admit", "decoded", "decode_failed", "moderate", "dispatch", "started", "complete", "stop", "maintain", "status", "snapshot")
     _optional(value["target_id"], _uuid)
-    _optional(value["notice_seq"], lambda v: _int(v, 0, 4095))
+    _optional(value["notice_seq"], lambda v: _int(v, 0, limits()["event_records"] - 1))
     _int(value["read_pass"], 0, 2)
 
 
@@ -1250,7 +1350,7 @@ def _event_payload(kind, payload, binary):
         _keys(payload, "header_sha256 engine_identity_sha256 worker_seq")
         _digest(payload["header_sha256"])
         _digest(payload["engine_identity_sha256"])
-        _int(payload["worker_seq"], 0, 4095)
+        _int(payload["worker_seq"], 0, limits()["event_records"] - 1)
     elif kind == "wire":
         _keys(payload, "direction message")
         validate_message(payload["message"], payload["direction"], binary, persisted=True)
@@ -1278,10 +1378,10 @@ def _event_payload(kind, payload, binary):
 
 
 def make_event(sequence, previous_sha256, recorded_ns, kind, payload, binary=b""):
-    row = dict(schema="market-native-event/v1", sequence=sequence, previous_sha256=previous_sha256,
+    row = dict(schema=schema("event"), sequence=sequence, previous_sha256=previous_sha256,
                recorded_ns=recorded_ns, kind=kind, payload=_plain(payload), binary_bytes=len(binary),
                binary_sha256=hashlib.sha256(binary).hexdigest())
-    row["sha256"] = hashlib.sha256(b"market-native-event/v1\n" + canonical_bytes(row) + binary).hexdigest()
+    row["sha256"] = hashlib.sha256((schema("event") + "\n").encode("ascii") + canonical_bytes(row) + binary).hexdigest()
     validate_event(row, binary)
     return FrozenRecord(row)
 
@@ -1289,8 +1389,8 @@ def make_event(sequence, previous_sha256, recorded_ns, kind, payload, binary=b""
 def validate_event(row, binary=b""):
     value = _plain(row)
     _keys(value, "schema sequence previous_sha256 recorded_ns kind payload binary_bytes binary_sha256 sha256")
-    _literal(value["schema"], "market-native-event/v1")
-    _int(value["sequence"], 0, 4095)
+    _literal(value["schema"], schema("event"))
+    _int(value["sequence"], 0, limits()["event_records"] - 1)
     _digest(value["previous_sha256"])
     _optional(value["recorded_ns"], _int)
     _int(value["binary_bytes"], 0, 12800)
@@ -1299,7 +1399,7 @@ def validate_event(row, binary=b""):
     _digest(value["sha256"])
     _require(value["binary_sha256"] == hashlib.sha256(binary).hexdigest())
     _event_payload(value["kind"], value["payload"], binary)
-    expected = hashlib.sha256(b"market-native-event/v1\n" + canonical_bytes({k: v for k, v in value.items() if k != "sha256"}) + binary).hexdigest()
+    expected = hashlib.sha256((schema("event") + "\n").encode("ascii") + canonical_bytes({k: v for k, v in value.items() if k != "sha256"}) + binary).hexdigest()
     _require(value["sha256"] == expected)
     return FrozenRecord(value)
 
@@ -1322,11 +1422,11 @@ def _event_iterator(stream):
             _require(count > 0)
             return
         count += 1
-        _require(count <= 4096)
+        _require(count <= limits()["event_records"])
         length = struct.unpack("<I", prefix)[0]
         _require(4 < length <= 65536)
         total += length + 4
-        _require(total <= 33554432)
+        _require(total <= limits()["event_bytes"])
         body = _read_exact(stream, length)
         json_length = struct.unpack("<I", body[:4])[0]
         _require(0 < json_length <= length - 4)
@@ -1347,8 +1447,8 @@ def read_events(stream):
 def validate_monitor(row):
     value = _plain(row)
     _keys(value, "schema sequence previous_sha256 sample_ns worker_pid worker_creation_time_100ns worker_rss_bytes worker_peak_rss_bytes probe_pid probe_creation_time_100ns probe_rss_bytes probe_peak_rss_bytes job_process_count job_commit_bytes job_peak_commit_bytes combined_output_bytes evidence_bytes gap_ns fault sha256")
-    _literal(value["schema"], "market-native-monitor/v1")
-    _int(value["sequence"], 0, 11999)
+    _literal(value["schema"], schema("monitor"))
+    _int(value["sequence"], 0, limits()["monitor_records"] - 1)
     for name in ("previous_sha256", "sha256"):
         _digest(value[name])
     _optional(value["sample_ns"], _int)
@@ -1373,8 +1473,8 @@ def validate_monitor(row):
         _require(value["gap_ns"] < 2000000000)
         _require(value["worker_rss_bytes"] + value["probe_rss_bytes"] <= 4294967296)
         _require(value["job_peak_commit_bytes"] <= 4294967296)
-        _require(value["combined_output_bytes"] <= 268435456 and value["evidence_bytes"] <= 67108864)
-    expected = hashlib.sha256(b"market-native-monitor/v1\n" + canonical_bytes({k: v for k, v in value.items() if k != "sha256"})).hexdigest()
+        _require(value["combined_output_bytes"] <= limits()["combined_output_bytes"] and value["evidence_bytes"] <= limits()["evidence_bytes"])
+    expected = hashlib.sha256((schema("monitor") + "\n").encode("ascii") + canonical_bytes({k: v for k, v in value.items() if k != "sha256"})).hexdigest()
     _require(value["sha256"] == expected)
     return FrozenRecord(value)
 
@@ -1382,7 +1482,7 @@ def validate_monitor(row):
 def make_monitor(fields):
     value = _plain(fields)
     _require("sha256" not in value)
-    value["sha256"] = hashlib.sha256(b"market-native-monitor/v1\n" + canonical_bytes(value)).hexdigest()
+    value["sha256"] = hashlib.sha256((schema("monitor") + "\n").encode("ascii") + canonical_bytes(value)).hexdigest()
     return validate_monitor(value)
 
 
@@ -1401,11 +1501,11 @@ def _monitor_iterator(stream):
             _require(count > 0)
             return
         count += 1
-        _require(count <= 12000)
+        _require(count <= limits()["monitor_records"])
         length = struct.unpack("<I", prefix)[0]
         _require(0 < length <= 2048)
         total += length + 4
-        _require(total <= 25165824)
+        _require(total <= limits()["monitor_bytes"])
         raw = _read_exact(stream, length)
         value = parse_json(raw, byte_limit=2048)
         _require(canonical_bytes(value) == raw)
@@ -1476,13 +1576,13 @@ def validate_cleanup(receipt):
 def validate_protocol(protocol):
     value = _plain(protocol)
     _keys(value, "schema proof constants preserved_sources application_sources lock_sources package_fingerprint")
-    _literal(value["schema"], "market-native-protocol/v1")
-    _literal(value["proof"], "bounded-image20s/v1")
-    _keys(value["constants"], CONSTANTS)
-    for name, expected in CONSTANTS.items():
+    _literal(value["schema"], schema("protocol"))
+    _literal(value["proof"], current_profile().name)
+    _keys(value["constants"], limits())
+    for name, expected in limits().items():
         _int(value["constants"][name], expected, expected)
     _require(value["preserved_sources"] == dict(PRESERVED_SOURCES))
-    for name, expected in (("application_sources", APPLICATION_SOURCES), ("lock_sources", LOCK_SOURCES)):
+    for name, expected in (("application_sources", application_sources()), ("lock_sources", LOCK_SOURCES)):
         _keys(value[name], expected)
         for item in value[name].values():
             _digest(item)
@@ -1520,7 +1620,7 @@ _ENVIRONMENT_KEYS = (
 def validate_bindings(bindings, protocol, *, protocol_sha256=None):
     value, protocol = _plain(bindings), _plain(validate_protocol(protocol))
     _keys(value, "schema protocol_sha256 incarnation worker_session project_root work_root decoder_work_root runtime_root files environment python_version compiler_probe native_metadata dependencies package_fingerprint prepared_ns")
-    _literal(value["schema"], "market-native-bindings/v1")
+    _literal(value["schema"], schema("bindings"))
     _digest(value["protocol_sha256"])
     _require(value["protocol_sha256"] == (canonical_sha256(protocol) if protocol_sha256 is None else protocol_sha256))
     _uuid(value["incarnation"])
@@ -1614,20 +1714,23 @@ def source_subset(protocol, bindings, protocol_sha256, bindings_sha256):
 
 def validate_final(final):
     value = _plain(final)
-    _keys(value, "schema status verification incarnation worker_session protocol_sha256 bindings_sha256 header_sha256 event_records events_sha256 event_chain_sha256 monitor_records monitor_sha256 monitor_chain_sha256 cleanup_sha256 observations model_ticks image_dispatches processed_images max_monitor_gap_ns peak_worker_rss_bytes peak_probe_rss_bytes peak_job_commit_bytes peak_output_bytes source_unchanged source_check first_fault cleanup_fault")
-    _literal(value["schema"], "market-native-final/v1")
-    _literal(value["status"], "complete")
+    _keys(value, ("terminal_reason " if current_profile().live else "") + "schema status verification incarnation worker_session protocol_sha256 bindings_sha256 header_sha256 event_records events_sha256 event_chain_sha256 monitor_records monitor_sha256 monitor_chain_sha256 cleanup_sha256 observations model_ticks image_dispatches processed_images max_monitor_gap_ns peak_worker_rss_bytes peak_probe_rss_bytes peak_job_commit_bytes peak_output_bytes source_unchanged source_check first_fault cleanup_fault")
+    _literal(value["schema"], schema("final"))
+    _literal(value["status"], *(("complete", "partial") if current_profile().live else ("complete",)))
+    if current_profile().live:
+        _literal(value["terminal_reason"], "model_limit", "wall_limit")
+        _require((value["status"] == "partial") == (value["terminal_reason"] == "wall_limit"))
     _literal(value["verification"], "integrity-only")
     _uuid(value["incarnation"])
     _uuid(value["worker_session"])
     for name in ("protocol_sha256", "bindings_sha256", "header_sha256", "events_sha256", "event_chain_sha256", "monitor_sha256", "monitor_chain_sha256", "cleanup_sha256"):
         _digest(value[name])
-    _int(value["event_records"], 1, 4096)
-    _int(value["monitor_records"], 1, 12000)
-    _int(value["observations"], 40, 40)
-    _int(value["model_ticks"], 200000, 200000)
-    _int(value["image_dispatches"], 0, 5)
-    _int(value["processed_images"], 0, 5)
+    _int(value["event_records"], 1, limits()["event_records"])
+    _int(value["monitor_records"], 1, limits()["monitor_records"])
+    _int(value["observations"], 0 if current_profile().live else 40, limits()["model_observations"])
+    _int(value["model_ticks"], value["observations"] * 5000, value["observations"] * 5000)
+    _int(value["image_dispatches"], 0, limits()["model_observations"] // 8)
+    _int(value["processed_images"], 0, limits()["model_observations"] // 8)
     _int(value["max_monitor_gap_ns"], 0, 1999999999)
     for name in ("peak_worker_rss_bytes", "peak_probe_rss_bytes", "peak_job_commit_bytes", "peak_output_bytes"):
         _int(value[name], 0, MAX_U64)
@@ -1702,6 +1805,15 @@ class _HashReader:
 
 
 def inspect_evidence(root):
+    try:
+        declaration = parse_json(_bounded_file(Path(root) / "protocol.json", 1048576), byte_limit=1048576, node_limit=20000)
+        with scope(from_declaration(declaration)):
+            return _inspect_scoped_evidence(root)
+    except (OSError, KeyError, TypeError, OverflowError):
+        raise ProtocolError("storage") from None
+
+
+def _inspect_scoped_evidence(root):
     """Validate the complete files through EOF and recompute every final summary.
 
     Only the two small authenticated source lock files are read outside root.
@@ -1762,10 +1874,10 @@ def _inspect_evidence(root):
     released = False
     event_path = root / "events.bin"
     before = _ordinary(event_path)
-    _require(before.st_size <= 33554432)
+    _require(before.st_size <= limits()["event_bytes"])
     with event_path.open("rb") as stream:
         _require(_stat_identity(before) == _stat_identity(os.fstat(stream.fileno())))
-        event_reader = _HashReader(stream, 33554432)
+        event_reader = _HashReader(stream, limits()["event_bytes"])
         for frame in _event_iterator(event_reader):
             row = frame.message
             event_count += 1
@@ -1852,6 +1964,8 @@ def _inspect_evidence(root):
         _require(_stat_identity(before) == _stat_identity(os.fstat(stream.fileno())))
     _require(_stat_identity(before) == _stat_identity(_ordinary(event_path)))
     summary = validator.finish()
+    if current_profile().live:
+        _require(final["terminal_reason"] == validator._ended["reason"])
     validate_clock_brackets(clocks)
     _require(hello_worker is not None and probe_process is not None and ended_ns == cleanup["requested_ns"])
     _require(pending_start is None and pending_complete is None)
@@ -1861,12 +1975,12 @@ def _inspect_evidence(root):
     _require(final["event_records"] == event_count and final["event_chain_sha256"] == event_last and final["events_sha256"] == event_reader.digest.hexdigest())
     monitor_path = root / "monitor.bin"
     before = _ordinary(monitor_path)
-    _require(before.st_size <= 25165824)
+    _require(before.st_size <= limits()["monitor_bytes"])
     monitor_count = max_gap = worker_peak = probe_peak = commit_peak = output_peak = 0
     monitor_last = None
     with monitor_path.open("rb") as stream:
         _require(_stat_identity(before) == _stat_identity(os.fstat(stream.fileno())))
-        monitor_reader = _HashReader(stream, 25165824)
+        monitor_reader = _HashReader(stream, limits()["monitor_bytes"])
         for row in _monitor_iterator(monitor_reader):
             monitor_count += 1
             monitor_last = row.sha256
@@ -1894,5 +2008,5 @@ def _inspect_evidence(root):
                     peak_job_commit_bytes=commit_peak, peak_output_bytes=output_peak)
     _require(all(final[name] == item for name, item in expected.items()))
     total_bytes = sum(map(len, raws.values())) + len(raw_final) + event_reader.bytes + monitor_reader.bytes
-    _require(total_bytes <= 67108864)
+    _require(total_bytes <= limits()["evidence_bytes"])
     return FrozenRecord(final)

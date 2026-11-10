@@ -53,3 +53,14 @@ test('proposal and resume parsers enforce exact result reason and status relatio
   assert.deepEqual(protocol.parseResumeReply(reply), reply);
   for (const patch of [{ superseding_reason: 'unknown' }, { extra: 1 }, { result: { ...reply.result, reason: 'paused' } }]) assert.throws(() => protocol.parseResumeReply({ ...reply, ...patch }));
 });
+
+test('native price snapshots and nested replies keep exact declared source identity', () => {
+  const value = snapshot({ schema: 'market-snapshot-v2', source_kind: 'native_measurement', readout_version: 'continuous-motor-drive/v1' });
+  assert.equal(parse(value), value);
+  for (const patch of [{ schema: 'market-snapshot-v1' }, { source_kind: 'synthetic' }, { readout_version: 'unknown' }, { extra: 1 }])
+    assert.throws(() => parse({ ...value, ...patch }));
+  const missing = { ...value }; delete missing.source_kind; assert.throws(() => parse(missing));
+  assert.equal(protocol.parseAckReply({ accepted: true, reason: 'acknowledged', snapshot: value }).snapshot, value);
+  assert.equal(protocol.parseClaimReply({ session_id: uuid, primary_token: 'a'.repeat(43), snapshot: value }).snapshot, value);
+  assert.equal(protocol.parseResumeReply({ result: { command_id: 'r', status: 'accepted', reason: 'resumed', terminal_revision: 1 }, snapshot: value, superseding_reason: null }).snapshot, value);
+});

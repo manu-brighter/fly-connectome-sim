@@ -102,7 +102,7 @@ function harness(hash = `#operator=${operatorCapability}`) {
     setTimeout(callback, delay) { timers.set(++timerId, { callback, delay }); return timerId; }, clearTimeout(id) { timers.delete(id); },
     addEventListener(name, callback) { (listeners[name] ??= new Set()).add(callback); }, removeEventListener(name, callback) { listeners[name]?.delete(callback); },
     fetch(url, options) {
-      if (url === '/api/images/state') return Promise.resolve(new Response('', { status: 404 }));
+      if (url === '/api/images/state' || url === '/api/native/state') return Promise.resolve(new Response('', { status: 404 }));
       calls.push({ url, options }); return new Promise((resolve, reject) => pending.push({ resolve: (value, status = 200) => resolve({ ok: status === 200, status, text: async () => JSON.stringify(value) }), reject }));
     } };
   doc.defaultView = win;
@@ -220,5 +220,16 @@ test('valid fixture rejection and no-change feedback remain historical without r
     assert.ok(h.root.textContent.includes(`Vergangenes Fixture-Ergebnis: ${status} (${reason})`));
     assert.ok(h.root.querySelectorAll('li').every(row => row.textContent.includes('CHF 4.00')));
   }
+  stop();
+});
+
+test('native snapshot labels configured motor prices and disables synthetic fixture controls', async () => {
+  const h = harness(), stop = start(h);
+  await reply(h, snapshot({ schema: 'market-snapshot-v2', source_kind: 'native_measurement', readout_version: 'continuous-motor-drive/v1' }));
+  assert.ok(h.root.textContent.includes('Experimenteller konfigurierter Motor-Readout'));
+  assert.ok(!h.root.textContent.includes('keine Neuronendaten'));
+  const fixture = h.button('Testvorschlag senden'); assert.equal(fixture.hidden, true); assert.equal(fixture.disabled, true);
+  const before = h.calls.length; fixture.dispatch('click'); await flush(); assert.equal(h.calls.length, before);
+  assert.equal(h.button('Pausieren').disabled, false); assert.equal(h.root.querySelectorAll('li').length, 20);
   stop();
 });

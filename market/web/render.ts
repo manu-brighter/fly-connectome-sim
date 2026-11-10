@@ -6,7 +6,7 @@ type RowView = {
   version: number; price: number;
   activation: { version: number; direction: 'increase' | 'decrease'; deadlineMs: number } | null;
 };
-type View = { banner: HTMLElement; lists: HTMLOListElement[]; date: HTMLElement; incarnation: string | null; rows: Map<string, RowView> };
+type View = { heading: HTMLElement; scope: HTMLElement; integrity: HTMLElement; banner: HTMLElement; lists: HTMLOListElement[]; date: HTMLElement; incarnation: string | null; rows: Map<string, RowView> };
 const views = new WeakMap<HTMLElement, View>();
 export function element<K extends keyof HTMLElementTagNameMap>(document: Document, tag: K, text = '', className = ''): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag); node.textContent = text; if (className) node.className = className; return node;
@@ -17,16 +17,21 @@ export function renderBoard(root: HTMLElement, state: BoardState, nowMs: number)
   if (!view) {
     root.className = 'market-board';
     const header = element(document, 'header', '', 'market-heading');
-    header.append(element(document, 'h1', 'Lokaler Testbetrieb'), element(document, 'p', 'Testvorschläge, keine Verkaufspreise.'));
+    const heading = element(document, 'h1', 'Lokaler Testbetrieb'), scope = element(document, 'p', 'Testvorschläge, keine Verkaufspreise.');
+    header.append(heading, scope);
     const banner = element(document, 'div', '', 'market-status'); banner.setAttribute('role', 'status'); banner.setAttribute('aria-live', 'polite');
     const board = element(document, 'section', '', 'market-prices'); board.setAttribute('aria-label', 'Letzte bestätigte Getränkepreise');
     const lists = [element(document, 'ol'), element(document, 'ol')]; lists[1].start = 11; board.append(...lists);
     const date = element(document, 'p', '', 'market-date');
-    root.replaceChildren(header, banner, board, date,
-      element(document, 'p', 'Synthetischer lokaler Test — keine Verkaufspreise / keine Neuronendaten', 'market-integrity'));
-    view = { banner, lists, date, incarnation: null, rows: new Map() }; views.set(root, view);
+    const integrity = element(document, 'p', 'Synthetischer lokaler Test — keine Verkaufspreise / keine Neuronendaten', 'market-integrity');
+    root.replaceChildren(header, banner, board, date, integrity);
+    view = { heading, scope, integrity, banner, lists, date, incarnation: null, rows: new Map() }; views.set(root, view);
   }
   const snapshot = state.snapshot, fresh = isFresh(state, nowMs);
+  const native = snapshot?.schema === 'market-snapshot-v2';
+  view.heading.textContent = native ? 'Lokaler Live-Pilot' : 'Lokaler Testbetrieb';
+  view.scope.textContent = native ? 'Experimenteller konfigurierter Motor-Readout · lokale Testpreise.' : 'Testvorschläge, keine Verkaufspreise.';
+  view.integrity.textContent = native ? 'Gemessene Modellaktivität mit konfigurierter Preiszuordnung — keine biologische Validierung / keine Verkaufspreise.' : 'Synthetischer lokaler Test — keine Verkaufspreise / keine Neuronendaten';
   const status = !fresh ? 'Letzter bekannter Stand — aktuell unbekannt' : snapshot?.fault ? '■ Sicherheitsstopp' :
     snapshot?.paused ? 'Ⅱ Pausiert' : snapshot?.primary_state === 'present' ? '● Verbunden · Testbetrieb aktiv' : 'Verbunden · Primäre Tafel nicht bestätigt';
   const presence = { unclaimed: 'nicht übernommen', awaiting_ack: 'Bestätigung ausstehend', present: 'anwesend', absent: 'abwesend' };

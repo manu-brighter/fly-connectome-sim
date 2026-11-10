@@ -16,7 +16,8 @@ export function disconnect(state: BoardState): BoardState {
 export function applySnapshot(state: BoardState, snapshot: Snapshot, receivedAtMs: number, connectionGeneration: number): BoardState {
   if (connectionGeneration !== state.connectionGeneration || !Number.isFinite(receivedAtMs)) return state;
   const changedIncarnation = state.snapshot !== null && state.snapshot.incarnation !== snapshot.incarnation;
-  if (!changedIncarnation && state.snapshot !== null && snapshot.revision < state.snapshot.revision) return state;
+  if (!changedIncarnation && state.snapshot !== null &&
+    (snapshot.revision < state.snapshot.revision || snapshot.schema !== state.snapshot.schema)) return state;
   return {
     snapshot, receivedAtMs, unknown: false,
     connectionGeneration: state.connectionGeneration + (changedIncarnation ? 1 : 0),

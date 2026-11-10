@@ -751,6 +751,61 @@ The browser checks local file/plan bindings, not the original raw run or provide
 authenticity. For raw-backed inspection, use `inspect-session` as above. See the
 [viewer contract](superpowers/specs/2026-11-08-followup-viewer.md).
 
+## Local native price pilot
+
+This Windows-only mode connects the existing image upload/moderation flow to one
+continuous native engine and a separate native-price database. It requires the
+prepared graph, matching existing native cache and supported Python3.12.14
+environment. It does not build, install dependencies or call a paid API. Its source
+and software checks are complete; actual integrated acceptance is still pending.
+
+Build the viewer first. Use a fresh work-root name and an existing empty decoder
+sibling under `.tools`; preparation only reads/hashes and writes the bound controls:
+
+```powershell
+npm --prefix viewer run build
+New-Item -ItemType Directory .tools/native-pilot-01-decoder
+.venv/Scripts/python.exe scripts/run-market-native-service.py prepare --work-root .tools/native-pilot-01 --profile live-pilot/v1 --duration-minutes 480 --max-observations 86400
+```
+
+Keep the printed `prepared_sha256`. Start that exact prepared session explicitly,
+using a fresh database outside both work directories:
+
+```powershell
+.venv/Scripts/python.exe scripts/run-market-native-service.py start --work-root .tools/native-pilot-01 --prepared-sha256 REPLACE_WITH_PRINTED_DIGEST --allow-native-run --config examples/market-synthetic.json --db .tools/native-pilot-01.sqlite3
+```
+
+The example JSON supplies20 test drinks with CHF4–7 bounds; its filename does not
+select the price source. Live mode uses native measured input and refuses synthetic
+fixture commands. Change the menu's names/bounds before starting your own session.
+Existing synthetic databases are not migrated or reinterpreted.
+
+Open the printed operator URL, claim the primary display, then resume prices when
+its acknowledgement is current. Open the guest URL locally to upload and use the
+operator's private preview to approve. Images expire at their original five-minute
+handoff deadline; a processed result requires eight validated500ms observations.
+The model can run slower than real time. The pane separates model progress and
+measurement freshness; price cooldowns always use30real minutes per drink. Full
+jumps within each drink's bounds are allowed. Quiet periods and favorites are valid.
+
+Pause controls prices while simulation continues. Ctrl+C stops the service through
+its owned cleanup path. The configured wall or observation bound also ends the run;
+there is no automatic restart. Live duration is1–720minutes, default480. These are
+configured limits, not an established8-hour performance result. The service binds
+loopback; public/LAN operation is outside this local acceptance.
+
+After a sealed completion, inspect without starting or rewriting a worker:
+
+```powershell
+.venv/Scripts/python.exe scripts/run-market-native-service.py inspect --work-root .tools/native-pilot-01
+```
+
+Wall-ended live evidence is explicitly partial. Source/cleanup/receipt failures
+retain their failure evidence and cannot produce a complete seal. Inspection checks
+artifact integrity; the configured motor-to-price mapping establishes neither
+semantic image understanding nor biological learning. See the
+[software evidence](experiments/2026-11-10-native-worker-software.md).
+
 ## Separate assay commands
 
 The existing qualification command remains separate from Replay v1 and is not

@@ -6,11 +6,13 @@ export type PriceRow = {
   initial_rappen: number; current_rappen: number; drink_version: number; last_activation_id: string | null;
   recorded_utc: string | null; remaining_lock_ms: number; estimated_eligible_utc: string | null; recovery_lock: boolean;
 };
-export type Snapshot = {
-  schema: 'market-snapshot-v1'; incarnation: string; revision: number; price_version: number; config_id: string;
+type SnapshotFields = {
+  incarnation: string; revision: number; price_version: number; config_id: string;
   generation: number; paused: boolean; fault: Fault; primary_state: PrimaryState; server_utc: string;
   rows: PriceRow[]; challenge: Challenge | null;
 };
+export type Snapshot = SnapshotFields & ({ schema: 'market-snapshot-v1' } |
+  { schema: 'market-snapshot-v2'; source_kind: 'native_measurement'; readout_version: 'continuous-motor-drive/v1' });
 export type ProposalReason = 'activated' | 'no_change' | 'clock' | 'storage' | 'capacity' | 'overload' |
   'wrong_config' | 'wrong_source' | 'wrong_incarnation' | 'wrong_generation' | 'reordered' | 'future_proposal' |
   'expired' | 'unknown_drink' | 'stale_drink_version' | 'paused' | 'board_absent' | 'out_of_range' | 'off_grid' | 'cooldown';
@@ -68,8 +70,10 @@ function row(value: unknown): PriceRow {
   return value as PriceRow;
 }
 export function parseSnapshot(value: unknown): Snapshot {
-  const s = object(value, 'schema incarnation revision price_version config_id generation paused fault primary_state server_utc rows challenge');
-  require(s.schema === 'market-snapshot-v1'); uuid(s.incarnation); integer(s.revision); integer(s.price_version); integer(s.generation);
+  const native = (value as { schema?: unknown } | null)?.schema === 'market-snapshot-v2';
+  const s = object(value, 'schema incarnation revision price_version config_id generation paused fault primary_state server_utc rows challenge' + (native ? ' source_kind readout_version' : ''));
+  require(s.schema === (native ? 'market-snapshot-v2' : 'market-snapshot-v1'));
+  if (native) require(s.source_kind === 'native_measurement' && s.readout_version === 'continuous-motor-drive/v1'); uuid(s.incarnation); integer(s.revision); integer(s.price_version); integer(s.generation);
   require(typeof s.config_id === 'string' && /^[a-f0-9]{64}$/.test(s.config_id)); boolean(s.paused); fault(s.fault);
   oneOf(s.primary_state, ['unclaimed', 'awaiting_ack', 'present', 'absent']); utc(s.server_utc);
   require(Array.isArray(s.rows) && s.rows.length >= 10 && s.rows.length <= 20);

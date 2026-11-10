@@ -9,7 +9,9 @@ export type IntakeState = {
   health: 'ready' | 'stopping' | 'faulted'; fault: null | 'clock' | 'decoder' | 'ownership' | 'shutdown';
   receiving: boolean; decode_busy: boolean; pending: ImageStatus | null; receipt_count: number;
 };
-export type Acceptance = { schema: 'market-image-acceptance/v1'; status_capability: string; image: ImageStatus };
+export type Acceptance = { schema: 'market-image-acceptance/v1'; status_capability: string; image: ImageStatus } |
+  { schema: 'market-image-acceptance/v2'; status_capability: string; image: ImageStatusV2 } |
+  { schema: 'market-image-acceptance/v3'; status_capability: string; image: ImageStatusV3 };
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const digestPattern = /^[0-9a-f]{64}$/;
 const receiptPattern = /^is\.[A-Za-z0-9_-]{43}$/;
@@ -68,9 +70,18 @@ export function parseIntakeState(value: unknown): IntakeState {
   return value as IntakeState;
 }
 export function parseAcceptance(value: unknown): Acceptance {
-  const a = object(value, 'schema status_capability image'); require(a.schema === 'market-image-acceptance/v1');
-  require(typeof a.status_capability === 'string' && receiptPattern.test(a.status_capability)); parseImageStatus(a.image);
+  const a = object(value, 'schema status_capability image'); oneOf(a.schema, ['market-image-acceptance/v1', 'market-image-acceptance/v2', 'market-image-acceptance/v3']);
+  require(typeof a.status_capability === 'string' && receiptPattern.test(a.status_capability));
+  if (a.schema === 'market-image-acceptance/v1') parseImageStatus(a.image); else if (a.schema === 'market-image-acceptance/v2') parseImageStatusV2(a.image); else parseImageStatusV3(a.image);
   return value as Acceptance;
+}
+export function parseAnyImageStatus(value: unknown): AnyImageStatus {
+  const schema = (value as { schema?: unknown } | null)?.schema;
+  return schema === 'market-image-status-wire/v3' ? parseImageStatusV3(value) : schema === 'market-image-status-wire/v2' ? parseImageStatusV2(value) : parseImageStatus(value);
+}
+export function parseAnyIntakeState(value: unknown): AnyIntakeState {
+  const schema = (value as { schema?: unknown } | null)?.schema;
+  return schema === 'market-image-intake/v3' ? parseIntakeStateV3(value) : schema === 'market-image-intake/v2' ? parseIntakeStateV2(value) : parseIntakeState(value);
 }
 export async function readBoundedResponse(response: Response, maximum: number, exact: boolean): Promise<Uint8Array> {
   const reader = response.body?.getReader(); require(reader !== undefined);
@@ -97,3 +108,7 @@ export async function verifyRgb(rgb: Uint8Array, expected: string, crypto: Crypt
   const actual = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', content)), byte => byte.toString(16).padStart(2, '0')).join('');
   require(actual === expected);
 }
+import { parseImageStatusV2, parseIntakeStateV2, parseImageStatusV3, parseIntakeStateV3 } from './native-protocol.ts';
+import type { ImageStatusV2, IntakeStateV2, ImageStatusV3, IntakeStateV3 } from './native-protocol.ts';
+export type AnyImageStatus = ImageStatus | ImageStatusV2 | ImageStatusV3;
+export type AnyIntakeState = IntakeState | IntakeStateV2 | IntakeStateV3;

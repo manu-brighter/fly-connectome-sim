@@ -19,6 +19,7 @@ import time
 
 from . import native_protocol as protocol
 from .price_service import SystemClock
+from .native_protocol import NativeProfile, owned, current_profile
 
 
 ROOT = Path(__file__).absolute().parents[1]
@@ -195,6 +196,7 @@ class _RootLock:
             self.handle = None
 
 
+@owned
 class OwnedNativeChild:
     """One attempted fixed worker launch, private pipes, bounded sampled evidence.
 
@@ -204,6 +206,7 @@ class OwnedNativeChild:
     """
 
     def __init__(self, bindings, clock=None):
+        self.profile = current_profile()
         self.bindings = protocol.FrozenRecord(bindings)
         self.clock = clock or SystemClock()
         self.work_root = Path(bindings["work_root"])
@@ -223,6 +226,8 @@ class OwnedNativeChild:
         self._outbox = queue.Queue(maxsize=32)
         self._last_monitor = None
         self._monitor_count = self._monitor_bytes = 0
+        self._monitor_digest = hashlib.sha256()
+        self._monitor_peaks = dict(gap_ns=0, worker_peak_rss_bytes=0, probe_peak_rss_bytes=0, job_peak_commit_bytes=0, combined_output_bytes=0)
         self._read_pipe = self._write_pipe = self._stderr_pipe = None
         self._child_streams = []
         self._stderr = bytearray()
@@ -544,7 +549,7 @@ class OwnedNativeChild:
             now = self._now()
             previous = self._last_monitor
             gap = 0 if previous is None else now - previous.sample_ns
-            if self._monitor_count >= 12000:
+            if self._monitor_count >= protocol.limits()["monitor_records"]:
                 self._latch("resource")
                 raise NativeTransportError("resource")
             creation, end, kernel, user = (ct.c_uint64() for _ in range(4))
@@ -581,9 +586,9 @@ class OwnedNativeChild:
                     probe_rss = 0
                 else:
                     probe_identity = self.probe_identity
-            if current + probe_rss > 4294967296 or memory.PeakJobMemoryUsed > 4294967296 or combined > 268435456 or evidence > 67108864:
+            if current + probe_rss > 4294967296 or memory.PeakJobMemoryUsed > 4294967296 or combined > protocol.limits()["combined_output_bytes"] or evidence > protocol.limits()["evidence_bytes"]:
                 self._latch("resource")
-            fields = dict(schema="market-native-monitor/v1", sequence=self._monitor_count,
+            fields = dict(schema=protocol.schema("monitor"), sequence=self._monitor_count,
                           previous_sha256=protocol.ZERO_SHA256 if previous is None else previous.sha256,
                           sample_ns=now, worker_pid=self.identity.pid,
                           worker_creation_time_100ns=self.identity.creation_time_100ns,
@@ -596,7 +601,7 @@ class OwnedNativeChild:
                           evidence_bytes=evidence, gap_ns=gap, fault=self.fault)
             row = protocol.make_monitor(fields)
             raw = protocol.encode_monitor(row)
-            if self._monitor_bytes + len(raw) > 25165824:
+            if self._monitor_bytes + len(raw) > protocol.limits()["monitor_bytes"]:
                 self._latch("resource")
                 raise NativeTransportError("resource")
             try:
@@ -604,6 +609,8 @@ class OwnedNativeChild:
             except queue.Full:
                 self._latch("storage")
                 raise NativeTransportError("storage") from None
+            for key in self._monitor_peaks:
+                self._monitor_peaks[key] = max(self._monitor_peaks[key], row[key])
             self._last_monitor = row
             self._monitor_count += 1
             self._monitor_bytes += len(raw)
@@ -691,6 +698,7 @@ class OwnedNativeChild:
                 if raw is not None:
                     if self._monitor_file.write(raw) != len(raw):
                         raise OSError("partial monitor write")
+                    self._monitor_digest.update(raw)
                 now = time.perf_counter_ns()
                 if now - last_sync >= 1_000_000_000:
                     os.fsync(self._monitor_file.fileno())
@@ -701,10 +709,32 @@ class OwnedNativeChild:
         except Exception:
             self._latch("storage")
 
-    def begin_stop(self, reason="shutdown"):
+    def monitor_summary(self):
+        if self._monitor_file is not None or self._last_monitor is None or not self._outbox.empty():
+            raise NativeTransportError("storage")
+        return protocol.FrozenRecord(dict(records=self._monitor_count, bytes=self._monitor_bytes,
+            sha256=self._monitor_digest.hexdigest(), chain_sha256=self._last_monitor.sha256, peaks=self._monitor_peaks))
+
+    def begin_stop(self, reason="shutdown", *, requested_ns=None, deadline_ns=None):
         if reason not in ("operator", "session_fault", "shutdown"):
             raise NativeTransportError("protocol")
-        if self._cleanup_real_deadline is None:
+        supplied = requested_ns is not None or deadline_ns is not None
+        if supplied:
+            real_now = time.perf_counter_ns()
+            actual_now = self._cleanup_time()
+            if (type(deadline_ns) is not int or not real_now < deadline_ns <= real_now + 25_000_000_000
+                    or (requested_ns is not None and (type(requested_ns) is not int
+                        or not 0 <= requested_ns <= protocol.MAX_NS
+                        or actual_now is None or requested_ns > actual_now
+                        or deadline_ns > requested_ns + 25_000_000_000))
+                    or (requested_ns is None and actual_now is not None)
+                    or (self._cleanup_real_deadline is not None
+                        and (deadline_ns > self._cleanup_real_deadline or requested_ns != self._cleanup_requested_ns))):
+                self._latch("deadline")
+                raise NativeTransportError("deadline")
+            self._cleanup_real_deadline = deadline_ns
+            self._cleanup_requested_ns = requested_ns
+        elif self._cleanup_real_deadline is None:
             # An OS-wait budget remains finite on clock failure; this internal
             # watchdog is never substituted into evidence timestamps.
             self._cleanup_real_deadline = time.perf_counter_ns() + 25_000_000_000
@@ -714,7 +744,8 @@ class OwnedNativeChild:
     def _cleanup_time(self):
         try:
             return self._now()
-        except NativeTransportError:
+        except Exception:
+            self._latch("clock")
             return None
 
     def _remaining(self):
@@ -862,6 +893,7 @@ class CompilerProbeGuard:
     _close_child_streams = OwnedNativeChild._close_child_streams
 
     def __init__(self, bindings, exchange, clock=None, *, _test_argv=None):
+        self.profile = current_profile()
         self.bindings = protocol.FrozenRecord(bindings)
         self.exchange = exchange
         self.clock = clock or SystemClock()

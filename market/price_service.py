@@ -196,6 +196,26 @@ class Proposal:
 
 
 @dataclass(frozen=True)
+class NativeProposal(Proposal):
+    source_sha256: str
+    header_sha256: str
+    protocol_sha256: str
+    readout_configuration_sha256: str
+
+
+@dataclass(frozen=True)
+class NativeBinding:
+    worker_session: str
+    source_sha256: str
+    header_sha256: str
+    protocol_sha256: str
+    readout_configuration_sha256: str
+    incarnation: str
+    generation: int
+    config_id: str
+
+
+@dataclass(frozen=True)
 class Challenge:
     id: str
     incarnation: str
@@ -235,6 +255,12 @@ class Snapshot:
     server_utc: str
     rows: tuple[PriceRow, ...]
     challenge: Challenge | None
+
+
+@dataclass(frozen=True)
+class NativeSnapshot(Snapshot):
+    source_kind: str
+    readout_version: str
 
 
 @dataclass(frozen=True)
@@ -359,6 +385,14 @@ _SCHEMA = {
     )""",
 }
 _SCHEMA = {name: sql + " STRICT" for name, sql in _SCHEMA.items()}
+NATIVE_READOUT_VERSION = "continuous-motor-drive/v1"
+_NATIVE_SCHEMA = dict(_SCHEMA)
+_NATIVE_SCHEMA["market"] = _SCHEMA["market"].replace("schema_version=1", "schema_version=2")
+_NATIVE_SCHEMA["activations"] = _SCHEMA["activations"].replace("synthetic-price-v1", NATIVE_READOUT_VERSION)
+_NATIVE_SCHEMA["native_proposals"] = """CREATE TABLE native_proposals (
+    event_id TEXT PRIMARY KEY REFERENCES proposal_results(event_id),
+    proposal_json TEXT NOT NULL CHECK(json_valid(proposal_json) AND length(proposal_json)<=8192)
+) STRICT"""
 
 
 def _validate_scenario(value):
@@ -367,10 +401,16 @@ def _validate_scenario(value):
     _require(_integer(value.expected_drink_version))
 
 
-def _validate_proposal(value):
+def _validate_proposal(value, *, native=False):
     _require(isinstance(value, Proposal))
-    _require(value.schema == "market-proposal-v1" and value.source_kind == "synthetic_fixture")
-    _require(value.readout_version == "synthetic-price-v1")
+    _require(value.schema == "market-proposal-v1")
+    _require(value.source_kind == ("native_measurement" if native else "synthetic_fixture"))
+    _require(value.readout_version == (NATIVE_READOUT_VERSION if native else "synthetic-price-v1"))
+    if native:
+        _require(isinstance(value, NativeProposal))
+        _require(all(isinstance(item, str) and _DIGEST.fullmatch(item) is not None for item in (
+            value.source_sha256, value.header_sha256, value.protocol_sha256, value.readout_configuration_sha256,
+        )))
     _require(all(_uuid(item) for item in (value.event_id, value.source_session, value.incarnation)))
     _require(_identifier(value.request_id) and _identifier(value.drink_id))
     _require(isinstance(value.config_id, str) and _DIGEST.fullmatch(value.config_id) is not None)
@@ -382,10 +422,17 @@ def _validate_proposal(value):
         isinstance(interval, tuple) and len(interval) == 2
         and all(_integer(item) for item in interval) and interval[0] <= interval[1]
     ))
+    if native:
+        _require(interval is not None and 0 < interval[1] - interval[0] < 60_000)
 
 
 class PriceAuthority:
-    def __init__(self, config, db_path, clock):
+    def __init__(self, config, db_path, clock, *, mode="synthetic"):
+        _require(mode in ("synthetic", "native"))
+        self.mode = mode
+        self._schema = _NATIVE_SCHEMA if mode == "native" else _SCHEMA
+        self._schema_version = 2 if mode == "native" else 1
+        self._native_binding = None
         self.config = config
         self.db_path = Path(db_path).resolve()
         self._clock = clock or SystemClock()
@@ -424,6 +471,10 @@ class PriceAuthority:
                 isolation_level=None, check_same_thread=False,
             )
             self._db.row_factory = sqlite3.Row
+            if exists:
+                version = self._db.execute("PRAGMA user_version").fetchone()[0]
+                if version in (1, 2) and version != self._schema_version:
+                    raise MarketError("wrong_mode")
             self._configure_database()
             sample = self._sample()
             if self._fault:
@@ -489,12 +540,12 @@ class PriceAuthority:
             raise MarketError("storage")
 
     def _initialize_database(self):
-        for sql in _SCHEMA.values():
+        for sql in self._schema.values():
             self._db.execute(sql)
-        self._db.execute("PRAGMA user_version=1")
+        self._db.execute(f"PRAGMA user_version={self._schema_version}")
         self._db.execute(
-            "INSERT INTO market VALUES (1,1,?,?,?,0,0,0,1,0,NULL,'unclaimed')",
-            (_canonical(asdict(self.config)), self.config.config_id, self._incarnation),
+            "INSERT INTO market VALUES (1,?,?,?,?,0,0,0,1,0,NULL,'unclaimed')",
+            (self._schema_version, _canonical(asdict(self.config)), self.config.config_id, self._incarnation),
         )
         self._db.execute("INSERT INTO source_state VALUES (1,?,0)", (self._source_session,))
         for position, drink in enumerate(self.config.drinks):
@@ -507,9 +558,9 @@ class PriceAuthority:
     def _load_database(self):
         actual = {row[0]: row[1] for row in self._db.execute("SELECT name,sql FROM sqlite_master WHERE type='table'")}
         normalize = lambda value: " ".join(value.split())
-        if set(actual) != set(_SCHEMA) or any(normalize(actual[name]) != normalize(sql) for name, sql in _SCHEMA.items()):
+        if set(actual) != set(self._schema) or any(normalize(actual[name]) != normalize(sql) for name, sql in self._schema.items()):
             raise MarketError("storage")
-        if self._db.execute("PRAGMA user_version").fetchone()[0] != 1:
+        if self._db.execute("PRAGMA user_version").fetchone()[0] != self._schema_version:
             raise MarketError("storage")
         if self._db.execute("PRAGMA integrity_check").fetchone()[0] != "ok" or self._db.execute("PRAGMA foreign_key_check").fetchone():
             raise MarketError("storage")
@@ -639,9 +690,10 @@ class PriceAuthority:
         return sample
 
     def _ledger_count(self):
-        return sum(self._db.execute(f"SELECT count(*) FROM {name}").fetchone()[0] for name in (
+        tables = (
             "fixture_requests", "proposal_results", "activations", "control_results",
-        ))
+        ) + (("native_proposals",) if self.mode == "native" else ())
+        return sum(self._db.execute(f"SELECT count(*) FROM {name}").fetchone()[0] for name in tables)
 
     def _reserve(self, count, ceiling):
         if self._ledger_count() + count > ceiling:
@@ -670,9 +722,13 @@ class PriceAuthority:
                 row["last_activation_id"], row["recorded_utc"], milliseconds, estimate,
                 row["id"] in self._recovery,
             ))
-        return Snapshot("market-snapshot-v1", self._incarnation, self._revision, self._price_version,
-                        self.config.config_id, self._generation, self._paused, self._fault,
-                        self._primary_state, _label(sample.utc), tuple(rows), challenge)
+        values = ("market-snapshot-v2" if self.mode == "native" else "market-snapshot-v1",
+                  self._incarnation, self._revision, self._price_version,
+                  self.config.config_id, self._generation, self._paused, self._fault,
+                  self._primary_state, _label(sample.utc), tuple(rows), challenge)
+        if self.mode == "native":
+            return NativeSnapshot(*values, "native_measurement", NATIVE_READOUT_VERSION)
+        return Snapshot(*values)
 
     def snapshot(self, primary_session: str | None = None) -> Snapshot:
         with self._lock:
@@ -949,6 +1005,8 @@ class PriceAuthority:
         self._synchronize_durable()
 
     def run_fixture(self, request_id: str, scenario: FixtureScenario) -> ProposalResult:
+        if self.mode != "synthetic":
+            raise MarketError("wrong_mode")
         _require(_identifier(request_id))
         _validate_scenario(scenario)
         digest = _digest(asdict(scenario))
@@ -989,14 +1047,64 @@ class PriceAuthority:
 
     def submit_synthetic(self, proposal: Proposal) -> ProposalResult:
         _validate_proposal(proposal)
+        if self.mode != "synthetic":
+            raise MarketError("wrong_mode")
+        return self._submit(proposal)
+
+    def bind_native_source(self, *, worker_session: str, source_sha256: str,
+                           header_sha256: str, protocol_sha256: str,
+                           readout_configuration_sha256: str) -> NativeBinding:
+        if self.mode != "native":
+            raise MarketError("wrong_mode")
+        _require(_uuid(worker_session))
+        _require(all(isinstance(item, str) and _DIGEST.fullmatch(item) is not None for item in (
+            source_sha256, header_sha256, protocol_sha256, readout_configuration_sha256,
+        )))
         with self._lock:
+            self._synchronize_durable()
+            binding = NativeBinding(worker_session, source_sha256, header_sha256, protocol_sha256,
+                                    readout_configuration_sha256, self._incarnation,
+                                    self._generation, self.config.config_id)
+            if self._native_binding is not None:
+                if self._native_binding != binding:
+                    raise MarketError("source_bound")
+                return self._native_binding
+            with self._transaction():
+                self._source_session = worker_session
+                self._persist()
+            self._native_binding = binding
+            return binding
+
+    def submit_native(self, proposal: NativeProposal) -> ProposalResult:
+        _validate_proposal(proposal, native=True)
+        if self.mode != "native":
+            raise MarketError("wrong_mode")
+        return self._submit(proposal, native=True)
+
+    def _submit(self, proposal, *, native=False):
+        with self._lock:
+            if native:
+                binding = self._native_binding
+                if binding is None:
+                    raise MarketError("unbound_source")
+                if proposal.source_session != binding.worker_session or any(
+                    getattr(proposal, name) != getattr(binding, name) for name in (
+                        "source_sha256", "header_sha256", "protocol_sha256", "readout_configuration_sha256",
+                    )
+                ):
+                    raise MarketError("wrong_source")
             duplicate = False
             try:
                 with self._transaction():
                     sample = self._sample()
                     self._synchronize(sample)
                     duplicate = self._db.execute("SELECT 1 FROM proposal_results WHERE event_id=?", (proposal.event_id,)).fetchone() is not None
+                    if native and not duplicate:
+                        self._reserve(3, 9000)
                     result = self._submit_locked(proposal, sample)
+                    if native and not duplicate:
+                        self._db.execute("INSERT INTO native_proposals VALUES (?,?)",
+                                         (proposal.event_id, _canonical(asdict(proposal))))
                     self._persist()
             except BaseException:
                 self._restore_price_counters()
@@ -1040,6 +1148,6 @@ class PriceAuthority:
         self.close()
 
 
-def open_authority(config: MarketConfig, db_path: Path, clock: Clock | None = None) -> PriceAuthority:
+def open_authority(config: MarketConfig, db_path: Path, clock: Clock | None = None, *, mode="synthetic") -> PriceAuthority:
     _require(isinstance(config, MarketConfig))
-    return PriceAuthority(config, db_path, clock)
+    return PriceAuthority(config, db_path, clock, mode=mode)

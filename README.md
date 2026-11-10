@@ -45,7 +45,7 @@ left/right preference.
 | Assay evidence | Caller-owned native production, source-specific 408-pair tiny-native repeats, shared declaration arithmetic and a bounded pair checker with full EOF validation | Global grid/selected-evidence reconciliation/public freezing, fullgraph held-out confirmation and the `assay` CLI |
 | Resource pilots | Fullgraph components, trained 10-/70-second one-anchor pilots with isolated native replay, and a [reviewed detail-on first-training-prefix sample](docs/experiments/2026-11-02-fullgraph-detail-prefix-pilot.md) | Unprofiled controlled timing, complete grid/assay capacity and fullgraph cloud/Linux execution |
 | Product | Accepted genuine proposal → native session → measured choice → unchanged plan → 30 fps film, fixed-cohort cell counts/static connections, bounded visual/side diagnostic and a separately verified German planning companion | Broader platform/model/account coverage and separately scoped research; no measured synaptic transmission or biological validation |
-| Drink-price experiment | Separate local SQLite price authority and synthetic test board; bounded prices, per-drink 30-minute cooldowns, pause, optional local image upload and private moderation | Continuous neural integration, measured live display, sustained rehearsal and separately authorized public operation |
+| Drink-price experiment | Local SQLite authority with separate synthetic/native modes, image moderation, continuous native session, measured status and configured motor-to-price readout; bounded prices and per-drink 30-minute cooldowns | Actual integrated acceptance, sustained rehearsal and separately authorized public operation |
 
 The [local synthetic drink-price board](docs/getting-started.md#local-synthetic-drink-price-board)
 can be exercised without a simulation or API key. It is a separate test display;
@@ -55,8 +55,11 @@ actual checks and remaining limits.
 
 The optional [local image test](docs/getting-started.md#local-image-upload-and-moderation)
 adds a guest upload page and a private sanitized preview on the operator board.
-It currently requires the supported Windows decoder environment. No simulation
-is connected: approved images wait and expire without changing drink prices.
+It requires the supported Windows decoder environment. Standalone intake retains
+its queue-only behavior. The separate [local native pilot](docs/getting-started.md#local-native-price-pilot)
+connects approved images, measured activity and experimental price decisions in one
+session. Its source/software checks are complete; actual integrated acceptance is
+still pending. No API key is used by this local simulation.
 
 The [continuous session](docs/superpowers/specs/2026-11-03-feed-event-session.md)
 uses one fresh engine for fast-feed reels and then 2 s of event cards, without

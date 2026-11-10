@@ -265,7 +265,7 @@ def test_actual_one_shot_probe_hidden_bound_and_no_build(owner, mode, expected):
                     incarnation=INC, worker_session=SESSION, protocol_sha256="a" * 64,
                     launch_nonce="b" * 64, request_seq=0, allowed_ns=allowed))
     started = owner.receive(deadline_ns=time.perf_counter_ns() + 2_000_000_000)
-    assert started.message.type == "probe_started"
+    assert started.message.type == "probe_started", started.message.to_dict()
     owner.accept_probe_started(started.message)
     if expected in ("deadline", "resource", "startup"):
         fault = owner.receive(deadline_ns=time.perf_counter_ns() + 7_000_000_000)
@@ -712,3 +712,62 @@ def test_actual_broad_write_deadline_cannot_extend_five_second_operation_cap(own
         owner._write(b"x" * 65536, started + 10_000_000_000)
     elapsed = time.perf_counter_ns() - started
     assert 4_800_000_000 <= elapsed < 6_000_000_000
+
+
+def test_stop_adopts_original_epoch_and_existing_absolute_deadline_without_renewal(tmp_path):
+    child = api().OwnedNativeChild(binding(tmp_path))
+    now = time.perf_counter_ns()
+    requested = now - 100_000_000
+    deadline = requested + 25_000_000_000
+    child.begin_stop(requested_ns=requested, deadline_ns=deadline)
+    assert child._cleanup_requested_ns == requested
+    assert child._cleanup_real_deadline == deadline
+    child.begin_stop()
+    assert child._cleanup_requested_ns == requested and child._cleanup_real_deadline == deadline
+    with pytest.raises(api().NativeTransportError):
+        child.begin_stop(requested_ns=requested, deadline_ns=deadline + 1)
+    assert child._cleanup_real_deadline == deadline
+
+
+@pytest.mark.parametrize("case", ["future_request", "over25", "expired", "bool", "missing_deadline"])
+def test_stop_rejects_invalid_original_epoch_or_extended_budget(tmp_path, case):
+    child = api().OwnedNativeChild(binding(tmp_path))
+    now = time.perf_counter_ns()
+    requested, deadline = now - 1_000_000, now + 1_000_000_000
+    if case == "future_request":
+        requested = now + 2_000_000_000
+    elif case == "over25":
+        deadline = requested + 25_000_000_001
+    elif case == "expired":
+        deadline = now - 1
+    elif case == "bool":
+        requested = True
+    elif case == "missing_deadline":
+        deadline = None
+    with pytest.raises(api().NativeTransportError):
+        child.begin_stop(requested_ns=requested, deadline_ns=deadline)
+
+
+@WINDOWS
+def test_actual_full_eof_then_stop_keeps_original_receipt_epoch(owner):
+    owner._start_test(FIXTURE, "echo")
+    owner.send(message())
+    frame = owner.receive(deadline_ns=time.perf_counter_ns() + 2_000_000_000)
+    assert frame.message.type == "clock"
+    requested = time.perf_counter_ns()
+    deadline = requested + 25_000_000_000
+    assert owner.receive(deadline_ns=deadline) is None
+    owner.begin_stop(requested_ns=requested, deadline_ns=deadline)
+    receipt = owner.finish_close(evidence_files_closed=True)
+    assert receipt.requested_ns == requested and receipt.outcome == "confirmed"
+
+
+def test_supplied_stop_budget_keeps_unknown_clock_timestamp_null(tmp_path):
+    from types import SimpleNamespace
+    def failed_clock():
+        raise ValueError("injected unavailable clock")
+    child = api().OwnedNativeChild(binding(tmp_path), SimpleNamespace(sample=failed_clock))
+    deadline = time.perf_counter_ns() + 1_000_000_000
+    child.begin_stop(requested_ns=None, deadline_ns=deadline)
+    assert child._cleanup_requested_ns is None and child._cleanup_real_deadline == deadline
+    assert child.fault == "clock"

@@ -28,3 +28,12 @@ test('new connection full snapshot resets incarnation, generation and primary cr
   assert.equal(next.snapshot.revision, 0); assert.equal(next.connectionGeneration, 1); assert.equal(next.primarySession, null);
   assert.equal(applySnapshot(next, snapshot({ revision: 99 }), 30, 0), next);
 });
+
+test('native source identity stays fixed within an authority incarnation', () => {
+  const { createState, applySnapshot } = api();
+  const native = snapshot({ schema: 'market-snapshot-v2', source_kind: 'native_measurement', readout_version: 'continuous-motor-drive/v1' });
+  const current = applySnapshot(createState(), native, 0, 0);
+  assert.equal(applySnapshot(current, snapshot({ revision: 2 }), 100, 0), current);
+  const restarted = snapshot({ incarnation: '22222222-2222-4222-8222-222222222222' });
+  assert.equal(applySnapshot(current, restarted, 100, 0).snapshot, restarted);
+});

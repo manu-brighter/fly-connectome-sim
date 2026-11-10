@@ -3,10 +3,15 @@
 Status: independently accepted prospectively, 2026-11-10. Task1 is implemented
 and independently accepted with410 passing affected tests and successful exact-source
 CI. Task2 is independently accepted with50 final Windows transport passes;
-its earlier211-case integration result is recorded separately. Tasks3–5 remain
-unimplemented; Task3 is next.
+its earlier211-case integration result is recorded separately. Tasks3–5 and the
+subsequently requested live-pilot/native-price implementation are complete and
+independently source-reviewed. Exact-source CI and concrete actual acceptance
+follow; no actual worker acquisition is claimed at this software checkpoint.
 See [software evidence](../../experiments/2026-11-10-native-worker-software.md).
-The [accepted design](../specs/2026-11-10-native-worker-design.md) is binding.
+The [accepted design](../specs/2026-11-10-native-worker-design.md) governs the
+unchanged strict v1 proof. The user's subsequent implementation instruction adds
+an explicitly versioned live profile and separate native price mode, with limits
+bound in code/controls and independent source review; it does not widen v1 evidence.
 Actual acquisition and any retry require the separate gates below.
 Prerequisite: independently accepted intake checkpoint and its exact successful CI.
 Method: bounded Sol implementation, independent Astra contract/integrity review.

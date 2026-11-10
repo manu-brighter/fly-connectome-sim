@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { webcrypto } from 'node:crypto';
 import { status, intake, receipt, id, incarnation } from './image-fixtures.mjs';
+import { imageV2, intakeV2, native, session } from './native-fixtures.test.mjs';
+import { adoptNativeState, createNativeState } from '../../market/web/native-state.ts';
 const api = await import('../../market/web/image-main.ts').catch(() => ({}));
 function fn(name) { assert.equal(typeof api[name], 'function', `${name} missing`); return api[name]; }
 class Element {
@@ -33,7 +35,7 @@ test('guest removes fragment before network and sends nothing until a valid file
   const calls = []; const { root, window } = fixture(`#guest=ig.${'A'.repeat(43)}`, (...args) => { calls.push(args); throw new Error('unexpected'); });
   const dispose = fn('startGuest')(root);
   assert.equal(window.location.hash, ''); assert.equal(window.history.path, '/market-image.html'); assert.equal(calls.length, 0);
-  assert.ok(root.textContent.includes('Simulation nicht verbunden'));
+  assert.ok(root.textContent.includes('Verbindung wird beim Senden geprüft'));
   assert.equal(root.children.some(item => item.tagName === 'canvas' || item.tagName === 'img'), false);
   dispose();
 });
@@ -212,5 +214,56 @@ test('superseded moderation success releases its own latch without adopting old 
   assert.ok(!root.textContent.includes('Bild abgelehnt.'));
   reject.dispatch('click'); await flush();
   assert.equal(calls.filter(([path]) => path === `/api/images/moderate/${activeId}`).length, 1);
+  dispose();
+});
+
+test('guest v2 acceptance and genuine-shaped completion use strict progress copy without price promises', async () => {
+  const { root, window } = fixture(`#guest=ig.${'A'.repeat(43)}`, async path => {
+    if (path === '/api/images') return Response.json({ schema: 'market-image-acceptance/v2', status_capability: receipt,
+      image: imageV2({ detail: 'decoding', frame_sha256: null, preview_available: false }) }, { status: 202 });
+    assert.equal(path, `/api/images/status/${id}`);
+    return Response.json(imageV2({ revision: 6, status: 'processed', detail: 'completed', worker_session: session,
+      first_observation_index: 1, completed_observations: 8, observation_revision: 9, preview_available: false,
+      remaining_decode_ms: 0, remaining_moderation_ms: 0, remaining_handoff_ms: 0 }));
+  });
+  const dispose = fn('startGuest')(root), file = elements(root, 'input')[0], send = elements(root, 'button')[0];
+  file.files = [new File(['abc'], 'private.png', { type: 'image/png' })]; send.dispatch('click'); await flush();
+  assert.ok(root.textContent.includes('Preise weiterhin synthetisch'));
+  window.dispatch('online'); await flush();
+  assert.ok(root.textContent.includes('8/8 Modellintervalle verarbeitet')); assert.equal(send.disabled, false);
+  dispose();
+});
+
+test('fresh v2 moderation cannot mutate after the independent native transport reaches 5s', async () => {
+  const calls = [], { root, window } = fixture('', async path => {
+    calls.push(path);
+    if (path === '/api/images/state') return Response.json(intakeV2());
+    if (path.startsWith('/api/images/preview/')) return new Response('', { status: 404 });
+    throw new Error('unexpected mutation');
+  });
+  const measured = adoptNativeState(createNativeState(), native(), 0, 0);
+  const dispose = fn('startOperatorImage')(root, 'A'.repeat(43), () => measured);
+  const [, reject] = elements(root, 'button');
+  for (let i = 0; i < 20 && reject.disabled; i++) await flush();
+  assert.equal(reject.disabled, false);
+  window.now = 5000; reject.dispatch('click'); await flush();
+  assert.equal(calls.some(path => path.startsWith('/api/images/moderate/')), false);
+  dispose();
+});
+
+test('live guest receipt changes the scope honestly and keeps later completion progress', async () => {
+  const { root, window } = fixture(`#guest=ig.${'A'.repeat(43)}`, async path => {
+    if (path === '/api/images') return Response.json({ schema: 'market-image-acceptance/v3', status_capability: receipt,
+      image: imageV2({ schema: 'market-image-status-wire/v3', detail: 'decoding', frame_sha256: null, preview_available: false }) }, { status: 202 });
+    return Response.json(imageV2({ schema: 'market-image-status-wire/v3', revision: 6, status: 'processed', detail: 'completed', worker_session: session,
+      first_observation_index: 50, completed_observations: 8, observation_revision: 58, preview_available: false,
+      remaining_decode_ms: 0, remaining_moderation_ms: 0, remaining_handoff_ms: 0 }));
+  });
+  const dispose = fn('startGuest')(root), file = elements(root, 'input')[0], send = elements(root, 'button')[0];
+  file.files = [new File(['abc'], 'private.png', { type: 'image/png' })]; send.dispatch('click'); await flush();
+  assert.ok(root.textContent.includes('experimenteller konfigurierter Motor-Readout'));
+  assert.ok(!root.textContent.includes('verändert hier keine Getränkepreise'));
+  window.dispatch('online'); await flush();
+  assert.ok(root.textContent.includes('8/8 Modellintervalle verarbeitet')); assert.equal(send.disabled, false);
   dispose();
 });

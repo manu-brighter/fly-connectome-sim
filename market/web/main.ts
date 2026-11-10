@@ -2,7 +2,7 @@ import { parseAckReply, parseClaimReply, parsePauseReply, parseProposalResult, p
 import type { Snapshot } from './protocol.ts';
 import { applySnapshot, createState, disconnect, isFresh } from './state.ts';
 import { element, renderBoard } from './render.ts';
-import { startOperatorImage } from './image-main.ts';
+import { startNative, startOperatorImage } from './image-main.ts';
 
 type Mutation = { path: string; body: Record<string, unknown>; kind: 'claim' | 'pause' | 'resume' | 'fixture' };
 class HttpError extends Error {
@@ -26,7 +26,9 @@ export function startBoard(root: HTMLElement): () => void {
   let feedback: HTMLElement | null = null, retryButton: HTMLButtonElement | null = null;
   let drinkSelect: HTMLSelectElement | null = null, targetInput: HTMLInputElement | null = null;
   let configKey = '';
+  let fixtureFields: HTMLElement | null = null, fixtureButton: HTMLButtonElement | null = null, fixtureHelp: HTMLElement | null = null;
   let disposeImage: (() => void) | null = null;
+  let native: ReturnType<typeof startNative> | null = null;
   const buttons: HTMLButtonElement[] = [], disposers: (() => void)[] = [];
   const now = () => window.performance.now();
   const visible = () => !document.hidden && window.navigator.onLine !== false;
@@ -40,6 +42,9 @@ export function startBoard(root: HTMLElement): () => void {
     // action during the serial read/ACK cycle queues once and runs after it.
     const enabled = !stopped && visible() && activeMutation === null && queuedMutation === null && isFresh(state, now());
     for (const button of buttons) button.disabled = !enabled;
+    const synthetic = state.snapshot?.schema === 'market-snapshot-v1';
+    for (const item of [fixtureFields, fixtureButton, fixtureHelp]) if (item) item.hidden = !synthetic;
+    if (fixtureButton) fixtureButton.disabled = !enabled || !synthetic;
     if (retryButton) { retryButton.hidden = uncertain === null; retryButton.disabled = !enabled || uncertain === null; }
     if (drinkSelect && targetInput && state.snapshot) {
       const key = `${state.snapshot.config_id}:${state.snapshot.incarnation}`;
@@ -139,7 +144,8 @@ export function startBoard(root: HTMLElement): () => void {
     } finally { finish(operation); }
   }
   async function mutate(mutation: Mutation) {
-    if (!operatorToken || stopped || !visible() || !isFresh(state, now())) return;
+    if (!operatorToken || stopped || !visible() || !isFresh(state, now()) ||
+      (mutation.kind === 'fixture' && state.snapshot?.schema !== 'market-snapshot-v1')) return;
     if (busy) {
       if (!activeMutation && !queuedMutation) { queuedMutation = mutation; render(); }
       return;
@@ -191,11 +197,12 @@ export function startBoard(root: HTMLElement): () => void {
     button('Primäre Tafel übernehmen', () => { if (state.snapshot) void mutate({ kind: 'claim', path: '/api/primary/claim', body: { incarnation: state.snapshot.incarnation, request_id: requestId() } }); });
     button('Pausieren', () => { void mutate({ kind: 'pause', path: '/api/pause', body: {} }); });
     button('Fortsetzen', () => { void mutate({ kind: 'resume', path: '/api/resume', body: { request_id: requestId() } }); });
-    const fields = element(document, 'div', '', 'market-fixture-fields');
+    const fields = element(document, 'div', '', 'market-fixture-fields'); fixtureFields = fields;
     const drinkLabel = element(document, 'label', 'Testgetränk'); drinkSelect = element(document, 'select'); drinkLabel.append(drinkSelect);
     const targetLabel = element(document, 'label', 'Zielpreis in Rappen'); targetInput = element(document, 'input'); targetInput.type = 'number'; targetInput.required = true; targetLabel.append(targetInput);
     fields.append(drinkLabel, targetLabel); listen(drinkSelect, 'change', updateTarget);
     const fixture = button('Testvorschlag senden', () => {
+      if (state.snapshot?.schema !== 'market-snapshot-v1') return;
       const row = state.snapshot?.rows.find(row => row.id === drinkSelect?.value), target = Number(targetInput?.value);
       if (!row || !Number.isSafeInteger(target) || target < row.minimum_rappen || target > row.maximum_rappen || target % row.grid_rappen !== 0) {
         announce('Bitte einen Zielpreis im angezeigten Bereich und Raster eingeben.'); return;
@@ -204,13 +211,14 @@ export function startBoard(root: HTMLElement): () => void {
         fixture_id: 'synthetic-price-v1', drink_id: row.id, target_rappen: target, expected_drink_version: row.drink_version,
       } } });
     });
-    fixture.setAttribute('aria-describedby', 'market-fixture-help');
+    fixtureButton = fixture; fixture.setAttribute('aria-describedby', 'market-fixture-help');
     retryButton = button('Ungewisse Aktion wiederholen', () => { if (uncertain) void mutate(uncertain); });
     feedback = element(document, 'p', 'Noch keine Bedienaktion.', 'market-feedback'); feedback.setAttribute('role', 'status'); feedback.setAttribute('aria-live', 'polite');
-    const help = element(document, 'p', 'Nur synthetische Testvorschläge. Eine abgelaufene Wartezeit aktiviert keinen Preis.'); help.id = 'market-fixture-help';
+    const help = element(document, 'p', 'Nur synthetische Testvorschläge. Eine abgelaufene Wartezeit aktiviert keinen Preis.'); help.id = 'market-fixture-help'; fixtureHelp = help;
     details.append(fields, actions, help, feedback); root.append(details); render();
-    disposeImage = startOperatorImage(root, operatorToken);
+    disposeImage = startOperatorImage(root, operatorToken, () => native!.getState());
   }
+  if (readToken) native = startNative(root, readToken);
   function clock() {
     if (stopped) return;
     render(); clockTimer = window.setTimeout(clock, 250);
@@ -225,6 +233,7 @@ export function startBoard(root: HTMLElement): () => void {
     window.clearTimeout(pollTimer); window.clearTimeout(clockTimer); window.clearTimeout(requestTimer);
     for (const dispose of disposers) dispose();
     disposeImage?.();
+    native?.dispose();
     render();
   };
 }

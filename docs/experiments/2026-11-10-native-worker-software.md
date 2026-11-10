@@ -141,9 +141,52 @@ Reusing frozen Windows primitives imports the existing stdlib-only recorder thro
 exactly this required chain; no engine/data/neural module or simulator DLL is loaded.
 The same64 frozen sources,41 packaged members and seven old artifacts are unchanged.
 
+## Integrated local pilot software
+
+Worker/session, public D1 coordination, HTTP/measured-status display and explicit
+prepare/start/inspect CLI are implemented. Following the request to finish the
+local pilot, the same engine/session machinery now has a separately versioned
+live-pilot/v1 profile. The original v1 proof remains exactly40 observations/20model
+seconds/900real seconds and rejects live evidence outside its declared scope.
+
+Live defaults to8real hours, accepts1–720minutes and a maximum of86400 observations.
+Limits are bound before release; there is no repeated-worker simulation reset.
+Observations remain500ms, images require8 contiguous validated observations, black
+intervals still advance, and learning/DAN remain off. Memory/Job limits remain4GiB;
+live disk is bounded at8GiB, with6GiB event and1GiB monitor limits. This is a storage
+ceiling, not a preallocation or proof of12-hour throughput. Live journals are streamed
+for inspection; a wall-limited run is explicitly partial rather than complete.
+
+The existing ContinuousMotorDrive consumes exact validated group bins and actual
+start/completion times through a bounded public feed. A separate native SQLite
+schema/database admits those proposals through the existing transaction, board
+presence, pause and postcommit30-real-minute cooldown checks. Synthetic APIs cannot
+submit native proposals. Full jumps within configured bounds remain allowed; no
+retargeting, retries, forced rotation or learning claim is introduced.
+
+Independent source reviews covered core/CLI, price and HTTP/intake/UI. Price review
+found and closed stale-clock and terminal-drain/activation races. Core review found
+and closed conflicting startup cleanup epochs, nonterminal D1 receipts reaching a
+complete seal, doubled live observe deadlines and misleading CLI mode/limit text.
+The inspectors and original numerical sources were not weakened to close findings.
+
+Root's combined pre-core-fix run passed1084 Market tests with5 existing Windows
+symlink-privilege skips in220.78s; viewer passed318 with1 existing Windows symlink
+skip, plus build. The previously omitted actual owned generated-PNG coordinator
+case also passed separately in0.25s and in that full Market run. After the grouped
+core fixes, affected parent/live/CLI tests passed89 with1 path-location-dependent
+test deselected, followed by17 final live tests. That deselected CLI path test had
+passed in the combined run using a temporary root outside the allowed .tools area.
+Final price fixes passed36 focused cases; the unchanged authority had passed119
+regressions. Exact-source CI will supply the next combined checkpoint.
+
+These are software/fake-engine and harmless-process results. No actual simulator,
+graph acquisition, compiler probe or paid API ran for this implementation evidence.
+No multi-hour performance or scientific support is inferred.
+
 ## Remaining work
 
-Worker/session integration; coordinator/HTTP/measured-status connection;
-explicit CLI and exact source CI. Only then does the separately reviewed concrete
-preflight precede one finite actual acquisition. Native price ingress, richer
-measured live presentation and sustained event rehearsal remain subsequent work.
+Exact-source CI, a concrete finite preflight, actual image-to-native/price integration
+and browser inspection. Longer real-time rehearsal and public operation remain
+distinct from the first local pilot; rich live cell/anatomy rendering is not added
+by this minimal measured-status pane.

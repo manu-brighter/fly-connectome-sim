@@ -1,4 +1,4 @@
-"""Bounded, capability-authenticated loopback transport for synthetic prices."""
+"""Bounded, capability-authenticated loopback transport for local price pilots."""
 
 from __future__ import annotations
 
@@ -32,6 +32,7 @@ _STATUS = {
     "headers_too_large": 431, "clock": 503, "storage": 503,
     "capacity": 503, "claim_capacity": 503, "full": 409, "busy": 409,
     "invalid_transition": 409, "rate_limited": 429,
+    "wrong_mode": 409,
 }
 _PHRASE = {
     200: "OK", 202: "Accepted", 400: "Bad Request", 401: "Unauthorized", 403: "Forbidden",
@@ -278,6 +279,12 @@ class _Handler(socketserver.BaseRequestHandler):
                 raise MarketError("not_found")
         if path == "/market-image.html" and self.server.image_intake is None:
             raise MarketError("not_found")
+        native_route = path == "/api/native/state"
+        if path == "/api/native" or path.startswith("/api/native/"):
+            self._json_limit = 16384
+            if (not native_route or self.server.image_intake is None
+                    or not self.server.image_intake.native_enabled):
+                raise MarketError("not_found")
         raw_upload = image_route is not None and image_route[0] == "upload"
         lengths = headers.get("content-length", [])
         if lengths and not re.fullmatch(r"0|[1-9][0-9]*", lengths[0], re.ASCII):
@@ -299,6 +306,21 @@ class _Handler(socketserver.BaseRequestHandler):
         if image_route is not None:
             self._handle_image(reader, method, image_route, headers, length)
             return
+        if native_route:
+            if method != "GET":
+                raise MarketError("method_not_allowed")
+            credential = headers.get("authorization", [""])[0]
+            if not credential.startswith("Bearer ") or not credential[7:]:
+                raise MarketError("unauthorized")
+            role, _ = self.server._authenticate(credential[7:])
+            intake = self.server.image_intake
+            self.server._check_image_transport()
+            if role == "operator":
+                intake.charge_operator(diagnostic=True)
+            else:
+                intake.charge_native_read()
+            self._json(intake.native_state())
+            return
         if path in self.server._assets:
             if method != "GET":
                 raise MarketError("method_not_allowed")
@@ -318,6 +340,8 @@ class _Handler(socketserver.BaseRequestHandler):
         role, session = self.server._authenticate(bearer)
         if method == "POST" and (role != ("primary" if path == "/api/primary/ack" else "operator")):
             raise MarketError("unauthorized")
+        if path == "/api/fixtures" and self.server.authority.mode == "native":
+            raise MarketError("wrong_mode")
         # Capture before a possibly slow body read or authority-lock wait.
         epoch = self.server.authority.capture_safety_epoch() if path == "/api/resume" else None
         payload = None
@@ -399,9 +423,11 @@ class LocalMarketServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     daemon_threads = False
     block_on_close = True
 
-    def __init__(self, authority, host, port, assets, image_intake=None):
+    def __init__(self, authority, host, port, assets, image_intake=None, native_prices=None):
         self.authority = authority
         self.image_intake = image_intake
+        self.native_prices = native_prices
+        self._native_price_failed = threading.Event()
         self._request_errors = (MarketError,)
         if image_intake is not None:
             from .image_intake import IntakeError
@@ -477,6 +503,19 @@ class LocalMarketServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
                 self.authority.maintain()
             except MarketError:
                 pass
+            # The pump consumes the session's public export without holding the
+            # image coordinator lock; receipt durability remains independent.
+            if self.native_prices is not None:
+                if not self._native_price_failed.is_set():
+                    try:
+                        self.native_prices.maintain()
+                    except Exception:
+                        self._native_price_failed.set()
+                if self._native_price_failed.is_set():
+                    try:
+                        self.authority.pause()
+                    except MarketError:
+                        pass
             if self.image_intake is not None and not self._image_maintenance_failed.is_set():
                 try:
                     self.image_intake.maintain()
@@ -520,7 +559,8 @@ class LocalMarketServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
 
 def create_server(authority: PriceAuthority, host: str, port: int,
-                  assets_dir: Path, *, image_intake: ImageIntake | None = None) -> LocalMarketServer:
+                  assets_dir: Path, *, image_intake: ImageIntake | None = None,
+                  native_prices=None) -> LocalMarketServer:
     _validate_bind(host, port)
     assets = _load_assets(assets_dir, images_enabled=image_intake is not None)
-    return LocalMarketServer(authority, host, port, assets, image_intake)
+    return LocalMarketServer(authority, host, port, assets, image_intake, native_prices)
