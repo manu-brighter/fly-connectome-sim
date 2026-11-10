@@ -1,8 +1,11 @@
 # Bounded native worker — sequential implementation plan
 
 Status: independently accepted prospectively, 2026-11-10. Task1 is implemented
-and independently accepted with410 passing affected tests. Tasks2–5
-remain unimplemented. See [software evidence](../../experiments/2026-11-10-native-worker-software.md).
+and independently accepted with410 passing affected tests and successful exact-source
+CI. Task2 is independently accepted with50 final Windows transport passes;
+its earlier211-case integration result is recorded separately. Tasks3–5 remain
+unimplemented; Task3 is next.
+See [software evidence](../../experiments/2026-11-10-native-worker-software.md).
 The [accepted design](../specs/2026-11-10-native-worker-design.md) is binding.
 Actual acquisition and any retry require the separate gates below.
 Prerequisite: independently accepted intake checkpoint and its exact successful CI.
@@ -99,7 +102,10 @@ Required actual Windows process cases:
 - Clean EOF followed by Job/handle/fsync/root-lock failure leaves no success seal.
 - Monitor12000-row cap remains independent of4096 lifecycle records; stalled writer
   and owner death leave bounded incomplete evidence, not fabricated cleanup.
-- No simulator import/runtime read/network/real compiler in any harmless child.
+- No engine/data/neural import, runtime read, network or real compiler in any
+  harmless child. Reusing the frozen supervision primitives necessarily imports
+  only the stdlib recorder through market_artifacts (plus the two empty package
+  initializers); that exact import chain is allowed without simulator initialization.
 
 Tests use bounded real high-resolution deadlines; report controlled-time tests separately.
 Run Windows cases on the host where required; Linux skips stay explicit.

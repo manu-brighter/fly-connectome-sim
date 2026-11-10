@@ -432,7 +432,17 @@ binding the original D1 deadline and monitor coverage:410 affected passes,
 zero skips. [Software evidence](experiments/2026-11-10-native-worker-software.md)
 separates analytical black/image fixtures from actual native exposure and records
 the authenticated lock-read and platform-path limits. No live worker is connected.
-Next are owned transport and session integration; independent source/CI and
+Published Task1`b86a319` passed all four
+[CI42851467117 jobs](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42851467117),
+including845 Market passes/25 existing Windows-specific skips; all152 new
+protocol/evidence cases passed on Linux. Task2 owned transport is independently
+accepted after fixing common cleanup-budget enforcement, unknown probe-exit
+confirmation and the framed-write cap. Earlier host integration:211 passes;
+final transport source:50 passes/zero skips, with actual harmless-process evidence
+distinguished from injected faults. The required frozen-helper import chain is
+stdlib recorder/package initializers only, with no simulator initialization.
+Next is Task3 worker/session integration; no native worker has yet run.
+Independent source/CI and
 concrete finite preflight gates precede one actual run. The330-file baseline
 preserves all64 frozen helpers,41 package members
 and seven historical artifacts. Native price admission and richer measured live

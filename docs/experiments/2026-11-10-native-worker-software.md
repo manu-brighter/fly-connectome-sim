@@ -15,6 +15,13 @@ Contract checkpoint `c1d6c034be16e7114ec6936603511eb9a3314a04` passed all four
 build. This CI covers the contract and preceding implementation, not the new
 Task1 source described below.
 
+Published Task1 source`b86a31918675989b50843be31e5250ab0ea8694b` subsequently
+passed all four [CI42851467117 jobs](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42851467117):
+845 Market passes/25 existing Windows-specific skips in136.75s,1469 native/session
+passes/47 skips in500.22s,253 buffer passes/six skips in282.88s and287 viewer
+passes/four absent-artifact skips in89.167s, plus build. All152 new protocol/evidence
+cases passed on Linux, including the explicitly mapped analytical lockfile paths.
+
 ## Task1 scope and verification
 
 The new stdlib-only `market/native_protocol.py` provides bounded exact IPC
@@ -66,8 +73,8 @@ part of the later source-bound startup.
 On this Windows host, complete fixtures use real absolute paths and real file
 stat/hash checks without mapping. Linux-only fixture code maps logical Windows
 paths at the leaf path-resolution boundary to actual temporary files; the schema,
-path rules, stat/hash/EOF checks remain active. That adapter has not yet run in
-clean-checkout CI and is not evidence of Windows process or filesystem ownership.
+path rules, stat/hash/EOF checks remain active. That adapter passed the exact-source
+clean-checkout CI above; it is not evidence of Windows process or filesystem ownership.
 The64-source fixture declarations are synthetic and do not attest current
 checkout bytes.
 
@@ -87,10 +94,56 @@ packaged source set and seven historical artifacts with the preceding baseline;
 all are unchanged. No D1/D2, price authority, historical evidence or packaged
 simulator source is changed by Task1.
 
+## Task2 owned Windows transport
+
+Task2 is implemented and independently accepted after three bounded corrections.
+The new transport owns one suspended, hidden worker in a kill-on-close Job from
+creation, with restricted pipe inheritance and an actual4GiB Job commit quota.
+It provides bounded framed communication, separate finite monitor persistence,
+retained handle identity and one exact compiler-version adapter. The adapter was
+tested with a harmless Python substitute; no real compiler or simulator ran.
+RSS and output limits remain sampled thresholds, not instantaneous physical caps.
+
+An actual host integration run passed **211 cases in55.95s**, covering45 transport,
+152 protocol/evidence and14 unchanged D2 ownership cases. Three D2 sandbox failures
+passed unchanged with normal host execution; no checks were weakened. After a
+targeted root-lock closure correction,46 transport cases passed in17.18s.
+Independent review then reproduced three defects: cleanup granted an additional
+wait beyond the common budget; an unknown probe exit was marked confirmed; an
+explicit caller deadline could exceed the fixed5s framed-write cap. Four focused
+cases failed before correction and passed afterward. The final source passed
+**50 Windows transport tests, zero skips/failures,22.23s**:
+
+```powershell
+.venv/Scripts/python.exe -m pytest tests/market/test_native_windows.py -p no:cacheprovider --basetemp=.tools/native-worker-20261110/task2-fix1-host-temp
+```
+
+The211-case result is the earlier integration checkpoint, not a repeated result
+on the final correction. No public API or frozen helper changed. Independent
+re-review replayed the original bounded probes and accepted all three fixes.
+
+Real harmless-process cases include duplex/EOF, blocked pipes, nonzero exit,
+hidden worker/probe, excluded inheritable capability, unrelated sentinel survival,
+owner death killing its Job, and observation7/complete before one ACK/end at7 and39.
+Quota readback and initial/terminal monitor records use actual OS queries. RSS/disk
+thresholds, writer stalls and OS failures are injected rather than multi-GiB or
+physical-disk stress claims. All harmless worker fixtures have a12s self-exit limit.
+
+The transport confirms exits while retaining ownership so the later session can
+close its journals and perform the final source check before releasing handles.
+Caller confirmation of evidence closure is an obligation, not independently observed
+proof. Unknown launched-probe identity retains ownership and throws a closed error;
+it cannot fabricate a successful cleanup receipt. No transport method creates a
+final seal or claims an integrated native run.
+
+Reusing frozen Windows primitives imports the existing stdlib-only recorder through
+`market_supervision`/`market_artifacts` and the two package initializers. Tests allow
+exactly this required chain; no engine/data/neural module or simulator DLL is loaded.
+The same64 frozen sources,41 packaged members and seven old artifacts are unchanged.
+
 ## Remaining work
 
-Owned Windows transport with harmless-process tests; worker/session integration;
-coordinator/HTTP/measured-status connection;
+Worker/session integration; coordinator/HTTP/measured-status connection;
 explicit CLI and exact source CI. Only then does the separately reviewed concrete
 preflight precede one finite actual acquisition. Native price ingress, richer
 measured live presentation and sustained event rehearsal remain subsequent work.
