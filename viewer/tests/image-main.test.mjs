@@ -81,7 +81,7 @@ test('guest accepts only current receipt status identity and exposes no pixels o
   dispose();
 });
 
-test('operator paints verified RGB and approval uses current tuple only', async () => {
+test('operator paints verified RGB and approval uses current tuple only', async t => {
   const rgb = new Uint8Array(12288); rgb.set([1, 2, 3]);
   const prefix = new TextEncoder().encode('{"dtype":"uint8","rank":3,"shape":[64,64,3],"version":"rgb-input/v1"}\n'); const bytes = new Uint8Array(prefix.length + rgb.length);
   bytes.set(prefix); bytes.set(rgb, prefix.length);
@@ -93,14 +93,23 @@ test('operator paints verified RGB and approval uses current tuple only', async 
     if (path.startsWith('/api/images/moderate/')) return Response.json(status({ status: 'queued', detail: 'ready', frame_sha256: digest }));
     throw new Error('unexpected');
   });
-  const dispose = fn('startOperatorImage')(root, 'A'.repeat(43)); await flush(); await flush();
+  const digestStarted = Promise.withResolvers(), releaseDigest = Promise.withResolvers();
+  window.crypto.subtle = { async digest(...args) {
+    digestStarted.resolve(); await releaseDigest.promise; return webcrypto.subtle.digest(...args);
+  } };
+  const dispose = fn('startOperatorImage')(root, 'A'.repeat(43));
+  t.after(() => { releaseDigest.resolve(); dispose(); });
   const canvas = elements(root, 'canvas')[0], [approve, reject] = elements(root, 'button');
-  for (let i = 0; i < 20 && !canvas.context?.image; i++) await flush();
+  const painted = Promise.withResolvers(), context = canvas.getContext('2d');
+  const putImageData = context.putImageData.bind(context);
+  context.putImageData = (...args) => { putImageData(...args); painted.resolve(); };
+  await digestStarted.promise;
+  assert.equal(context.image, null); assert.equal(approve.disabled, true);
+  releaseDigest.resolve(); await painted.promise;
   assert.deepEqual([...canvas.context.image.data.slice(0, 4)], [1, 2, 3, 255]);
   assert.equal(approve.disabled, false); assert.equal(reject.disabled, false);
   window.now = 5000; approve.dispatch('click'); await flush();
   assert.equal(calls.filter(([path]) => path.startsWith('/api/images/moderate/')).length, 0);
-  dispose();
 });
 
 test('upload keeps the original abort deadline active through the bounded acceptance body', async () => {

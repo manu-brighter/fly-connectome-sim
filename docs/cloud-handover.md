@@ -459,6 +459,11 @@ an empty preserved package initializer rejected by the new binding reader; only
 that checksum-pinned empty source is now allowed, without editing the frozen core.
 The corrected80-observation/600-second preparation succeeded without native release;
 its concrete bindings and the two-image acceptance client were independently reviewed.
+The corrected Linux Market job passed1021 tests/77 platform skips in CI42884460896.
+That run exposed a separate unchanged Viewer test race: twenty event-loop turns
+did not guarantee completion of WebCrypto. The test now waits for actual canvas
+painting and additionally verifies that pending digest validation cannot enable approval.
+No Viewer production source changed; actual SHA256 and pixel assertions remain.
 No actual native worker has yet run. Next: corrected exact-source CI, concrete finite local
 acceptance with generated images, actual source-bound execution/browser inspection,
 then the usable local pilot. Preserve the distinction from multi-hour performance,
