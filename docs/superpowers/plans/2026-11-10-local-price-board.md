@@ -220,7 +220,8 @@ and HTTP mapping. Task1 generates Proposal only within `run_fixture` transaction
 `market/web/render.ts`, `market/web/main.ts`, `market/web/style.css`,
 `viewer/market.html`, `viewer/src/market-entry.ts`, `viewer/vite.config.ts`,
 `viewer/tests/market-protocol.test.mjs`, `viewer/tests/market-state.test.mjs`,
-`viewer/tests/market-render.test.mjs`; modify `viewer/tsconfig.json` include only.
+`viewer/tests/market-render.test.mjs`, `viewer/tests/market-fixtures.mjs` (pure
+shared test data, no test registration); modify `viewer/tsconfig.json` include only.
 
 **Interfaces:** protocol exports the exact spec DTO TypeScript types and
 `parseSnapshot(value: unknown): Snapshot`, `parseProposalResult(value: unknown):
@@ -238,7 +239,7 @@ textContent and semantic DOM. `startBoard(root: HTMLElement): () => void` owns
 fetch/visibility/poll timers, credentials and operator event handlers; return
 function aborts and removes them. Main invokes startBoard on the dedicated root.
 
-- [ ] Write failing Node tests, direct imports from `../../market/web/*.ts`:
+- [x] Write failing Node tests, direct imports from `../../market/web/*.ts`:
   strict DTO numeric/enums/schema limits; unknown before data; fresh at4999ms,
   unknown at5000; lower revision and old connectionGeneration ignored; new
   connection full snapshot establishes new incarnation, increments the connection
@@ -246,7 +247,7 @@ function aborts and removes them. Main invokes startBoard on the dedicated root.
   `test_hidden_and_disconnect_stop_ack` uses injected browser/fetch test doubles
   around startBoard; assert one in-flight serial poll/render/ACK, no hidden ACK,
   resume/visibility full reload and ignored late aborted responses.
-- [ ] Add DOM tests via small explicit DOM test double (no dependency install):
+- [x] Add DOM tests via small explicit DOM test double (no dependency install):
   escaped hostile drink names remain literal, all20 prices visible in configured
   order, monetary400 rendersCHF4.00, recovery/eligibility copy, no zero placeholders,
   no candidate-as-active row, historical result doesn't replace newer snapshot,
@@ -254,23 +255,25 @@ function aborts and removes them. Main invokes startBoard on the dedicated root.
   fragment-only, removed immediately, never storage/query/log content; read-only
   mode has no operator secrets/controls. Unknown mutation result keeps same
   request ID for retry, deliberate new action receives a fresh ID.
-- [ ] Run red from viewer: `node --test tests/market-*.test.mjs`.
-- [ ] Implement the exact interfaces and visual direction from the spec. Keep
+- [x] Run red from viewer: `node --test tests/market-*.test.mjs`.
+- [x] Implement the exact interfaces and visual direction from the spec. Keep
   browser clocks only for local freshness/countdowns, never authority decisions.
   Handle ACK's self-transition snapshot without an ACK loop. Disable hidden/
   disconnected writes, retain dated last-known prices and explicit unknown label.
   Vite multi-entry retains index/base; manifest and narrow fs.allow use verified
   local Vite API. No package.json/lock changes or replay parser imports.
-- [ ] Run green from viewer: `node --test tests/market-*.test.mjs`, `npm test`,
+- [x] Run green from viewer: `node --test tests/market-*.test.mjs`, `npm test`,
   `npm run build`. Inspect actual generated market.html/manifest asset graph;
   with Python adapter serve only that market graph. Record complete old viewer
   test counts/skips and retain existing import/replay behavior.
-- [ ] Controller opens actual built board locally and checks20-row wide/narrow,
+- [x] Controller opens actual built board locally and checks20-row wide/narrow,
   keyboard/contrast/reduced motion, claim→render/ACK→resume→fixture400→700,
   no_change/rejection feedback, hide/disconnect/reconnect and read-only view.
   Record browser/version and actual observed result; this browser check belongs
   to controller, never an unsupported claim by a worker. Astra reviews source,
   tests and actual evidence before controller's explicit-path local checkpoint.
+  Actual hidden-tab testing was unavailable because both headless tabs remained
+  visible; unit tests cover the transition. This limitation is retained explicitly.
 
 ### Task4: Cross-process recovery, CI, operator docs and closure
 
@@ -356,10 +359,23 @@ interruption was injected at serve entry; it was not an OS-console Ctrl+C test.
 Actual Vite/browser and Linux symlink checks remain pending. Port 80 uses canonical
 Host/Origin/URLs without :80; all other configured ports remain explicit.
 
+Task3 source is independently accepted after the activation-indicator regression
+was reproduced and fixed with stable row nodes and a1200ms deadline. All23 market
+tests and the full270-test viewer suite pass without skips in the final host run;
+the build retains both entries and the original replay bundles. Actual browser
+checks observed all20 synthetic selections, cooldown/no_change, pause, read-only,
+network recovery, focus and reduced motion. After two documented layout corrections,
+all20 ordinary cooldown rows fit1920x1080 and1280x720;390px scrolls without horizontal
+overflow. Actual hidden tabs and desktop zoom remain unverified, and favicon404
+is incidental. Exact activation duration is proved by independent deterministic
+render tests; browser feedback predates snapshot arrival and is not its start clock.
+No process-restart transparent reconnection is claimed: a new process prints new
+opening capabilities. Task4 process/CI/documentation closure remains pending.
+
 Spec coverage maps authority/clock/presence/safety/store to Task1, fixture/HTTP
 bounds to Task2, board/build to Task3 and process/CI/docs to Task4. Later tasks
 consume the exact spec DTOs and Task1 methods; they cannot add competing clock,
 presence or proposal-admission logic. All five Review Focus items have explicit
 tests. Independent prospective review accepted the design and plan after correcting
-the shared-clock wording. Implementation checkboxes remain open; no implementation
-or test success is inferred.
+the shared-clock wording. Task4 checkboxes remain open; no future test or
+publication success is inferred.

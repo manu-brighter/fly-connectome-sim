@@ -327,8 +327,18 @@ in 27.14 s. Actual sockets cover deadlines, eight-handler overload, later overlo
 versus resume, lost responses and restart. The independent static security review
 found no actionable issue; it read actual source/logs and did not execute code.
 CLI interruption was injected at serve entry, not an OS-console Ctrl+C test.
-Task 3 implements the separate browser board next. Actual Vite/browser, Linux
-symlink behavior and complete new-source CI remain pending. No sale prices are claimed.
+Task 3's separate board is implemented and independently source-reviewed after
+correcting activation indicators lost on immediate rerender. The final complete
+Windows viewer suite passed 270 tests without skips (247 existing plus23 new),
+and the two-entry build passed. Actual bounded browser checks cover claim/ACK,
+resume, full400-to700 jumps, cooldown/no_change, pause, read-only access, offline
+unknown/reconnect and retained keyboard focus. All20 synthetic drinks were
+activated individually; all20 cooldown rows fit at1920x1080 and1280x720, with
+normal single-column scrolling at390px. Reduced motion and the10.62:1 main color
+pair were checked. Actual hidden-tab behavior could not be induced in the
+headless browser; its abort/no-ACK behavior has unit coverage. A harmless favicon404
+remains. Task4 adds cross-process recovery, operator instructions and complete
+new-source Linux CI; no sale prices, public readiness or neural integration are claimed.
 The preservation baseline records all 270 preexisting tracked files, all 64 frozen
 helpers unchanged and the same 41-member package fingerprint. No new dependency
 or native/API run is needed. The planning checkpoint passed
