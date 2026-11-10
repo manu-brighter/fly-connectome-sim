@@ -425,10 +425,16 @@ exact wire/HTTP/evidence variants, dependency bootstrap and confirmed cleanup
 with final source checks. A controlled public-D1 probe reproduced the earlier
 final-read expiry gap; the accepted replacement uses at most three atomic
 snapshots and two terminal reads. Missing retained evidence is an explicit
-journal_gap, never a fabricated completion. No native worker source or new
-acquisition is included in this prospective checkpoint. Sol implements sequential
-tasks; independent source/CI and concrete finite preflight gates precede one
-actual run. The330-file baseline preserves all64 frozen helpers,41 package members
+journal_gap, never a fabricated completion. Contract checkpoint`c1d6c03` passed
+all four [CI42844507066 jobs](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42844507066).
+Task1's protocol/evidence library is implemented and independently accepted after
+binding the original D1 deadline and monitor coverage:410 affected passes,
+zero skips. [Software evidence](experiments/2026-11-10-native-worker-software.md)
+separates analytical black/image fixtures from actual native exposure and records
+the authenticated lock-read and platform-path limits. No live worker is connected.
+Next are owned transport and session integration; independent source/CI and
+concrete finite preflight gates precede one actual run. The330-file baseline
+preserves all64 frozen helpers,41 package members
 and seven historical artifacts. Native price admission and richer measured live
 presentation follow; never route real evidence through the synthetic fixture path.
 The preservation baseline records all 270 preexisting tracked files, all 64 frozen

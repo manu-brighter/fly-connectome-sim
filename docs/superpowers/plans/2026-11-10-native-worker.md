@@ -1,6 +1,8 @@
 # Bounded native worker — sequential implementation plan
 
-Status: independently accepted prospectively, 2026-11-10; implementation pending.
+Status: independently accepted prospectively, 2026-11-10. Task1 is implemented
+and independently accepted with410 passing affected tests. Tasks2–5
+remain unimplemented. See [software evidence](../../experiments/2026-11-10-native-worker-software.md).
 The [accepted design](../specs/2026-11-10-native-worker-design.md) is binding.
 Actual acquisition and any retry require the separate gates below.
 Prerequisite: independently accepted intake checkpoint and its exact successful CI.
@@ -37,6 +39,9 @@ tests/market/test_native_evidence.py. No native import, processes or runtime loa
 
 Consumes normative Appendices A–G; produces exact codecs, immutable DTOs and bounded
 full-EOF event/monitor/cleanup integrity reader. No simulator or lifecycle duplication.
+Task1 DTO ownership covers wire/header/protocol/bindings/receipt/monitor/cleanup/final.
+Pure public-session snapshots/notices from Appendix D belong to Task3; HTTPv2
+records from Appendix E belong to Task4. All normative checks remain required.
 
 RED cases before implementation:
 - Framing lengths, partial reads, duplicate/extra keys, unknown variants, sequence gaps.
@@ -68,6 +73,9 @@ It may consume Task1 APIs; frozen supervisors and D2 ownership remain unchanged.
 
 Implement suspended exact-interpreter launch, restricted handles/Job membership,
 framed bounded duplex IO, stderr cap, separately persisted monitor/cleanup evidence.
+Start actual monitoring before/at worker resume. Preserve initial worker-only
+coverage no later than its first hello and terminal coverage after ended; the
+offline hello anchor does not independently attest the OS-resume instant.
 Set/query the4GiB Job commit quota; distinguish sampled RSS/disk stop thresholds.
 Implement only the exact one-shot hidden version-probe guard/adapter; no build path.
 Retain exact handles/root lock on unconfirmed cleanup; seal only after required closure.
@@ -106,6 +114,7 @@ Task1/2 interfaces may be corrected only with scoped regression and re-review.
 No D1/D2/price source modifications.
 
 Worker composes the preserved engine/header/CellRing public APIs.
+Implement Appendix D's public-session snapshot/notice DTOs with these consumers.
 Parent handles readiness, source binding, one boundary, finite evidence and notices.
 No ContinuousMotorDrive instance, price proposal, fixture dispatch or checkpoint restore.
 Preflight/constructor do not instantiate the engine or run a compiler.
@@ -158,6 +167,7 @@ tests/market/test_native_intake.py, tests/market/test_native_http.py,
 viewer/tests/native-*.test.mjs and needed focused image tests.
 
 Keep standalone intake v1 byte/shape behavior and price authority/client state unchanged.
+Implement Appendix E's exact HTTPv2 DTOs and validation in this task.
 Use one existing D1 controller for both pending and active states.
 NativeSession only supplies bounded notices; coordinator alone invokes D1 methods.
 No private-attribute bridges or second image admission implementation.
