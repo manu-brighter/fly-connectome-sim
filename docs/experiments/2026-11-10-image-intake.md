@@ -1,7 +1,8 @@
 # Local image intake — component evidence
 
-Status: Task1 coordinator and Task2 optional HTTP/CLI implemented, tested and
-independently accepted after correction reviews. Guest/operator UI is not implemented. No native worker
+Status: all three components and the complete local intake integration are
+independently accepted after corrections and actual browser checks. Source CI
+remains outstanding. No native worker
 is connected, and no image has changed a drink price.
 
 The coordinator composes unchanged admission and owned decoding. It retains one
@@ -124,9 +125,75 @@ experiment package and recorder helper imports; no simulation engine executes.
 No original price assertion, D1/D2 source, frozen helper, package member or
 historical artifact changed. Complete integration CI remains outstanding.
 
+## Task3 browser interface and corrections
+
+The guest page sends bounded raw files and retains one receipt in memory. The
+operator pane shows hash-verified64×64 RGB pixels, requires that current displayed
+preview for approval and clears it on stale/disconnected/queued state. Image
+requests have independent controllers/timers; the read-only board has no image
+traffic. Disabled intake hides the optional pane after its404 probe. Original
+price assertions remain unchanged; their test fixture now models that extra probe.
+
+| Check | Actual result |
+| --- | --- |
+| Initial source-freeze focused UI/price-render suite |33 passed, no skips |
+| Initial source-freeze complete viewer |287 passed, one existing Windows link skip,57.614s |
+| Independent-review regressions before correction |3 failed,16 passed |
+| Corrected targeted tests |19 passed |
+| Corrected focused UI/price-render suite |36 passed, no skips |
+| Corrected complete viewer |290 passed, one unchanged Windows link skip,58.107s |
+| Corrected TypeScript/Vite build |Exit0; existing large viewer-chunk warning |
+| Independent correction and neighboring-state probes |72 passed |
+
+Initial self-review corrected the response-body deadline, a late upload response,
+retry hash identity and a wrong browser digest prefix using behavioral regressions.
+The independent review then reproduced three issues: superseded successful
+moderation could retain its mutation lock, inherited object properties bypassed
+the closed detail parser, and nonready intake looked like a healthy empty service.
+The correction releases only the completing operation's lock, requires own declared
+detail keys and displays clear stopped/unavailable state. Independent correction
+review accepted all three findings and the complete local integration after72
+additional parser, async lifecycle and health/staleness checks.
+
+Commands from `viewer/`:
+
+```powershell
+node --test tests/image-*.test.mjs tests/market-render.test.mjs
+npm test
+npm run build
+```
+
+The sole local viewer skip is an existing unavailable Windows dangling-link
+privilege. Workflow/race tests use explicit DOM/fetch/clock doubles; these do not
+establish actual browser or native behavior. Missing-API scaffolding, intermediate
+compile failures and the initial old-fixture probe conflict remain unsuccessful
+attempts, not passing evidence. No original price assertion was weakened.
+
+Actual Chrome157 checks use generated images, real SystemClock and owned D2
+against disposable loopback services. The initial build passed guest validation,
+invalid-image rejection, exact canvas RGB/hash comparison, offline clearing and
+reconnect, rejection, approval, full-intake refusal, disabled/read-only roles and
+independent synthetic price controls. One explicit synthetic proposal changed
+CHF4→7 while the approved image waited; no image action changed prices.
+An actual five-minute wait produced queued→expired for the same identity/hash,
+observed at accepted_age301615ms with zero remaining time and no preview. Exact
+service shutdown exited0, removed scratch and allowed decoder/both price-owner
+reacquisition. A fresh corrected-build run independently confirmed exact pixels,
+mobile layout, focus preservation during polling, offline clearing/reconnect and
+rejection. Its actual queued/expired browser responses crossed the same original
+deadline at age299678ms/rest322ms→age301687ms/rest0. Cleanup again exited0 with
+scratch absent and decoder/both price owners reacquired; no price changed in that
+second run. Both services used real clocks; neither expiry was accelerated.
+All owned tabs closed, preserving the original blank tab. Private evidence records
+mistaken harness waits separately from actual application outcomes.
+
+These are bounded local checks, not a hostile public-upload assessment,300-guest
+load test,12-hour rehearsal or neural measurement. The [local setup](../getting-started.md#local-image-upload-and-moderation)
+uses the optional Windows decoder; opening capabilities and generated/private
+evidence stay outside Git.
+
 ## Remaining integration
 
-The accepted [plan](../superpowers/plans/2026-11-10-image-intake.md) next adds
-a guest page and private operator preview. Actual browser and whole-slice
-review/CI evidence remain outstanding.
+The accepted [plan](../superpowers/plans/2026-11-10-image-intake.md) awaits the
+reviewed source checkpoint and its four existing CI jobs.
 Continuous native handoff, measured display and real price admission are later work.

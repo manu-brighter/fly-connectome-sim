@@ -9,7 +9,8 @@ export default defineConfig({
   build: {
     manifest: true,
     rolldownOptions: {
-      input: { index: fileURLToPath(new URL('index.html', import.meta.url)), market: fileURLToPath(new URL('market.html', import.meta.url)) },
+      input: { index: fileURLToPath(new URL('index.html', import.meta.url)), market: fileURLToPath(new URL('market.html', import.meta.url)),
+        marketImage: fileURLToPath(new URL('market-image.html', import.meta.url)) },
     },
   },
 });

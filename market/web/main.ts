@@ -2,6 +2,7 @@ import { parseAckReply, parseClaimReply, parsePauseReply, parseProposalResult, p
 import type { Snapshot } from './protocol.ts';
 import { applySnapshot, createState, disconnect, isFresh } from './state.ts';
 import { element, renderBoard } from './render.ts';
+import { startOperatorImage } from './image-main.ts';
 
 type Mutation = { path: string; body: Record<string, unknown>; kind: 'claim' | 'pause' | 'resume' | 'fixture' };
 class HttpError extends Error {
@@ -25,6 +26,7 @@ export function startBoard(root: HTMLElement): () => void {
   let feedback: HTMLElement | null = null, retryButton: HTMLButtonElement | null = null;
   let drinkSelect: HTMLSelectElement | null = null, targetInput: HTMLInputElement | null = null;
   let configKey = '';
+  let disposeImage: (() => void) | null = null;
   const buttons: HTMLButtonElement[] = [], disposers: (() => void)[] = [];
   const now = () => window.performance.now();
   const visible = () => !document.hidden && window.navigator.onLine !== false;
@@ -207,6 +209,7 @@ export function startBoard(root: HTMLElement): () => void {
     feedback = element(document, 'p', 'Noch keine Bedienaktion.', 'market-feedback'); feedback.setAttribute('role', 'status'); feedback.setAttribute('aria-live', 'polite');
     const help = element(document, 'p', 'Nur synthetische Testvorschläge. Eine abgelaufene Wartezeit aktiviert keinen Preis.'); help.id = 'market-fixture-help';
     details.append(fields, actions, help, feedback); root.append(details); render();
+    disposeImage = startOperatorImage(root, operatorToken);
   }
   function clock() {
     if (stopped) return;
@@ -221,6 +224,7 @@ export function startBoard(root: HTMLElement): () => void {
     stopped = true; serial++; controller?.abort(); state = disconnect(state);
     window.clearTimeout(pollTimer); window.clearTimeout(clockTimer); window.clearTimeout(requestTimer);
     for (const dispose of disposers) dispose();
+    disposeImage?.();
     render();
   };
 }

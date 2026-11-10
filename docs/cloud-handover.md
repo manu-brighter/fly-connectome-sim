@@ -401,7 +401,13 @@ maintenance-failure fence:74 focused passes,713 full Market passes/five unchange
 Windows privilege skips and seven independent loopback scenarios. Actual generated
 PNG→owned D2→private RGB→moderation and CLI shutdown cases passed; controlled-clock
 expiry and injected failures are labelled in the component evidence. The guest/
-operator UI, actual browser checks and complete integration CI follow. No neural
+operator UI is now implemented and corrected after three independent findings:
+290 viewer passes/one existing Windows link skip and build0. Initial actual Chrome
+checks include matching D2/canvas pixels, real five-minute expiry and confirmed
+owner cleanup. Corrected-build checks also passed real expiry, mobile/focus/offline
+behavior and cleanup;72 independent correction cases passed. All three components
+and the complete local integration are independently accepted. Exact-source
+integration CI remains outstanding. No neural
 worker is connected; approved images queue and expire without a processed claim.
 Continuous native integration and measured live presentation remain later.
 The preservation baseline records all 270 preexisting tracked files, all 64 frozen

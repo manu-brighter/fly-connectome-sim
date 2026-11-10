@@ -16,6 +16,7 @@ class Element {
   addEventListener(name, callback) { (this.listeners[name] ??= new Set()).add(callback); }
   removeEventListener(name, callback) { this.listeners[name]?.delete(callback); }
   dispatch(name) { for (const callback of this.listeners[name] ?? []) callback({ preventDefault() {}, target: this }); }
+  getContext() { return { clearRect() {} }; }
   querySelector(selector) { return this.querySelectorAll(selector)[0] ?? null; }
   querySelectorAll(selector) {
     return this.children.flatMap(child => [ ...(selector.startsWith('[') ? child.getAttribute(selector.slice(1, -1)) !== null : child.tagName === selector) ? [child] : [], ...child.querySelectorAll(selector) ]);
@@ -100,7 +101,10 @@ function harness(hash = `#operator=${operatorCapability}`) {
     navigator: { onLine: true }, performance: { now: () => now }, crypto: { randomUUID: (() => { let count = 0; return () => `action-${++count}`; })() },
     setTimeout(callback, delay) { timers.set(++timerId, { callback, delay }); return timerId; }, clearTimeout(id) { timers.delete(id); },
     addEventListener(name, callback) { (listeners[name] ??= new Set()).add(callback); }, removeEventListener(name, callback) { listeners[name]?.delete(callback); },
-    fetch(url, options) { calls.push({ url, options }); return new Promise((resolve, reject) => pending.push({ resolve: (value, status = 200) => resolve({ ok: status === 200, status, text: async () => JSON.stringify(value) }), reject })); } };
+    fetch(url, options) {
+      if (url === '/api/images/state') return Promise.resolve(new Response('', { status: 404 }));
+      calls.push({ url, options }); return new Promise((resolve, reject) => pending.push({ resolve: (value, status = 200) => resolve({ ok: status === 200, status, text: async () => JSON.stringify(value) }), reject }));
+    } };
   doc.defaultView = win;
   return { doc, root, win, calls, pending, timers, setNow(value) { now = value; }, event(name) { for (const callback of listeners[name] ?? []) callback(); },
     tick(delay) { const entry = [...timers].find(([, timer]) => timer.delay === delay); assert.ok(entry, `timer ${delay}`); timers.delete(entry[0]); entry[1].callback(); },

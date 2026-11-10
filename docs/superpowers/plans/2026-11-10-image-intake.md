@@ -11,7 +11,10 @@ D2 source/Windows review and all four source CI jobs passed. Task1 coordinator i
 independently accepted locally:458 affected passes/four Windows privilege skips
 and39 independent correction checks. Task2 optional HTTP/CLI is independently
 accepted after maintenance-failure fencing:713 Market passes/five unchanged
-Windows privilege skips and seven independent loopback scenarios. Task3 UI follows.
+Windows privilege skips and seven independent loopback scenarios. Task3 UI is
+independently accepted:290 viewer passes/one existing Windows skip, build0,
+72 independent correction checks and actual corrected-browser expiry/cleanup.
+Complete local integration accepted; exact-source CI remains outstanding.
 
 **Architecture:** One coordinator composes unchanged D1 lifecycle and D2 decoder;
 the existing HTTP server gains optional image routes, followed by bounded guest/
@@ -121,15 +124,15 @@ viewer/tests/image-* tests; narrow existing market operator entry/style and
 viewer Vite/TS configuration edits. Coordinate any server integration defect with
 Task2 ownership; do not silently widen its accepted authorization/body policy.
 
-- [ ] Write failing strict wire/state tests for exact DTOs/enums/bounds, bounded
+- [x] Write failing strict wire/state tests for exact DTOs/enums/bounds, bounded
   stream reads, serial generations, fragment removal/credential memory, aborted
   or uncertain upload, status revocation, no automatic resubmission and stale
   controls. Reject processing/processed/live measurements in this slice.
-- [ ] Add clear German guest guidance and a separate operator pane using existing
+- [x] Add clear German guest guidance and a separate operator pane using existing
   visual patterns. Raw file bytes go to the sole upload route; only validated
   canonical RGB reaches the operator canvas after its hash check. Preserve
   independent price polling/ACK/control behavior and synthetic price labelling.
-- [ ] Test exact canvas pixels, superseded preview suppression, original remaining
+- [x] Test exact canvas pixels, superseded preview suppression, original remaining
   time, explicit moderation retry identity and disabled-image404 behavior. Run
   focused then complete viewer suite/build, plus backend integration if modified.
   Approve requires current healthy/fresh awaiting-approval metadata and the exact
@@ -139,14 +142,15 @@ Task2 ownership; do not silently widen its accepted authorization/body policy.
   Reject may remain available without preview. Validate status/detail/frame
   combinations and requested identities; old moderation replies cannot replace
   another pending image.
-- [ ] Root performs bounded real-browser verification against a disposable local
+- [x] Root performs bounded real-browser verification against a disposable local
   service: guest upload/status, operator preview/approve/reject, unsupported/full/
   expired/error flows, offline/stale UI and unchanged price controls/layout. Use
   generated fixtures only; record actual results and limits, then close owned
   tabs/server/decoder and verify cleanup. No synthetic processed animation.
-- [ ] Independent final Astra review covers this complete integration and concrete
-  browser/process/security evidence. Fix findings, update handover/result/plan,
-  verify preserved sources and exact staged diff, commit/push the feature and
+- [x] Independent final Astra review covers this complete integration and concrete
+  browser/process/security evidence; all actionable findings corrected and verified.
+- [ ] Finish reviewed handover/result/plan, verify preserved sources and exact
+  staged diff, commit/push the feature and
   await all existing clean-checkout CI jobs.
 
 ## Remaining work

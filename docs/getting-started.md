@@ -179,6 +179,46 @@ no CHF0.50 per-change limit. This board does not synchronize physical signs or a
 POS; any later staff adoption is manual. See the [bounded evidence and remaining
 limits](experiments/2026-11-10-local-price-board.md).
 
+## Local image upload and moderation
+
+This optional extension uses the same synthetic board and loopback service.
+It requires Windows, Python3.12.14 and the pinned Pillow environment; build the
+viewer as above. Use locally generated test images. No simulation or provider
+request runs, and image approval never changes a price in this slice.
+
+Create a fresh trusted work directory under this repository's `.tools/`, then
+start the existing command with the optional decoder root:
+
+```powershell
+New-Item -ItemType Directory -Path .tools/market-image-local-01
+.venv/Scripts/python.exe scripts/run-market-price-service.py --config examples/market-synthetic.json --db .tools/market-local/state.sqlite3 --host 127.0.0.1 --port 8765 --assets viewer/dist --image-work-root .tools/market-image-local-01
+```
+
+The additional printed `/market-image.html#guest=<capability>` link opens the
+guest page. Keep all opening links private; each page consumes its fragment once.
+Use a newly opened printed link after a reload, since credentials are not stored.
+The read-only price link has no image controls or private preview.
+
+1. Choose a JPEG or PNG up to2MiB and send it. The guest sees status only; neither
+   original nor sanitized image pixels are shown there. An uncertain upload is
+   never automatically resent.
+2. On the operator board, use **Bildprüfung** below the price controls. It shows
+   only verified64×64 RGB pixels. **Bild freigeben** requires that current preview;
+   **Bild ablehnen** can reject without a preview. Stale/disconnected state disables
+   both actions and clears pixels.
+3. A complete upload starts the original deadlines:10s decoding,60s moderation,
+   and300s until possible simulator handoff. Approval does not restart them.
+   With no worker connected, an approved image waits and expires; it is never
+   reported processed. A full intake refuses another upload.
+4. Stop with **Ctrl+C** and allow owned decoder cleanup. A failed cleanup or stale
+   job directory is refused on restart; do not delete locks or scratch to bypass
+   that refusal. Opening capabilities rotate on every service restart.
+
+Omit `--image-work-root` to retain the original synthetic-only service. Its image
+page/routes are unavailable, and the operator image pane stays hidden. See the
+[component/browser evidence](experiments/2026-11-10-image-intake.md) for measured
+checks and limitations; this is not a public event upload service.
+
 ## Download, verify, stage and prepare
 
 The three source tables come from the
