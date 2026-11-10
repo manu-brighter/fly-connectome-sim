@@ -307,8 +307,15 @@ independently accepted with640 focused passes/no skips or warnings. The runner
 and thin supervision binding are now independently accepted too:55 new runner
 cases and79 new supervisor passes/one true Windows privilege skip; actual harmless
 process lifecycle receipts and preservation checked. The separate15-minute CI job
-retains all old tests. Final source CI/concrete preflight and the actual benchmark
-remain; no Stage C/event acceptance.
+retains all old tests. Final source CI/concrete preflight and the one actual
+[benchmark](../../experiments/2026-11-10-live-buffer-performance.md) are complete and
+independently accepted: full60-model-second cells/queue record, B/C handoffs after
+147000/156671ms,477.704s wall,944357376B workerpeak,cleanup0. Document the actual
+15.625ms Windows monotonic-clock resolution; future service deadline/cooldown and
+duration arithmetic use a common high-resolution clock. Frozen evidence stays
+unchanged. The scoped result supports separately specifying the local synthetic
+Stage-C board under the accepted slow pilot/favorite criteria; no live/public-event
+or long-run capacity acceptance follows.
 
 - Specify candidate group/cell channels, channel-to-drink mapping, price function,
   neutral/tie handling, threshold/rearm behavior and exact calibration/held-out

@@ -111,9 +111,15 @@ Static connections are not measured transmission. Iterator/snapshot cleanup rema
 effective even while an exception is retained.
 
 Timing separates setup, compute/kernel, callback sink body, copying/aggregation
-and local snapshot readiness. Sink and copy durations must fit enclosing wall
-intervals with exactly1ms endpoint-quantization tolerance. These self-recorded
-clocks are not independently attested. Pending/abandoned routes contain detached
+and local snapshot readiness. The frozen implementation bounds sink/copy durations
+by enclosing recorded wall intervals plus exactly1ms. Its original explanation
+treated this as endpoint quantization only; the later actual-runtime review found
+that Windows Python3.12 `monotonic` has15.625ms resolution, while sink/copy timing
+uses higher-resolution QPC. Thus the1ms rationale does not cover actual wall-clock
+quantization. The source and successful checks remain historical evidence; no
+retroactive correction or precision claim follows. See the
+[actual result](2026-11-10-live-buffer-performance.md) for this limitation and the
+future common-clock requirement. Pending/abandoned routes contain detached
 actual decisions, input history, partial block, anchor and armed state; reset
 triggers are not path history. Correct expiry, observed timely handoffs and external
 resource validity remain separate outcomes.

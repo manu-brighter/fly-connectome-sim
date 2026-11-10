@@ -1,4 +1,4 @@
-# Continuation handover — experimental v1, 2026-11-09
+# Continuation handover — experimental v1, 2026-11-10
 
 ## Start here: accepted scope and current status
 
@@ -280,10 +280,31 @@ two true Windows symlink-privilege skips, three explicitly excluded private runt
 preflight cases. Actual harmless completion/cancellation/owner-death receipts have
 cleanup0; unrelated-process protection passed. All62 old sources/41 package members
 remain unchanged. CI preserves every old test and adds exactly one new supervisor
-path; Actionlint passed. All source tasks are complete. Next publish the final
-source checkpoint and require successful CI, then concrete independent preflight
-before the one bounded native measurement. No actual acquisition has started.
-Preserve the old10-second collector/parser limits. No Stage C follows automatically.
+path; Actionlint passed. Final source`70a73b19125d89fab5d4796284047b04eddd6752`
+passed [CI42722594833](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42722594833):
+1469 old backend passes/47 skips in634.94s,253 new buffer-suite passes/six Windows-only
+skips in182.48s,243 viewer passes/four skips and build. Concrete preflight passed;
+the one acquisition is complete and independently accepted:
+[actual result](experiments/2026-11-10-live-buffer-performance.md). All120 observations,
+6000 bins/600 windows/122 events/two checkpoints are intact; ring1000 retained/5000
+evicted,256 measured cells/512 static edges. B/C waits147000/156671ms, three full
+rejections, no expiry. Five proposals all drink-00 at450/450/550/500/500 Rappen;
+no resets/open paths. Resources477.704s wall,944357376B workerpeak,41836953B sampled
+combined output peak/21157074B retained,1862 samples/maxgap0.266s,cleanup0/stderr0.
+All64 frozen sources remain unchanged. Actual artifacts are under
+`runs/live-buffer-performance-20261110-01/` and matching`.tools/`; never resume.
+The actual Python3.12 Windows monotonic clock is GetTickCount64 with15.625ms
+resolution; QPC sink/copy timings have100ns resolution. The old1ms quantization
+rationale was too strong. Frozen checks passed; retain the original source and
+records, document this limitation and use a common high-resolution clock in future
+service work. No rerun or threshold change is justified.
+**Next accepted continuation:** separately specify/implement the local synthetic
+Stage-C price service/board. Astra judged the scoped evidence sufficient under
+the accepted slow pilot/favorite criteria. Keep durable integer prices, full
+bounded jumps, per-drink30-real-minute cooldowns, pause, idempotency and conservative
+restart/clock handling. This does not accept live uploads, browser performance,
+300-guest/12-hour load or public operation. Preserve old10-second parsers and the
+core; no further readout tuning or native acquisition is required for Stage C.
 
 The protocol-only checkpoint `f07988a` triggered
 [CI42671895977](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42671895977),

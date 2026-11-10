@@ -13,7 +13,12 @@ accepted five-real-minute handoff bound without changing the engine/readout.
 corrected single-case pass. All695 distinct focused cases passed their latest
 execution, no skips/warnings. Task3 final218 passes/two true Windows privilege
 skips/three private preflight exclusions; source/CI split/lifecycle evidence accepted.
-Final source publication/CI and Task4 remain; no native measurement yet.
+Final source`70a73b1` passed CI42722594833. The one actual Task4 acquisition and
+[result](../../experiments/2026-11-10-live-buffer-performance.md) are independently
+accepted:60 model seconds, full cells/queue record, B/C waits147000/156671ms,
+resource compliance and cleanup0. Actual Windows wall-clock resolution is15.625ms;
+the historical1ms explanation is limited, not retroactively changed. The result
+supports separately specifying the local synthetic Stage-C price board.
 **Stack:** Existing Python3.12/NumPy/pytest/PowerShell. No new dependencies.
 
 ## Global constraints and boundaries
@@ -111,18 +116,18 @@ scheduling change does not alter900s native supervision or remove test coverage.
   behavior, actual worker identity and unrelated-process survival. Preserve exact
   old-source byte evidence; do not run private model/runtime preflight here.
 - [x] Astra accepts actual evidence/source/CI split and unchanged package fingerprint.
-- [ ] Publish final source checkpoint and successful source CI before Task4 preparation.
+- [x] Publish final source checkpoint and successful source CI before Task4 preparation.
 
 ## Task4 — One acquisition, independent result and next decision
 
 Controller owns fresh ignored preparation/output/evidence, tracked result report,
 handover/plan updates and publication. No frozen source edits during the attempt.
 
-- [ ] Independently review exact command, fresh directories, source-CI, actual
+- [x] Independently review exact command, fresh directories, source-CI, actual
   worker/compiler/cache, source/readiness union and900s/4GiB/256MiB bounds.
-- [ ] Run once under owned supervision. Observe to completion or termination;
+- [x] Run once under owned supervision. Observe to completion or termination;
   preserve partials, stderr, actual resources and zero-owned-survivor evidence.
-- [ ] Public offline full inspection and Astra independent raw-cell/group/ring/
+- [x] Public offline full inspection and Astra independent raw-cell/group/ring/
   queue/clock/resource audit. Report actual waits, gaps and all outcome dimensions.
   No automatic retry, retuning or rate/generalization claims from a short burst.
 - [ ] Publish reviewed evidence and update the continuation record. Decide whether
