@@ -413,10 +413,24 @@ and the complete local integration are independently accepted. Published source
 253 buffer passes/six Windows-only skips,287 viewer passes/four absent historical
 artifact skips and build. The local intake slice is complete. No neural
 worker is connected; approved images queue and expire without a processed claim.
-Next: separately specify one owned native worker, genuine image handoff/completion
-and bounded measured telemetry. Preserve intake-only mode; native price admission
-and richer measured live presentation follow. Do not route real evidence through
-the synthetic fixture path or launch an unbounded native run.
+The next [bounded native-worker contract](superpowers/specs/2026-11-10-native-worker-design.md)
+and [five-task implementation plan](superpowers/plans/2026-11-10-native-worker.md)
+are independently accepted prospectively. Implementation is next: one owned
+Windows worker, genuine eight-observation image completion and bounded measured
+telemetry. The engineering proof allows40 observations/20 model seconds,900 real
+seconds and one terminal session; these are not event-duration limits. Intake-only
+mode and synthetic prices remain available. The review resolved compiler-probe
+ownership, final-observation/ACK ordering, bounded public D1 receipt capture,
+exact wire/HTTP/evidence variants, dependency bootstrap and confirmed cleanup
+with final source checks. A controlled public-D1 probe reproduced the earlier
+final-read expiry gap; the accepted replacement uses at most three atomic
+snapshots and two terminal reads. Missing retained evidence is an explicit
+journal_gap, never a fabricated completion. No native worker source or new
+acquisition is included in this prospective checkpoint. Sol implements sequential
+tasks; independent source/CI and concrete finite preflight gates precede one
+actual run. The330-file baseline preserves all64 frozen helpers,41 package members
+and seven historical artifacts. Native price admission and richer measured live
+presentation follow; never route real evidence through the synthetic fixture path.
 The preservation baseline records all 270 preexisting tracked files, all 64 frozen
 helpers unchanged and the same 41-member package fingerprint. No new dependency,
 provider call or fullgraph acquisition was needed for the completed local intake.
