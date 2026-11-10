@@ -484,15 +484,40 @@ all exact build fields, extra-field rejection and zero-clock checks remain.100
 focused tests passed; source review accepted the fix. No observations or successful
 integrated price pilot are claimed from these diagnostics. Failure evidence and
 the separate original timeout remain retained; no deadline was increased.
-Fresh finite pilot02 is prepared for80 observations/600 seconds with the corrected
-worker and two generated images. Next: its reviewed source-bound execution/browser
-inspection, then the usable local pilot. Preserve the distinction from multi-hour performance,
-public deployment and scientific support. Continue until the local pilot works.
-Independent source/CI and
-concrete finite preflight gates precede one actual run. The330-file baseline
-preserves all64 frozen helpers,41 package members
-and seven historical artifacts. Native price admission and richer measured live
-presentation follow; never route real evidence through the synthetic fixture path.
+Corrected source `9e6fa86bc42aa7cf790767bc1054f1fc2c0fa3fb` passed all four
+[CI42892533266 jobs](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42892533266):
+1030 Market passes/77 skips,1469 native passes/47 skips,253 buffer passes/6 skips,
+315 Viewer passes/4 skips and build. One actual finite pilot02 then completed at
+`.tools/native-pilot-20261110-02/`:80 observations/40 model seconds,197 events,
+3462 monitor records and two processed generated images. A occupies observations
+15–22 and B23–30, each eight contiguous500ms observations. Public inspection exits0
+with complete/model_limit, matching source bindings and confirmed cleanup; it is
+integrity-only, not native replay attestation. Peak worker RSS910184448bytes,
+Job commit2005450752bytes, sampled output3720701bytes; maximum monitor gap392.4927ms.
+The HTTP client observed one durable native price activation, drink00 CHF4→5,
+then the active30-real-minute lock. Independent arithmetic reconstruction from the
+actual recorded motor bins reproduces that target; it does not establish that
+either image caused it. Both service/client exit0, with the client retaining the
+expected connection-close outcome after the normal service end. Actual desktop
+and mobile browser views showed the price, group measurements and model clock;
+the disconnected board retained an explicitly last-known paused state.
+Independent final review accepts the complete finite02 evidence and reproduces
+both native proposals: sequence58 activates500rappen; sequence78 returns no_change
+at500 without resetting the cooldown. Confirmed cleanup took2.3486257seconds.
+The fresh interactive session `.tools/native-pilot-live-20261110-02/` was then
+started once on loopback port18767 with its separate native SQLite database,
+prepared SHA256 `a411e1396abd25080c7b43866c9e8a288eadefe8ce99c4adaa0aeef8513f93d5`.
+The operator browser confirms a running model and fresh seven-group measurements.
+Prices initially remain paused for user takeover/resume. Private operator/view/guest
+URLs are in `.tools/pilot-acceptance-20261110/interactive-02.log`; do not publish
+these role capabilities. Root owns interactive exec session60278 for Ctrl+C cleanup.
+The same source has480real minutes and86400observations as upper bounds, not an
+established multi-hour performance result. Check actual process state before later
+continuation; never assume the session still runs or restart a used work root.
+The330-file baseline preserves all64 frozen helpers,41 package members and seven
+historical artifacts. Native price admission is implemented; richer live cell/anatomy
+presentation remains separate from this minimal seven-group pane. Never route real
+evidence through the synthetic fixture path. No public deployment or API call ran.
 The preservation baseline records all 270 preexisting tracked files, all 64 frozen
 helpers unchanged and the same 41-member package fingerprint. No new dependency,
 provider call or fullgraph acquisition was needed for the completed local intake.

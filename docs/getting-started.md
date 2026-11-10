@@ -756,8 +756,13 @@ authenticity. For raw-backed inspection, use `inspect-session` as above. See the
 This Windows-only mode connects the existing image upload/moderation flow to one
 continuous native engine and a separate native-price database. It requires the
 prepared graph, matching existing native cache and supported Python3.12.14
-environment. It does not build, install dependencies or call a paid API. Its source
-and software checks are complete; actual integrated acceptance is still pending.
+environment. It does not build, install dependencies or call a paid API. A finite
+Windows run completed 80 observations / 40 model seconds, processed two approved images
+with eight observations each and activated one test price change, CHF4→5. Independent
+inspection accepted that finite result; it establishes no multi-hour capacity or
+public use.
+The current live pane displays seven measured groups, not rich cell/anatomy rendering.
+See the [actual run evidence](experiments/2026-11-10-native-worker-software.md#actual-finite-local-run).
 
 Build the viewer first. Use a fresh work-root name and an existing empty decoder
 sibling under `.tools`; preparation only reads/hashes and writes the bound controls:

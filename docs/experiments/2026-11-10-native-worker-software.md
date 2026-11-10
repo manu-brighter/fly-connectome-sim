@@ -1,4 +1,4 @@
-# Bounded native worker — software evidence, 2026-11-10
+# Bounded native worker — software and local pilot evidence, 2026-11-10
 
 The [prospective contract](../superpowers/specs/2026-11-10-native-worker-design.md)
 and [sequential plan](../superpowers/plans/2026-11-10-native-worker.md) define one
@@ -178,15 +178,94 @@ core fixes, affected parent/live/CLI tests passed89 with1 path-location-dependen
 test deselected, followed by17 final live tests. That deselected CLI path test had
 passed in the combined run using a temporary root outside the allowed .tools area.
 Final price fixes passed36 focused cases; the unchanged authority had passed119
-regressions. Exact-source CI will supply the next combined checkpoint.
+regressions. Subsequent exact-source CI is recorded below.
 
 These are software/fake-engine and harmless-process results. No actual simulator,
 graph acquisition, compiler probe or paid API ran for this implementation evidence.
 No multi-hour performance or scientific support is inferred.
 
+Current source `9e6fa86` passed all four
+[CI42892533266 jobs](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42892533266):
+
+| Job | Passed | Skipped | Duration |
+| --- | ---: | ---: | ---: |
+| Market | 1030 | 77 | 129.11s |
+| Native/session | 1469 | 47 | 352.50s |
+| Market buffers | 253 | 6 | 356.11s |
+| Viewer | 315 | 4 | 90.780s |
+
+Viewer build also passed (355ms). Skips remain explicit; these data-free/tiny-native
+compatibility jobs establish neither the actual full-graph pilot nor multi-hour
+capacity. The previously published `760d03b` checkpoint also passed all four jobs.
+
+## Actual finite local run
+
+The separately released second attempt at `.tools/native-pilot-20261110-02/`
+completed on November 10 with one continuous existing native engine. It was bound
+before release to `live-pilot/v1`, 80 observations / 40 model seconds and 600 real seconds,
+using the existing prepared graph/cache and no paid provider request. Source was
+`9e6fa86bc42aa7cf790767bc1054f1fc2c0fa3fb`; CLI exited 0. The public `inspect` command
+exited 0 and reports
+`complete`/`model_limit`, 80 observations, 197 event records, 3462 monitor records,
+99 matching source/lock/tool/cache files and no first or cleanup fault. Independent
+inspection accepted the complete finite run, including full EOF, source and cleanup;
+the inspector's verification remains integrity-only.
+
+The public HTTP client followed 438.266 real seconds and exited 0 after the expected
+server connection close. It made one primary claim/resume, two generated PNG
+uploads and one approval per image, with no mutation retries. Original five-minute
+handoff TTLs were preserved. Actual receipts show:
+
+| Input | Measured observation indices | Result | Canonical RGB SHA256 |
+| --- | --- | --- | --- |
+| A, red/blue stripes | 15–22 | processed, 8/8 | `0ed4b02146ccfceb967bc55c1499deb88de0676eb4d8807d44e8a7088829d968` |
+| B, green/magenta checker | 23–30 | processed, 8/8 | `9581f69336b912b39c4e631a1ce69a10bcca72fae48593925df1e388212f9f41` |
+
+B was accepted 10.906 real seconds after A, after A's start was confirmed. The same
+session advanced 64 black-input and 16 image-input observations in total, without reset,
+learning or external DAN. The HTTP observer retained native progress through 80/80
+and 40 model seconds; its final price snapshot was paused with price version 1.
+
+The separate native-price SQLite database contains one actual activation:
+`drink-00`, CHF4→CHF5, price/drink version 1 at `2026-11-10T20:15:07.575751Z`.
+The database contains two native proposals: sequence 58 activated CHF4→5; sequence 78
+was `no_change`. It contains one activation and zero fixture requests. Independent
+review exactly rederived both targets and their configuration/path/clock bindings
+from recorded bins. The other 19 test drinks remained CHF4. This is a configured
+motor-readout result, not evidence that either image caused the choice, semantic preference or biological
+learning. The original 30-real-minute per-drink cooldown was retained; this short
+run cannot establish repeated cooldown expiry or multi-hour operation.
+
+Confirmed terminal cleanup records worker/probe exit 0, empty Job and closed owned
+IPC/process/Job/evidence/root-lock handles in 2.3486257s. Peak worker RSS was 910184448 bytes,
+peak Job commit 2005450752 bytes, peak recorded output 3720701 bytes and maximum monitor
+gap 392.4927ms. These are measurements for this finite run, not capacity guarantees.
+
+Actual browser inspection covered the read-only board at 1440×1100 with the CHF5
+price/status/table and 390×844 with page width 375 and no horizontal overflow. The
+terminal view correctly retained last-known paused/unknown status and 40 model seconds.
+The only runtime resource error was favicon404; connection-refused polling errors
+followed the expected server shutdown. The minimal live pane shows seven measured
+groups and freshness, without rich live cell/anatomy rendering.
+
+Retain the separate first attempt `.tools/native-pilot-20261110-01/`: its 5s compiler
+probe-start timeout occurred before any observation and cleanup was confirmed. Its
+root cause remains unexplained. A separate startup-context diagnostic established
+an initial tuple/list identity mismatch that was fixed in `9e6fa86`; this does not
+establish the cause of the first attempt's timeout. No failed attempt is relabelled
+as the successful second run.
+
+Local raw evidence remains under `.tools/native-pilot-20261110-02/`; HTTP receipt
+history/summary and desktop/mobile/price screenshots remain under
+`.tools/pilot-acceptance-20261110/`. Private role URLs/capabilities are not published.
+Exact terminal hashes:
+
+- `final.json`: `bedbf9c3d63e3a28c4aa0ce3b710f141d4fc7109f329af0441115558f6591bbd`.
+- `cleanup.json`: `8f6ccc2144b5ca1f798affc5e58f3062c3f8ef367f71603120088b8387749078`.
+- `http-02.summary.json`: `1790429b6f0b0305b0a950b7f267dac8c30c03f8c19c87b21fc4c20808bab297`.
+
 ## Remaining work
 
-Exact-source CI, a concrete finite preflight, actual image-to-native/price integration
-and browser inspection. Longer real-time rehearsal and public operation remain
-distinct from the first local pilot; rich live cell/anatomy rendering is not added
-by this minimal measured-status pane.
+Longer real-time rehearsal and separately authorized public operation remain
+outside this local result. Rich live cell/anatomy rendering is not implemented by the measured-status
+pane. No scientific qualification or biological validation is established.
