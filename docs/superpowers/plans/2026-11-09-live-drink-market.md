@@ -386,8 +386,9 @@ The first bounded slice is the locally implemented and independently accepted
 [implementation plan](2026-11-10-image-admission.md). It establishes metadata
 states/deadlines/capacity before adding untrusted decoding, HTTP or a native worker;
 it does not constitute the integrated StageD deliverable by itself. Its134 focused
-and315 complete Market tests pass with one Windows symlink skip; source publication
-and CI remain pending. See [actual evidence](../../experiments/2026-11-10-image-admission.md).
+and315 complete Market tests pass with one Windows symlink skip; published source
+6d72ed70353cb0ef3404303be6f071078f77da23 passed all four CI42803437054 jobs,
+including316 Market cases without skips. D1 is complete within this scope. See [actual evidence](../../experiments/2026-11-10-image-admission.md).
 
 - Write the service/security specification before exposing an endpoint: upload
   size/pixel/type limits, decode isolation, queue/backpressure, retention,

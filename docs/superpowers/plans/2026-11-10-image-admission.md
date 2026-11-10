@@ -16,7 +16,9 @@ reuse public Clock/ClockSample/SystemClock from the unchanged market authority.
 
 **Status:** D1 implementation independently accepted locally after the detached-data
 fix;134 focused tests and315 complete Market tests pass with one Windows
-symlink-privilege skip. Source publication and clean-checkout CI remain pending. Stage-C source `b2eda225cf9709f1abf5d383c19106d707eb5444` passed all four
+symlink-privilege skip. Published source6d72ed70353cb0ef3404303be6f071078f77da23
+passed all four [CI42803437054 jobs](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42803437054);
+316 Market cases passed on Linux with no skips. This metadata slice is complete. Stage-C source `b2eda225cf9709f1abf5d383c19106d707eb5444` passed all four
 [CI42741755078 jobs](https://github.com/manu-brighter/fly-connectome-sim/actions/runs/42741755078).
 The user's ongoing autonomous execution authorization covers technical choices;
 prospective review resolved the exact contract before product code starts.
@@ -130,13 +132,13 @@ exist yet. Do not add speculative public helpers or accept arbitrary dictionarie
 - [x] Provide stable source hashes and exact command/log evidence under ignored
   `.tools/image-admission-20261110/` and the controller's private progress record.
   Confirm no images decoded, no native worker/HTTP started and no prices changed.
-- [ ] Independent Astra evaluates complete source, spec, tests and actual evidence,
+- [x] Independent Astra evaluates complete source, spec, tests and actual evidence,
   especially all five Review Focus items. Resolve actionable findings with real
   regressions. Never treat an interrupted review as acceptance.
-- [ ] Root compares all preexisting sources/package/artifacts, inspects exact staged
+- [x] Root compares all preexisting sources/package/artifacts, inspects exact staged
   first-party paths/full diff and records a reviewed checkpoint on the existing
   feature branch. Update handover/status with actual results and pending limits.
-- [ ] Explicit feature push and await terminal clean-checkout CI; existing
+- [x] Explicit feature push and await terminal clean-checkout CI; existing
   `market_price` command automatically discovers this new test module. Keep every
   original native/buffer/viewer job unchanged. Record actual source SHA/run/counts
   and skipped cases before declaring this slice complete.
