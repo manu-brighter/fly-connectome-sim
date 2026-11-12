@@ -179,6 +179,12 @@ separate verification path; an intact artifact is not evidence of learning.
 
 ## Getting started
 
+For browser/mobile development while the Windows PC is off, use the
+[tested Codex Cloud setup](docs/codex-cloud.md): pinned Linux tools, saved
+installation/start commands and prepared data. The synthetic board works there;
+the native image/live-worker path remains Windows-only. Publishing a reusable
+Codex environment is a separate remaining platform step.
+
 The native/data Windows workflow was exercised with **Python 3.12.14**,
 **uv 0.12.15**, **Zig 0.16.0** and **Node.js 25.9.0**. The replay viewer was
 checked separately with **Node.js 24.21.0 / npm 11.19.0** and requires Node >=24.

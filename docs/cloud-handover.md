@@ -1,5 +1,13 @@
 # Continuation handover — experimental v1, 2026-11-10
 
+**November 12 Codex Cloud checkpoint:** the executable
+[Linux setup and current results](codex-cloud.md) supersede the earlier plan to
+upload ChatGPT Project sources for the November 12–26 remote period. Use the
+saved `scripts/cloud/` installation/start configuration. Prepared cloud data,
+data-free compatibility, and the Windows-only native live pilot are separate
+statuses. Publishing a reusable Codex environment remains a platform action;
+the ordinary Default task is not a published environment.
+
 Remote preparation checkpoint, November 12: start with
 [the dated remote handover](00_Remote_Uebergabe_2026-11-12.md) for current source
 identity, superseded historical instructions, cloud-upload status and missing

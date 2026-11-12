@@ -3,6 +3,14 @@
 Stand: **12. November 2026**. Arbeitszeitraum: **12.–26. November 2026**.
 Diese Datei zuerst lesen, danach `cloud-handover.md` und `getting-started.md`.
 
+**Aktualisierung — ausführbare Codex Cloud:** Für die Remote-Phase ersetzt
+[das getestete Setup](codex-cloud.md) den früheren Projektquellen-Uploadplan
+in dieser historischen Übergabe. Installation/Start liegen unter `scripts/cloud/`;
+der Bericht trennt Linux-Entwicklung, vorbereitete Daten und den unter Linux
+blockierten nativen Live-Pilot. Ein Default-Task ist noch keine veröffentlichte
+wiederverwendbare Umgebung; der verbleibende Save-draft-/Publish-Schritt und die
+Aufbewahrungsgrenze sind dort beschrieben.
+
 ## Verfügbarkeit und maßgebliche Version
 
 - Der lokale Projektname ist `flay-connectome-sim`; das Repository heißt

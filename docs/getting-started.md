@@ -3,7 +3,9 @@
 [Back to the project overview](../README.md)
 
 Run commands from the repository root. The required tools are a manual
-prerequisite: this repository does not contain a tool-download/bootstrap script.
+prerequisite for the original manual workflow below. For the tested Linux x86_64
+Codex Cloud bootstrap, use [the cloud setup](codex-cloud.md) and
+`bash scripts/cloud/setup.sh`; saved start/test/data commands live in `scripts/cloud/`.
 The Windows setup was exercised with Python **3.12.14**, uv **0.12.15**, Zig
 **0.16.0**, and Node.js **25.9.0**. Obtain uv and Node.js from their upstream
 distributions; on Windows, also obtain the Zig 0.16.0 x86_64 Windows archive.
