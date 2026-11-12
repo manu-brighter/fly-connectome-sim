@@ -1,5 +1,11 @@
 # Continuation handover — experimental v1, 2026-11-10
 
+Remote preparation checkpoint, November 12: start with
+[the dated remote handover](00_Remote_Uebergabe_2026-11-12.md) for current source
+identity, superseded historical instructions, cloud-upload status and missing
+runtime prerequisites. The November 10 interactive-session status below is
+historical, not a claim that a local service is still running.
+
 ## Start here: accepted scope and current status
 
 ### Current continuation request
